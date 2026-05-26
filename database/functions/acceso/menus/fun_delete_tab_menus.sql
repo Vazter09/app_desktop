@@ -22,7 +22,8 @@ BEGIN
         );
     END IF;
 
-    PERFORM fun_delete_menu_usuarios_por_menu(p_id_menu);
+    -- Eliminar primero asignaciones a usuarios (evita dependencia de funciones auxiliares).
+    DELETE FROM tab_menu_usuarios WHERE id_menu = p_id_menu;
     DELETE FROM tab_menus WHERE id_menu = p_id_menu;
 
     RETURN 'OK';
@@ -36,6 +37,10 @@ EXCEPTION
             'Revise accesos de usuarios y submenús.'
         );
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        PERFORM smartcset_raise_negocio(
+            'No se pudo completar la eliminación del menú.',
+            SQLERRM,
+            'Verifique que no existan referencias activas al menú e intente de nuevo.'
+        );
 END;
 $$ LANGUAGE plpgsql;

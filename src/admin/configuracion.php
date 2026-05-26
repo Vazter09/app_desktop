@@ -222,45 +222,6 @@ include __DIR__ . '/../layout/topbar.php';
                             <p class="small text-muted mb-0 mt-1">Afectan menú, login y pantallas administrativas.</p>
                         </div>
 
-                        <div class="config-field-group">
-                            <p class="config-field-group__title">Módulo registro de personas</p>
-                            <div class="config-toggle-list">
-                                <div class="config-toggle-item">
-                                    <input class="form-check-input" type="checkbox" name="chk_modulo_registro"
-                                           id="chk_modulo" value="1"
-                                        <?= !empty($c['ind_modulo_registro']) ? 'checked' : '' ?>>
-                                    <div class="config-toggle-item__body">
-                                        <label class="config-toggle-item__title mb-0" for="chk_modulo">
-                                            Habilitar registro de personas
-                                        </label>
-                                        <span class="config-toggle-item__desc">
-                                            Si está desactivado, el menú «Registro personas» y los formularios
-                                            (aprendiz, instructor, etc.) no estarán disponibles.
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="config-general__row mt-2" id="registro-credenciales-wrap"
-                                 <?= empty($c['ind_modulo_registro']) ? 'hidden' : '' ?>>
-                                <div>
-                                    <label class="form-label small fw-bold" for="txt_usr_registro">Usuario del login de registro</label>
-                                    <input type="text" name="txt_usr_registro" id="txt_usr_registro"
-                                           class="form-control form-control-sm"
-                                           value="<?= htmlspecialchars($c['usr_registro'] ?? '') ?>"
-                                           placeholder="usuariocset" autocomplete="off">
-                                </div>
-                                <div>
-                                    <label class="form-label small fw-bold" for="txt_pass_registro">Clave del login de registro (opcional)</label>
-                                    <input type="password" name="txt_pass_registro" id="txt_pass_registro"
-                                           class="form-control form-control-sm"
-                                           placeholder="Dejar vacío para no cambiar" minlength="12" autocomplete="new-password">
-                                </div>
-                            </div>
-                            <p class="small text-muted mb-0 mt-2">
-                                El acceso al módulo de registro se realiza desde su propio login
-                                (<code>src/modulos/registro/login.php</code>). El administrador solo configura este acceso desde aquí.
-                            </p>
-                        </div>
                     </div>
 
                     <aside class="config-general__logo" aria-label="Logo del sistema">
@@ -404,20 +365,3 @@ include __DIR__ . '/../layout/topbar.php';
 
 <?php include __DIR__ . '/../layout/footer.php'; ?>
 <script src="<?= htmlspecialchars($smartcset_asset_href) ?>js/logo-upload.js?v=<?= (int) $v_logo_js ?>"></script>
-<script>
-(function () {
-    const chkModulo = document.getElementById('chk_modulo');
-    const wrapCreds = document.getElementById('registro-credenciales-wrap');
-    if (!chkModulo) return;
-
-    const sync = () => {
-        const on = chkModulo.checked;
-        if (wrapCreds) {
-            wrapCreds.hidden = !on;
-        }
-    };
-
-    chkModulo.addEventListener('change', sync);
-    sync();
-})();
-</script>

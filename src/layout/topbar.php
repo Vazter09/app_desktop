@@ -7,11 +7,11 @@
  */
 $_nom = $wnom_usuario ?? $_SESSION['nom_usuario'] ?? '';
 $_title = $page_title ?? 'SmartCSET';
+$__asset_href = function_exists('smartcsetProjectAssetHref') ? smartcsetProjectAssetHref() : '../../';
 
-// Ruta al menu_principal relativa al archivo que incluye este partial
-$_home_url = (strpos($_SERVER['PHP_SELF'], '/menu/') !== false)
-    ? 'menu_principal.php'
-    : '../menu/menu_principal.php';
+// Rutas absolutas relativas a la raíz del proyecto
+$_home_url = $__asset_href . 'src/menu/menu_principal.php';
+$_logout_url = $__asset_href . 'src/auth/logout.php';
 ?>
 
 <div class="content-wrapper">
@@ -38,7 +38,7 @@ $_home_url = (strpos($_SERVER['PHP_SELF'], '/menu/') !== false)
                 <i class="bi bi-person-circle" aria-hidden="true"></i>
                 <span class="topbar-user-name"><?= htmlspecialchars($_nom) ?></span>
             </div>
-            <a href="../auth/logout.php" class="btn-logout" title="Cerrar sesión">
+            <a href="<?= htmlspecialchars($_logout_url) ?>" class="btn-logout" title="Cerrar sesión">
                 <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
                 <span>Salir</span>
             </a>

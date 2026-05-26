@@ -8,6 +8,7 @@
  */
 
 $_active = $active_menu_id ?? '';
+$__asset_href = function_exists('smartcsetProjectAssetHref') ? smartcsetProjectAssetHref() : '../../';
 
 // Cargar menú del usuario (administrador: acceso fijo a todo el catálogo)
 $_menu_raw = obtenerMenusUsuario($pdo, $_SESSION['id_usuario']);
@@ -49,7 +50,7 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
         <!-- Inicio (siempre presente) -->
         <div class="nav-section">
             <a class="nav-item <?= ($_active === '0') ? 'active' : '' ?>"
-               href="<?= (strpos($_SERVER['PHP_SELF'], '/menu/') !== false) ? 'menu_principal.php' : '../menu/menu_principal.php' ?>"
+               href="<?= htmlspecialchars($__asset_href . 'src/menu/menu_principal.php') ?>"
                data-tooltip="Inicio">
                 <i class="bi bi-house-fill"></i>
                 <span class="nav-label">Inicio</span>
@@ -78,7 +79,7 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                 <!-- Salir -->
                 <div class="nav-section">
                     <div class="nav-divider"></div>
-                    <a class="nav-item" href="../auth/logout.php" data-tooltip="Salir">
+                    <a class="nav-item" href="<?= htmlspecialchars($__asset_href . 'src/auth/logout.php') ?>" data-tooltip="Salir">
                         <i class="bi bi-power"></i>
                         <span class="nav-label">Salir</span>
                     </a>
@@ -98,7 +99,7 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                             <?php
                             $_prog_h  = trim($_hijo['nom_programa'] ?? '');
                             $_es_ex_h = (strcasecmp($_prog_h, 'Exit') === 0 || strcasecmp($_prog_h, 'exit.php') === 0);
-                            $_url_h   = $_es_ex_h ? '../auth/logout.php' : smartcsetUrlNomPrograma($_prog_h);
+                            $_url_h   = $_es_ex_h ? ($__asset_href . 'src/auth/logout.php') : smartcsetUrlNomPrograma($_prog_h);
                             $_ic_h    = getIcon($_hijo['nom_menu']);
                             $_act_h   = ($_hijo['id_menu'] === $_active) ? 'active' : '';
                             ?>
