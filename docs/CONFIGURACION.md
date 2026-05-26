@@ -30,9 +30,10 @@ DB_NAME=db_smartcset
 DB_USER=postgres
 DB_PASS=TU_PASSWORD_AQUI       # 🔐 CAMBIAR ESTO
 
-# COLORES (opcional)
+# COLORES (opcional — respaldo si aún no existe tab_config_sistema)
 COLOR_VERDE_OSCURO=#004d40
 COLOR_VERDE_OLIVA=#808000
+PATH_LOGO=img/logo_empresa.png
 
 # ENTORNO
 APP_ENV=production             # Cambiar a "production"
@@ -40,6 +41,19 @@ SESSION_TIMEOUT=1800
 ```
 
 ⚠️ **IMPORTANTE:** `.env` NO debe subirse a Git. Ya está en `.gitignore`
+
+### Apariencia y módulo registro (base de datos)
+
+En instalaciones con PostgreSQL ya creado, ejecute:
+
+```bash
+chmod +x database/migrations/run_config_sistema.sh
+./database/migrations/run_config_sistema.sh
+```
+
+Eso crea `tab_config_sistema`, la función `fun_update_tab_config_sistema` y los menús **Config. sistema** (`0205`) y **Registro personas** (`03xx`).
+
+La configuración visual (colores, fuentes, logo) y los interruptores del módulo de registro se editan en **Administración → Config. sistema**. La base de datos es la fuente de verdad; `.env` solo se usa como respaldo si la tabla no existe.
 
 ---
 

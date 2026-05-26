@@ -84,6 +84,7 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/config/fun_update_tab_config_sistema.sql"
 )
 for f in "${FUNCS[@]}"; do
   run_sql "$f"
@@ -99,7 +100,9 @@ for f in \
   "$ROOT/database/migrations/update_nom_programa_subfolders.sql" \
   "$ROOT/database/migrations/add_menu_registro_ingreso_0102.sql" \
   "$ROOT/database/migrations/refactor_ingreso_abierto_salida.sql" \
-  "$ROOT/database/migrations/add_menu_registro_salida_0103.sql"
+  "$ROOT/database/migrations/add_menu_registro_salida_0103.sql" \
+  "$ROOT/database/migrations/add_tab_config_sistema.sql" \
+  "$ROOT/database/migrations/add_menu_config_y_registro.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done
@@ -111,6 +114,9 @@ if command -v php >/dev/null 2>&1; then
   hash2="$(php -r "echo password_hash('Porteria2026!', PASSWORD_BCRYPT);")"
   "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
     -c "UPDATE tab_usuarios SET pass_usuario = '$hash2' WHERE id_usuario = 'porteria';"
+  hash_reg="$(php -r "echo password_hash('usuariocset', PASSWORD_BCRYPT);")"
+  "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+    -c "UPDATE tab_config_sistema SET pass_registro_hash = '$hash_reg' WHERE id_config = 1 AND pass_registro_hash IS NULL;"
 fi
 
 unset PGPASSWORD

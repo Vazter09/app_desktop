@@ -5,6 +5,7 @@
  * Lógica delegada al motor PostgreSQL mediante funciones con casting explícito.
  */
 require_once('config.php');
+require_once(__DIR__ . '/AppConfig.php');
 
 try {
     $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
@@ -12,6 +13,26 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
+
+    AppConfig::boot($pdo);
+
+    // --- CONFIGURACIÓN DEL SISTEMA ---
+    $sql_fun_upd_config = "SELECT fun_update_tab_config_sistema(
+        ?::BOOLEAN, ?::BOOLEAN, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR
+    )";
+    $stmt_fun_upd_config = $pdo->prepare($sql_fun_upd_config);
+
+    $sql_get_config = "SELECT * FROM tab_config_sistema WHERE id_config = 1";
+    $stmt_get_config = null;
+    try {
+        $stmt_get_config = $pdo->prepare($sql_get_config);
+    } catch (PDOException $e) {
+        // Tabla aún no migrada; AppConfig usará .env
+    }
 
     // --- 1. SECCIÓN DE AUTENTICACIÓN Y LOGIN ---
     $sql_login = "SELECT id_usuario, nom_usuario, pass_usuario, mail_usuario, ind_usuario, ind_estado 

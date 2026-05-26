@@ -1,66 +1,24 @@
-# CSET SYSTEM — Sistema de Gestión de Personas
-## Instrucciones de Despliegue
+# Carpeta `files/` (compatibilidad)
 
-### Estructura de Archivos
-```
-cset_app/
-├── login.php                  ← Página de inicio de sesión
-├── index.php                  ← Panel principal (tipos de persona)
-├── assets/
-│   └── style.css              ← Estilos futuristas globales
-├── includes/
-│   ├── auth.php               ← Gestión de sesión y autenticación
-│   ├── db.php                 ← Conexión PDO y funciones de BD
-│   └── ajax_ciudades.php      ← Endpoint AJAX para ciudades
-└── forms/
-    ├── aprendiz.php           ← Formulario de registro de aprendiz
-    ├── instructor.php         ← Formulario de registro de instructor
-    ├── funcionario.php        ← Formulario de registro de funcionario
-    └── contratista.php        ← Formulario de registro de contratista
-```
+El módulo de registro de personas se integró en el proyecto principal.
 
-### Credenciales de Acceso
-- **Usuario:** `usuariocset`
-- **Contraseña:** `usuariocset`
+## Ubicación actual
 
-### Configuración de Base de Datos
-Edite el archivo `includes/db.php` y ajuste las constantes:
-```php
-define('DB_HOST', 'localhost');      // Host PostgreSQL
-define('DB_PORT', '5432');           // Puerto
-define('DB_NAME', 'cset_db');        // Nombre de la base de datos
-define('DB_USER', 'postgres');       // Usuario de BD
-define('DB_PASS', 'tu_password');    // Contraseña de BD
-define('DB_SCHEMA', 'public');       // Esquema
-```
+| Antes | Ahora |
+|-------|--------|
+| `files/index.php` | [`src/modulos/registro/index.php`](../src/modulos/registro/index.php) |
+| `files/login.php` | [`src/modulos/registro/login.php`](../src/modulos/registro/login.php) |
+| `files/forms/*` | [`src/modulos/registro/forms/`](../src/modulos/registro/forms/) |
+| `files/assets/style.css` | [`css/registro.css`](../css/registro.css) |
 
-### Requisitos del Servidor
-- PHP 8.0 o superior
-- Extensión `pdo_pgsql` habilitada en PHP
-- PostgreSQL 13 o superior
-- Servidor web: Apache (con mod_rewrite) o Nginx
-- Las tablas del esquema deben estar creadas previamente
+Los archivos `index.php` y `login.php` en esta carpeta redirigen a las nuevas rutas.
 
-### Verificar extensión PDO PostgreSQL
-```bash
-php -m | grep pdo_pgsql
-# Si no aparece, habilitar en php.ini:
-# extension=pdo_pgsql
-```
+## Configuración (colores, login del módulo)
 
-### Tablas de catálogo requeridas (deben existir)
-- `tab_tipos_docum`
-- `tab_tipos_persona`
-- `tab_niveles_estudio`
-- `tab_profesiones`
-- `tab_dptos`
-- `tab_ciudades`
-- `tab_centros`
-- `tab_redes`
-- `tab_fichas`
+Administración → **Config. sistema** (`src/admin/configuracion.php`), o tabla `tab_config_sistema` en PostgreSQL.
 
-### Notas de Seguridad
-- Cambiar las credenciales de acceso en `includes/auth.php`
-- En producción, mover `includes/` fuera del document root
-- Configurar HTTPS en el servidor web
-- Revisar permisos de archivos (644 para .php, 755 para directorios)
+Migración: `database/migrations/add_tab_config_sistema.sql`
+
+## Base de datos
+
+Use únicamente [`database/`](../database/). No hay scripts SQL duplicados en `files/`.

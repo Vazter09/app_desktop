@@ -1,54 +1,27 @@
-/* ============================================================
-   CSET SYSTEM — FUTURISTIC DESIGN SYSTEM
-   ============================================================ */
-
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
 
 :root {
-    --bg-deep:       #020917;
-    --bg-card:       #060f24;
-    --bg-panel:      rgba(6, 15, 36, 0.85);
-    --cyan:          #00e5b0;
-    --cyan-dim:      rgba(0, 245, 255, 0.15);
-    --cyan-glow:     0 0 20px rgba(0,245,255,0.5), 0 0 60px rgba(0,245,255,0.15);
-    --teal:          #00e5b0;
-    --blue:          #4a9eff;
-    --purple:        #9b6dff;
-    --orange:        #ff7b2e;
-    --text-primary:  #e8f4ff;
-    --text-muted:    rgba(150,180,220,0.7);
-    --border:        rgba(0,245,255,0.2);
     --border-strong: rgba(0,245,255,0.5);
-    --error:         #ff3c6e;
-    --success:       #00e5b0;
     --grid-line:     rgba(255,255,255,0.14);
     --surface:       rgba(255,255,255,0.06);
     --surface-soft:  rgba(255,255,255,0.03);
     --surface-hover: rgba(255,255,255,0.12);
     --transition:    all 0.3s cubic-bezier(0.4,0,0.2,1);
+    --cyan-glow:     0 0 20px rgba(0,245,255,0.5), 0 0 60px rgba(0,245,255,0.15);
 }
-
 .light-theme {
-    --bg-deep:       #f5f7fb;
-    --bg-card:       #ffffff;
-    --bg-panel:      rgba(255,255,255,0.95);
-    --cyan:          #0b74c7;
-    --cyan-dim:      rgba(11,116,199,0.12);
+    --border-strong: rgba(15,23,42,0.16);
+    --grid-line:     rgba(15,23,42,0.06);
+    --surface:       rgba(15,23,42,0.08);
+    --surface-soft:  rgba(15,23,42,0.04);
+    --surface-hover: rgba(15,23,42,0.12);
     --cyan-glow:     0 0 15px rgba(11,116,199,0.18);
     --teal:          #0e8c6c;
     --blue:          #2366ff;
     --purple:        #6e5bff;
     --orange:        #d97706;
-    --text-primary:  #111827;
-    --text-muted:    rgba(55,65,81,0.8);
-    --border:        rgba(15,23,42,0.08);
-    --border-strong: rgba(15,23,42,0.16);
-    --surface:       rgba(15,23,42,0.08);
-    --surface-soft:  rgba(15,23,42,0.04);
-    --surface-hover: rgba(15,23,42,0.12);
     --error:         #c026d3;
     --success:       #0e8c6c;
-    --grid-line:     rgba(15,23,42,0.06);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -816,6 +789,113 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     font-size: 0.7rem;
     letter-spacing: 0.15em;
     color: var(--text-muted);
+}
+
+/* ─── TABLE (Panel registro) ─── */
+.panel-block {
+    margin-top: 2.2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1.6rem;
+    position: relative;
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.panel-block::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan) 0%, transparent 100%);
+    box-shadow: var(--cyan-glow);
+}
+
+.panel-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.panel-toolbar h2 {
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+.data-table-wrap {
+    overflow: auto;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+}
+
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 920px;
+}
+
+.data-table thead th {
+    text-align: left;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.85rem 0.9rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+}
+
+.data-table tbody td {
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.95rem;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.mono { font-family: 'Share Tech Mono', monospace; font-size: 0.82rem; letter-spacing: 0.02em; }
+.truncate { max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    font-size: 0.7rem;
+    font-family: 'Share Tech Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.pill--ok { border-color: rgba(0,229,176,0.45); color: var(--success); background: rgba(0,229,176,0.06); }
+.pill--off { border-color: rgba(255,60,110,0.35); color: #ff8aaa; background: rgba(255,60,110,0.06); }
+
+.panel-status {
+    margin-top: 0.75rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+/* Inline form */
+.inline-form-host .form-panel {
+    padding: 1.6rem;
+}
+
+.inline-form-host .btn-row {
+    justify-content: flex-start;
+}
+
+/* Card selection */
+.person-card.is-selected {
+    border-color: var(--card-accent, var(--cyan));
+    box-shadow: 0 0 0 1px var(--card-accent, var(--cyan));
 }
 
 

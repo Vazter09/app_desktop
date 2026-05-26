@@ -34,6 +34,11 @@ function getIcon(string $nombre): string
         'salir'       => 'bi-power',
         'inicio'      => 'bi-house-fill',
         'admin'       => 'bi-shield-fill-check',
+        'registro'    => 'bi-person-vcard-fill',
+        'aprendiz'    => 'bi-mortarboard-fill',
+        'instructor'  => 'bi-person-workspace',
+        'funcionario' => 'bi-bank2',
+        'contratista' => 'bi-briefcase-fill',
     ];
 
     $lower = strtolower($nombre);
@@ -134,20 +139,29 @@ function validarLongitudPassword(string $password, bool $esObligatoria = true): 
 
 /**
  * Prefijo relativo (../…) desde la página actual hasta la raíz del proyecto (css/, js/).
- * Pensado para vistas bajo src/modulos/ y subcarpetas.
+ * Cubre src/modulos/*, src/admin/*, src/menu, src/usuarios, etc.
+ */
+function smartcsetProjectAssetHref(): string
+{
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+    if (preg_match('#/src/(.*)$#', $scriptDir, $m)) {
+        $rel = trim((string) $m[1], '/');
+        if ($rel === '') {
+            return '../';
+        }
+
+        return str_repeat('../', count(explode('/', $rel)) + 1);
+    }
+
+    return '../../';
+}
+
+/**
+ * @deprecated Use smartcsetProjectAssetHref()
  */
 function smartcsetModulosAssetHref(): string
 {
-    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
-    if (!preg_match('#/src/modulos(?:/(.*))?$#', $scriptDir, $m)) {
-        return '../../';
-    }
-    $sub = isset($m[1]) ? trim((string) $m[1], '/') : '';
-    if ($sub === '') {
-        return '../../';
-    }
-
-    return str_repeat('../', count(explode('/', $sub)) + 2);
+    return smartcsetProjectAssetHref();
 }
 
 /**
@@ -160,5 +174,22 @@ function smartcsetUrlNomPrograma(string $nomPrograma): string
         return '#';
     }
 
-    return smartcsetModulosAssetHref() . ltrim($nomPrograma, '/');
+    return smartcsetProjectAssetHref() . ltrim($nomPrograma, '/');
+}
+
+/**
+ * URL del logo para <img src> (ruta relativa desde la página actual).
+ */
+function smartcsetLogoUrl(string $assetHref = ''): string
+{
+    $path = 'img/logo_empresa.png';
+    if (class_exists('AppConfig', false) && AppConfig::hasDbConfig()) {
+        $path = AppConfig::pathLogo();
+    } elseif (defined('PATH_LOGO') && PATH_LOGO !== '') {
+        $path = PATH_LOGO;
+    }
+
+    $path = ltrim(str_replace('\\', '/', $path), '/');
+
+    return $assetHref . $path;
 }

@@ -19,11 +19,8 @@ $_v_comp   = @filemtime($_asset_root . '/css/components.css') ?: time();
     <?php if (!empty($extra_stylesheets)): ?>
     <?= $extra_stylesheets ?>
     <?php endif; ?>
+    <?php include __DIR__ . '/theme_vars.php'; ?>
     <style>
-        :root {
-            --v-oscuro: <?= COLOR_VERDE_OSCURO ?>;
-            --v-oliva:  <?= COLOR_VERDE_OLIVA ?>;
-        }
         <?= isset($extra_css) ? $extra_css : '' ?>
     </style>
 </head>

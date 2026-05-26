@@ -28,10 +28,7 @@ foreach ($_menu_raw as $_item) {
 
 // Logo: prefijo según profundidad de la página (ver smartcsetModulosAssetHref)
 $_asset_href_logo = $smartcset_asset_href ?? '../../';
-$_logo_path = $_asset_href_logo . 'img/Logo_Empresa.png';
-if (defined('PATH_LOGO') && !empty(PATH_LOGO)) {
-    $_logo_path = $_asset_href_logo . 'img/' . basename(PATH_LOGO);
-}
+$_logo_path = smartcsetLogoUrl($_asset_href_logo);
 ?>
 
 <!-- OVERLAY MOBILE -->
@@ -107,6 +104,7 @@ if (defined('PATH_LOGO') && !empty(PATH_LOGO)) {
                             ?>
                             <a class="nav-item child <?= $_act_h ?>"
                                href="<?= htmlspecialchars($_url_h) ?>"
+                               data-menu-id="<?= htmlspecialchars((string) ($_hijo['id_menu'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                data-tooltip="<?= htmlspecialchars($_hijo['nom_menu']) ?>">
                                 <i class="bi <?= $_ic_h ?>"></i>
                                 <span class="nav-label"><?= htmlspecialchars($_hijo['nom_menu']) ?></span>

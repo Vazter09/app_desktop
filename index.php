@@ -67,18 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartCSET INGRESO | Ingreso</title>
+    <title><?= htmlspecialchars(AppConfig::nomSistema()) ?> | Ingreso</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <?php $_v_comp = @filemtime(__DIR__ . '/css/components.css') ?: time(); ?>
     <link rel="stylesheet" href="css/components.css?v=<?= (int) $_v_comp ?>">
+    <?php include __DIR__ . '/src/layout/theme_vars.php'; ?>
     <style>
         :root {
-            --verde-oscuro:
-                <?= COLOR_VERDE_OSCURO ?>
-            ;
-            --verde-oliva:
-                <?= COLOR_VERDE_OLIVA ?>
-            ;
+            --verde-oscuro: var(--v-oscuro);
+            --verde-oliva: var(--v-oliva);
         }
 
         body {
@@ -126,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <body>
 
-    <img src="img/logo_empresa.png" alt="Logo Empresa" class="logo-derecha">
+    <img src="<?= htmlspecialchars(smartcsetLogoUrl()) ?>" alt="Logo" class="logo-derecha" id="login-logo-preview">
 
     <div class="card card-login shadow-lg">
         <div class="card-body p-4">

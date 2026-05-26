@@ -1,0 +1,147 @@
+/* Listado registro dentro del shell admin — estilos acotados, sin tocar body/sidebar */
+.registro-listado-admin {
+    --rl-bg-card: #0a1220;
+    --rl-border: rgba(0, 229, 176, 0.22);
+    --rl-cyan: #00e5b0;
+    --rl-cyan-glow: 0 0 18px rgba(0, 229, 176, 0.35);
+    --rl-text: #e8f0ff;
+    --rl-text-muted: #7a8fa8;
+    --rl-success: #00e5b0;
+}
+
+.registro-listado-admin .panel-block {
+    margin-top: 0;
+    background: var(--rl-bg-card);
+    border: 1px solid var(--rl-border);
+    padding: 1.6rem;
+    position: relative;
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.registro-listado-admin .panel-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--rl-cyan) 0%, transparent 100%);
+    box-shadow: var(--rl-cyan-glow);
+}
+
+.registro-listado-admin .panel-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.registro-listado-admin .panel-toolbar h2 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--rl-text);
+    font-weight: 700;
+}
+
+.registro-listado-admin .btn-registro-nuevo {
+    background: var(--rl-cyan);
+    color: #041018;
+    border: none;
+    clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.65rem 1.1rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.registro-listado-admin .btn-registro-nuevo:hover {
+    color: #041018;
+    filter: brightness(1.08);
+}
+
+.registro-listado-admin .data-table-wrap {
+    overflow: auto;
+    border: 1px solid var(--rl-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.registro-listado-admin table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 920px;
+    color: var(--rl-text);
+}
+
+.registro-listado-admin .data-table thead th {
+    text-align: left;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.85rem 0.9rem;
+    color: var(--rl-text-muted);
+    border-bottom: 1px solid var(--rl-border);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.registro-listado-admin .data-table tbody td {
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.9rem;
+}
+
+.registro-listado-admin .data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.registro-listado-admin .mono {
+    font-family: ui-monospace, 'Cascadia Code', 'Share Tech Mono', monospace;
+    font-size: 0.82rem;
+}
+
+.registro-listado-admin .truncate {
+    max-width: 22rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.registro-listado-admin .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--rl-border);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.registro-listado-admin .pill--ok {
+    border-color: rgba(0, 229, 176, 0.45);
+    color: var(--rl-success);
+    background: rgba(0, 229, 176, 0.06);
+}
+
+.registro-listado-admin .pill--off {
+    border-color: rgba(255, 60, 110, 0.35);
+    color: #ff8aaa;
+    background: rgba(255, 60, 110, 0.06);
+}
+
+.registro-listado-admin .panel-status {
+    padding: 1rem;
+    color: var(--rl-text-muted);
+    font-size: 0.85rem;
+}
+
+.registro-listado-admin.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+}

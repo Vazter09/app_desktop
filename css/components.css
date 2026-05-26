@@ -353,3 +353,322 @@ input[type="number"]::-webkit-inner-spin-button {
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     padding: 0.85rem 1.25rem;
 }
+
+/* ── Restaurar sección (configuración admin) ── */
+.config-section-restore {
+    border-top: 1px solid rgba(46, 71, 49, 0.1);
+    padding-top: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* ── Sección general (config admin) ── */
+.config-general {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 38%);
+    gap: 0.35rem 1.5rem;
+    align-items: start;
+}
+
+.config-general__fields {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    min-width: 0;
+}
+
+.config-general__logo {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    min-width: 0;
+}
+
+.config-general__footer {
+    grid-column: 1 / -1;
+    margin-top: 0.35rem;
+}
+
+.config-general__footer.config-section-restore {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+}
+
+.config-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.config-field-group__title {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(46, 71, 49, 0.5);
+}
+
+.config-general__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+}
+
+/* Misma rejilla de color que tema oscuro/claro */
+.config-general__colors.row {
+    --bs-gutter-x: 0.75rem;
+    --bs-gutter-y: 0.5rem;
+}
+
+.config-toggle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.config-toggle-item {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid rgba(46, 71, 49, 0.1);
+    background: #fff;
+    transition: border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.config-toggle-item.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.config-toggle-item .form-check-input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+}
+
+.config-toggle-item__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.config-toggle-item__title {
+    display: block;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--v-oscuro, #2E4731);
+    line-height: 1.3;
+}
+
+.config-toggle-item__desc {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.76rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.config-general__logo .file-drop--gallery {
+    gap: 0.65rem;
+}
+
+.config-general__logo .file-drop__preview {
+    padding: 0.5rem 0.65rem;
+}
+
+@media (max-width: 991.98px) {
+    .config-general {
+        grid-template-columns: 1fr;
+    }
+
+    .config-general__logo {
+        grid-column: 1;
+        grid-row: auto;
+        order: 2;
+    }
+
+    .config-general__fields {
+        order: 1;
+    }
+
+    .config-general__footer {
+        order: 3;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .config-general__row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── File drop / galería de imagen ── */
+.file-drop {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.file-drop__preview {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(46, 71, 49, 0.1);
+    background: rgba(46, 71, 49, 0.03);
+    min-height: 3.25rem;
+}
+
+.file-drop__preview img {
+    flex-shrink: 0;
+    max-height: 2.75rem;
+    max-width: 7.5rem;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+.file-drop__preview.is-empty img {
+    display: none;
+}
+
+.file-drop__meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.file-drop__preview-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(46, 71, 49, 0.55);
+    margin-bottom: 0.15rem;
+}
+
+.file-drop__path {
+    display: block;
+    font-size: 0.78rem;
+    color: #5c6b5c;
+    word-break: break-all;
+    line-height: 1.35;
+}
+
+.file-drop--gallery .file-drop__zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+    padding: 1.35rem 1rem 1.15rem;
+    border-radius: 12px;
+    border: 2px dashed rgba(46, 71, 49, 0.24);
+    background: linear-gradient(180deg, #f9fbf9 0%, #f3f6f3 100%);
+    cursor: pointer;
+    transition:
+        border-color 0.22s ease,
+        background 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+.file-drop--gallery .file-drop__zone:hover {
+    border-color: rgba(107, 142, 35, 0.5);
+    background: rgba(107, 142, 35, 0.05);
+}
+
+.file-drop--gallery .file-drop__zone.is-dragover {
+    border-color: var(--v-oliva, #6B8E23);
+    background: rgba(107, 142, 35, 0.09);
+    box-shadow: inset 0 0 0 1px rgba(107, 142, 35, 0.12);
+}
+
+.file-drop--gallery .file-drop__zone:focus-visible {
+    outline: 2px solid var(--v-oliva, #6B8E23);
+    outline-offset: 2px;
+}
+
+.file-drop__zone-icon {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.75rem;
+    border-radius: 50%;
+    background: rgba(46, 71, 49, 0.08);
+    color: var(--v-oscuro, #2E4731);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+
+.file-drop__zone-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--v-oscuro, #2E4731);
+    margin-bottom: 0.35rem;
+    line-height: 1.3;
+}
+
+.file-drop__zone-hint {
+    margin: 0 0 0.25rem;
+    font-size: 0.8rem;
+    color: #5c6b5e;
+    line-height: 1.4;
+    max-width: 16rem;
+}
+
+.file-drop__zone-meta {
+    margin: 0 0 0.85rem;
+    font-size: 0.74rem;
+    color: #7a8a7c;
+    line-height: 1.35;
+}
+
+.file-drop__btn-select {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.45rem 1.1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--v-oscuro, #2E4731);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.file-drop__btn-select:hover {
+    background: var(--v-oliva, #6B8E23);
+    color: #fff;
+}
+
+.file-drop--gallery .file-drop__zone.is-dragover .file-drop__btn-select,
+.file-drop--gallery .file-drop__zone:hover .file-drop__btn-select {
+    background: var(--v-oliva, #6B8E23);
+}
+
+.file-drop__input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.file-drop__status {
+    width: 100%;
+    font-size: 0.74rem;
+    color: var(--v-oliva, #6B8E23);
+    font-weight: 600;
+    text-align: center;
+    display: none;
+}
+
+.file-drop__status.is-visible {
+    display: block;
+}
