@@ -8,10 +8,11 @@
     --sidebar-collapsed-width: 62px;
     --topbar-height: 56px;
     --transition: all 0.25s ease;
-    --sidebar-bg: #1c2e1f;
-    --sidebar-hover: rgba(107, 142, 35, 0.18);
-    --sidebar-active: rgba(107, 142, 35, 0.35);
-    --sidebar-border: rgba(107, 142, 35, 0.25);
+    /* Sidebar: valores por defecto; se sobreescriben desde theme_vars.php (Config. sistema) */
+    --sidebar-bg: color-mix(in srgb, var(--v-oscuro, #2E4731) 42%, #000 58%);
+    --sidebar-hover: color-mix(in srgb, var(--v-oliva, #6B8E23) 18%, transparent);
+    --sidebar-active: color-mix(in srgb, var(--v-oliva, #6B8E23) 35%, transparent);
+    --sidebar-border: color-mix(in srgb, var(--v-oliva, #6B8E23) 25%, transparent);
     --topbar-bg: #ffffff;
     --topbar-shadow: 0 1px 4px rgba(0,0,0,0.08);
     --content-bg: #f0f2f0;

@@ -92,7 +92,7 @@ class AppConfig
     /** Tokens CSS modo oscuro (:root). */
     public static function themeTokensDark(): array
     {
-        return [
+        return array_merge([
             '--v-oscuro'       => self::colorPrimario(),
             '--v-oliva'        => self::colorSecundario(),
             '--bg-deep'        => (string) self::get('theme_bg_deep', '#020917'),
@@ -110,7 +110,77 @@ class AppConfig
             '--error'          => (string) self::get('theme_error', '#ff3c6e'),
             '--success'        => (string) self::get('theme_success', '#00e5b0'),
             '--theme-accent'   => (string) self::get('theme_accent', '#00e5b0'),
+        ], self::sidebarThemeTokens());
+    }
+
+    /**
+     * Variables CSS del sidebar derivadas de colores corporativos (Config. sistema).
+     *
+     * @return array<string, string>
+     */
+    public static function sidebarThemeTokens(): array
+    {
+        $primary = self::colorPrimario();
+        $secondary = self::colorSecundario();
+
+        return [
+            '--sidebar-bg'     => self::darkenHex($primary, 0.58),
+            '--sidebar-hover'  => self::hexToRgba($secondary, 0.18),
+            '--sidebar-active' => self::hexToRgba($secondary, 0.35),
+            '--sidebar-border' => self::hexToRgba($secondary, 0.25),
         ];
+    }
+
+    public static function hexToRgba(string $hex, float $alpha): string
+    {
+        [$r, $g, $b] = self::hexToRgb($hex);
+        $alpha = max(0.0, min(1.0, $alpha));
+
+        return sprintf('rgba(%d, %d, %d, %.2f)', $r, $g, $b, $alpha);
+    }
+
+    public static function darkenHex(string $hex, float $amount = 0.45): string
+    {
+        [$r, $g, $b] = self::hexToRgb($hex);
+        $factor = 1.0 - max(0.0, min(1.0, $amount));
+
+        return sprintf(
+            '#%02x%02x%02x',
+            (int) round($r * $factor),
+            (int) round($g * $factor),
+            (int) round($b * $factor)
+        );
+    }
+
+    /** @return array{0: int, 1: int, 2: int} */
+    private static function hexToRgb(string $hex): array
+    {
+        $normalized = self::normalizeHex($hex) ?? '#2e4731';
+
+        return [
+            hexdec(substr($normalized, 1, 2)),
+            hexdec(substr($normalized, 3, 2)),
+            hexdec(substr($normalized, 5, 2)),
+        ];
+    }
+
+    private static function normalizeHex(string $hex): ?string
+    {
+        $hex = trim($hex);
+        if ($hex === '') {
+            return null;
+        }
+        if ($hex[0] !== '#') {
+            $hex = '#' . $hex;
+        }
+        if (!preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $hex, $m)) {
+            return null;
+        }
+        if (strlen($m[1]) === 3) {
+            $hex = '#' . $m[1][0] . $m[1][0] . $m[1][1] . $m[1][1] . $m[1][2] . $m[1][2];
+        }
+
+        return strtolower($hex);
     }
 
     /** Tokens para .light-theme. */
