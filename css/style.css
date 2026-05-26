@@ -1,0 +1,96 @@
+:root {
+    --verde-oscuro: #2E4731;   /* Verde Oscuro Corporativo */
+    --verde-oliva: #6B8E23;    /* Verde Oliva Corporativo */
+    --gris-pizarra: #708090;
+    --fondo-claro: #f8f9fa;
+    --blanco: #ffffff;
+}
+
+/* --- REAJUSTE PARA CRUD --- */
+body.mantenimiento {
+    display: block; 
+    height: auto;
+    padding: 20px;
+    background-color: var(--fondo-claro);
+}
+
+.contenedor-principal {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--blanco);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* Cabeceras con Identidad Verde */
+.header-sistema {
+    border-bottom: 3px solid var(--verde-oscuro);
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+}
+
+.header-sistema h1, .header-sistema h3 {
+    color: var(--verde-oscuro);
+    margin: 0;
+}
+
+/* Formulario Atómico */
+.form-atomico {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    background: #f1f3f0; /* Un gris con toque verdoso */
+    padding: 20px;
+    border-radius: 6px;
+    border-left: 5px solid var(--verde-oliva);
+    margin-bottom: 30px;
+}
+
+/* Botonera Verde */
+.btn-guardar { 
+    background-color: var(--verde-oscuro); 
+    color: white; 
+    border: none; 
+    padding: 10px 20px; 
+    border-radius: 4px; 
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.btn-guardar:hover { background-color: #1e3020; }
+
+.btn-editar { 
+    background-color: var(--verde-oliva); 
+    color: white; 
+    border: none; 
+    padding: 10px 20px; 
+    border-radius: 4px; 
+    cursor: pointer;
+}
+
+/* Tablas Corporativas */
+table thead tr {
+    background-color: var(--verde-oscuro);
+    color: white;
+}
+
+table tbody tr:hover {
+    background-color: #f4f7f2; /* Hover sutil verde oliva muy claro */
+}
+
+/* Botón de Salir */
+.btn-salir {
+    color: var(--verde-oliva);
+    text-decoration: none;
+    font-weight: bold;
+    border: 1px solid var(--verde-oliva);
+    padding: 5px 15px;
+    border-radius: 4px;
+}
+.btn-salir:hover {
+    background: var(--verde-oliva);
+    color: white;
+}

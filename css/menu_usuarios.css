@@ -1,0 +1,45 @@
+:root {
+    --verde-sistnom: #004d40;
+    --gris-fondo: #f4f7f6;
+}
+
+body { background-color: var(--gris-fondo); font-family: 'Segoe UI', sans-serif; }
+
+/* Contenedor vertical Master-Detail */
+.main-wrapper { display: flex; gap: 20px; padding: 20px; height: calc(100vh - 100px); }
+
+.card-sistnom {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.header-sistnom {
+    background: var(--verde-sistnom);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Botón Ejecutar Proceso (Idéntico a tu imagen) */
+.btn-ejecutar {
+    background-color: var(--verde-sistnom);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: 0.3s;
+}
+
+.btn-ejecutar:hover { background-color: #00332c; opacity: 0.9; }
+
+.ventana-bloqueada { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
+
+.table-scroll { overflow-y: auto; flex-grow: 1; padding: 15px; }

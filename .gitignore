@@ -1,0 +1,42 @@
+# Archivos de configuración sensible
+.env
+.env.local
+.env.*.local
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# PHP
+vendor/
+composer.lock
+*.log
+
+# Bases de datos
+*.sql.bak
+*.sql.gz
+
+# Logs y caché
+logs/
+cache/
+tmp/
+
+# Archivos de migración después de usar
+scripts/migrations/password_migrator.php (comentar después de usar)
+
+# Node (si aplica)
+node_modules/
+package-lock.json
+
+# Archivos temporales
+*.tmp
+*.temp

@@ -1,0 +1,75 @@
+-- Proceso atómico: visitante + ingreso manual (portería).
+CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
+    wid_persona        tab_personas.id_persona%TYPE,
+    wid_tipo_docum     tab_personas.id_tipo_docum%TYPE,
+    wid_tipo_persona   tab_personas.id_tipo_persona%TYPE,
+    wnom_persona       tab_personas.nom_persona%TYPE,
+    wape_persona       tab_personas.ape_persona%TYPE,
+    wid_entrada_centro tab_log_ingresos.id_entrada_centro%TYPE,
+    wval_observaciones tab_log_ingresos.val_observaciones%TYPE,
+    wusr               tab_usuarios.id_usuario%TYPE,
+    wid_metodo_aut     tab_log_ingresos.id_metodo_aut%TYPE DEFAULT 1,
+    wcaptura_pdf417    BOOLEAN DEFAULT FALSE
+) RETURNS INTEGER AS $$
+DECLARE
+    wid_ingreso  INTEGER;
+    wjson_origen JSONB;
+    worigen_txt  TEXT;
+BEGIN
+    IF wid_metodo_aut IS NULL OR wid_metodo_aut < 1 THEN
+        wid_metodo_aut := 1;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM tab_metodos_aut WHERE id_metodo_aut = wid_metodo_aut) THEN
+        PERFORM smartcset_raise_validacion(
+            'El método de autenticación no es válido.',
+            'id_metodo_aut=' || wid_metodo_aut::TEXT
+        );
+    END IF;
+
+    worigen_txt := CASE
+        WHEN wid_metodo_aut = 3 THEN 'codigo_barras'
+        WHEN wid_metodo_aut = 2 THEN 'codigo_qr'
+        ELSE 'registro_manual'
+    END;
+    IF wid_entrada_centro IS NULL OR wid_entrada_centro < 1 OR wid_entrada_centro > 9 THEN
+        PERFORM smartcset_raise_validacion(
+            'La puerta de ingreso debe estar entre 1 y 9.',
+            'id_entrada_centro=' || COALESCE(wid_entrada_centro::TEXT, 'NULL')
+        );
+    END IF;
+
+    PERFORM fun_upsert_persona_visitante(
+        wid_persona, wid_tipo_docum, wid_tipo_persona, wnom_persona, wape_persona, wusr
+    );
+
+    wjson_origen := jsonb_build_object(
+        'origen', worigen_txt,
+        'documento', wid_persona::TEXT,
+        'tipo_doc', wid_tipo_docum,
+        'tipo_persona', wid_tipo_persona
+    );
+
+    IF COALESCE(wcaptura_pdf417, FALSE) THEN
+        wjson_origen := wjson_origen || jsonb_build_object('captura_pdf417', TRUE);
+    END IF;
+
+    wid_ingreso := fun_insert_log_ingreso(
+        wid_persona,
+        wid_metodo_aut,
+        wid_entrada_centro,
+        wjson_origen,
+        NULLIF(TRIM(wval_observaciones), ''),
+        wusr
+    );
+
+    PERFORM fun_update_persona_tras_ingreso(wid_persona, wusr);
+
+    RETURN wid_ingreso;
+EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
+    WHEN OTHERS THEN
+        PERFORM smartcset_handle_sql_error();
+END;
+$$ LANGUAGE plpgsql;

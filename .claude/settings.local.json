@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Recurse -Force | Select-Object @{Name=\"Path\"; Expression={$_.FullName.Replace\\(\"C:\\\\Apache24\\\\htdocs\\\\smartcset\\\\\", \"\"\\)}} | Sort-Object Path)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Force | ForEach-Object { $_.FullName })"
+    ]
+  }
+}

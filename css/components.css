@@ -1,0 +1,355 @@
+/* Componentes compartidos: guías, toasts */
+
+/* Sin flechas +/- en type="number" (también en style_crud.css) */
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* ── Tarjeta guía (p. ej. ayuda en Menús) ── */
+.guide-card {
+    overflow: hidden;
+    border-left: 4px solid var(--v-oliva, #6B8E23) !important;
+}
+
+.guide-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(46, 71, 49, 0.08) 0%, rgba(107, 142, 35, 0.06) 100%);
+    border-bottom: 1px solid rgba(46, 71, 49, 0.08);
+}
+
+.guide-card-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+    background: var(--v-oscuro, #2E4731);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.15rem;
+}
+
+.guide-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--v-oscuro, #2E4731);
+    margin: 0 0 0.2rem 0;
+}
+
+.guide-card-subtitle {
+    font-size: 0.82rem;
+    color: #5c6b5e;
+    margin: 0;
+    line-height: 1.45;
+}
+
+.guide-card-body {
+    padding: 1rem 1.25rem 1.15rem;
+}
+
+.guide-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.guide-steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.84rem;
+    color: #444;
+    line-height: 1.4;
+}
+
+.guide-step-num {
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background: var(--v-oliva, #6B8E23);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.guide-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.55rem;
+    border-radius: 6px;
+    background: rgba(107, 142, 35, 0.12);
+    color: var(--v-oscuro, #2E4731);
+}
+
+.guide-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.15rem;
+}
+
+.guide-actions .btn {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.45rem 0.85rem;
+}
+
+.guide-actions .btn-outline-corporativo {
+    color: var(--v-oscuro, #2E4731);
+    border: 1px solid rgba(46, 71, 49, 0.35);
+    background: #fff;
+}
+
+.guide-actions .btn-outline-corporativo:hover {
+    background: rgba(107, 142, 35, 0.1);
+    border-color: var(--v-oliva, #6B8E23);
+    color: var(--v-oscuro, #2E4731);
+}
+
+/* Variante compacta (avisos en Accesos) */
+.guide-card--compact .guide-card-header {
+    padding: 0.75rem 1rem;
+}
+
+.guide-card--compact .guide-card-body {
+    padding: 0.75rem 1rem;
+}
+
+.guide-card--warning {
+    border-left-color: #d4a017 !important;
+}
+
+.guide-card--warning .guide-card-icon {
+    background: #b8860b;
+}
+
+/* ── Toasts SmartCSET ── */
+.smart-toast-container {
+    gap: 0.65rem;
+}
+
+.smart-toast {
+    min-width: 300px;
+    max-width: 400px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(46, 71, 49, 0.18);
+    overflow: hidden;
+}
+
+.smart-toast__inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 0.75rem 0.85rem 0;
+}
+
+.smart-toast__icon {
+    flex-shrink: 0;
+    width: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0.1rem;
+    font-size: 1.35rem;
+}
+
+.smart-toast__body {
+    flex: 1;
+    min-width: 0;
+    padding-right: 0.25rem;
+}
+
+.smart-toast__title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #2c332c;
+    line-height: 1.3;
+    margin-bottom: 0.2rem;
+}
+
+.smart-toast__message {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: #555;
+}
+
+.smart-toast__close {
+    flex-shrink: 0;
+    margin: 0.5rem 0.5rem 0 0;
+    opacity: 0.45;
+}
+
+.smart-toast__close:hover {
+    opacity: 0.8;
+}
+
+.smart-toast--success {
+    border-left: 4px solid var(--v-oliva, #6B8E23);
+}
+
+.smart-toast--success .smart-toast__icon {
+    color: var(--v-oliva, #6B8E23);
+}
+
+.smart-toast--error {
+    border-left: 4px solid #c0392b;
+}
+
+.smart-toast--error .smart-toast__icon {
+    color: #c0392b;
+}
+
+.smart-toast--error .smart-toast__title {
+    color: #8b2635;
+}
+
+.smart-toast--warning {
+    border-left: 4px solid #d4a017;
+}
+
+.smart-toast--warning .smart-toast__icon {
+    color: #b8860b;
+}
+
+.smart-toast--info {
+    border-left: 4px solid var(--v-oscuro, #2E4731);
+}
+
+.smart-toast--info .smart-toast__icon {
+    color: var(--v-oscuro, #2E4731);
+}
+
+/* ── Modal de confirmación ── */
+.smart-confirm-content {
+    border-radius: 12px;
+}
+
+.smart-confirm-content .modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--v-oscuro, #2E4731);
+}
+
+.smart-confirm-content .modal-body {
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.smart-confirm-content .modal-footer .btn {
+    min-width: 5.5rem;
+    font-weight: 600;
+}
+
+/* ── Formularios en modales ── */
+.modal-form-usuario .modal-body {
+    padding: 1.25rem 1.35rem;
+    background: #f8faf8;
+}
+
+.modal-form-usuario .form-section {
+    background: #fff;
+    border: 1px solid rgba(46, 71, 49, 0.1);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.85rem;
+}
+
+.modal-form-usuario .form-section:last-child {
+    margin-bottom: 0;
+}
+
+.modal-form-usuario .form-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--v-oliva, #6B8E23);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(107, 142, 35, 0.2);
+}
+
+.modal-form-usuario .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4a5a4c;
+    margin-bottom: 0.35rem;
+}
+
+.modal-form-usuario .form-text {
+    font-size: 0.72rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.modal-form-usuario #f_id {
+    font-family: ui-monospace, Consolas, monospace;
+    max-width: 280px;
+}
+
+.modal-form-usuario .permisos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+}
+
+@media (max-width: 480px) {
+    .modal-form-usuario .permisos-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.modal-form-usuario .permiso-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #e8ece8;
+    background: #fafbfa;
+    margin: 0;
+}
+
+.modal-form-usuario .permiso-item .form-check-input {
+    margin-top: 0.15rem;
+}
+
+.modal-form-usuario .permiso-item .form-check-label {
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.modal-form-usuario .permiso-item .permiso-desc {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: #6c757d;
+}
+
+.modal-form-usuario .modal-footer {
+    background: #fff;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 0.85rem 1.25rem;
+}

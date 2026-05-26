@@ -1,0 +1,369 @@
+/* Registro de ingreso — portería */
+
+.ingresos-page {
+    --ing-list-min-h: min(320px, calc(100vh - 12rem));
+    --ing-list-max-h: calc(100vh - 9rem);
+}
+
+/* Columnas: formulario fijo + lista flexible */
+.ingresos-layout {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.ingresos-layout .ing-col-form {
+    flex: 0 0 340px;
+    width: 340px;
+    max-width: 100%;
+}
+
+.ingresos-layout .ing-col-list {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+@media (max-width: 899.98px) {
+    .ingresos-layout {
+        flex-wrap: wrap;
+    }
+    .ingresos-layout .ing-col-form {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+/* Paneles */
+.ing-panel {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 2px 12px rgba(46, 71, 49, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Formulario: altura natural, sin scroll interno */
+.ing-panel-form {
+    height: auto;
+    overflow: visible;
+}
+
+.ing-panel-form .ing-panel-body {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
+}
+
+.ing-panel-form #form_ingreso {
+    flex: 0 0 auto;
+    min-height: 0;
+}
+
+/* Lista: scroll solo aquí si crece */
+.ing-panel-list {
+    flex: 1;
+    min-height: var(--ing-list-min-h);
+    max-height: var(--ing-list-max-h);
+    min-width: 0;
+}
+
+.ing-panel-head {
+    flex-shrink: 0;
+    padding: 0.65rem 1rem;
+    background: linear-gradient(135deg, var(--v-oscuro, #2E4731) 0%, #3d5c42 100%);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.ing-panel-head .meta {
+    font-size: 0.72rem;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.ing-panel-body {
+    flex: 1;
+    min-height: 0;
+    padding: 1rem;
+}
+
+.ing-panel-list .ing-panel-body {
+    overflow-y: auto;
+}
+
+.ing-panel-foot {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e9ece9;
+    background: #fafbfa;
+}
+
+/* Formulario */
+.ing-panel-form #form_ingreso {
+    display: flex;
+    flex-direction: column;
+}
+
+.ing-panel-form .ing-panel-body {
+    padding: 0.85rem 1rem;
+}
+
+.ing-field {
+    margin-bottom: 0.7rem;
+}
+
+.ing-field:last-child {
+    margin-bottom: 0;
+}
+
+.ing-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #4a554a;
+    margin-bottom: 0.25rem;
+}
+
+.ing-field .form-control,
+.ing-field .form-select {
+    font-size: 0.875rem;
+}
+
+.ing-doc-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.ing-doc-row .tipo-doc {
+    width: 4.5rem;
+    flex-shrink: 0;
+    font-weight: 700;
+}
+
+.ing-doc-row .num-doc {
+    flex: 1;
+    min-width: 0;
+}
+
+#badge_persona {
+    margin-top: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+#badge_persona.ingresos-badge-known {
+    background: rgba(107, 142, 35, 0.2);
+    color: var(--v-oscuro, #2E4731);
+}
+
+#badge_persona.ingresos-badge-new {
+    background: #e8f4fc;
+    color: #0873b8;
+}
+
+#badge_persona.ingresos-badge-loading {
+    background: #eee;
+    color: #666;
+}
+
+#badge_persona.ingresos-badge-blocked {
+    background: #fde8e8;
+    color: #a61b1b;
+}
+
+.ing-bloqueo-msg {
+    margin-top: 0.4rem;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    border-radius: 0.35rem;
+    background: #fff3e0;
+    border: 1px solid #e6a817;
+    color: #7a4e00;
+}
+
+.ing-nombres-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+/* Puertas — chips */
+.ing-puertas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.ing-puerta {
+    border: 2px solid #e2e6e2;
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ing-puerta:hover {
+    border-color: var(--v-oliva, #6B8E23);
+    background: rgba(107, 142, 35, 0.05);
+}
+
+.ing-puerta.is-selected {
+    border-color: var(--v-oscuro, #2E4731);
+    background: rgba(46, 71, 49, 0.08);
+    box-shadow: 0 0 0 1px var(--v-oscuro, #2E4731);
+}
+
+.ing-puerta .p-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 6px;
+    background: var(--v-oscuro, #2E4731);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.ing-puerta.is-selected .p-num {
+    background: var(--v-oliva, #6B8E23);
+}
+
+.ing-puerta .p-nom {
+    display: block;
+    font-size: 0.72rem;
+    color: #555;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ing-puerta-error {
+    display: none;
+    font-size: 0.75rem;
+    color: #dc3545;
+    margin-top: 0.35rem;
+}
+
+.btn-ingreso-submit {
+    width: 100%;
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 8px;
+}
+
+/* Lista */
+.ing-list-scroll {
+    padding: 0;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.ing-list-scroll .table {
+    font-size: 0.8125rem;
+    margin: 0;
+}
+
+.ing-list-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.65rem;
+    white-space: nowrap;
+}
+
+.ing-list-scroll tbody td {
+    padding: 0.45rem 0.65rem;
+    vertical-align: middle;
+    border-bottom-color: #f0f2f0;
+}
+
+.ing-list-scroll .v-nom {
+    font-weight: 600;
+    color: #2c332c;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ing-list-scroll .v-doc {
+    font-size: 0.68rem;
+    color: #888;
+}
+
+.ing-tipo-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #555;
+    line-height: 1.2;
+}
+
+.ing-puerta-badge {
+    display: inline-block;
+    min-width: 1.5rem;
+    text-align: center;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(107, 142, 35, 0.15);
+    color: var(--v-oscuro, #2E4731);
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: help;
+}
+
+.ing-empty {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: #aaa;
+}
+
+.ing-empty i {
+    font-size: 2.5rem;
+    opacity: 0.2;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+.ing-empty p {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+tr.ingreso-reciente td {
+    background: rgba(107, 142, 35, 0.1) !important;
+}
+
+tr.ingreso-reciente td:first-child {
+    box-shadow: inset 3px 0 0 var(--v-oliva, #6B8E23);
+}
+
+.ing-list-hint {
+    flex-shrink: 0;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.68rem;
+    color: #999;
+    text-align: center;
+    background: #f8faf8;
+    border-top: 1px solid #eee;
+}
+
+.ing-list-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #b8c4b8 transparent;
+}

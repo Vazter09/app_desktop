@@ -1,0 +1,1224 @@
+-- *******************************************************************************************
+-- * SERVICIO NACIONAL DE APRENDIZAJE - SENA                                                 *
+-- * SISTEMA INTEGRADO PARA LA GESTIÓN DE PLATAFORMA TECNOLÓGICA CSET                        *
+-- * SCRIPT DE INSTALACIÓN DEL SISTEMA. INCLUYE LA CREACIÓN DE ESTRUCTURAS Y LAS INSERCIONES *
+-- * CORRESPONDIENTES A LOS DATOS BÁSICOS PARA CARGA DE TABLAS MAESTRAS                      *
+-- * Autores: CARLOS EDUARDO PEREZ RUEDA                                                     *
+-- * Fecha: Abril de 2026                                                                    *
+-- * Versión: 1.1                                                                            *
+-- * Revisión: Mayo de 2026                                                                 *
+-- * Derechos Reservados de los Autores.                                                     *
+-- * Cualquier modificación, comercialización y/o uso sin la autorización de los autores se  *
+-- * considerará DELITO, de acuerdo con las leyes vigentes para el caso en COLOMBIA          * 
+-- *******************************************************************************************
+
+DROP TABLE IF EXISTS tab_borrados;
+DROP TABLE IF EXISTS tab_prog_competencia;
+DROP TABLE IF EXISTS tab_programacion;
+DROP TABLE IF EXISTS tab_rutas;
+DROP TABLE IF EXISTS tab_competencias_ficha;
+DROP TABLE IF EXISTS tab_ofertas;
+DROP TABLE IF EXISTS tab_llamados_atencion;
+DROP TABLE IF EXISTS tab_ausencias_aprendiz;
+DROP TABLE IF EXISTS tab_aprendices_fichas;
+DROP TABLE IF EXISTS tab_aprendices;
+DROP TABLE IF EXISTS tab_fichas;
+DROP TABLE IF EXISTS tab_prog_especiales;
+DROP TABLE IF EXISTS tab_ocupaciones;
+DROP TABLE IF EXISTS tab_sectores;
+DROP TABLE IF EXISTS tab_ambientes;
+DROP TYPE inv_ambiente;
+DROP TABLE IF EXISTS tab_proyectos;
+DROP TYPE valoracion_productiva;
+DROP TYPE innovacion_proyectos;
+DROP TABLE IF EXISTS tab_log_ingresos;
+DROP TABLE IF EXISTS tab_vehiculos;
+DROP TABLE IF EXISTS tab_entradas_centro;
+DROP TABLE IF EXISTS tab_metodos_aut;
+DROP TABLE IF EXISTS tab_juicios_eval;
+DROP TABLE IF EXISTS tab_evidenciasXrap;
+DROP TABLE IF EXISTS tab_evidencias;
+DROP TABLE IF EXISTS tab_raps;
+DROP TABLE IF EXISTS tab_activ_proyecto;
+DROP TABLE IF EXISTS tab_compet_instructor;
+DROP TABLE IF EXISTS tab_competencias;
+DROP TABLE IF EXISTS tab_programas;
+DROP TABLE IF EXISTS tab_certificados;
+DROP TABLE IF EXISTS tab_horas_instructor;
+DROP TABLE IF EXISTS tab_adicion_contratos;
+DROP TABLE IF EXISTS tab_contratos_instructor;
+DROP TABLE IF EXISTS tab_instructores;
+DROP TYPE datos_personales_aprendiz;
+DROP TABLE IF EXISTS tab_personas;
+DROP TABLE IF EXISTS tab_tipos_persona;
+DROP TABLE IF EXISTS tab_niveles_estudio;
+DROP TABLE IF EXISTS tab_profesiones;
+DROP TABLE IF EXISTS tab_empresas;
+DROP TABLE IF EXISTS tab_tipos_docum;
+DROP TABLE IF EXISTS tab_pmtros_grales;
+DROP TABLE IF EXISTS tab_redes;
+DROP TABLE IF EXISTS tab_sedes;
+DROP TABLE IF EXISTS tab_centros;
+DROP TABLE IF EXISTS tab_regionales;
+DROP TABLE IF EXISTS tab_ciudades;
+DROP TABLE IF EXISTS tab_dptos;
+DROP TABLE IF EXISTS tab_menu_usuarios;
+DROP TABLE IF EXISTS tab_menus;
+DROP TABLE IF EXISTS tab_usuarios;
+DROP DOMAIN mail_personal;
+DROP TABLE IF EXISTS tab_temp_pe04;
+DROP TABLE IF EXISTS tab_temp_ofertas;
+DROP TABLE IF EXISTS tab_temp_inscritos;
+DROP TABLE IF EXISTS tab_temp_matriculados;
+DROP TABLE IF EXISTS tab_temp_egresados;
+DROP TABLE IF EXISTS tab_temp_df49;
+DROP TABLE IF EXISTS tab_temp_df14A;
+DROP TABLE IF EXISTS tab_temp_df53;
+DROP TABLE IF EXISTS tab_temp_df51;
+DROP TABLE IF EXISTS tab_temp_df03;
+DROP TABLE IF EXISTS tab_temp_df14;
+DROP TABLE IF EXISTS tab_temp_juicios;
+
+--**********************************************************
+-- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
+-- *********************************************************
+CREATE TABLE IF NOT EXISTS tab_temp_juicios
+(
+  fec_reporte       DATE,
+  id_ficha          DECIMAL(10,0),
+  id_programa       DECIMAL(8,0),
+  id_version        DECIMAL(2,0),
+  nom_ficha         VARCHAR,
+  ind_estado        VARCHAR,
+  fec_inicio        DATE,
+  fec_fin           DATE,
+  id_modalidad      VARCHAR,
+  nom_regional      VARCHAR,
+  nom_centro        VARCHAR,
+-- Hasta acá el encabezado
+  id_tipodoc        VARCHAR,
+  num_docume        DECIMAL(10,0),
+  nom_aprendiz      VARCHAR,
+  ape_aprendiz      VARCHAR,
+  ind_est_aprendiz  VARCHAR,
+  nom_competencia   TEXT,
+  nom_rap           TEXT,
+  val_juicio        VARCHAR,
+  fec_juicio        VARCHAR,
+  nom_instructor    VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS tab_temp_df49
+(
+  cod_regional      VARCHAR,
+  nom_regional      VARCHAR,
+  cod_centro        VARCHAR,
+  nom_centro        VARCHAR,
+  id_ficha          VARCHAR,
+  fec_inicial       DATE,
+  fec_final         DATE,
+  ind_estado        VARCHAR,
+  id_programa       VARCHAR,
+  id_version        VARCHAR,
+  nom_programa      VARCHAR,
+  ind_nivel         VARCHAR,
+  num_aprend_matric DECIMAL(3,0),
+  num_aprend_certif DECIMAL(3,0),
+  num_aprend_sincer DECIMAL(3,0),
+  num_aprend_sinjui DECIMAL(3,0),
+  num_aprend_noapro DECIMAL(3,0),
+  id_convenio       VARCHAR,
+  nom_convenio      VARCHAR,
+  ind_cobertura     VARCHAR,
+  id_prog_especial  VARCHAR,
+  nom_prog_especial VARCHAR 
+);
+
+CREATE TABLE IF NOT EXISTS tab_temp_pe04
+(
+  cod_regional      VARCHAR,
+  nom_regional      VARCHAR,
+  cod_centro        VARCHAR,
+  nom_centro        VARCHAR,
+  id_ficha          VARCHAR,
+  id_unico_ficha    VARCHAR,
+  ind_estado_curso  VARCHAR,
+  id_nivel_forma    VARCHAR,
+  nom_nivel_forma   VARCHAR,
+  id_jornada        DECIMAL(1,0),
+  nom_jornada       VARCHAR,
+  ind_tipo_forma    VARCHAR,
+  fec_inicio_ficha  DATE,
+  fec_fin_ficha     DATE,
+  val_etapa_ficha   VARCHAR,
+  val_modalidad     VARCHAR,
+  nom_responsable   VARCHAR,
+  id_empresa        VARCHAR,
+  id_tipodoc_emp    VARCHAR,
+  nom_empresa       VARCHAR,
+  id_sector_prog    VARCHAR,
+  nom_sector_prog   VARCHAR,
+  id_ocupacion      VARCHAR,
+  nom_ocupacion     VARCHAR,
+  id_programa       VARCHAR,
+  id_version        VARCHAR,
+  nom_programa      VARCHAR,
+  id_pais           VARCHAR,
+  nom_pais          VARCHAR,
+  id_depto          VARCHAR,
+  nom_depto         VARCHAR,
+  id_municipio      VARCHAR,
+  nom_municipio     VARCHAR,
+  id_convenio       VARCHAR,
+  nom_convenio      VARCHAR,
+  ind_cobertura     VARCHAR,
+  id_prog_especial  VARCHAR,
+  nom_prog_especial VARCHAR,
+  num_cursos        DECIMAL(2,0),
+  num_aprend_masc   DECIMAL(3,0),
+  num_aprend_fem    DECIMAL(3,0),
+  num_aprend_nobin  DECIMAL(3,0),
+  num_tot_aprend    DECIMAL(4,0),
+  val_hrs_planta    INTERVAL,
+  val_hrs_contrat   INTERVAL,
+  val_hrs_context   INTERVAL,
+  val_hrs_monitor   INTERVAL,
+  val_hrs_instemp   INTERVAL,
+  val_total_hrs     INTERVAL,
+  val_total_apr_act DECIMAL(4,0),
+  val_duracion_prog DECIMAL(4,0),
+  nom_nuevo_sector  VARCHAR DEFAULT 'NA'
+);
+--***********************************************************************
+-- FIN SECCIÓN DE TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
+-- **********************************************************************
+
+CREATE DOMAIN mail_personal AS VARCHAR(255) CHECK (VALUE ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$');
+
+-- ***************************************************************************
+-- 1. TABLAS DE SEGURIDAD Y ACCESOS AL SISTEMA DE GESTIÓN DE USUARIOS Y MENÚS
+-- ***************************************************************************
+-- TABLA DE USUARIOS
+CREATE TABLE IF NOT EXISTS tab_usuarios
+(
+    id_usuario                  VARCHAR         NOT NULL CHECK(LENGTH(id_usuario) >= 5),
+    nom_usuario                 VARCHAR         NOT NULL CHECK(LENGTH(nom_usuario) >= 8),
+    pass_usuario                VARCHAR         NOT NULL CHECK(LENGTH(pass_usuario) >= 12),
+    mail_usuario                mail_personal   NOT NULL,
+    ind_usuario                 BOOLEAN         NOT NULL DEFAULT FALSE, -- TRUE=Si es administrador / FALSE= Es un usuario normal.
+    ind_estado                  BOOLEAN         NOT NULL DEFAULT TRUE,  -- TRUE=Sí está activo / FALSE=No está activo.
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_usuario)
+);
+
+-- TABLA DE MENÚS
+CREATE TABLE IF NOT EXISTS tab_menus
+(
+    id_menu                     VARCHAR         NOT NULL,
+    nom_menu                    VARCHAR         NOT NULL CHECK(LENGTH(nom_menu) >= 3 AND LENGTH(nom_menu) <= 25),
+    ind_id_padre                VARCHAR         NOT NULL,
+    nom_programa                VARCHAR         NOT NULL DEFAULT 'no_aplica',
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_menu)
+);
+
+-- TABLA DE MENÚS DE USUARIOS
+CREATE TABLE IF NOT EXISTS tab_menu_usuarios
+(
+    id_usuario                  VARCHAR         NOT NULL,
+    id_menu                     VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_usuario,id_menu),
+    FOREIGN KEY(id_usuario) REFERENCES tab_usuarios(id_usuario),
+    FOREIGN KEY(id_menu)    REFERENCES tab_menus(id_menu)
+);
+
+-- **************************
+-- 2. TABLAS INSTITUCIONALES
+-- **************************
+-- TABLA DE DEPARTAMENTOS DE COLOMBIA SEGÚN DANE
+CREATE TABLE IF NOT EXISTS tab_dptos
+(
+    id_dpto                     VARCHAR(2)      NOT NULL, -- ID del departamento
+    nom_dpto                    VARCHAR         NOT NULL, -- Nombre del departamento
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_dpto)
+);
+
+-- TABLA DE CIUDADES CON DEPATARMENTO SEGÚN DANE
+CREATE TABLE IF NOT EXISTS tab_ciudades
+(
+    id_ciudad                   VARCHAR(5)      NOT NULL, -- ID de la ciudad
+    nom_ciudad                  VARCHAR         NOT NULL, -- Nomnbre de la ciudad
+    id_dpto                     VARCHAR(2)      NOT NULL, -- ID departamento de la ciudad
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ciudad),
+    FOREIGN KEY(id_dpto) REFERENCES tab_dptos(id_dpto)
+);
+
+-- TABLA DE REGIONALES DEL SENA
+CREATE TABLE IF NOT EXISTS tab_regionales
+(
+    id_regional                 DECIMAL(2,0)    NOT NULL, -- ID de la regional de acuerdo con catálogo del SENA
+    nom_regional                VARCHAR         NOT NULL, -- Nombre de la regional
+    dir_regional                VARCHAR         NOT NULL, -- Dirección
+    id_dpto                     VARCHAR(2)      NOT NULL,
+    num_extension_tel           DECIMAL(8,0)    NOT NULL, -- Número de extensión.
+    nom_director                VARCHAR         NOT NULL, -- Nombre del director vigente
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_regional),
+    FOREIGN KEY(id_dpto) REFERENCES tab_dptos(id_dpto)
+);
+
+-- TABLA DE CENTROS DE UNA REGIONAL DEL SENA
+CREATE TABLE IF NOT EXISTS tab_centros
+(
+    id_centro                   DECIMAL(4,0)    NOT NULL, -- ID del Centro
+    nom_centro                  VARCHAR         NOT NULL, -- Nombre del Centro
+    dir_centro                  VARCHAR         NOT NULL, -- Dirección
+    num_extension_tel           DECIMAL(8,0)    NOT NULL, -- Extensión. NO hay teléfono fijo, se enruta por la línea nacional
+    nom_subdirector             VARCHAR         NOT NULL, -- Nombre del subdirector vigente
+    id_regional                 DECIMAL(2,0)    NOT NULL, -- ID de la regional
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_centro),
+    FOREIGN KEY(id_regional)                REFERENCES tab_regionales(id_regional)
+);
+
+-- TABLA DE SEDES DE UN CENTRO
+CREATE TABLE IF NOT EXISTS tab_sedes
+(
+    id_centro               DECIMAL(4,0),
+    id_sede                 DECIMAL(1,0)    NOT NULL,
+    nom_sede                VARCHAR         NOT NULL,
+    dir_sede                VARCHAR         NOT NULL,
+    nom_encargado           VARCHAR         NOT NULL,
+    tel_sede                DECIMAL(10,0)   NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_centro,id_sede),
+    FOREIGN KEY(id_centro)                  REFERENCES tab_centros(id_centro)    
+);
+
+-- TABLA DE REDES DE CONOCIMIENTO SENA
+CREATE TABLE IF NOT EXISTS tab_redes
+(
+    id_red                  DECIMAL(2,0)    NOT NULL, -- ID red de conocimiento según catálogo del SENA
+    nom_red           		TEXT            NOT NULL, -- Nombre de la red
+    nom_lider               VARCHAR         NOT NULL, -- Nombre del líder vigente
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+	PRIMARY KEY(id_red)
+);
+
+-- TABLA DE PARÁMETROS GENERALES DEL SISTEMA APLICABLE A TODOS LOS PROCESOS.
+CREATE TABLE IF NOT EXISTS tab_pmtros_grales
+(
+    id_centro                   DECIMAL(8,0)    NOT NULL,   -- Centro en donde se está ejecutando SMARTCSET
+    dir_centro                  VARCHAR         NOT NULL,
+    tel_centro                  DECIMAL(10,0)   NOT NULL,   -- Teléfono del Centro
+    ano_academico               DECIMAL(4,0)    NOT NULL,   -- Año en el que se está trabajando
+    mes_academico               DECIMAL(2,0)    NOT NULL,   -- Mes. Debe actualizarse automáticamente (EJECUTAR FUNCIÓN CRON)
+    val_nota_minima_rap         DECIMAL(3,0)    NOT NULL    DEFAULT 71  CHECK(val_nota_minima_rap >= 0 AND val_nota_minima_rap <= 100), -- Nota mínima de aprendiz para aprobar
+    num_horas_instructor        DECIMAL(3,0)    NOT NULL    DEFAULT 160 CHECK(num_horas_instructor >=0 AND num_horas_instructor <= 200), -- Horas mes instructor por cumplir por contrato
+    val_porcent_icfes_raps      DECIMAL(2,0)    NOT NULL    DEFAULT 75,-- Valor mínimo de raps calificados para asistir a pruebas ICFES
+    val_tiempo_gracia_aprendiz  DECIMAL(2,0)    NOT NULL    DEFAULT 0, -- Minutos de tardanza permitidos para un aprendiz
+    val_tiempo_gracia_instru    DECIMAL(2,0)    NOT NULL    DEFAULT 0, -- Minutos de tardanza permitidos para un instructor
+    val_max_llamados_aprendiz   DECIMAL(1,0)    NOT NULL    DEFAULT 3, -- Máximo # de llamados de at. a un aprendiz para enviar a comité
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+	PRIMARY KEY(id_centro),
+    FOREIGN KEY(id_centro)              REFERENCES tab_centros(id_centro)
+);
+
+-- *******************************************
+-- 3. TABLAS GENERALES DE CARACTER TRANSVERSAL
+-- *******************************************
+-- TABLA DE TIPOS DE DOCUMENTO PARA PERSONAS
+CREATE TABLE IF NOT EXISTS tab_tipos_docum
+(
+    id_tipo_docum               VARCHAR(3)      NOT NULL,
+    nom_tipo_docum              VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_tipo_docum)
+);
+
+-- TABLA DE EMPRESAS QUE TIENEN QUE VER CON EL CENTRO (PRODUCTIVA DE APRENDICEZ, CONTRATISTAS, ETC.)
+CREATE TABLE IF NOT EXISTS tab_empresas
+(
+    id_empresa                  DECIMAL(10,0)   NOT NULL,
+    id_tipo_docum               VARCHAR(3)      NOT NULL    DEFAULT 'Sin',
+    nom_empresa                 VARCHAR         NOT NULL    DEFAULT 'Sin Empresa',
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_empresa),
+    FOREIGN KEY(id_tipo_docum) REFERENCES tab_tipos_docum(id_tipo_docum)
+);
+
+-- TABLA DE PROFESIONES SEGÚN "CUOC-indice-clasificacion-unica-ocupaciones-colombia"
+CREATE TABLE IF NOT EXISTS tab_profesiones
+(
+    id_profesion                VARCHAR         NOT NULL, -- ID de la profesión, según CUOC de Colombia
+    nom_profesion               VARCHAR         NOT NULL, -- Nombre de la profesión
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+  PRIMARY KEY(id_profesion)
+);
+
+-- TABLA DE NIVELES DE ESTUDIO
+CREATE TABLE IF NOT EXISTS tab_niveles_estudio
+(
+    id_nivel_estudio            DECIMAL(2,0)    NOT NULL,
+    nom_nivel_estudio           VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_nivel_estudio)
+);
+
+CREATE TABLE IF NOT EXISTS tab_tipos_persona
+(
+    id_tipo_persona             DECIMAL(2,0)    NOT NULL,
+    nom_tipo_persona            VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_tipo_persona)
+);
+
+-- *******************************************************************
+-- 4. TABLAS DE PERSONAS COMO EMPRESAS, INSTRUCTORES, APRENDICES, ETC.
+-- *******************************************************************
+-- TABLAS GENERALES DE PERSONAS QUE ALIMENTA A TODAS LAS DEMÁS (Instructores, aprendices, visitantes, etc.)
+CREATE TABLE IF NOT EXISTS tab_personas
+(-- DATOS DE IDENTIFICACIÓN DE LA PERSONA (A VALIDAR CONTRA REGISTRADURÍA)
+    id_persona                  DECIMAL(10,0)   NOT NULL,
+    id_tipo_docum               VARCHAR(2)      NOT NULL    DEFAULT 'CC',
+    id_tipo_persona             DECIMAL(2,0)    NOT NULL,
+    nom_persona                 VARCHAR         NOT NULL,
+    ape_persona                 VARCHAR         NOT NULL,
+    mail_persona                mail_personal   NOT NULL    DEFAULT 'Sin Correo',
+    fec_nacimiento              DATE            NOT NULL    DEFAULT '1900-01-01',
+    ind_genero                  DECIMAL(2,0)    NOT NULL,  -- 99=No definido
+ -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
+    val_huella_digital          BYTEA,
+    val_patron_facial           JSONB,
+    fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    num_visitas                 SMALLINT        NOT NULL DEFAULT 0,
+-- DATOS DE ESTUDIO
+    id_nivel_estudio            DECIMAL(2,0)    NOT NULL,
+    id_profesion                VARCHAR         NOT NULL,
+-- DATOS GEOGRÁFICOS DE LA PERSONA
+    id_dpto_reside              VARCHAR(2)      NOT NULL, -- ID departamento de la ciudad
+    id_ciudad_reside            VARCHAR(5)      NOT NULL,
+    dir_ciudad_reside           VARCHAR         NOT NULL,
+    tel_persona_fijo            DECIMAL(10,0)   NOT NULL,
+    tel_persona_movil           DECIMAL(10,0)   NOT NULL,
+    nom_contacto_emergencias    DECIMAL(10,0)   NOT NULL,
+    tel_contacto_emergencias    DECIMAL(10,0)   NOT NULL,
+    ind_envio_correo            BOOLEAN         NOT NULL    DEFAULT TRUE, -- TRUE=Enviarle correos / FALSE=No se le envían correos
+    ind_estado                  BOOLEAN         NOT NULL    DEFAULT TRUE, -- TRUE=Activo / FALSE=Inactivo
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_persona),
+    FOREIGN KEY(id_tipo_docum)      REFERENCES tab_tipos_docum(id_tipo_docum),
+    FOREIGN KEY(id_tipo_persona)    REFERENCES tab_tipos_persona(id_tipo_persona),
+    FOREIGN KEY(id_nivel_estudio)   REFERENCES tab_niveles_estudio(id_nivel_estudio),
+    FOREIGN KEY(id_profesion)       REFERENCES tab_profesiones(id_profesion),
+    FOREIGN KEY(id_dpto_reside)     REFERENCES tab_dptos(id_dpto),
+    FOREIGN KEY(id_ciudad_reside)   REFERENCES tab_ciudades(id_ciudad)
+);
+
+-- ESTRUCTURA COMPOSITE PARA DATOS PERSONALES DE UN APRENDIZ
+CREATE TYPE datos_personales_aprendiz AS
+(
+    tel_alterno                 DECIMAL(10,0),
+    tel_sede                    DECIMAL(10,0),
+    ext_sede                    DECIMAL(4),
+    tel_padre_fijo              DECIMAL(10,0),
+    tel_padre_movil             DECIMAL(10,0),
+    val_mail_institucional      mail_personal,
+    nom_contacto_emergencias    VARCHAR,
+    tel_contacto_emergencias    DECIMAL(10,0)
+);
+
+--TABLA DE INSTRUCTORES
+CREATE TABLE IF NOT EXISTS tab_instructores
+(
+    id_instructor           DECIMAL(10,0)   NOT NULL    CHECK(id_instructor > 20000000),
+    id_centro               DECIMAL(4,0)    NOT NULL,
+    ind_tipo_contrato       BOOLEAN         NOT NULL, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
+    ind_contratado_actual   BOOLEAN         NOT NULL, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
+    ind_genero              DECIMAL(1,0)    NOT NULL    CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
+    ind_est_civil           DECIMAL(1,0)    NOT NULL    CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 5=Otro
+    id_nivel_estudio        DECIMAL(2,0)    NOT NULL,
+    id_profesion            VARCHAR         NOT NULL,
+    id_red                  DECIMAL(2,0)    NOT NULL,
+    ind_disponibilidad      BOOLEAN         NOT NULL    DEFAULT TRUE, -- TRUE=Disponible / FALSE=No Disponible (Ocupado con tiempo completo)
+    ind_estado              DECIMAL(1,0)    NOT NULL    CHECK(ind_estado >= 0 AND ind_estado <= 9) NOT NULL, -- 0=Activo,2=Suspendido,3=Bloqueado,9=Inactivo;
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_instructor),
+    FOREIGN KEY(id_centro)        REFERENCES tab_centros(id_centro),
+    FOREIGN KEY(id_nivel_estudio) REFERENCES tab_niveles_estudio(id_nivel_estudio),
+    FOREIGN KEY(id_profesion)     REFERENCES tab_profesiones(id_profesion),
+    FOREIGN KEY(id_red)           REFERENCES tab_redes(id_red)
+);
+
+-- Tabla de contratos que tiene un instructor. No aplica para instructores con tipo contrato TRUE en tabla de Instructores (Planta).
+-- Si ind_adicion de esta tabla es = TRUE, se debe consultar la tabla dependiente esta tabla para seleccionar los datos de la adición.
+CREATE TABLE IF NOT EXISTS tab_contratos_instructor
+(
+    id_instructor           DECIMAL(10,0)   NOT NULL,
+    num_contrato            VARCHAR         NOT NULL,
+    year_contrato           DECIMAL(4,0),
+    fec_inicio              DATE            NOT NULL,
+    fec_fin                 DATE            NOT NULL,
+    ind_vigente             BOOLEAN         NOT NULL    DEFAULT TRUE, --TRUE=Vigente / FALSE=Ejecutado. Una vez concluya el contrato debe pasar a FALSE
+    ind_adicion             BOOLEAN         NOT NULL    DEFAULT FALSE, -- TRUE=Tiene adición / FALSE=No tiene adición
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_instructor,num_contrato)
+);
+
+-- Tabla de adiciones del contrato. Si el ind_adicion en tab_contratos_instructores es TRUE,
+-- Se deben sacar los datos de la adición de esta tabla. Pueden haber hasta 2 adiciones.
+CREATE TABLE IF NOT EXISTS tab_adicion_contratos
+(
+    id_instructor           DECIMAL(10,0)   NOT NULL,
+    num_contrato            VARCHAR         NOT NULL,
+    num_adicion             DECIMAL(1,0)    NOT NULL    CHECK(num_adicion >= 0 AND num_adicion <=3),
+    fec_ini_adicion         DATE            NOT NULL,
+    fec_fin_adicion         DATE            NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(num_contrato,num_adicion),
+    FOREIGN KEY(id_instructor,num_contrato) REFERENCES tab_contratos_instructor(id_instructor,num_contrato)
+);
+
+-- Tabla de horas trabajadas por mes para un instructor
+CREATE TABLE IF NOT EXISTS tab_horas_instructor
+(
+    id_instructor           DECIMAL(10,0)   NOT NULL,
+    id_mes                  DECIMAL(2,0)    NOT NULL,   -- Meses del 1 al 12
+    val_horas_form_mes      DECIMAL(4,0)    NOT NULL,   -- Cantidad de horas del mes vigente
+    val_horas_apoyo_mes     DECIMAL(4,0)    NOT NULL,   -- Horas ejecutadas en apoyo
+    val_hotras_invest_mes   DECIMAL(4,0)    NOT NULL,   -- Horas ejecutadas en Investigación
+    val_horas_acum          DECIMAL(3,0)    NOT NULL,   -- Cantidad de horas acumuladas hasta el mes vigente
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_instructor,id_mes),
+    FOREIGN KEY(id_instructor) REFERENCES tab_instructores(id_instructor)
+);
+
+-- TABLA DE CERTIFICADOS LABORALES PARA INSTRUCTORES
+CREATE TABLE IF NOT EXISTS tab_certificados
+(
+    id_consecutivo          DECIMAL(2,0)    NOT NULL,
+    fec_certificado         DATE            NOT NULL,
+    id_instructor           DECIMAL(10,0)   NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_consecutivo),
+    FOREIGN KEY(id_instructor) REFERENCES tab_instructores(id_instructor)
+);
+
+-- *******************************************************
+-- TABLAS PARA INFORMACIÓN DE LOS PROGRAMAS DE FORMACIÓN *
+-- *******************************************************
+-- Tabla de Programas de Formación SENA
+CREATE TABLE IF NOT EXISTS tab_programas
+(
+    id_programa             DECIMAL(8,0)    NOT NULL,
+    nom_programa            VARCHAR         NOT NULL,
+    num_snies               VARCHAR         NOT NULL,
+    num_version             DECIMAL(2,0)    NOT NULL,
+    ind_tipo                VARCHAR    		NOT NULL, -- 1=Tecnología / 2=Técnica / 3= Epecialización / 4=Complementaria / 5=Curso
+    val_duracion_lect_hrs   DECIMAL(4,0)    NOT NULL,
+    val_duracion_prod_hrs   DECIMAL(4,0)    NOT NULL,
+    val_duracion_lect_mes   DECIMAL(2,0)    NOT NULL,
+    val_duracion_prod_me    DECIMAL(2,0)    NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_programa)
+);
+
+-- Tabla de competencias para un proyecto y un programa
+CREATE TABLE IF NOT EXISTS tab_competencias
+(
+    id_competencia          DECIMAL(10,0)   NOT NULL,
+    nom_competencia         TEXT            NOT NULL,
+    num_raps                DECIMAL(2,0)    NOT NULL,
+    num_horas               DECIMAL(4,0)    NOT NULL,
+    ind_transversal         BOOLEAN         NOT NULL    DEFAULT FALSE, -- TRUE=Es transversal / FALSE=Es técnica
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_competencia)
+);
+
+-- Tabla de competencias por instructor. La idea es que el Instructor oriente competencias en las que sea experto y que el sistema detecte esto en esta tabla antes de programarlo.
+CREATE TABLE IF NOT EXISTS tab_compet_instructor
+(
+    id_instructor           DECIMAL(10,0)  NOT NULL,
+    id_competencia          DECIMAL(10,0)  NOT NULL,
+    usr_insert              VARCHAR        NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_instructor,id_competencia),
+    FOREIGN KEY(id_instructor)          REFERENCES tab_instructores(id_instructor),
+    FOREIGN KEY(id_competencia)         REFERENCES tab_competencias(id_competencia)
+);
+
+-- Tabla de Actividades de proyecto
+CREATE TABLE IF NOT EXISTS tab_activ_proyecto
+(
+    id_actividad            DECIMAL(10,0)   NOT NULL,
+    nom_actividad           TEXT            NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+	PRIMARY KEY(id_actividad)
+);
+
+-- Tabla de RAP's
+CREATE TABLE IF NOT EXISTS tab_raps
+(
+    id_rap                  DECIMAL(10,0)   NOT NULL,
+    nom_rap                 TEXT            NOT NULL,
+    id_competencia          DECIMAL(10,0)   NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+	PRIMARY KEY(id_rap),
+    FOREIGN KEY(id_competencia)             REFERENCES tab_competencias(id_competencia)
+);
+
+-- Tabla de evidencias aplicables a los RAP's
+CREATE TABLE IF NOT EXISTS tab_evidencias
+(
+    id_evidencia            VARCHAR         NOT NULL,
+    nom_evidencia           TEXT            NOT NULL,
+    val_nota_maxima         DECIMAL(3,0)    NOT NULL    CHECK(val_nota_maxima >= 0 AND val_nota_maxima <= 100),
+    val_nota_minima         DECIMAL(3,0)    NOT NULL    CHECK(val_nota_minima >= 0 AND val_nota_minima <= 100),
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_evidencia)
+);
+
+--Tabla de evidencias por RAP
+CREATE TABLE IF NOT EXISTS tab_evidenciasXrap
+(
+    id_rap                  DECIMAL(10,0)   NOT NULL,
+    id_evidencia            VARCHAR         NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+	PRIMARY KEY(id_rap,id_evidencia),
+	FOREIGN KEY(id_rap)			            REFERENCES tab_raps(id_rap),
+	FOREIGN KEY(id_evidencia)	            REFERENCES tab_evidencias(id_evidencia)
+);
+
+-- Estructura de tabla de Raps por Competencia y Aprendiz
+CREATE TABLE IF NOT EXISTS tab_juicios_eval
+(
+    id_aprendiz               DECIMAL(10,0)   NOT NULL,
+    id_rap                    DECIMAL(6,0)    NOT NULL,
+    val_juicio                VARCHAR         NOT NULL,
+    fec_juicio                DATE            NOT NULL,
+    id_instructor             DECIMAL(10,0)   NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+  PRIMARY KEY(id_aprendiz),
+  FOREIGN KEY(id_rap)           REFERENCES tab_raps(id_rap),
+  FOREIGN KEY(id_instructor)    REFERENCES tab_instructores(id_instructor)
+);
+
+-- ***********************************************************************************
+-- TABLAS PARA EL SISTEMA DE INGRESO Y EGRESO DE PERSONAS AL CENTRO DE SERVICIOS CSET
+-- ***********************************************************************************
+-- TABLA DE MÉTODOS DE AUTENTICACIÓN PARA INGRESO DE VISITANTES
+CREATE TABLE IF NOT EXISTS tab_metodos_aut
+(
+    id_metodo_aut           DECIMAL(2,0)    NOT NULL,
+    nom_metodo_aut          VARCHAR         NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_metodo_aut)
+);
+
+CREATE TABLE IF NOT EXISTS tab_entradas_centro
+(
+    id_entrada_centro       DECIMAL(1,0)    NOT NULL,
+    nom_entrada_centro      VARCHAR         NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+	PRIMARY KEY(id_entrada_centro)
+);
+
+-- TABLA DE VEHICULOS DE PERSPONAS AUTORIZADOS PARA INGRESO A PARKING
+CREATE TABLE IF NOT EXISTS tab_vehiculos
+(
+    id_vehiculo             VARCHAR         NOT NULL,
+    ind_tipovehiculo        DECIMAL(1,0)    NOT NULL, -- 1=Automovil / 2= Moto / 3= Bicicleta / 3=Patineta
+    id_propietario          DECIMAL(10,0)   NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_vehiculo),
+    FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
+);
+
+-- TABLA TRANSACCIONAL DE REGISTRO DE INGRESOS
+CREATE TABLE IF NOT EXISTS tab_log_ingresos
+(
+    id_ingreso              INTEGER         NOT NULL,
+    id_visitante            DECIMAL(10,0)   NOT NULL,
+    fec_ingreso             TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    fec_salida              TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id_metodo_aut           DECIMAL(2,0)    NOT NULL,
+    id_entrada_centro       DECIMAL(1,0)    NOT NULL,
+-- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario
+    val_datos_origen        JSONB,
+    val_observaciones       TEXT,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ingreso),
+    FOREIGN KEY(id_visitante)       REFERENCES tab_personas(id_persona),
+    FOREIGN KEY(id_metodo_aut)      REFERENCES tab_metodos_aut(id_metodo_aut),
+    FOREIGN KEY(id_entrada_centro)  REFERENCES tab_entradas_centro(id_entrada_centro)
+);
+-- Indices para optimización de búsquedas frecuentes
+CREATE INDEX idx_fec_ingresos ON tab_log_ingresos(fec_ingreso DESC);
+
+--=====================================================================================
+
+--****************************
+-- TABLAS PARA REVISAR
+--****************************
+
+-- Tipo de dato para atributo de descripcion innovación del proyecto
+CREATE TYPE innovacion_proyectos AS
+(
+	ind_resuelve_necesidad_sector_prod	    BOOLEAN,
+	ind_mejora_proceso_productivo		    BOOLEAN,
+	ind_usa_nuevas_tecnicas				    BOOLEAN,
+	ind_prod_derechos_autor				    BOOLEAN,
+	ind_posicion_mercado				    BOOLEAN
+);
+
+-- Tipo de dato para atributo de valoración productiva del proyecto
+CREATE TYPE valoracion_productiva AS
+(
+	ind_necesidad_cliente_potencial		    BOOLEAN,
+	ind_viabilidad_plan_negocio			    BOOLEAN
+);
+
+-- Tabla de proyectos asociados a una ficha y un programa de formación
+CREATE TABLE IF NOT EXISTS tab_proyectos
+(
+    id_proyecto             DECIMAL(8,0)    NOT NULL,
+    id_programa             DECIMAL(8,0)    NOT NULL,
+    nom_proyecto            VARCHAR         NOT NULL,
+    num_fichas_asociadas    DECIMAL(2,0)    NOT NULL,
+    val_tiempo_ejecucion    DECIMAL(2,0)    NOT NULL, -- Este valor se debe dar en meses
+    num_resultados          DECIMAL(2,0)    NOT NULL, -- Cantidad de RAPS asociados,
+    num_rap_especificos     DECIMAL(2,0)    NOT NULL,
+    num_rap_transversales   DECIMAL(2,0)    NOT NULL,
+    num_rap_basicos         DECIMAL(2,0)    NOT NULL,
+    val_problema            TEXT            NOT NULL,
+    val_justificacion       TEXT            NOT NULL,
+--    COMPETENCIAS DEL PROYECTO
+--    PLANEACION DEL PROYECTO
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_proyecto),
+    FOREIGN KEY(id_programa)                REFERENCES tab_programas(id_programa)
+);
+
+-- Estructura para diligenciar datos del ambiente. Variables.
+CREATE TYPE inv_ambiente AS
+(
+    equipos_computo         BOOLEAN,        -- Posee equipos de cómputo? TRUE=Sí / FALSE=No
+    num_equipos             DECIMAL(3,0),   -- Número de equipos de cómputo, incluye impresoras, portátiles, desktop, etc
+    ind_smartboard          BOOLEAN,        -- Posee tablero programable? TRUE=Sí / FALSE=No
+    ind_videobeam           BOOLEAN,        -- Posee Videobeam? TRUE=Sí / FALSE=No
+    ind_impresora           BOOLEAN,        -- Posee Impresolra? TRUE=Sí / FALSE=No
+    ind_aire                BOOLEAN,        -- Posee aire acondicionado? TRUE=Sí / FALSE=No    
+    val_capacidad           DECIMAL(3,0)    -- Número de puestos disponibles para aprendices
+);
+
+-- Tabla de caracterización de ambientes. Se le asociará un CRUD específico y trato especial
+CREATE TABLE IF NOT EXISTS tab_ambientes
+(
+    id_ambiente             VARCHAR         NOT NULL,   -- ID del ambiente
+    nom_ambiente            VARCHAR         NOT NULL,   -- Nombre del ambiente
+    id_centro               DECIMAL(4,0)    NOT NULL,   -- ID del Centro
+    id_sede                 DECIMAL(1,0)    NOT NULL,   -- ID de la Sede a la que está asociado el ambiente (ppal, salud, etc.)
+    ind_disponible_man      BOOLEAN         NOT NULL    DEFAULT TRUE, -- TRUE=Disponible / FALSE=No disponible (Jornada mañana)
+    ind_disponible_tar      BOOLEAN         NOT NULL    DEFAULT TRUE, -- TRUE=Disponible / FALSE=No disponible (Jornada tarde)
+    ind_disponible_noc      BOOLEAN         NOT NULL    DEFAULT TRUE, -- TRUE=Disponible / FALSE=No disponible (Jornada noche)
+    inventario_ambiente     inv_ambiente,
+    equipos_ambiente        JSON,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ambiente),
+    FOREIGN KEY(id_centro)                      REFERENCES tab_centros(id_centro),
+    FOREIGN KEY(id_centro,id_sede)              REFERENCES tab_sedes(id_centro,id_sede)
+);
+
+-- TABLA DE SECTORES SEGÚN DIAN
+CREATE TABLE IF NOT EXISTS tab_sectores
+(
+    id_sector               DECIMAL(4,0)    NOT NULL,
+    nom_sector              VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_sector)
+);
+
+-- TABLA DE OCUPACIONES SEGÚN DIAN
+CREATE TABLE IF NOT EXISTS tab_ocupaciones
+(
+    id_ocupacion            DECIMAL(4,0)    NOT NULL,
+    nom_ocupacion           VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ocupacion)
+);
+
+CREATE TABLE IF NOT EXISTS tab_prog_especiales
+(
+    id_prog_especial        DECIMAL(6,0)    NOT NULL,
+    nom_prog_especial       VARCHAR         NOT NULL,
+    usr_insert                  VARCHAR         NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                  VARCHAR,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_prog_especial)
+);
+
+-- Tabla de caracterización de fichas. Se le asociará un CRUD específico y trato especial
+CREATE TABLE IF NOT EXISTS tab_fichas
+(
+    id_ficha                DECIMAL(10,0)   NOT NULL,
+    id_centro               DECIMAL(2,0)    NOT NULL,
+    id_programa             DECIMAL(8,0)    NOT NULL,
+    id_nivel_estudio        DECIMAL(2,0)    NOT NULL,
+    ind_jornada             DECIMAL(1,0)    NOT NULL    CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche
+    ind_modalidad           DECIMAL(1,0)    NOT NULL, -- 1=PRESENCIAL / 2=VIRTUAL / 3= DISTANCIA
+    fec_inicio              DATE            NOT NULL,
+    fec_fin_lectiva         DATE            NOT NULL,
+    fec_fin_productiva      DATE            NOT NULL,
+    val_duracion            DECIMAL(2,0)    NOT NULL, -- Valor dado en meses
+    id_instructor_lider     DECIMAL(10,0)   NOT NULL,
+    id_sector               DECIMAL(1,0)    NOT NULL    DEFAULT 0,
+    id_empresa              DECIMAL(10,0)   NOT NULL,
+    id_ocupacion            DECIMAL(4,0)    NOT NULL,
+    id_ciudad               VARCHAR         NOT NULL,
+    cod_convenio            DECIMAL(1,0)    NOT NULL    DEFAULT 0,
+    nom_convenio            VARCHAR         NOT NULL    DEFAULT 'Sin Convenio',
+    ind_amp_cobertura       BOOLEAN         NOT NULL    DEFAULT FALSE, -- TRUE=Si es ampliación / FALSE=No es ampliación
+    id_prog_especial        DECIMAL(6,0)    NOT NULL    DEFAULT 0,
+    ind_abierta             BOOLEAN         NOT NULL    DEFAULT TRUE, --TRUE=Abierta / FALSE=Cerrada
+    nom_vocero              VARCHAR         NOT NULL,
+    tel_vocero              DECIMAL(10,0)   NOT NULL,
+    mail_vocero             mail_personal   NOT NULL,
+    val_cupo                DECIMAL(3,0)    NOT NULL DEFAULT 30,
+    id_ambiente_base        VARCHAR         NOT NULL DEFAULT 'Sin Ambiente Base',
+    num_inscritos_opcion1   DECIMAL(3,0)    NOT NULL,
+    num_inscritos_opcion2   DECIMAL(3,0)    NOT NULL,
+    ind_estado              DECIMAL(1,0)    NOT NULL, --1=Inscripción/2=En matrícula/3=Ejecución/7=Terminada * Fecha/8=Terminada
+    num_cursos              DECIMAL(2,0)    NOT NULL    DEFAULT 1,
+    tot_aprendices_masc     DECIMAL(3,0)    NOT NULL,
+    tot_aprendices_fem      DECIMAL(3,0)    NOT NULL,
+    tot_aprendices_nobin    DECIMAL(2,0)    NOT NULL,
+    tot_aprendices_trans    DECIMAL(2,0)    NOT NULL,
+    total_aprendices        DECIMAL(4,0) GENERATED ALWAYS AS
+                                        (
+                                         COALESCE(tot_aprendices_masc, 0::DECIMAL(3,0))  +
+                                         COALESCE(tot_aprendices_fem, 0::DECIMAL(3,0))   +
+                                         COALESCE(tot_aprendices_nobin, 0::DECIMAL(4,0)) +
+                                         COALESCE(tot_aprendices_trans, 0::DECIMAL(4,0))
+                                        ) STORED,
+    tot_horas_planta        INTERVAL        NOT NULL    DEFAULT '00:00:00',
+    tot_horas_contratista   INTERVAL        NOT NULL    DEFAULT '00:00:00',
+    tot_horas_contrat_ext   INTERVAL        NOT NULL    DEFAULT '00:00:00',
+    tot_horas_monitores     INTERVAL        NOT NULL    DEFAULT '00:00:00',
+    tot_horas_inst_empresa  INTERVAL        NOT NULL    DEFAULT '00:00:00',
+    total_horas             INTERVAL GENERATED ALWAYS AS
+                                    (
+                                     COALESCE(tot_horas_planta, '0'::interval)      +
+                                     COALESCE(tot_horas_contratista, '0'::interval) +
+                                     COALESCE(tot_horas_contrat_ext, '0'::interval) +
+                                     COALESCE(tot_horas_monitores, '0'::interval)   +
+                                     COALESCE(tot_horas_inst_empresa, '0'::interval)
+                                    ) STORED,
+    tot_aprendices_activos  DECIMAL(3,0)    NOT NULL,
+    val_duracion_programa   INTERVAL        NOT NULL,
+    id_nuevo_sector         DECIMAL(1,0)    NOT NULL    DEFAULT 0,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ficha),
+    FOREIGN KEY(id_centro)              REFERENCES tab_centros(id_centro),
+    FOREIGN KEY(id_programa)            REFERENCES tab_programas(id_programa),
+    FOREIGN KEY(id_nivel_estudio)       REFERENCES tab_niveles_estudio(id_nivel_estudio),
+    FOREIGN KEY(id_instructor_lider)    REFERENCES tab_instructores(id_instructor),
+    FOREIGN KEY(id_sector)              REFERENCES tab_sectores(id_sector),
+    FOREIGN KEY(id_empresa)             REFERENCES tab_empresas(id_empresa),
+    FOREIGN KEY(id_ocupacion)           REFERENCES tab_ocupaciones(id_ocupacion),
+    FOREIGN KEY(id_ciudad)              REFERENCES tab_ciudades(id_ciudad),
+    FOREIGN KEY(id_ambiente_base)       REFERENCES tab_ambientes(id_ambiente),
+    FOREIGN KEY(id_prog_especial)       REFERENCES tab_prog_especiales(id_prog_especial),
+    FOREIGN KEY(id_nuevo_sector)        REFERENCES tab_sectores(id_sector)
+);
+-- Se debe tener en cuenta la validaciòn acerca de:
+-- Un ambiente no puede ser asignado a dos fichas al mismo tiempo en la misma jornada
+-- Un Instructor no puede orientar dos fichas ni competencias al mismo tiempo en la misma jornada
+-- Un ambiente debe estar disponible. Validar los indicadores ind_disponible_man/tar/noc de tab_ambientes
+
+-- Tabla de aprendices
+CREATE TABLE IF NOT EXISTS tab_aprendices
+(
+    id_aprendiz             DECIMAL(10,0)   NOT NULL,
+    datos_aprendiz          datos_personales_aprendiz,
+    ind_etdo_formacion      DECIMAL(1,0)    NOT NULL, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado
+    num_llamados            SMALLINT        NOT NULL,   -- Cantidad de llamados de atención acumulados
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_aprendiz)
+);
+
+-- Tabla de aprendices por ficha
+CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
+(
+    id_ficha                DECIMAL(10,0)   NOT NULL,
+    id_aprendiz             DECIMAL(10,0)   NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ficha,id_aprendiz),
+    FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha),
+    FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
+);
+
+CREATE TABLE IF NOT EXISTS tab_ausencias_aprendiz
+(
+    id_aprendiz             DECIMAL(10,0)   NOT NULL,
+    fec_ausencia            DATE            NOT NULL    DEFAULT '1900-01-01' CHECK (fec_ausencia <= CURRENT_DATE),
+    val_motivo              TEXT            NOT NULL    DEFAULT 'Sin Motivo Ausencia Aprendiz',
+    ind_evidencia_excusa    BOOLEAN         NOT NULL    DEFAULT TRUE,   -- TRUE=Hay evidencia / FALSE=Nol hay evidencia
+    val_ruta_excusa         VARCHAR         NOT NULL    DEFAULT 'Sin ruta evidencia Aprendiz',
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_aprendiz,fec_ausencia),
+    FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
+);
+
+-- TABLA DE LLAMADOS DE ATENCIÓN
+CREATE TABLE IF NOT EXISTS tab_llamados_atencion
+(
+    id_llamado              SERIAL          NOT NULL,
+    ind_tipo                BOOLEAN         NOT NULL,   -- TRUE=Académico / FALSE=Disciplinario
+    id_tercero              DECIMAL(10,0)   NOT NULL,
+    ind_tipo_tercero        BOOLEAN         NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
+    fec_llamado             DATE            NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_llamado)
+);
+
+-- TABLA DE OFERTAS TRIMESTRALES
+CREATE TABLE IF NOT EXISTS tab_ofertas
+(
+    id_oferta               SMALLINT        NOT NULL,
+    ano_oferta              DECIMAL(4,0)    NOT NULL,
+    trim_oferta             DECIMAL(1,0)    NOT NULL,
+    num_oferta              DECIMAL(1,0)    NOT NULL,
+    ind_tipo_oferta         BOOLEAN         NOT NULL DEFAULT TRUE,  --TRUE=Presencial / FALSE=Virtual)
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_oferta)
+);
+
+-- Tabla de competencias por Ficha
+CREATE TABLE IF NOT EXISTS tab_competencias_ficha
+(
+    id_ficha                DECIMAL(10,0)   NOT NULL,
+    id_competencia          DECIMAL(10,0)   NOT NULL,
+    ind_estado              DECIMAL(1,0)    NOT NULL    CHECK(ind_estado >= 0 AND ind_estado <= 3), --0=No vista / 1=En curso / 2=Vista
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ficha,id_competencia),
+    FOREIGN KEY(id_ficha)               REFERENCES tab_fichas(id_ficha),
+    FOREIGN KEY(id_competencia)         REFERENCES tab_competencias(id_competencia)
+);
+
+-- Tabla de rutas de formación. Se le asociará un CRUD específico y trato especial
+-- Tabla de rutas
+CREATE TABLE IF NOT EXISTS tab_rutas
+(
+    id_ruta                 DECIMAL(8,0)    NOT NULL,
+    id_ficha                DECIMAL(10,0)   NOT NULL,
+    nom_ruta                VARCHAR         NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ruta),
+    FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha)
+);
+
+-- Tabla de programación de instructores de acuerdo con la ficha, la ruta, el ambiente y la jornada
+-- Se considera la principal estructura dentro del modelo, dadas las transacciones que generará a través de un algoritmo que sea automático.
+-- El algoritmo tendrá componentes matemáticos que generarán una programación sugerida para un instructor, teniendo en cuenta su objeto contractual (160 hrs/mes)
+-- Los ambientes de foración, las rutas, la planeación formativa, la jornada y una ficha.
+-- Los instructores transversales no son líderes de ficha, por lo cual deben ser asignadaos a competneicas que duran entre 40 y 60 horas.
+-- Esta tabla entonces, será el eje para la construcción del algoritmo de lógica avanzada que debe contemplar todas las tablas como componente de IA
+CREATE TABLE IF NOT EXISTS tab_programacion
+(
+    id_ruta                 DECIMAL(8,0)    NOT NULL,
+    id_ficha                DECIMAL(10,0)   NOT NULL,
+    id_fase                 DECIMAL(1,0)    NOT NULL, -- 1=Inducción, 2=Planeación, 3=Análisis, 4= Ejecución, 5=Evaluación
+    id_competencia          DECIMAL(8,0)    NOT NULL,
+    id_instructor           DECIMAL(10,0)   NOT NULL,
+    ind_jornada             DECIMAL(1,0)    NOT NULL    CHECK(ind_jornada >= 1 AND ind_jornada <= 3), -- 1=Mañana / 2=Tarde /3=Noche
+    fec_inicial             DATE            NOT NULL,
+    fec_final               DATE            NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ruta,id_ficha,id_competencia,id_instructor),
+    FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha),
+    FOREIGN KEY(id_competencia)             REFERENCES tab_competencias(id_competencia),
+    FOREIGN KEY(id_instructor)              REFERENCES tab_instructores(id_instructor)
+);
+
+-- Tabla de transacciones de una ruta, por competencia
+CREATE TABLE IF NOT EXISTS tab_prog_competencia
+(
+    id_ruta                 DECIMAL(8,0)    NOT NULL,
+    id_ficha                DECIMAL(10,0)   NOT NULL,
+    id_fase                 DECIMAL(1,0)    NOT NULL,
+    id_competencia          DECIMAL(8,0)    NOT NULL,
+    id_instructor           DECIMAL(10,0)   NOT NULL,
+    id_actividad            DECIMAL(10,0)  	NOT NULL,
+    id_rap                  DECIMAL(10,0)   NOT NULL,
+    val_dias                DECIMAL(2,0)    NOT NULL    DEFAULT 6,
+    fec_inicio              DATE            NOT NULL,
+    fec_final               DATE            NOT NULL,
+    usr_insert              VARCHAR         NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_ruta,id_ficha,id_fase,id_competencia,id_instructor,id_actividad,id_rap),
+    FOREIGN KEY(id_ruta)                REFERENCES tab_rutas(id_ruta),
+    FOREIGN KEY(id_ficha)               REFERENCES tab_fichas(id_ficha),
+    FOREIGN KEY(id_competencia)         REFERENCES tab_competencias(id_competencia),
+    FOREIGN KEY(id_actividad)           REFERENCES tab_activ_proyecto(id_actividad),
+    FOREIGN KEY(id_instructor)          REFERENCES tab_instructores(id_instructor)
+);
+
+-- ******************************************************************
+-- * TRIGGERS Y STORED PROCEDURES PARA TRANSACCIONES Y AUDITORÍA    *
+-- ******************************************************************
+-- Tabla de registro de filas borradas
+CREATE TABLE IF NOT EXISTS tab_borrados
+(
+    id_consec       INTEGER     NOT NULL,
+    nom_tabla       VARCHAR     NOT NULL,
+    nom_registro    JSONB       NOT NULL,
+    usr_insert      VARCHAR     NOT NULL,
+    fec_insert      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY(id_consec)
+);
+
+-- PENDIENTE MODIFICAR EL ATRIBUTO JSONB CON LOS REGISTROS CORRESPONDIENTES A LA ACTIVIDAD REALIZADA SOBRE LA TABLA
+-- Stored Procedure para auditoría
+CREATE OR REPLACE FUNCTION fun_act_tabla() RETURNS "trigger" AS
+$$
+    DECLARE wid_consec tab_borrados.id_consec%TYPE;
+    BEGIN
+        IF TG_OP = 'INSERT' THEN
+           NEW.usr_insert = CURRENT_USER;
+           NEW.fec_insert = CURRENT_TIMESTAMP;
+           RETURN NEW;
+        END IF;
+        IF TG_OP = 'UPDATE' THEN
+           NEW.usr_update = CURRENT_USER;
+           NEW.fec_update = CURRENT_TIMESTAMP;
+           RETURN NEW;
+        END IF;
+        IF TG_OP = 'INSERT OR UPDATE' THEN
+            SELECT MAX(a.id_consec) INTO wid_consec FROM tab_borrados a;
+            IF wid_consec IS NULL THEN
+                wid_consec = 1;
+            ELSE
+                wid_consec = wid_consec + 1;
+            END IF;
+            INSERT INTO tab_borrados VALUES(wid_consec,TG_RELNAME,CURRENT_USER,CURRENT_TIMESTAMP);
+            RETURN OLD; 
+        END IF;
+    END;
+$$
+LANGUAGE PLPGSQL;
+
+-- **************************************************************
+-- TRIGGERS DE AUDITORÍA PARA GENERAR LOS USUARIOS DE LAS TABLAS
+
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_usuarios FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_menus FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_menu_usuarios FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_dptos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ciudades FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_regionales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_centros FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sedes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_redes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_pmtros_grales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_empresas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_docum FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_profesiones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_niveles_estudio FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_persona FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_personas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_instructores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_contratos_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_adicion_contratos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_horas_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_certificados FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_compet_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_activ_proyecto FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_raps FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_evidencias FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_evidenciasXrap FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_juicios_eval FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_metodos_aut FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_entradas_centro FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_vehiculos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_log_ingresos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_proyectos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ambientes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sectores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ocupaciones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_especiales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ausencias_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_llamados_atencion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ofertas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias_ficha FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_rutas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programacion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_competencia FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+
+-- ***************************************************************
+-- INSERCIONES BÁSICAS DE REGISTROS GENÉRICOS PARA EVITAR NULIDAD
+-- ***************************************************************
+INSERT INTO tab_dptos VALUES('00','Sin Departamento');
+INSERT INTO tab_regionales VALUES(0,'Sin Regional','Sin Dirección Reg.','00','0','Sin Director');
+INSERT INTO tab_ciudades VALUES('00000','Sin Ciudad','00');
+INSERT INTO tab_centros VALUES(0,0,'Sin Dirección de Centro',0,'Sin Nombre Subdirector',0);
+INSERT INTO tab_tipos_docum VALUES('Sin','Sin Tipo Documento');
+INSERT INTO tab_empresas VALUES(999,'Sin','Sin Empresa');
+INSERT INTO tab_profesiones VALUES('00','Profesión Genérica');
+INSERT INTO tab_niveles_estudio VALUES(99,'Sin Nivel de Estudio');
+INSERT INTO tab_tipos_persona VALUES(99,'Sin Tipo Persona');
+--INSERT INTO tab_personas VALUES(9999,'Sin',99,'Sin Nombre Persona','Sin Apellido Persona','Sin_Correo@sincorreo.com','1900-01-01',99,'Sin Huella',
+--                               '{"algoritmo": "FaceNet",
+--                                    "version": 2.0,
+--                                    "vector": [0.152, -0.021, 0.443, 0.891, -0.112],
+--                                    "last_update": "2026-05-13"}'::jsonb,'1900-01-01','1900-12-31',0,99,'00','00000','00','Sin Dirección',0,0,'Sin Contacto',0,TRUE);
+INSERT INTO tab_sectores VALUES(0,'Sin Sector');
+INSERT INTO tab_ocupaciones VALUES(0,'Sin Ocupacion');

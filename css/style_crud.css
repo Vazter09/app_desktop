@@ -1,0 +1,116 @@
+/*
+ * ESTILOS CORPORATIVOS DE CRUD - SmartCSET
+ * Clases compartidas por todos los módulos CRUD.
+ * Las variables --v-oscuro y --v-oliva se inyectan desde head.php.
+ */
+
+/* Campos numéricos: sin flechas +/- (también en components.css para login/auth) */
+input[type="number"],
+input[type="number"].form-control,
+input[type="number"].form-control-sm {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Texto con teclado numérico (preferir esto frente a type="number") */
+.input-numeric {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Clases corporativas */
+.bg-corporativo {
+    background-color: var(--v-oscuro) !important;
+    color: #fff;
+}
+
+/* Título en cabecera verde (no afecta botones) */
+.bg-corporativo > strong,
+.bg-corporativo > strong i,
+.bg-corporativo > strong i::before {
+    color: #fff;
+}
+
+/* btn-light en cabecera verde: no heredar blanco del padre */
+.bg-corporativo .btn-light {
+    color: var(--v-oscuro, #2E4731);
+    background-color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    font-weight: 600;
+}
+
+.bg-corporativo .btn-light:hover,
+.bg-corporativo .btn-light:focus {
+    color: #fff;
+    background-color: var(--v-oliva, #6B8E23);
+    border-color: var(--v-oliva, #6B8E23);
+}
+
+.bg-corporativo .btn-light i,
+.bg-corporativo .btn-light i::before {
+    color: currentColor;
+}
+
+.btn-corporativo {
+    background-color: var(--v-oscuro);
+    color: #fff;
+    border: none;
+}
+
+.btn-corporativo:hover,
+.btn-corporativo:focus,
+.btn-corporativo:active {
+    background-color: var(--v-oliva);
+    color: #fff;
+}
+
+.btn-corporativo i,
+.btn-corporativo i::before {
+    color: #fff;
+}
+
+.thead-oliva {
+    background-color: var(--v-oliva);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Tabla con scroll */
+.scroll-lista {
+    max-height: 68vh;
+    overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Estados */
+.inactivo {
+    opacity: 0.5;
+    filter: grayscale(1);
+}
+
+.ventana-bloqueada {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(0.6);
+    transition: all 0.3s ease;
+}
+
+/* Utilidades */
+.page-heading {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+select[readonly] {
+    pointer-events: none;
+    background-color: #e9ecef;
+}

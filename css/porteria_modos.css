@@ -1,0 +1,95 @@
+/* Modos escáner y foto — portería (ingreso / salida) */
+
+.pt-modos-toolbar {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.pt-modo-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid rgba(46, 71, 49, 0.25);
+    border-radius: 6px;
+    background: #f6f8f6;
+    color: var(--v-oscuro, #2E4731);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.pt-modo-btn:hover {
+    background: #eef2ee;
+    border-color: rgba(46, 71, 49, 0.4);
+}
+
+.pt-modo-btn.is-active {
+    background: var(--v-oscuro, #2E4731);
+    border-color: var(--v-oscuro, #2E4731);
+    color: #fff;
+}
+
+.pt-modo-hint {
+    font-size: 0.72rem;
+    color: #5a6b5c;
+    margin: 0 0 0.45rem;
+    padding: 0.35rem 0.5rem;
+    background: #f0f6f0;
+    border-radius: 4px;
+    border-left: 3px solid var(--v-oliva, #6b8e23);
+}
+
+.is-modo-escaner .pt-doc-escaner-wrap {
+    outline: 2px solid var(--v-oliva, #6b8e23);
+    outline-offset: 2px;
+    border-radius: 6px;
+    background: #fafdf8;
+}
+
+.is-modo-escaner #txt_documento {
+    font-weight: 600;
+}
+
+.pt-foto-panel {
+    margin-bottom: 0.75rem;
+    padding: 0.65rem;
+    border: 1px dashed rgba(46, 71, 49, 0.25);
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.pt-foto-video-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto 0.5rem;
+    aspect-ratio: 4 / 3;
+    background: #111;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.pt-foto-video-wrap video,
+.pt-foto-video-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pt-foto-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: center;
+}
+
+.pt-foto-actions .btn {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.55rem;
+}

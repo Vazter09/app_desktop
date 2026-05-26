@@ -1,0 +1,309 @@
+/* Registro de salida — portería (layout espejo de ingresos) */
+
+.salidas-page {
+    --sal-list-min-h: min(320px, calc(100vh - 12rem));
+    --sal-list-max-h: calc(100vh - 9rem);
+}
+
+.salidas-layout {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.salidas-layout .sal-col-form {
+    flex: 0 0 340px;
+    width: 340px;
+    max-width: 100%;
+}
+
+.salidas-layout .sal-col-list {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+@media (max-width: 899.98px) {
+    .salidas-layout {
+        flex-wrap: wrap;
+    }
+    .salidas-layout .sal-col-form {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+.sal-panel {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 2px 12px rgba(46, 71, 49, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sal-panel-form {
+    height: auto;
+    overflow: visible;
+}
+
+.sal-panel-form .sal-panel-body {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
+}
+
+.sal-panel-form #form_salida {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+}
+
+.sal-panel-list {
+    flex: 1;
+    min-height: var(--sal-list-min-h);
+    max-height: var(--sal-list-max-h);
+    min-width: 0;
+}
+
+.sal-panel-head {
+    flex-shrink: 0;
+    padding: 0.65rem 1rem;
+    background: linear-gradient(135deg, var(--v-oscuro, #2E4731) 0%, #3d5c42 100%);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.sal-panel-head .meta {
+    font-size: 0.72rem;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.sal-panel-body {
+    flex: 1;
+    min-height: 0;
+    padding: 1rem;
+}
+
+.sal-panel-form .sal-panel-body {
+    padding: 0.85rem 1rem;
+}
+
+.sal-panel-list .sal-panel-body {
+    overflow-y: auto;
+}
+
+.sal-panel-foot {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e9ece9;
+    background: #fafbfa;
+}
+
+.sal-field {
+    margin-bottom: 0.7rem;
+}
+
+.sal-field:last-child {
+    margin-bottom: 0;
+}
+
+.sal-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #4a554a;
+    margin-bottom: 0.25rem;
+}
+
+.sal-doc-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sal-doc-row .tipo-doc {
+    width: 4.5rem;
+    flex-shrink: 0;
+    font-weight: 700;
+}
+
+.sal-doc-row .num-doc {
+    flex: 1;
+    min-width: 0;
+}
+
+#badge_salida {
+    margin-top: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.sal-aviso-msg {
+    margin-top: 0.4rem;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    border-radius: 0.35rem;
+    background: #fff3e0;
+    border: 1px solid #e6a817;
+    color: #7a4e00;
+}
+
+#badge_salida.sal-badge-known {
+    background: rgba(107, 142, 35, 0.2);
+    color: var(--v-oscuro, #2E4731);
+}
+
+#badge_salida.sal-badge-ok {
+    background: rgba(107, 142, 35, 0.2);
+    color: var(--v-oscuro, #2E4731);
+}
+
+#badge_salida.sal-badge-warn {
+    background: #fff3cd;
+    color: #856404;
+}
+
+#badge_salida.sal-badge-error {
+    background: #f8d7da;
+    color: #842029;
+}
+
+#badge_salida.sal-badge-loading {
+    background: #eee;
+    color: #666;
+}
+
+.sal-resumen {
+    background: #f6f8f6;
+    border: 1px solid rgba(46, 71, 49, 0.12);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 0.7rem;
+}
+
+.sal-resumen-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--v-oscuro, #2E4731);
+    margin-bottom: 0.35rem;
+}
+
+.sal-resumen-nom {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2c332c;
+}
+
+.sal-resumen-list {
+    list-style: none;
+    padding: 0;
+    font-size: 0.8rem;
+}
+
+.sal-resumen-list li {
+    margin-bottom: 0.2rem;
+}
+
+.btn-salida-submit {
+    width: 100%;
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 8px;
+}
+
+.sal-list-scroll {
+    padding: 0;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #b8c4b8 transparent;
+}
+
+.sal-list-scroll .table {
+    font-size: 0.8125rem;
+    margin: 0;
+}
+
+.sal-list-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.65rem;
+}
+
+.sal-list-scroll tbody td {
+    padding: 0.45rem 0.65rem;
+    vertical-align: middle;
+}
+
+.sal-list-scroll .v-nom {
+    font-weight: 600;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sal-list-scroll .v-doc {
+    font-size: 0.68rem;
+    color: #888;
+}
+
+.sal-tipo-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #555;
+}
+
+.sal-puerta-badge {
+    display: inline-block;
+    min-width: 1.5rem;
+    text-align: center;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(107, 142, 35, 0.15);
+    color: var(--v-oscuro, #2E4731);
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: help;
+}
+
+.sal-empty {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: #aaa;
+}
+
+.sal-empty i {
+    font-size: 2.5rem;
+    opacity: 0.2;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+tr.salida-reciente td {
+    background: rgba(107, 142, 35, 0.1) !important;
+}
+
+tr.salida-reciente td:first-child {
+    box-shadow: inset 3px 0 0 var(--v-oliva, #6B8E23);
+}
+
+.sal-list-hint {
+    flex-shrink: 0;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.68rem;
+    color: #999;
+    text-align: center;
+    background: #f8faf8;
+    border-top: 1px solid #eee;
+}
