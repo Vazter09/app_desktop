@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Instala db_smartcset y aplica script_BD_SMARTCSET V.1.5.sql + funciones/seeds
+# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.6.sql + funciones/seeds
 # Uso: ./database/setup_smartcset.sh
-# ATENCIÓN: Si la BD ya existe, el paso de esquema V.1.5 BORRA todas las tablas (DROP).
+# ATENCIÓN: Si la BD ya existe, el paso de esquema BORRA todas las tablas (DROP).
 #           Solo usar en instalación nueva o cuando quiera resetear por completo.
 
 set -euo pipefail
@@ -34,7 +34,7 @@ do
 done
 [[ -n "$PSQL" ]] || { echo "psql no encontrado. Instale PostgreSQL." >&2; exit 1; }
 
-SCHEMA="$ROOT/database/schema/script_BD_SMARTCSET V.1.5.sql"
+SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.6.sql"
 [[ -f "$SCHEMA" ]] || { echo "No existe: $SCHEMA" >&2; exit 1; }
 
 echo "==> Base de datos $DB_NAME"
@@ -47,7 +47,7 @@ else
   echo "    Ya existe."
 fi
 
-echo "==> Esquema V.1.5"
+echo "==> Esquema V.1.6"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$SCHEMA"
 
 run_sql() {
@@ -72,6 +72,8 @@ FUNCS=(
   "$ROOT/database/functions/acceso/usuarios/fun_actualizar_password.sql"
   "$ROOT/database/functions/acceso/menus/fun_insert_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_update_tab_menus.sql"
+  "$ROOT/database/functions/acceso/menus/fun_trigger_menu.sql"
+  "$ROOT/database/functions/acceso/menus/fun_trigger_menu_admin.sql"
   "$ROOT/database/functions/acceso/menus/fun_trigger_desasignar_menu.sql"
   "$ROOT/database/functions/acceso/menus/fun_delete_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_insert_menu_usuarios.sql"
@@ -102,7 +104,10 @@ for f in \
   "$ROOT/database/migrations/refactor_ingreso_abierto_salida.sql" \
   "$ROOT/database/migrations/add_menu_registro_salida_0103.sql" \
   "$ROOT/database/migrations/add_tab_config_sistema.sql" \
-  "$ROOT/database/migrations/add_menu_config_y_registro.sql"
+  "$ROOT/database/migrations/add_menu_config_y_registro.sql" \
+  "$ROOT/database/migrations/update_modulos_rutas_organizadas.sql" \
+  "$ROOT/database/migrations/update_menu_registro_listado_admin.sql" \
+  "$ROOT/database/migrations/add_unique_ingreso_persona_dia.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done
@@ -121,5 +126,5 @@ fi
 
 unset PGPASSWORD
 echo ""
-echo "Listo. Base: $DB_NAME | Esquema V.1.5"
+echo "Listo. Base: $DB_NAME | Esquema V.1.6"
 echo "Login: admin.smart / AdminSmart2026! | porteria / Porteria2026!"
