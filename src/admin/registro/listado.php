@@ -12,10 +12,11 @@ if (!isset($_SESSION['id_usuario'])) {
 }
 
 $menuTipoMap = [
-    '0301' => ['tipo' => 1, 'titulo' => 'Aprendiz', 'form' => 'aprendiz.php'],
-    '0302' => ['tipo' => 2, 'titulo' => 'Instructor', 'form' => 'instructor.php'],
-    '0303' => ['tipo' => 3, 'titulo' => 'Funcionario', 'form' => 'funcionario.php'],
-    '0304' => ['tipo' => 4, 'titulo' => 'Contratista', 'form' => 'contratista.php'],
+    // El id_tipo_persona depende de los seeds; lo resolvemos desde tab_tipos_persona.
+    '0301' => ['tipo_name' => 'Aprendiz', 'titulo' => 'Aprendiz', 'form' => 'aprendiz.php'],
+    '0302' => ['tipo_name' => 'Instructor', 'titulo' => 'Instructor', 'form' => 'instructor.php'],
+    '0303' => ['tipo_name' => 'Funcionario', 'titulo' => 'Funcionario', 'form' => 'funcionario.php'],
+    '0304' => ['tipo_name' => 'Contratista', 'titulo' => 'Contratista', 'form' => 'contratista.php'],
 ];
 
 $active_menu_id = trim((string) ($_GET['menu'] ?? ''));
@@ -27,7 +28,17 @@ if ($active_menu_id === '' || !isset($menuTipoMap[$active_menu_id])) {
 }
 
 $cfg = $menuTipoMap[$active_menu_id];
-$tipo = (int) $cfg['tipo'];
+$tipo = 0;
+$tipoName = (string) ($cfg['tipo_name'] ?? '');
+if ($tipoName !== '') {
+    try {
+        $stmtTipo = $pdo->prepare('SELECT id_tipo_persona FROM tab_tipos_persona WHERE lower(nom_tipo_persona) = lower(:n) LIMIT 1');
+        $stmtTipo->execute([':n' => $tipoName]);
+        $tipo = (int) ($stmtTipo->fetchColumn() ?: 0);
+    } catch (PDOException) {
+        $tipo = 0;
+    }
+}
 $tituloTipo = (string) $cfg['titulo'];
 $formFile = (string) $cfg['form'];
 

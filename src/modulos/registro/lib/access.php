@@ -25,7 +25,8 @@ function registroTieneSesionStandalone(): bool
 function registroRequireModuloHabilitado(): void
 {
     if (!registroModuloHabilitado()) {
-        http_response_code(503);
+        // El módulo está deshabilitado por configuración, no por caída del servicio.
+        http_response_code(403);
         header('Content-Type: text/html; charset=UTF-8');
         echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Módulo no disponible</title></head>';
         echo '<body style="font-family:sans-serif;padding:2rem;text-align:center;">';

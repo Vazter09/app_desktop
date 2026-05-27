@@ -6,7 +6,7 @@ require_once __DIR__ . '/init.php';
 header('Content-Type: application/json; charset=UTF-8');
 
 if (!registroModuloHabilitado()) {
-    http_response_code(503);
+    http_response_code(403);
     echo json_encode(['error' => 'Módulo deshabilitado']);
     exit;
 }

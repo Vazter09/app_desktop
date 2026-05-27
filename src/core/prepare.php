@@ -4,7 +4,7 @@
  * BD: PostgreSQL (db_smartcset) — esquema database/schema/script_BD_SMARTCSET V.1.5.sql
  * Lógica delegada al motor PostgreSQL mediante funciones con casting explícito.
  */
-require_once('config.php');
+require_once __DIR__ . '/config.php';
 require_once(__DIR__ . '/AppConfig.php');
 
 try {

@@ -47,16 +47,10 @@ function registroFetchPersonasPorTipo(PDO $pdo, int $tipo): array
  */
 function registroMapPersonaRow(array $r): array
 {
-    $tipoPersona = (string) ($r['nom_tipo_persona'] ?? '');
-    $idTipo = (int) ($r['id_tipo_persona'] ?? 0);
+    $tipoPersona = trim((string) ($r['nom_tipo_persona'] ?? ''));
     if ($tipoPersona === '') {
-        $tipoPersona = match ($idTipo) {
-            1 => 'Aprendiz',
-            2 => 'Instructor',
-            3 => 'Funcionario',
-            4 => 'Contratista',
-            default => 'Persona',
-        };
+        $idTipo = (int) ($r['id_tipo_persona'] ?? 0);
+        $tipoPersona = 'Tipo ' . (string) $idTipo;
     }
 
     $nomDpto = trim((string) ($r['nom_dpto'] ?? ''));
