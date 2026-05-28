@@ -14,7 +14,7 @@ INSERT INTO tab_tipos_docum (id_tipo_docum, nom_tipo_docum, usr_insert, fec_inse
     ('CE', 'Cédula de extranjería', 'seed', NOW()),
     ('TI', 'Tarjeta de identidad', 'seed', NOW()),
     ('PA', 'Pasaporte', 'seed', NOW()),
-    ('Sin', 'Sin tipo', 'seed', NOW())
+    ('SN', 'Sin tipo', 'seed', NOW())
 ON CONFLICT (id_tipo_docum) DO NOTHING;
 
 INSERT INTO tab_niveles_estudio (id_nivel_estudio, nom_nivel_estudio, usr_insert, fec_insert)
@@ -43,14 +43,14 @@ INSERT INTO tab_regionales (
     id_regional, nom_regional, dir_regional, id_dpto, tel_regional,
     num_extension_tel, nom_director, usr_insert, fec_insert
 ) VALUES (
-    '99', 'Regional desarrollo', 'Sin dirección', '00', 0, 0, 'Seed', 'seed', NOW()
+    '99', 'Regional desarrollo', 'Sin dirección', '00', 6010000000, 0, 'Seed', 'seed', NOW()
 ) ON CONFLICT (id_regional) DO NOTHING;
 
 INSERT INTO tab_centros (
     id_centro, nom_centro, dir_centro, tel_centro, num_extension_tel,
     nom_subdirector, id_regional, usr_insert, fec_insert
 ) VALUES (
-    9001, 'Centro desarrollo SMARTCSET', 'Sin dirección', 0, 0,
+    9001, 'Centro desarrollo SMARTCSET', 'Sin dirección', 6010000001, 0,
     'Seed', '99', 'seed', NOW()
 ) ON CONFLICT (id_centro) DO NOTHING;
 
@@ -58,7 +58,7 @@ INSERT INTO tab_sedes (
     id_centro, id_sede, nom_sede, dir_sede, nom_encargado, tel_sede,
     usr_insert, fec_insert
 ) VALUES (
-    9001, 1, 'Sede principal', 'Sin dirección', 'Seed', 0, 'seed', NOW()
+    9001, 1, 'Sede principal', 'Sin dirección', 'Seed', 6010000002, 'seed', NOW()
 ) ON CONFLICT (id_centro, id_sede) DO NOTHING;
 
 INSERT INTO tab_entradas_centro (
@@ -69,14 +69,13 @@ INSERT INTO tab_entradas_centro (
 ON CONFLICT (id_entrada_centro) DO NOTHING;
 
 -- Usuario demo: admin.smart / AdminSmart2026!
--- Contraseña en texto plano solo para desarrollo; use scripts/hash_password.php en producción
 INSERT INTO tab_usuarios (
     id_usuario, nom_usuario, pass_usuario, mail_usuario,
     ind_usuario, ind_estado, usr_insert, fec_insert
 ) VALUES (
     'admin.smart',
     'Administrador SMARTCSET',
-    'AdminSmart2026!',
+    '$2y$12$hiMIJY0gO3kRI8qP1B05/eGyiqNbAsINzcCoi3n18GAYAJdLgY1fS',
     'admin@cset.sena.edu.co',
     TRUE,
     TRUE,
@@ -91,7 +90,7 @@ INSERT INTO tab_usuarios (
 ) VALUES (
     'porteria',
     'Usuario Portería',
-    'Porteria2026!',
+    '$2y$12$51zVarrVv5NAwGTIoa7WEuMqmHk7HmSLhhKb396GIrDDYFTEAN39y',
     'porteria@cset.sena.edu.co',
     FALSE,
     TRUE,
@@ -112,7 +111,7 @@ INSERT INTO tab_personas (
     'juan.demo@cset.sena.edu.co', 99,
     '1900-01-01', '1900-01-01',
     99, '00', '00', '00000',
-    'Calle 1 # 2-3', 0, 3001234567,
-    0, 0,
+    'Calle 1 # 2-3', 6012345678, 3001234567,
+    'Contacto Demo', 3009876543,
     'seed', NOW()
 ) ON CONFLICT (id_persona) DO NOTHING;

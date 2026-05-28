@@ -8,6 +8,14 @@ Scripts SQL que cargan datos iniciales de desarrollo. Se ejecutan después del s
 
 ## Archivos
 
+### seed_config_y_menus.sql
+
+Configuración global y catálogo de menús (post-schema V.1.7):
+- Fila `tab_config_sistema` (colores, logo, módulo registro)
+- Todos los ítems de `tab_menus` (Acceso, Administración, Registro personas, etc.)
+
+Ejecutar antes de `seed_menus_admin.sql` (permisos por usuario).
+
 ### seed_acceso_dev.sql
 
 Datos de desarrollo del módulo de acceso. Carga:
@@ -40,9 +48,10 @@ Variante alternativa V.1.0 con estructura similar.
 ## Flujo de data en instalación
 
 1. Schema crea tablas vacías
-2. `seed_acceso_dev.sql` carga catálogos y datos básicos
-3. `seed_menus_admin.sql` carga estructura de menús
-4. `setup_smartcset.sh` llama `password_hash()` de PHP para hashear contraseñas demo
+2. `seed_config_y_menus.sql` carga configuración y catálogo de menús
+3. `seed_acceso_dev.sql` carga catálogos y datos básicos
+4. `seed_menus_admin.sql` asigna menús a `admin.smart`
+5. `setup_smartcset.sh` llama `password_hash()` de PHP para hashear contraseñas demo
    - Reemplaza contraseñas de texto plano en `tab_usuarios`
    - Solo los usuarios `admin.smart` y `porteria` se reemplazan
 
@@ -60,6 +69,7 @@ Variante alternativa V.1.0 con estructura similar.
 ## Estado de seeds en setup.sh
 
 **Incluidos:**
+- `seed_config_y_menus.sql` — ejecutado siempre
 - `seed_acceso_dev.sql` — ejecutado siempre
 - `seed_menus_admin.sql` — ejecutado siempre
 

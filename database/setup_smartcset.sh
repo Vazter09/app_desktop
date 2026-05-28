@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.6.sql + funciones/seeds
+# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.7.sql + funciones/seeds
 # Uso: ./database/setup_smartcset.sh
 # ATENCIÓN: Si la BD ya existe, el paso de esquema BORRA todas las tablas (DROP).
 #           Solo usar en instalación nueva o cuando quiera resetear por completo.
@@ -34,7 +34,7 @@ do
 done
 [[ -n "$PSQL" ]] || { echo "psql no encontrado. Instale PostgreSQL." >&2; exit 1; }
 
-SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.6.sql"
+SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.7.sql"
 [[ -f "$SCHEMA" ]] || { echo "No existe: $SCHEMA" >&2; exit 1; }
 
 echo "==> Base de datos $DB_NAME"
@@ -47,7 +47,7 @@ else
   echo "    Ya existe."
 fi
 
-echo "==> Esquema V.1.6"
+echo "==> Esquema V.1.7"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$SCHEMA"
 
 run_sql() {
@@ -95,6 +95,7 @@ done
   -c "CREATE SEQUENCE IF NOT EXISTS seq_log_ingresos START WITH 1 INCREMENT BY 1;"
 
 for f in \
+  "$ROOT/database/seeds/seed_config_y_menus.sql" \
   "$ROOT/database/seeds/seed_acceso_dev.sql" \
   "$ROOT/database/seeds/seed_menus_admin.sql" \
   "$ROOT/database/migrations/add_menu_accesos_0203_0204.sql" \
@@ -126,5 +127,5 @@ fi
 
 unset PGPASSWORD
 echo ""
-echo "Listo. Base: $DB_NAME | Esquema V.1.6"
+echo "Listo. Base: $DB_NAME | Esquema V.1.7"
 echo "Login: admin.smart / AdminSmart2026! | porteria / Porteria2026!"

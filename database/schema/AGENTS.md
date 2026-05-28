@@ -8,23 +8,32 @@ Scripts SQL que definen la estructura completa de todas las tablas de la base de
 
 ## Archivos y su versión
 
-### script-BD-SMARTCSET V.1.6.sql
+### script-BD-SMARTCSET V.1.7.sql
 
 **VERSION ACTUAL - USAR ESTA**
 
 Schema completo revisado en Mayo 2026. Incluye:
-- Tablas operativas: `tab_usuarios`, `tab_personas`, `tab_menus`, `tab_menu_usuarios`, `tab_log_ingresos`, `tab_sesiones`, `tab_config_sistema`
+- Tablas operativas: `tab_usuarios`, `tab_personas`, `tab_menus`, `tab_menu_usuarios`, `tab_log_ingresos`, `tab_sesiones`, `tab_config_sistema` (colores, logo, tokens de tema)
+- Datos iniciales de config y menús en `database/seeds/seed_config_y_menus.sql` (no en el schema)
+- `tab_menus.nom_programa` VARCHAR(255) para rutas `src/...` del proyecto
+
+### script-BD-SMARTCSET V.1.6.sql
+
+Versión anterior (sin `tab_config_sistema` ni datos de menús en el schema).
+
+Schema V.1.6 incluía:
+- Tablas operativas: `tab_usuarios`, `tab_personas`, `tab_menus`, `tab_menu_usuarios`, `tab_log_ingresos`
 - Tablas maestras: `tab_dptos`, `tab_ciudades`, `tab_tipos_docum`, `tab_tipos_persona`, `tab_metodos_aut`, `tab_entradas_centro`, `tab_niveles_estudio`, `tab_profesiones`
 - Tablas SENA: `tab_regionales`, `tab_centros`, `tab_sedes`, `tab_programas`, `tab_fichas`, `tab_aprendices`, `tab_instructores`, etc. (~30 tablas del sistema académico)
 - Tablas temporales para carga: `tab_temp_df49`, `tab_temp_pe04`, `tab_temp_df14A`, etc.
 
 **Tamaño:** ~280 KB
 
-**NOTA:** El script `setup_smartcset.sh` apunta a V.1.5 (BUG) en lugar de este.
+**NOTA:** `setup_smartcset.sh` usa V.1.7. Las migraciones `add_tab_config_sistema` y menús siguen siendo idempotentes en instalaciones antiguas.
 
 ### script_BD_SMARTCSET V.1.5.sql
 
-Versión anterior, desactualizada. Usada actualmente por `setup_smartcset.sh` (BUG conocido).
+Versión anterior, desactualizada.
 
 ### script_BD_SMARTCSET V.1.4.sql
 
