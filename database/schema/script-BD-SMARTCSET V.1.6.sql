@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_pe04
   id_ocupacion      DECIMAL(4,0),
   nom_ocupacion     VARCHAR,
   id_programa       DECIMAL(8,0),
-  id_version        DECIMAL(2,0),
+  id_version        DECIMAL(4,0),
   nom_programa      VARCHAR,
   id_pais           DECIMAL(2,0),
   nom_pais          VARCHAR,
