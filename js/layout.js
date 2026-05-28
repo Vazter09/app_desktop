@@ -9,8 +9,56 @@
     const toggleBtn = document.getElementById('sidebar-toggle');
     const toggleMobileBtn = document.getElementById('sidebar-toggle-mobile');
     const overlay = document.getElementById('sidebar-overlay');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const body = document.body;
+    const themeStorageKey = 'smartcset_theme';
+    const darkTheme = 'dark';
+    const lightTheme = 'light';
 
     if (!sidebar) return;
+
+    function getStoredTheme() {
+        try {
+            return localStorage.getItem(themeStorageKey);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function setStoredTheme(value) {
+        try {
+            localStorage.setItem(themeStorageKey, value);
+        } catch (err) {
+            // noop: almacenamiento no disponible
+        }
+    }
+
+    function updateThemeToggleIcon() {
+        if (!themeToggleBtn) return;
+        const icon = themeToggleBtn.querySelector('i');
+        if (!icon) return;
+
+        const isLight = body.classList.contains('light-theme');
+        icon.className = isLight ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        themeToggleBtn.title = isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+        themeToggleBtn.setAttribute('aria-label', isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+    }
+
+    function applyTheme(theme) {
+        body.classList.toggle('light-theme', theme === lightTheme);
+        updateThemeToggleIcon();
+    }
+
+    const initialTheme = getStoredTheme() === lightTheme ? lightTheme : darkTheme;
+    applyTheme(initialTheme);
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', function () {
+            const nextTheme = body.classList.contains('light-theme') ? darkTheme : lightTheme;
+            applyTheme(nextTheme);
+            setStoredTheme(nextTheme);
+        });
+    }
 
     function updateToggleIcon() {
         if (!toggleBtn) return;

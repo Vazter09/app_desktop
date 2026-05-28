@@ -34,6 +34,10 @@ $_logout_url = $__asset_href . 'src/auth/logout.php';
 
         <!-- Usuario y botón salir -->
         <div class="topbar-user">
+            <button id="theme-toggle" class="btn-theme-toggle" type="button" title="Cambiar tema" aria-label="Cambiar tema claro u oscuro">
+                <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+                <span class="theme-label">Tema</span>
+            </button>
             <div class="topbar-user-identity" title="<?= htmlspecialchars($_nom) ?>">
                 <i class="bi bi-person-circle" aria-hidden="true"></i>
                 <span class="topbar-user-name"><?= htmlspecialchars($_nom) ?></span>

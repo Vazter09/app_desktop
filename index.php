@@ -73,36 +73,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="css/components.css?v=<?= (int) $_v_comp ?>">
     <?php include __DIR__ . '/src/layout/theme_vars.php'; ?>
     <style>
-        :root {
-            --verde-oscuro: var(--v-oscuro);
-            --verde-oliva: var(--v-oliva);
-        }
-
         body {
-            background-color: #f4f7f6;
+            background: #f1f5fa;
+            background-image:
+                linear-gradient(rgba(28,45,64,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(28,45,64,0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Rajdhani', 'Segoe UI', sans-serif;
         }
 
         .card-login {
-            border: none;
-            border-top: 6px solid var(--verde-oscuro);
+            border: 1px solid rgba(108, 152, 205, 0.22);
+            border-top: 2px solid #49a3ff;
+            background: rgba(255,255,255,0.97);
             width: 100%;
             max-width: 380px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 16px 36px rgba(13, 33, 56, 0.14);
+            color: #1f3348;
+            border-radius: 14px;
         }
 
         .btn-ingresar {
-            background-color: var(--verde-oscuro);
+            background: linear-gradient(90deg, #2d8ff0, #5a75ff);
             color: white;
             font-weight: bold;
+            border: 1px solid rgba(125, 177, 255, 0.35);
         }
 
         .btn-ingresar:hover {
-            background-color: var(--verde-oliva);
+            background: linear-gradient(90deg, #4ba9ff, #8097ff);
             color: white;
         }
 
@@ -118,6 +121,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 0.85rem;
             text-align: center;
         }
+
+        .form-label {
+            color: rgba(33, 63, 95, 0.78);
+            letter-spacing: 0.04em;
+        }
+
+        .form-control {
+            background: #edf1f7;
+            border: 1px solid #d4ddeb;
+            color: #1f3348;
+        }
+
+        .form-control:focus {
+            background: #f4f8ff;
+            border-color: #78adf0;
+            color: #1f3348;
+            box-shadow: 0 0 0 0.16rem rgba(73, 163, 255, 0.24);
+        }
+
+        .form-control::placeholder {
+            color: rgba(70, 96, 124, 0.45);
+        }
     </style>
 </head>
 
@@ -127,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="card card-login shadow-lg">
         <div class="card-body p-4">
-            <h4 class="text-center fw-bold mb-4" style="color: var(--verde-oscuro);">Control de Acceso</h4>
+            <h4 class="text-center fw-bold mb-4" style="color: #1f3348;">Control de Acceso</h4>
 
             <?php renderPageFlash($w_error ?: null, 'danger', 'Acceso denegado'); ?>
 
@@ -147,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
 
             <div class="text-center mt-3">
-                <a href="src/auth/recuperar.php" class="text-decoration-none small text-muted">¿Olvidó su contraseña?</a>
+                <a href="src/auth/recuperar.php" class="text-decoration-none small" style="color:rgba(70,96,124,.78);">¿Olvidó su contraseña?</a>
             </div>
         </div>
     </div>

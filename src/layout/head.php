@@ -25,4 +25,15 @@ $_v_comp   = @filemtime($_asset_root . '/css/components.css') ?: time();
     </style>
 </head>
 <body>
+<script>
+    (function () {
+        try {
+            if (localStorage.getItem('smartcset_theme') === 'light') {
+                document.body.classList.add('light-theme');
+            }
+        } catch (err) {
+            /* noop: fallback a tema oscuro por defecto */
+        }
+    })();
+</script>
 <div class="app-wrapper">

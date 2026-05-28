@@ -39,7 +39,7 @@ $logo = htmlspecialchars(smartcsetLogoUrl($href), ENT_QUOTES, 'UTF-8');
     <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>css/registro.css?v=<?= (int) $vReg ?>">
     <?php include dirname(__DIR__, 2) . '/layout/theme_vars.php'; ?>
 </head>
-<body class="registro-theme">
+<body class="registro-theme light-theme">
     <div class="login-page">
     <div class="scanline"></div>
     <button id="theme-toggle" class="login-theme-toggle" type="button" aria-label="Cambiar modo de color">🌙</button>
@@ -51,13 +51,13 @@ $logo = htmlspecialchars(smartcsetLogoUrl($href), ENT_QUOTES, 'UTF-8');
     <div class="login-wrapper">
         <div class="login-brand">
             <img src="<?= $logo ?>" alt="Logo" class="login-logo">
-            <span class="login-brand-logo"><?= $nom ?></span>
+            <span class="login-brand-logo"><span>Smart</span><span>CSET</span></span>
             <div class="login-divider"></div>
             <p class="login-brand-sub">Registro de personas</p>
         </div>
 
         <div class="login-panel">
-            <div class="login-title">Autenticación requerida</div>
+            <h1 class="login-heading">Autenticación requerida</h1>
 
             <?php if ($error): ?>
             <div class="alert alert-error">
@@ -68,14 +68,14 @@ $logo = htmlspecialchars(smartcsetLogoUrl($href), ENT_QUOTES, 'UTF-8');
             <form method="POST" action="login.php" autocomplete="off">
                 <div class="login-field">
                     <label for="usuario">IDENTIFICADOR DE USUARIO</label>
-                    <input type="text" id="usuario" name="usuario" placeholder="ingrese su usuario"
+                    <input type="text" id="usuario" name="usuario" placeholder="Ingrese su usuario"
                         value="<?= htmlspecialchars($_POST['usuario'] ?? '') ?>" required>
                 </div>
                 <div class="login-field">
                     <label for="clave">CLAVE DE ACCESO</label>
                     <input type="password" id="clave" name="clave" placeholder="••••••••••••" required>
                 </div>
-                <button type="submit" class="login-btn">INICIAR SESIÓN</button>
+                <button type="submit" class="login-btn">Iniciar sesión</button>
             </form>
         </div>
     </div>

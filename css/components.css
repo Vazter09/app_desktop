@@ -15,7 +15,10 @@ input[type="number"]::-webkit-inner-spin-button {
 /* ── Tarjeta guía (p. ej. ayuda en Menús) ── */
 .guide-card {
     overflow: hidden;
-    border-left: 4px solid var(--v-oliva, #6B8E23) !important;
+    border-left: 2px solid #4aa8ff !important;
+    background: linear-gradient(180deg, rgba(11, 28, 42, 0.88), rgba(9, 21, 33, 0.92));
+    border: 1px solid rgba(125, 177, 255, 0.24);
+    color: #e7f1ff;
 }
 
 .guide-card-header {
@@ -23,15 +26,15 @@ input[type="number"]::-webkit-inner-spin-button {
     align-items: flex-start;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
-    background: linear-gradient(135deg, rgba(46, 71, 49, 0.08) 0%, rgba(107, 142, 35, 0.06) 100%);
-    border-bottom: 1px solid rgba(46, 71, 49, 0.08);
+    background: linear-gradient(135deg, rgba(61, 163, 255, 0.12) 0%, rgba(143, 140, 255, 0.08) 100%);
+    border-bottom: 1px solid rgba(125, 177, 255, 0.2);
 }
 
 .guide-card-icon {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 10px;
-    background: var(--v-oscuro, #2E4731);
+    background: linear-gradient(135deg, #2d8ff0, #5a75ff);
     color: #fff;
     display: flex;
     align-items: center;
@@ -43,13 +46,13 @@ input[type="number"]::-webkit-inner-spin-button {
 .guide-card-title {
     font-size: 0.95rem;
     font-weight: 700;
-    color: var(--v-oscuro, #2E4731);
+    color: #f2f7ff;
     margin: 0 0 0.2rem 0;
 }
 
 .guide-card-subtitle {
     font-size: 0.82rem;
-    color: #5c6b5e;
+    color: rgba(223, 232, 246, 0.72);
     margin: 0;
     line-height: 1.45;
 }
@@ -152,9 +155,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .smart-toast {
     min-width: 300px;
     max-width: 400px;
-    background: #fff;
+    background: linear-gradient(180deg, rgba(12, 28, 42, 0.94), rgba(9, 21, 33, 0.96));
     border-radius: 10px;
-    box-shadow: 0 8px 28px rgba(46, 71, 49, 0.18);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(125, 177, 255, 0.24);
     overflow: hidden;
 }
 
@@ -184,7 +188,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .smart-toast__title {
     font-size: 0.875rem;
     font-weight: 700;
-    color: #2c332c;
+    color: #eff6ff;
     line-height: 1.3;
     margin-bottom: 0.2rem;
 }
@@ -192,7 +196,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .smart-toast__message {
     font-size: 0.8125rem;
     line-height: 1.45;
-    color: #555;
+    color: rgba(223, 232, 246, 0.78);
 }
 
 .smart-toast__close {
@@ -244,12 +248,15 @@ input[type="number"]::-webkit-inner-spin-button {
 /* ── Modal de confirmación ── */
 .smart-confirm-content {
     border-radius: 12px;
+    background: linear-gradient(180deg, rgba(12, 28, 42, 0.96), rgba(9, 21, 33, 0.98));
+    border: 1px solid rgba(125, 177, 255, 0.24);
+    color: #e7f1ff;
 }
 
 .smart-confirm-content .modal-title {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--v-oscuro, #2E4731);
+    color: #f0f7ff;
 }
 
 .smart-confirm-content .modal-body {

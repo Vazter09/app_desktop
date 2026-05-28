@@ -26,8 +26,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* Clases corporativas */
 .bg-corporativo {
-    background-color: var(--v-oscuro) !important;
-    color: #fff;
+    background: linear-gradient(90deg, rgba(14, 38, 58, 0.95), rgba(19, 52, 79, 0.92)) !important;
+    color: #e8f2ff;
+    border-bottom: 1px solid rgba(125, 177, 255, 0.24);
 }
 
 /* Título en cabecera verde (no afecta botones) */
@@ -58,15 +59,16 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .btn-corporativo {
-    background-color: var(--v-oscuro);
-    color: #fff;
-    border: none;
+    background: linear-gradient(90deg, #2d8ff0, #5a75ff);
+    color: #eef6ff;
+    border: 1px solid rgba(125, 177, 255, 0.34);
+    border-radius: 10px;
 }
 
 .btn-corporativo:hover,
 .btn-corporativo:focus,
 .btn-corporativo:active {
-    background-color: var(--v-oliva);
+    background: linear-gradient(90deg, #49a8ff, #7f95ff);
     color: #fff;
 }
 
@@ -76,8 +78,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .thead-oliva {
-    background-color: var(--v-oliva);
-    color: white;
+    background: linear-gradient(90deg, rgba(45, 143, 240, 0.85), rgba(90, 117, 255, 0.78));
+    color: #f6f9ff;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -87,7 +89,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .scroll-lista {
     max-height: 68vh;
     overflow-y: auto;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 12px 12px;
+    border: 1px solid rgba(125, 177, 255, 0.22);
+    border-top: 0;
+    background: rgba(9, 24, 38, 0.8);
 }
 
 /* Estados */
@@ -108,6 +113,163 @@ input[type="number"]::-webkit-inner-spin-button {
     font-size: 1rem;
     font-weight: 700;
     line-height: 1.25;
+    color: #edf5ff;
+}
+
+.card {
+    border-radius: 14px;
+    border: 1px solid rgba(125, 177, 255, 0.22);
+    background: linear-gradient(180deg, rgba(10, 26, 39, 0.88), rgba(9, 20, 32, 0.92));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.card .card-header {
+    border-bottom: 1px solid rgba(125, 177, 255, 0.2);
+}
+
+.table {
+    color: rgba(226, 236, 249, 0.92);
+    margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+    border-bottom-color: rgba(125, 177, 255, 0.16);
+}
+
+.table tbody tr:hover {
+    background: rgba(61, 163, 255, 0.12);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    color: rgba(226, 236, 249, 0.9);
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.form-control,
+.form-select {
+    background-color: rgba(8, 22, 34, 0.72);
+    border: 1px solid rgba(125, 177, 255, 0.28);
+    color: #e6f0fd;
+    border-radius: 10px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: rgba(8, 22, 34, 0.9);
+    color: #f2f7ff;
+    border-color: rgba(107, 180, 255, 0.7);
+    box-shadow: 0 0 0 0.16rem rgba(61, 163, 255, 0.22);
+}
+
+/* Light mode global: restaurar superficies claras */
+body.light-theme .card {
+    background: #ffffff;
+    border: 1px solid rgba(45, 105, 170, 0.18);
+    box-shadow: 0 8px 22px rgba(17, 38, 60, 0.1);
+}
+
+body.light-theme .bg-corporativo {
+    background: linear-gradient(90deg, rgba(20, 64, 102, 0.95), rgba(29, 84, 130, 0.92)) !important;
+    color: #f7fbff;
+    border-bottom: 1px solid rgba(45, 105, 170, 0.2);
+}
+
+body.light-theme .page-heading {
+    color: #11263c;
+}
+
+body.light-theme .form-control,
+body.light-theme .form-select {
+    background-color: #ffffff;
+    border: 1px solid rgba(45, 105, 170, 0.24);
+    color: #11263c;
+}
+
+body.light-theme .form-control:focus,
+body.light-theme .form-select:focus {
+    background-color: #ffffff;
+    color: #11263c;
+    border-color: rgba(45, 143, 240, 0.6);
+    box-shadow: 0 0 0 0.16rem rgba(45, 143, 240, 0.2);
+}
+
+body.light-theme select[readonly] {
+    background-color: #eef3fa;
+}
+
+/* Configuración registro: contraste correcto dark/light */
+.registro-config-card .registro-config-body {
+    background: transparent;
+}
+
+.registro-config-card .registro-config-footer {
+    background: transparent;
+    border-top: 1px solid rgba(125, 177, 255, 0.18) !important;
+}
+
+body:not(.light-theme) .registro-config-card .form-label,
+body:not(.light-theme) .registro-config-card .form-check-label,
+body:not(.light-theme) .registro-config-card .config-toggle-item__title {
+    color: #e8f2ff !important;
+}
+
+body:not(.light-theme) .registro-config-card .text-muted,
+body:not(.light-theme) .registro-config-card .config-toggle-item__desc,
+body:not(.light-theme) .registro-config-card .registro-config-help {
+    color: rgba(223, 232, 246, 0.8) !important;
+}
+
+body:not(.light-theme) .registro-config-card .config-toggle-item {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(125, 177, 255, 0.2) !important;
+}
+
+body:not(.light-theme) .registro-config-card .form-control {
+    background: rgba(8, 22, 34, 0.82) !important;
+    border-color: rgba(125, 177, 255, 0.3) !important;
+    color: #e8f2ff !important;
+}
+
+body:not(.light-theme) .registro-config-card code {
+    color: #ff6ac1;
+    background: rgba(255, 106, 193, 0.08);
+    padding: 0.08rem 0.3rem;
+    border-radius: 6px;
+}
+
+body.light-theme .registro-config-card .registro-config-footer {
+    background: #ffffff;
+    border-top: 1px solid rgba(45, 105, 170, 0.16) !important;
+}
+
+body.light-theme .registro-config-card .form-label,
+body.light-theme .registro-config-card .form-check-label,
+body.light-theme .registro-config-card .config-toggle-item__title {
+    color: #17314a !important;
+}
+
+body.light-theme .registro-config-card .text-muted,
+body.light-theme .registro-config-card .config-toggle-item__desc,
+body.light-theme .registro-config-card .registro-config-help {
+    color: rgba(23, 49, 74, 0.72) !important;
+}
+
+body.light-theme .registro-config-card .config-toggle-item {
+    background: #ffffff !important;
+    border-color: rgba(45, 105, 170, 0.16) !important;
+}
+
+body.light-theme .registro-config-card .form-control {
+    background: #ffffff !important;
+    border-color: rgba(45, 105, 170, 0.24) !important;
+    color: #11263c !important;
+}
+
+body.light-theme .registro-config-card code {
+    color: #b0106e;
+    background: rgba(176, 16, 110, 0.08);
+    padding: 0.08rem 0.3rem;
+    border-radius: 6px;
 }
 
 select[readonly] {

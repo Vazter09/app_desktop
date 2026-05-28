@@ -48,7 +48,11 @@ include __DIR__ . '/../layout/topbar.php';
 ?>
 
 <div class="dashboard-welcome">
-    <h2>Bienvenido, <?= htmlspecialchars($wnom_usuario) ?></h2>
+    <div class="dashboard-eyebrow">
+        <i class="bi bi-grid-1x2-fill"></i>
+        <span>Panel principal</span>
+    </div>
+    <h2>Bienvenido, <span><?= htmlspecialchars($wnom_usuario) ?></span></h2>
     <p>Seleccione un módulo para comenzar. Su acceso ha sido configurado según su perfil.</p>
 </div>
 
@@ -149,29 +153,30 @@ if (!empty($_SESSION['flash_msg'])) {
 <style>
 .calc-widget {
     position: fixed; right: 20px; bottom: 20px; width: 260px;
-    border-radius: 14px; background: #fff;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.25); z-index: 2100;
+    border-radius: 14px; background: linear-gradient(180deg, rgba(12, 28, 42, 0.95), rgba(8, 22, 34, 0.98));
+    border: 1px solid rgba(125, 177, 255, 0.3);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.35); z-index: 2100;
     display: flex; flex-direction: column;
 }
 .calc-hidden { display: none !important; }
 .calc-header {
-    background: linear-gradient(90deg, var(--v-oscuro), var(--v-oliva));
-    color: white; padding: 10px 12px;
+    background: linear-gradient(90deg, #2d8ff0, #5a75ff);
+    color: #f4f8ff; padding: 10px 12px;
     border-radius: 14px 14px 0 0; cursor: move;
     display: flex; align-items: center; justify-content: space-between;
 }
 .calc-header span { font-weight: 700; font-size: 0.95rem; }
 .calc-header button { border: none; background: transparent; color: rgba(255,255,255,0.9); font-size: 1.1rem; cursor: pointer; }
-.calc-display { height: 50px; padding: 10px; font-size: 1.2rem; text-align: right; border: none; outline: none; background: #f7f7f7; border-bottom: 1px solid #e0e0e0; width: 100%; }
+.calc-display { height: 50px; padding: 10px; font-size: 1.2rem; text-align: right; border: none; outline: none; background: rgba(9, 22, 35, 0.85); color: #eff6ff; border-bottom: 1px solid rgba(125, 177, 255, 0.22); width: 100%; }
 .calc-buttons { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding: 12px; }
-.calc-button { padding: 12px 0; border-radius: 10px; border: none; background: #f1f1f1; font-size: 1.1rem; cursor: pointer; transition: transform 0.1s ease; }
-.calc-button:hover { background: #e0e0e0; }
-.calc-button.action { background: var(--v-oliva); color: white; }
-.calc-button.operator { background: var(--v-oscuro); color: white; }
+.calc-button { padding: 12px 0; border-radius: 10px; border: 1px solid rgba(125, 177, 255, 0.22); background: rgba(255,255,255,0.06); color:#e9f2ff; font-size: 1.1rem; cursor: pointer; transition: transform 0.1s ease, background 0.2s ease; }
+.calc-button:hover { background: rgba(61, 163, 255, 0.2); }
+.calc-button.action { background: linear-gradient(90deg, #2d8ff0, #5a75ff); color: white; }
+.calc-button.operator { background: rgba(143, 140, 255, 0.22); color: #f3f7ff; }
 .calc-button:active { transform: translateY(1px); }
 .calc-launcher {
     position: fixed; right: 20px; bottom: 90px; width: 48px; height: 48px;
-    border-radius: 50%; border: none; background: var(--v-oliva); color: #fff;
+    border-radius: 50%; border: 1px solid rgba(125,177,255,0.3); background: linear-gradient(90deg, #2d8ff0, #5a75ff); color: #fff;
     box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 2200;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     font-size: 1.3rem;

@@ -124,7 +124,7 @@ include __DIR__ . '/../../layout/topbar.php';
 
 <form method="POST" class="row g-3">
     <div class="col-12">
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 registro-config-card">
             <div class="card-header bg-corporativo py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <strong style="font-size:0.95rem;">
                     <i class="bi bi-person-vcard-fill me-2"></i>Configuración — Registro de personas
@@ -140,7 +140,7 @@ include __DIR__ . '/../../layout/topbar.php';
                 </button>
             </div>
 
-            <div class="card-body">
+            <div class="card-body registro-config-body">
                 <div class="config-toggle-list">
                     <div class="config-toggle-item">
                         <input class="form-check-input" type="checkbox" name="chk_modulo_registro"
@@ -175,13 +175,13 @@ include __DIR__ . '/../../layout/topbar.php';
                     </div>
                 </div>
 
-                <p class="small text-muted mb-0 mt-2">
+                <p class="small text-muted mb-0 mt-2 registro-config-help">
                     El acceso al módulo de registro se realiza desde su propio login
                     (<code>src/modulos/registro/login.php</code>). El administrador solo configura este acceso desde aquí.
                 </p>
             </div>
 
-            <div class="card-footer bg-white border-0 d-flex flex-wrap align-items-center gap-2 justify-content-end">
+            <div class="card-footer registro-config-footer border-0 d-flex flex-wrap align-items-center gap-2 justify-content-end">
                 <button type="submit" name="btn_guardar_registro" value="1" class="btn btn-sm fw-bold text-white"
                         style="background:var(--v-oscuro);">
                     <i class="bi bi-save-fill me-1"></i>Guardar configuración
