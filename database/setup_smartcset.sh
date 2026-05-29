@@ -78,7 +78,9 @@ FUNCS=(
   "$ROOT/database/functions/acceso/menus/fun_delete_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_insert_menu_usuarios.sql"
   "$ROOT/database/functions/acceso/menus/fun_delete_perfil_usuario.sql"
-  "$ROOT/database/functions/acceso/sesiones/fun_registrar_sesion.sql"
+  "$ROOT/database/functions/acceso/sesiones/fun_ingreso_sesion.sql"
+  "$ROOT/database/functions/acceso/sesiones/fun_salida_sesion.sql"
+  "$ROOT/database/functions/acceso/sesiones/fun_actualizar_sesion_actividad.sql"
   "$ROOT/database/functions/porteria/fun_upsert_persona_visitante.sql"
   "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_ingreso.sql"
@@ -91,6 +93,7 @@ FUNCS=(
 for f in "${FUNCS[@]}"; do
   run_sql "$f"
 done
+run_sql "$ROOT/database/migrations/drop_fun_registrar_sesion.sql"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -c "CREATE SEQUENCE IF NOT EXISTS seq_log_ingresos START WITH 1 INCREMENT BY 1;"
 

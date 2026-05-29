@@ -36,17 +36,23 @@ Script PowerShell para levantar servidor de desarrollo en Windows.
 - Levanta servidor en `http://localhost:8080`
 - Abre navegador automáticamente
 
-### setup_db.ps1
+### setup_db.sh
 
-Setup de BD desde PowerShell (alternativa a bash).
+Despliega funciones mínimas en una BD **ya existente**: sesiones (login), menús, usuarios admin.
 
-```powershell
-.\tools\setup_db.ps1
+```bash
+bash tools/setup_db.sh
 ```
 
-- Lee `.env`
-- Crea BD `db_smartcset`
-- Aplica schema + funciones + seeds
+- No crea la base de datos ni aplica el schema completo
+- Helpers + funciones acceso (sesiones, menús, usuarios)
+- `seed_menus_admin.sql` + usuario `admin.smart` + hash bcrypt
+
+Instalación completa desde cero: `database/setup_smartcset.sh`
+
+### setup_db.ps1
+
+Misma lógica que `setup_db.sh` (Windows / PowerShell).
 
 ### setup_production.sh
 

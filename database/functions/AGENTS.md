@@ -94,7 +94,9 @@ Funciones de acceso del sistema (usuarios, menús, sesiones).
 - `fun_tab_menu_usuarios` — query de menús por usuario (AUSENTE del instalador)
 
 ### acceso/sesiones/
-- `fun_registrar_sesion` — UPSERT de sesión activa
+- `fun_ingreso_sesion` — registrar sesión activa (bloquea si ya existe)
+- `fun_salida_sesion` — eliminar fila de sesión (logout / admin)
+- `fun_actualizar_sesion_actividad` — actualizar `ult_actividad`
 
 ### porteria/
 - `fun_upsert_persona_visitante` — crear o actualizar persona

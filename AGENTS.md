@@ -86,7 +86,7 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 - `$stmt_list_tipos_doc`, `$stmt_list_tipos_persona`, `$stmt_list_ingresos_hoy` — portería ingreso
 - `$stmt_buscar_persona_doc`, `$stmt_fun_registrar_ingreso` — portería registro
 - `$stmt_list_salidas_hoy`, `$stmt_buscar_ingreso_abierto`, `$stmt_fun_registrar_salida` — portería salida
-- `$stmt_valida_sesion`, `$stmt_ins_sesion`, `$stmt_del_sesion` — sesiones
+- `$stmt_fun_ingreso_sesion`, `$stmt_fun_salida_sesion`, `$stmt_fun_touch_sesion`, `$stmt_list_sesiones_activas` — sesiones
 - `$stmt_valida_mail`, `$stmt_upd_pass` — recuperación de contraseña
 - `$stmt_get_config`, `$stmt_fun_upd_config` — configuración del sistema
 

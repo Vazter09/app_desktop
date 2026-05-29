@@ -5,7 +5,7 @@ require_once(__DIR__ . '/../core/prepare.php');
 try {
     if (isset($_SESSION['id_usuario'])) {
         // Usamos el stmt centralizado de prepare.php para eliminar la sesión
-        $stmt_del_sesion->execute([$_SESSION['id_usuario']]);
+        $stmt_fun_salida_sesion->execute([$_SESSION['id_usuario']]);
     }
 }
 catch (Exception $e) {

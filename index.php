@@ -20,6 +20,7 @@ session_start();
 
 // Invocamos el cerebro del sistema
 require_once('src/core/prepare.php');
+require_once('src/core/ErrorHandler.php');
 require_once('src/core/helpers.php');
 
 $w_error = "";
@@ -41,6 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // 3. VALIDACIÓN DE CONTRASEÑA (Compatible con crypt bf de tu SQL)
                 if (password_verify($w_pass, $w_reg['pass_usuario'])) {
 
+                    $stmt_fun_ingreso_sesion->execute([$w_reg['id_usuario']]);
+                    $stmt_fun_ingreso_sesion->fetchColumn();
+
                     // Creamos la sesión
                     $_SESSION['id_usuario']   = $w_reg['id_usuario'];
                     $_SESSION['nom_usuario'] = $w_reg['nom_usuario'];
@@ -56,8 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             $w_error = "ID de usuario o contraseña incorrectos.";
         }
+    } catch (PDOException $e) {
+        $w_error = ErrorHandler::userMessageFromException($e);
     } catch (Exception $e) {
-        $w_error = "Error técnico: " . $e->getMessage();
+        $w_error = ErrorHandler::userMessageFromException($e);
     }
 }
 ?>

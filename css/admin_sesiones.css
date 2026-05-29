@@ -1,0 +1,8 @@
+/* Admin — sesiones activas */
+.admin-sesiones-card .scroll-lista {
+    max-height: min(70vh, 640px);
+}
+
+tr.sesion-propia {
+    background: rgba(107, 142, 35, 0.08);
+}

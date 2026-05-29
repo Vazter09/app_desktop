@@ -85,19 +85,22 @@ try {
     $stmt_del_menu = $pdo->prepare($sql_fun_del_menu);
 
 
-    // --- 5. SECCIÓN DE SESIONES ---
-    $sql_valida_sesion = "SELECT token_sesion FROM tab_sesiones WHERE id_usuario = ?";
-    $stmt_valida_sesion = $pdo->prepare($sql_valida_sesion);
+    // --- 5. SECCIÓN DE SESIONES (tab_sesiones V.1.7+: sin token_sesion) ---
+    $sql_fun_ingreso_sesion = "SELECT fun_ingreso_sesion(?::TEXT)";
+    $stmt_fun_ingreso_sesion = $pdo->prepare($sql_fun_ingreso_sesion);
 
-    $sql_ins_sesion = "INSERT INTO tab_sesiones (id_usuario, token_sesion, fec_inicio, ult_actividad)
-                       VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                       ON CONFLICT (id_usuario) DO UPDATE SET
-                         token_sesion = EXCLUDED.token_sesion,
-                         ult_actividad = CURRENT_TIMESTAMP";
-    $stmt_ins_sesion = $pdo->prepare($sql_ins_sesion);
+    $sql_fun_salida_sesion = "SELECT fun_salida_sesion(?::TEXT)";
+    $stmt_fun_salida_sesion = $pdo->prepare($sql_fun_salida_sesion);
 
-    $sql_del_sesion = "DELETE FROM tab_sesiones WHERE id_usuario = ?";
-    $stmt_del_sesion = $pdo->prepare($sql_del_sesion);
+    $sql_fun_touch_sesion = "SELECT fun_actualizar_sesion_actividad(?::TEXT)";
+    $stmt_fun_touch_sesion = $pdo->prepare($sql_fun_touch_sesion);
+
+    $sql_list_sesiones_activas = "SELECT s.id_usuario, u.nom_usuario, u.mail_usuario, u.ind_usuario,
+                                        s.fec_inicio, s.ult_actividad
+                                 FROM tab_sesiones s
+                                 INNER JOIN tab_usuarios u ON u.id_usuario = s.id_usuario
+                                 ORDER BY s.fec_inicio DESC";
+    $stmt_list_sesiones_activas = $pdo->prepare($sql_list_sesiones_activas);
 
     // --- 6. SECCIÓN CSET - ENTRADAS AL CENTRO (tab_entradas_centro V.1.5: id_centro, id_sede) ---
     $sql_list_entradas = "SELECT id_entrada_centro AS id_entrada, nom_entrada_centro AS nom_entrada
@@ -188,6 +191,14 @@ try {
         "SELECT id_usuario, nom_usuario, ind_usuario FROM tab_usuarios ORDER BY nom_usuario"
     );
     $stmt_list_menus = $pdo->prepare("SELECT id_menu, nom_menu, ind_id_padre, nom_programa FROM tab_menus ORDER BY id_menu ASC");
+
+    if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
+        try {
+            $stmt_fun_touch_sesion->execute([$_SESSION['id_usuario']]);
+        } catch (Throwable $e) {
+            error_log('touch sesion: ' . $e->getMessage());
+        }
+    }
 
 } catch (PDOException $e) {
     die("Error crítico en prepare.php: " . $e->getMessage());
