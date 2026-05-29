@@ -372,7 +372,6 @@ CREATE TABLE IF NOT EXISTS tab_usuarios
 CREATE TABLE IF NOT EXISTS tab_sesiones
 (
     id_usuario      VARCHAR(20)                 NOT NULL PRIMARY KEY,
-    token_sesion    VARCHAR(255)                NOT NULL,
     fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_usuario) REFERENCES tab_usuarios (id_usuario)
