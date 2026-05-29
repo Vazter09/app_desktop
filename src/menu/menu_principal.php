@@ -17,7 +17,7 @@ try {
 
     $menu_final = [];
     foreach ($menu_raw as $item) {
-        if ($item['ind_id_padre'] == '0') {
+        if (smartcsetMenuEsPadreRaiz((string) $item['ind_id_padre'])) {
             $menu_final[$item['id_menu']] = $item;
             $menu_final[$item['id_menu']]['submenus'] = [];
         } else {

@@ -5,14 +5,13 @@
  * Lógica delegada al motor PostgreSQL mediante funciones con casting explícito.
  */
 require_once __DIR__ . '/config.php';
-require_once(__DIR__ . '/AppConfig.php');
+require_once __DIR__ . '/Db.php';
+require_once __DIR__ . '/AppConfig.php';
+require_once __DIR__ . '/ConfigSistemaDefaults.php';
+require_once __DIR__ . '/PrepareAuthSql.php';
 
 try {
-    $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-    ]);
+    $pdo = Db::connect();
 
     AppConfig::boot($pdo);
 
@@ -26,7 +25,8 @@ try {
     )";
     $stmt_fun_upd_config = $pdo->prepare($sql_fun_upd_config);
 
-    $sql_get_config = "SELECT * FROM tab_config_sistema WHERE id_config = 1";
+    // Sin pass_registro_hash ni columnas de auditoría (formularios admin no exponen el hash).
+    $sql_get_config = ConfigSistemaDefaults::sqlSelectConfig(false);
     $stmt_get_config = null;
     try {
         $stmt_get_config = $pdo->prepare($sql_get_config);
@@ -35,17 +35,7 @@ try {
     }
 
     // --- 1. SECCIÓN DE AUTENTICACIÓN Y LOGIN ---
-    $sql_login = "SELECT id_usuario, nom_usuario, pass_usuario, mail_usuario, ind_usuario, ind_estado 
-                  FROM tab_usuarios WHERE id_usuario = CAST(? AS TEXT)";
-    $stmt_login = $pdo->prepare($sql_login);
-
-    // Validar usuario activo por ID (la clave se verifica en PHP con password_verify)
-    $sql_fun_valida_usr = "SELECT id_usuario, nom_usuario FROM tab_usuarios WHERE id_usuario = ?::TEXT AND ind_estado = TRUE";
-    $stmt_fun_valida_usr = $pdo->prepare($sql_fun_valida_usr);
-
-    // Login completo: obtiene hash para que PHP valide con password_verify
-    $sql_fun_valida_login = "SELECT id_usuario, nom_usuario, pass_usuario FROM tab_usuarios WHERE id_usuario = ?::TEXT AND ind_estado = TRUE";
-    $stmt_fun_valida_login = $pdo->prepare($sql_fun_valida_login);
+    $stmt_login = $pdo->prepare(PrepareAuthSql::LOGIN);
 
     // --- 2. SECCIÓN DE MAESTRO DE USUARIOS (ATOMICIDAD) ---
     $sql_fun_ins_user = "SELECT fun_insert_tab_usuarios(?::TEXT, ?::TEXT, ?::TEXT, ?::TEXT, ?::BOOLEAN, ?::BOOLEAN)";
@@ -86,8 +76,7 @@ try {
 
 
     // --- 5. SECCIÓN DE SESIONES (tab_sesiones V.1.7+: sin token_sesion) ---
-    $sql_fun_ingreso_sesion = "SELECT fun_ingreso_sesion(?::TEXT)";
-    $stmt_fun_ingreso_sesion = $pdo->prepare($sql_fun_ingreso_sesion);
+    $stmt_fun_ingreso_sesion = $pdo->prepare(PrepareAuthSql::INGRESO_SESION);
 
     $sql_fun_salida_sesion = "SELECT fun_salida_sesion(?::TEXT)";
     $stmt_fun_salida_sesion = $pdo->prepare($sql_fun_salida_sesion);
@@ -193,11 +182,7 @@ try {
     $stmt_list_menus = $pdo->prepare("SELECT id_menu, nom_menu, ind_id_padre, nom_programa FROM tab_menus ORDER BY id_menu ASC");
 
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
-        try {
-            $stmt_fun_touch_sesion->execute([$_SESSION['id_usuario']]);
-        } catch (Throwable $e) {
-            error_log('touch sesion: ' . $e->getMessage());
-        }
+        Db::touchSesionSiCorresponde($stmt_fun_touch_sesion, (string) $_SESSION['id_usuario']);
     }
 
 } catch (PDOException $e) {

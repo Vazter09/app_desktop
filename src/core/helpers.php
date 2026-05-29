@@ -6,6 +6,18 @@
 /** Mínimo de caracteres para pass_usuario (CHECK en tab_usuarios). */
 const PASSWORD_MIN_LENGTH = 12;
 
+/** ind_id_padre de menús raíz (tab_menus exige LENGTH >= 2). */
+function smartcsetMenuPadreRaiz(): string
+{
+    return '00';
+}
+
+/** true si el menú es de primer nivel (acepta '00' y legacy '0'). */
+function smartcsetMenuEsPadreRaiz(?string $indIdPadre): bool
+{
+    return $indIdPadre === '00' || $indIdPadre === '0';
+}
+
 function getIcon(string $nombre): string
 {
     $mapa = [
@@ -182,7 +194,7 @@ function smartcsetUrlNomPrograma(string $nomPrograma): string
  */
 function smartcsetLogoUrl(string $assetHref = ''): string
 {
-    $path = 'img/logo_empresa.png';
+    $path = 'img/logo-sena.png';
     if (class_exists('AppConfig', false) && AppConfig::hasDbConfig()) {
         $path = AppConfig::pathLogo();
     } elseif (defined('PATH_LOGO') && PATH_LOGO !== '') {

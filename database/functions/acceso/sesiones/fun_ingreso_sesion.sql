@@ -22,8 +22,7 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM tab_sesiones WHERE id_usuario = p_user) THEN
         PERFORM smartcset_raise_negocio(
-            'Ya tiene una sesión activa. Contacte al administrador del sistema.',
-            'id_usuario=' || p_user
+            'Ya tiene una sesión activa en el sistema. Cierre sesión en el otro equipo o contacte al administrador.'
         );
     END IF;
 

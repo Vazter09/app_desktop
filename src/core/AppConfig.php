@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/ConfigSistemaDefaults.php';
+
 /**
  * Configuración global del sistema (tab_config_sistema, id_config = 1).
  */
@@ -9,14 +11,16 @@ class AppConfig
     private static ?array $row = null;
     private static bool $booted = false;
 
-    public static function boot(PDO $pdo): void
+    public static function boot(PDO $pdo, bool $includePassRegistroHash = true): void
     {
         if (self::$booted) {
             return;
         }
 
         try {
-            $stmt = $pdo->query('SELECT * FROM tab_config_sistema WHERE id_config = 1 LIMIT 1');
+            $stmt = $pdo->query(
+                ConfigSistemaDefaults::sqlSelectConfig($includePassRegistroHash) . ' LIMIT 1'
+            );
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             self::$row = $row ?: null;
         } catch (PDOException) {
@@ -52,7 +56,7 @@ class AppConfig
 
     public static function pathLogo(): string
     {
-        return (string) self::get('path_logo', defined('PATH_LOGO') ? PATH_LOGO : 'img/logo_empresa.png');
+        return (string) self::get('path_logo', defined('PATH_LOGO') ? PATH_LOGO : 'img/logo-sena.png');
     }
 
     public static function colorPrimario(): string

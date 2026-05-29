@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_restaurar_seccion
             $passHash = password_hash($nuevaClave, PASSWORD_BCRYPT);
         }
 
-        $pathLogo = trim($_POST['txt_path_logo'] ?? ($config['path_logo'] ?? 'img/logo_empresa.png'));
+        $pathLogo = trim($_POST['txt_path_logo'] ?? ($config['path_logo'] ?? 'img/logo-sena.png'));
         $logoError = (int) ($_FILES['logo_file']['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($logoError !== UPLOAD_ERR_NO_FILE) {
             $pathLogo = LogoUpload::store($_FILES['logo_file']);
@@ -172,7 +172,7 @@ function configuracionBotonRestaurar(string $section, string $tituloCorto): void
 $page_title     = 'Config. sistema';
 $active_menu_id = '0205';
 $wnom_usuario   = $_SESSION['nom_usuario'];
-$logo_path_db   = $c['path_logo'] ?? 'img/logo_empresa.png';
+$logo_path_db   = $c['path_logo'] ?? 'img/logo-sena.png';
 $logo_preview_url = htmlspecialchars(smartcsetLogoUrl('../../'), ENT_QUOTES, 'UTF-8');
 $extra_css = '';
 $v_logo_js = @filemtime(dirname(__DIR__, 2) . '/js/logo-upload.js') ?: time();

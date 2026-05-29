@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputId.readOnly = false;
         inputId.value = '';
         inputNom.value = '';
-        inputPadre.value = '0';
+        inputPadre.value = '00';
         inputPrograma.value = '';
         document.querySelectorAll('#tabla-menus tr.menu-editando').forEach(tr => {
             tr.classList.remove('menu-editando');

@@ -63,9 +63,6 @@ run_sql "$ROOT/database/functions/acceso/usuarios/fun_insert_tab_usuarios.sql"
 run_sql "$ROOT/database/functions/acceso/usuarios/fun_update_tab_usuarios.sql"
 run_sql "$ROOT/database/functions/acceso/usuarios/fun_actualizar_password.sql"
 
-echo "==> Menús y permisos admin.smart"
-run_sql "$ROOT/database/seeds/seed_menus_admin.sql"
-
 if ! command -v php >/dev/null 2>&1; then
   echo "    ERROR: php es necesario para hashear la contraseña de admin.smart." >&2
   exit 1
@@ -73,7 +70,7 @@ fi
 
 hash="$(php -r "echo password_hash('AdminSmart2026!', PASSWORD_BCRYPT);")"
 
-echo "==> Usuario admin.smart"
+echo "==> Usuario admin.smart (antes de permisos de menú)"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 <<SQL
 INSERT INTO tab_usuarios (
     id_usuario, nom_usuario, pass_usuario, mail_usuario,
@@ -92,6 +89,10 @@ INSERT INTO tab_usuarios (
     ind_usuario = TRUE,
     ind_estado = TRUE;
 SQL
+
+echo "==> Menús y permisos admin.smart"
+run_sql "$ROOT/database/migrations/update_menu_padre_raiz_00.sql"
+run_sql "$ROOT/database/seeds/seed_menus_admin.sql"
 
 unset PGPASSWORD
 echo ""

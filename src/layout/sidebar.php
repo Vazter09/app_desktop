@@ -16,7 +16,7 @@ $_menu_raw = obtenerMenusUsuario($pdo, $_SESSION['id_usuario']);
 // Construir jerarquía
 $_menu = [];
 foreach ($_menu_raw as $_item) {
-    if ($_item['ind_id_padre'] == '0') {
+    if (smartcsetMenuEsPadreRaiz((string) $_item['ind_id_padre'])) {
         $_menu[$_item['id_menu']] = $_item;
         $_menu[$_item['id_menu']]['hijos'] = [];
     } else {

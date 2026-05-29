@@ -98,6 +98,7 @@ run_sql "$ROOT/database/migrations/drop_fun_registrar_sesion.sql"
   -c "CREATE SEQUENCE IF NOT EXISTS seq_log_ingresos START WITH 1 INCREMENT BY 1;"
 
 for f in \
+  "$ROOT/database/migrations/update_menu_padre_raiz_00.sql" \
   "$ROOT/database/seeds/seed_config_y_menus.sql" \
   "$ROOT/database/seeds/seed_acceso_dev.sql" \
   "$ROOT/database/seeds/seed_menus_admin.sql" \
@@ -111,7 +112,8 @@ for f in \
   "$ROOT/database/migrations/add_menu_config_y_registro.sql" \
   "$ROOT/database/migrations/update_modulos_rutas_organizadas.sql" \
   "$ROOT/database/migrations/update_menu_registro_listado_admin.sql" \
-  "$ROOT/database/migrations/add_unique_ingreso_persona_dia.sql"
+  "$ROOT/database/migrations/add_unique_ingreso_persona_dia.sql" \
+  "$ROOT/database/migrations/update_logo_sena_default.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

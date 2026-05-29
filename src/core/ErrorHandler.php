@@ -84,8 +84,6 @@ class ErrorHandler {
         $sqlstate = $errorInfo[0] ?? null;
         $nativeMessage = (string) ($errorInfo[2] ?? $e->getMessage());
 
-        self::logError('DATABASE_ERROR', (string) $sqlstate, $nativeMessage . ' | ' . $e->getMessage());
-
         $business = self::extractPostgresBusinessMessage($nativeMessage);
         if ($business === '' || self::looksTechnical($business)) {
             $business = self::extractPostgresBusinessMessage($e->getMessage());
@@ -93,6 +91,8 @@ class ErrorHandler {
         if ($business !== '' && !self::looksTechnical($business)) {
             return $business;
         }
+
+        self::logError('DATABASE_ERROR', (string) $sqlstate, $nativeMessage . ' | ' . $e->getMessage());
 
         if ($sqlstate && isset(self::$sqlErrorMap[$sqlstate])) {
             return self::$sqlErrorMap[$sqlstate];
@@ -110,8 +110,12 @@ class ErrorHandler {
             return '';
         }
 
-        $msg = preg_split('/\b(CONTEXT|CONTEXTO)\b/i', $raw, 2)[0];
+        // Solo el mensaje principal; DETAIL/HINT/CONTEXT son para logs, no para el usuario.
+        $msg = preg_split('/\b(DETAIL|DETALLE|HINT|SUGERENCIA|CONTEXT|CONTEXTO)\s*:/i', $raw, 2)[0];
+        $msg = preg_split('/\b(CONTEXT|CONTEXTO)\b/i', $msg, 2)[0];
+
         $msg = preg_replace('/^SQLSTATE\[[^\]]+\]:\s*/i', '', $msg);
+        $msg = preg_replace('/<<[^>]+>>:\s*\d+\s*/', '', $msg);
         $msg = preg_replace('/^(?:Raise exception|ERROR)(?::\s*\d+)?\s*(?:ERROR:\s*)?/i', '', $msg);
 
         do {
@@ -140,7 +144,8 @@ class ErrorHandler {
         return (bool) preg_match(
             '/sqlstate|(?:^|\s)(?:tab_|seq_)|\b(?:INSERT|UPDATE|DELETE|SELECT)\s+INTO\b|'
             . 'PL\/pgSQL|pg_catalog|syntax error|undefined function|42883|42P01|42P02|'
-            . 'deadlock|connection|fatal:|duplicate key value/i',
+            . 'deadlock|connection|fatal:|duplicate key value|'
+            . '\b(?:DETAIL|DETALLE|HINT|SUGERENCIA)\s*:|id_usuario\s*=|<<[^>]+>>/i',
             $msg
         );
     }

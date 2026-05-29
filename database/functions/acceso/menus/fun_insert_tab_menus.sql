@@ -28,14 +28,14 @@ BEGIN
     END IF;
 
     IF wid_padre IS NULL THEN
-        PERFORM smartcset_raise_validacion('El menú padre es obligatorio (use 0 para raíz).');
+        PERFORM smartcset_raise_validacion('El menú padre es obligatorio (use 00 para raíz).');
     END IF;
 
-    IF wid_padre <> '0' AND NOT EXISTS (SELECT 1 FROM tab_menus WHERE id_menu = wid_padre) THEN
+    IF wid_padre NOT IN ('00', '0') AND NOT EXISTS (SELECT 1 FROM tab_menus WHERE id_menu = wid_padre) THEN
         PERFORM smartcset_raise_validacion(
             format('El menú padre %s no existe.', wid_padre),
             NULL,
-            'Cree primero el menú padre o use 0 como raíz.'
+            'Cree primero el menú padre o use 00 como raíz.'
         );
     END IF;
 

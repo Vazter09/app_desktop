@@ -53,7 +53,7 @@ INSERT INTO tab_config_sistema (
     TRUE,
     FALSE,
     'SmartCSET',
-    'img/logo_empresa.png',
+    'img/logo-sena.png',
     '#2E4731',
     '#6B8E23',
     'usuariocset',

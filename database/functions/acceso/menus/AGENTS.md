@@ -44,7 +44,7 @@
 - `nom_programa = 'no_aplica'` indica menú padre (no tiene página)
 - `nom_programa = 'Exit'` es logout especial
 - Jerárquía máximo 2 niveles (padre → hijo, no más)
-- `id_padre = '0'` indica menú raíz
+- `ind_id_padre = '00'` indica menú raíz (legacy `'0'` se migra con `update_menu_padre_raiz_00.sql`)
 
 ---
 

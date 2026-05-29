@@ -54,7 +54,7 @@ class EnvLoader {
             'DB_PASS' => 'postgres123',
             'COLOR_VERDE_OSCURO' => '#2E4731',
             'COLOR_VERDE_OLIVA' => '#6B8E23',
-            'PATH_LOGO' => '../img/logo_empresa.png',
+            'PATH_LOGO' => 'img/logo-sena.png',
             'SESSION_TIMEOUT' => '1800',
             'APP_ENV' => 'development'
         ];

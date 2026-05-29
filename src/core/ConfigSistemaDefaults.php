@@ -10,6 +10,58 @@ class ConfigSistemaDefaults
     public const SECTION_THEME_DARK  = 'theme_dark';
     public const SECTION_THEME_LIGHT = 'theme_light';
 
+    /**
+     * Columnas de negocio de tab_config_sistema (sin usr_insert/fec_insert/usr_update/fec_update).
+     *
+     * @return list<string>
+     */
+    public static function selectColumnNames(bool $includePassRegistroHash = true): array
+    {
+        $columns = [
+            'id_config',
+            'ind_modulo_registro',
+            'ind_login_registro_standalone',
+            'nom_sistema',
+            'path_logo',
+            'color_primario',
+            'color_secundario',
+            'theme_bg_deep',
+            'theme_bg_card',
+            'theme_bg_panel',
+            'theme_accent',
+            'theme_accent_dim',
+            'theme_blue',
+            'theme_purple',
+            'theme_orange',
+            'theme_text_primary',
+            'theme_text_muted',
+            'theme_border',
+            'theme_error',
+            'theme_success',
+            'theme_font_display',
+            'theme_font_body',
+            'theme_light_bg_deep',
+            'theme_light_bg_card',
+            'theme_light_accent',
+            'theme_light_text_primary',
+            'theme_light_text_muted',
+            'usr_registro',
+        ];
+
+        if ($includePassRegistroHash) {
+            $columns[] = 'pass_registro_hash';
+        }
+
+        return $columns;
+    }
+
+    public static function sqlSelectConfig(bool $includePassRegistroHash = true): string
+    {
+        $columns = implode(', ', self::selectColumnNames($includePassRegistroHash));
+
+        return "SELECT {$columns} FROM tab_config_sistema WHERE id_config = 1";
+    }
+
     /** @return array<string, mixed> */
     public static function values(): array
     {
@@ -17,7 +69,7 @@ class ConfigSistemaDefaults
             'ind_modulo_registro'           => true,
             'ind_login_registro_standalone' => false,
             'nom_sistema'                   => 'SmartCSET',
-            'path_logo'                     => 'img/logo_empresa.png',
+            'path_logo'                     => 'img/logo-sena.png',
             'color_primario'                => '#2E4731',
             'color_secundario'              => '#6B8E23',
             'theme_bg_deep'                 => '#020917',
@@ -132,7 +184,7 @@ class ConfigSistemaDefaults
             $bool($row['ind_modulo_registro'] ?? true),
             $bool($row['ind_login_registro_standalone'] ?? false),
             (string) ($row['nom_sistema'] ?? 'SmartCSET'),
-            (string) ($row['path_logo'] ?? 'img/logo_empresa.png'),
+            (string) ($row['path_logo'] ?? 'img/logo-sena.png'),
             (string) ($row['color_primario'] ?? '#2E4731'),
             (string) ($row['color_secundario'] ?? '#6B8E23'),
             (string) ($row['theme_bg_deep'] ?? '#020917'),

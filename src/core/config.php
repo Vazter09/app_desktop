@@ -18,7 +18,7 @@ define('DB_PASS', EnvLoader::get('DB_PASS', 'postgres123'));
 // Estilos corporativos y rutas (desde .env)
 define('COLOR_VERDE_OSCURO', EnvLoader::get('COLOR_VERDE_OSCURO', '#004d40'));
 define('COLOR_VERDE_OLIVA', EnvLoader::get('COLOR_VERDE_OLIVA', '#808000'));
-define('PATH_LOGO', EnvLoader::get('PATH_LOGO', '../img/logo_empresa.png'));
+define('PATH_LOGO', EnvLoader::get('PATH_LOGO', 'img/logo-sena.png'));
 
 // Configuración de sesión (desde .env)
 define('SESSION_TIMEOUT', (int) EnvLoader::get('SESSION_TIMEOUT', '1800'));

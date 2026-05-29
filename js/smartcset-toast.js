@@ -31,10 +31,18 @@
     }
 
     function normalizeMessage(message) {
-        return String(message || '')
+        let text = String(message || '')
             .replace(/\\n/g, '\n')
             .replace(/^\s*:\s*/, '')
             .trim();
+
+        // Quitar bloques técnicos de PostgreSQL si llegaran al cliente.
+        text = text.split(/\b(?:DETAIL|DETALLE|HINT|SUGERENCIA|CONTEXT|CONTEXTO)\s*:/i)[0];
+        text = text.replace(/^SQLSTATE\[[^\]]+\]:\s*/i, '');
+        text = text.replace(/<<[^>]+>>:\s*\d+\s*/g, '');
+        text = text.replace(/^ERROR:\s*/i, '');
+
+        return text.trim();
     }
 
     /**
@@ -138,5 +146,15 @@
         fromSuccessData
     };
 
-    document.addEventListener('DOMContentLoaded', showFlashFromPage);
+    function bootFlashFromPage() {
+        if (document.getElementById('page-flash-data')) {
+            showFlashFromPage();
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootFlashFromPage);
+    } else {
+        bootFlashFromPage();
+    }
 })(window);

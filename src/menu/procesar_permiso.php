@@ -8,7 +8,7 @@ function obtenerAncestros($pdo, $id_menu, &$ancestros = []) {
     $stmt->execute([$id_menu]);
     $padre = $stmt->fetchColumn();
 
-    if ($padre && (string) $padre !== '0') {
+    if ($padre && !smartcsetMenuEsPadreRaiz((string) $padre)) {
         $ancestros[] = $padre;
         obtenerAncestros($pdo, $padre, $ancestros);
     }

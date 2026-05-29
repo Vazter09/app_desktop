@@ -17,14 +17,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (isset($_POST['btn_guardar'])) {
             $w_id       = trim($_POST['txt_id_menu']);
             $w_nom      = trim($_POST['txt_nom_menu']);
-            $w_padre    = trim($_POST['txt_id_padre'] ?? '0');
+            $w_padre    = trim($_POST['txt_id_padre'] ?? smartcsetMenuPadreRaiz());
             $w_programa = trim($_POST['txt_nom_programa'] ?? '') ?: 'no_aplica';
 
             if ($w_id === '' || $w_nom === '') {
                 throw new Exception('ID y descripción del menú son obligatorios.');
             }
             if ($w_padre === '') {
-                $w_padre = '0';
+                $w_padre = smartcsetMenuPadreRaiz();
             }
 
             $stmt_check = $pdo->prepare("SELECT 1 FROM tab_menus WHERE id_menu = ?::TEXT");
@@ -222,7 +222,7 @@ include __DIR__ . '/../layout/topbar.php';
                             <div class="col-sm-4">
                                 <label class="form-label" for="f_padre">ID padre</label>
                                 <input type="text" name="txt_id_padre" id="f_padre" class="form-control form-control-sm"
-                                       value="0" autocomplete="off" placeholder="0 = raíz">
+                                       value="00" autocomplete="off" placeholder="00 = raíz">
                                 <div class="form-text">Use <strong>0</strong> si es menú principal.</div>
                             </div>
                             <div class="col-sm-8">
