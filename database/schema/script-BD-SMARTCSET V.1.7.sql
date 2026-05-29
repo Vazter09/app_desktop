@@ -89,7 +89,7 @@ DROP TABLE IF EXISTS tab_temp_juicios;
 -- *********************************************************
 CREATE TABLE IF NOT EXISTS tab_temp_juicios
 (
-  fec_reporte       DATE,
+  fecha_reporte     DATE,
   id_ficha          DECIMAL(10,0),
   id_programa       DECIMAL(8,0),
   id_version        DECIMAL(2,0),
@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_juicios
 
 CREATE TABLE IF NOT EXISTS tab_temp_df49
 (
+  fecha_reporte     DATE,
   cod_regional      DECIMAL(2,0),
   nom_regional      VARCHAR,
   cod_centro        DECIMAL(4,0),
@@ -141,6 +142,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df49
 
 CREATE TABLE IF NOT EXISTS tab_temp_pe04
 (
+  fecha_reporte     DATE,
   cod_regional      DECIMAL(2,0),
   nom_regional      VARCHAR,
   cod_centro        DECIMAL(4,0),
@@ -197,6 +199,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_pe04
 
 CREATE TABLE IF NOT EXISTS tab_temp_df14A
 (
+  fecha_reporte     DATE,
   cod_regional      DECIMAL(2,0),
   nom_regional      VARCHAR,
   cod_centro        DECIMAL(4,0),
@@ -238,6 +241,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
 
 CREATE TABLE IF NOT EXISTS tab_temp_df51
 (
+  fecha_reporte             DATE,
   cod_regional              DECIMAL(2,0),
   nom_regional              VARCHAR,
   cod_centro                DECIMAL(4,0),
@@ -259,6 +263,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df51
 
 CREATE TABLE IF NOT EXISTS tab_temp_df53
 (
+  fecha_reporte             DATE,
   cod_regional              DECIMAL(2,0),
   nom_regional              VARCHAR,
   cod_centro                DECIMAL(4,0),
@@ -282,6 +287,20 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
   num_docum_empresa         DECIMAL(10,0),
   nombre_empresa            VARCHAR,
   tipo_ficha                VARCHAR
+ );
+
+ CREATE TABLE IF NOT EXISTS tab_temp_aprendices (
+    id_ficha                VARCHAR,
+    nom_ficha               VARCHAR,
+    ind_estado_ficha        VARCHAR,
+    fecha_reporte           DATE,
+    id_tipodoc              VARCHAR,
+    num_documento           VARCHAR,
+    nom_aprendiz            VARCHAR,
+    ape_aprendiz            VARCHAR,
+    nom_movil               VARCHAR,
+    val_correo              VARCHAR,
+    ind_estado_aprendiz     VARCHAR
  );
 
 

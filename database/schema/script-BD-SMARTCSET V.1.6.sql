@@ -139,6 +139,9 @@ CREATE TABLE IF NOT EXISTS tab_temp_df49
 
 CREATE TABLE IF NOT EXISTS tab_temp_pe04
 (
+  cod_archivo       VARCHAR,
+  nom_archivo       VARCHAR,
+  fec_reporte       VARCHAR,
   cod_regional      DECIMAL(2,0),
   nom_regional      VARCHAR,
   cod_centro        DECIMAL(4,0),
