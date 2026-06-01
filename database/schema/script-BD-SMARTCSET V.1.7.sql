@@ -619,11 +619,11 @@ CREATE TABLE IF NOT EXISTS tab_regionales
 (
     id_regional                 DECIMAL(2)                  NOT NULL,
     nom_regional                VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_regional) >= 10),
-    dir_regional                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_regional) >= 10),
+    dir_regional                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_regional) >= 10) DEFAULT 'Sin dirección',
     id_dpto                     VARCHAR(2)                  NOT NULL,
-    tel_regional                telefono_fijo               NOT NULL,
-    num_extension_tel           extension                   NOT NULL, 
-    nom_director                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_director) >= 3),
+    tel_regional                telefono_fijo               NOT NULL DEFAULT 6010000000,
+    num_extension_tel           extension                   NOT NULL DEFAULT 11111, 
+    nom_director                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_director) >= 3) DEFAULT 'Sin Datos',
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -671,9 +671,9 @@ CREATE TABLE IF NOT EXISTS tab_centros
 (
     id_centro                   DECIMAL(4,0)                NOT NULL,
     nom_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_centro) >= 3),
-    dir_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_centro) >= 10),
-    tel_centro                  telefono_fijo               NOT NULL,
-    num_extension_tel           extension                   NOT NULL,
+    dir_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_centro) >= 10) DEFAULT 'Sin dirección',
+    tel_centro                  telefono_fijo               NOT NULL DEFAULT 6010000000,
+    num_extension_tel           extension                   NOT NULL DEFAULT 11111,
     nom_subdirector             VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_subdirector) >= 3),
     id_regional                 DECIMAL(2,0)                NOT NULL,
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
@@ -1080,7 +1080,7 @@ CREATE TABLE IF NOT EXISTS tab_empresas
 CREATE TABLE IF NOT EXISTS tab_profesiones
 (
     id_profesion                VARCHAR                     NOT NULL,
-    nom_profesion               VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_profesion) >= 4),
+    nom_profesion               VARCHAR(250)                NOT NULL CHECK(LENGTH(nom_profesion) >= 4),
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1251,30 +1251,30 @@ CREATE TABLE IF NOT EXISTS tab_personas
 (-- DATOS DE IDENTIFICACIÓN DE LA PERSONA (A VALIDAR CONTRA REGISTRADURÍA)
     id_persona                  DECIMAL(10,0)               NOT NULL,
     id_tipo_docum               VARCHAR(2)                  NOT NULL DEFAULT 'CC',
-    id_tipo_persona             DECIMAL(2,0)                NOT NULL,
+    id_tipo_persona             DECIMAL(2,0)                NOT NULL DEFAULT 1,
     nom_persona                 VARCHAR(40)                 NOT NULL CHECK(LENGTH(nom_persona) >= 3),
     ape_persona                 VARCHAR(30)                 NOT NULL CHECK(LENGTH(ape_persona) >= 2),
     mail_persona                mail_personal               NOT NULL DEFAULT 'Sin Correo',
     fec_nacimiento              DATE                        NOT NULL DEFAULT '1900-01-01',
-    ind_genero                  DECIMAL(2,0)                NOT NULL,  -- 99=No definido
+    ind_genero                  DECIMAL(2,0)                NOT NULL DEFAULT 99,  -- 99=No definido
  -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
     val_huella_digital          BYTEA,
     val_patron_facial           JSONB,
-    fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     num_visitas                 SMALLINT                    NOT NULL DEFAULT 0,
 -- DATOS DE ESTUDIO
-    id_nivel_estudio            DECIMAL(2,0)                NOT NULL,
-    id_profesion                VARCHAR                     NOT NULL,
+    id_nivel_estudio            DECIMAL(2,0)                NOT NULL DEFAULT 1, -- 1=Sin estudio
+    id_profesion                VARCHAR                     NOT NULL DEFAULT '01',
 -- DATOS GEOGRÁFICOS DE LA PERSONA
-    id_dpto_reside              VARCHAR(2)                  NOT NULL, -- ID departamento de la ciudad
-    id_ciudad_reside            VARCHAR(5)                  NOT NULL, -- ID ciudad de residencia de la persona
-    dir_ciudad_reside           VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_ciudad_reside) >= 10),
-    tel_persona_fijo            telefono_fijo               NOT NULL,
-    tel_persona_movil           telefono_movil              NOT NULL,
-    nom_contacto_emergencias    VARCHAR(60)                 NOT NULL CHECK(LENGTH(nom_contacto_emergencias) >= 5),
-    tel_contacto_emergencias    telefono_movil              NOT NULL,
-    ind_envio_correo            BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Enviarle correos / FALSE=No se le envían correos
+    id_dpto_reside              VARCHAR(2)                  NOT NULL DEFAULT '68', -- ID departamento de la ciudad
+    id_ciudad_reside            VARCHAR(5)                  NOT NULL DEFAULT '68001', -- ID ciudad de residencia de la persona
+    dir_ciudad_reside           VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_ciudad_reside) >= 10) DEFAULT 'Sin Dirección',
+    tel_persona_fijo            telefono_fijo               NOT NULL DEFAULT 6010000000,
+    tel_persona_movil           telefono_movil              NOT NULL DEFAULT 3000000000,
+    nom_contacto_emergencias    VARCHAR(60)                 NOT NULL CHECK(LENGTH(nom_contacto_emergencias) >= 5) DEFAULT 'Sin Contacto',
+    tel_contacto_emergencias    telefono_movil              NOT NULL DEFAULT 3000000000,
+    ind_envio_correo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Enviarle correos / FALSE=No se le envían correos
     ind_estado                  BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Activo / FALSE=Inactivo
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
