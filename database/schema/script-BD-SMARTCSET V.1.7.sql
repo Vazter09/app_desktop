@@ -310,7 +310,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
 
 CREATE DOMAIN mail_personal AS VARCHAR(255) CHECK (VALUE ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$');
 CREATE DOMAIN mail_institucional AS VARCHAR(255) CHECK (VALUE ~* '^[a-z0-9._%-]+@[a-z0-9.-]+\.[a-z]{2,}$');
-CREATE DOMAIN nombre_geografico AS VARCHAR(50) CHECK (LENGTH(VALUE) >= 3 AND VALUE ~ '^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$');
+CREATE DOMAIN nombre_geografico AS VARCHAR(50) CHECK (LENGTH(VALUE) >= 3 AND VALUE ~ '^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ-. ]+$');
 CREATE DOMAIN telefono_fijo AS DECIMAL(10,0) CHECK (VALUE BETWEEN 6010000000 AND 6089999999);
 CREATE DOMAIN telefono_movil AS DECIMAL(10,0) CHECK (VALUE BETWEEN 3000000000 AND 3519999999);
 CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
