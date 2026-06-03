@@ -310,7 +310,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
 
 CREATE DOMAIN mail_personal AS VARCHAR(255) CHECK (VALUE ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$');
 CREATE DOMAIN mail_institucional AS VARCHAR(255) CHECK (VALUE ~* '^[a-z0-9._%-]+@[a-z0-9.-]+\.[a-z]{2,}$');
-CREATE DOMAIN nombre_geografico AS VARCHAR(50) CHECK (LENGTH(VALUE) >= 3 AND VALUE ~ '^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ-. ]+$');
+CREATE DOMAIN nombre_geografico AS VARCHAR(50) CHECK (LENGTH(VALUE) >= 3 AND VALUE ~ '^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ .-]+$');
 CREATE DOMAIN telefono_fijo AS DECIMAL(10,0) CHECK (VALUE BETWEEN 6010000000 AND 6089999999);
 CREATE DOMAIN telefono_movil AS DECIMAL(10,0) CHECK (VALUE BETWEEN 3000000000 AND 3519999999);
 CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
@@ -1002,7 +1002,7 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
 
 CREATE TABLE IF NOT EXISTS tab_tipos_docum
 (
-    id_tipo_docum               VARCHAR(2)                  NOT NULL,
+    id_tipo_docum               VARCHAR(4)                  NOT NULL,
     nom_tipo_docum              VARCHAR(40)                 NOT NULL CHECK(LENGTH(nom_tipo_docum) >= 2),
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -1080,7 +1080,7 @@ CREATE TABLE IF NOT EXISTS tab_empresas
 CREATE TABLE IF NOT EXISTS tab_profesiones
 (
     id_profesion                VARCHAR                     NOT NULL,
-    nom_profesion               VARCHAR(250)                NOT NULL CHECK(LENGTH(nom_profesion) >= 4),
+    nom_profesion               VARCHAR(250)                NOT NULL CHECK(LENGTH(nom_profesion) >= 3),
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1264,8 +1264,8 @@ CREATE TABLE IF NOT EXISTS tab_personas
     fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     num_visitas                 SMALLINT                    NOT NULL DEFAULT 0,
 -- DATOS DE ESTUDIO
-    id_nivel_estudio            DECIMAL(2,0)                NOT NULL DEFAULT 1, -- 1=Sin estudio
-    id_profesion                VARCHAR                     NOT NULL DEFAULT '01',
+    id_nivel_estudio            DECIMAL(2,0)                NOT NULL DEFAULT 99, -- 99=Sin estudio
+    id_profesion                VARCHAR                     NOT NULL DEFAULT '00',
 -- DATOS GEOGRÁFICOS DE LA PERSONA
     id_dpto_reside              VARCHAR(2)                  NOT NULL DEFAULT '68', -- ID departamento de la ciudad
     id_ciudad_reside            VARCHAR(5)                  NOT NULL DEFAULT '68001', -- ID ciudad de residencia de la persona
@@ -1288,6 +1288,15 @@ CREATE TABLE IF NOT EXISTS tab_personas
     FOREIGN KEY(id_dpto_reside)     REFERENCES tab_dptos(id_dpto),
     FOREIGN KEY(id_ciudad_reside)   REFERENCES tab_ciudades(id_ciudad)
 );
+
+CREATE TABLE IF NOT EXISTS log_migracion_aprendices (
+    id_log         SERIAL PRIMARY KEY,
+    fecha          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    num_documento_original TEXT,
+    motivo         TEXT,
+    datos_fila     JSONB
+);
+
 
 -- ESTRUCTURA COMPOSITE PARA DATOS PERSONALES DE UN APRENDIZ
 CREATE TYPE datos_personales_aprendiz AS
@@ -1662,11 +1671,11 @@ CREATE TABLE IF NOT EXISTS tab_programas
     nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
     num_snies               VARCHAR                     NOT NULL,
     num_version             DECIMAL(2,0)                NOT NULL,
-    ind_tipo                VARCHAR    		            NOT NULL, -- 1=Tecnología / 2=Técnica / 3= Epecialización / 4=Complementaria / 5=Curso
+    ind_tipo                VARCHAR    		            NOT NULL, -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
     val_duracion_lect_hrs   DECIMAL(4,0)                NOT NULL,
     val_duracion_prod_hrs   DECIMAL(4,0)                NOT NULL,
     val_duracion_lect_mes   DECIMAL(2,0)                NOT NULL,
-    val_duracion_prod_me    DECIMAL(2,0)                NOT NULL,
+    val_duracion_prod_mes   DECIMAL(2,0)                NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1923,26 +1932,33 @@ CREATE TABLE IF NOT EXISTS tab_evidenciasXrap
 
 -- TABLA DE TAB_JUICIOS_EVAL
 -- __________________________________________________________________________________________________________________________
--- | Columna        | Tipo             | Restricción                            | Descripción                                   |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | id_aprendiz    | DECIMAL(10,0)    | NOT NULL                               |                                               |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | id_rap         | DECIMAL(6,0)     | NOT NULL                               |                                               |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | val_juicio     | VARCHAR          | NOT NULL                               |                                               |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | fec_juicio     | DATE             | NOT NULL                               | Fecha/hora.                                   |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | id_instructor  | DECIMAL(10,0)    | NOT NULL                               | Identificador.                                |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | usr_insert     | VARCHAR          | NOT NULL                               | Usuario que creó/actualizó el registro.       |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | fec_insert     | TIMESTAMP WITHOUT TIME ZONE | NOT NULL                               | Fecha/hora.                                   |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | usr_update     | VARCHAR          |                                        | Usuario que creó/actualizó el registro.       |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | fec_update     | TIMESTAMP WITHOUT TIME ZONE |                                        | Fecha/hora.                                   |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
+-- |   Columna    | Tipo             | Restricción                            | Descripción                                   |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | id_aprendiz  | DECIMAL(10,0)     | PRIMARY KEY                             |                                               |
+-- |              |                   | NOT NULL                                |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | id_rap       | DECIMAL(6,0)      | FOREIGN KEY                             |                                               |
+-- |              |                   | NOT NULL                                |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | val_juicio   | VARCHAR           | NOT NULL                                |                                               |
+-- |              |                   | CHECK(LENGTH(val_juicio) >= 5)          |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | fec_juicio   | DATE              | NOT NULL                                | Fecha/hora.                                   |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | id_instructor| DECIMAL(10,0)     | FOREIGN KEY                             | Identificador.                                |
+-- |              |                   | NOT NULL                                |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | usr_insert   | VARCHAR           | NOT NULL                                | Usuario que creó/actualizó el registro.       |
+-- |              |                   | CHECK(LENGTH(TRIM(usr_insert)) >= 3)    |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | fec_insert   | TIMESTAMP         | NOT NULL                                | Fecha/hora.                                   |
+-- |              | WITHOUT TIME ZONE |                                         |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | usr_update   | VARCHAR           | CHECK(LENGTH(TRIM(usr_update)) >= 3)    | Usuario que creó/actualizó el registro.       |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
+-- | fec_update   | TIMESTAMP         |                                         | Fecha/hora.                                   |
+-- |              | WITHOUT TIME ZONE |                                         |                                              |
+-- +--------------+-------------------+--------------------------------------+---------------------------------------------+
 
 CREATE TABLE IF NOT EXISTS tab_juicios_eval
 (
@@ -2409,14 +2425,14 @@ CREATE TABLE IF NOT EXISTS tab_fichas
     ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche
     ind_modalidad           DECIMAL(1,0)                NOT NULL, -- 1=PRESENCIAL / 2=VIRTUAL / 3= DISTANCIA
     fec_inicio              DATE                        NOT NULL,
-    fec_fin_lectiva         DATE                        NOT NULL,
-    fec_fin_productiva      DATE                        NOT NULL,
+     fec_fin_lectiva         DATE                        NOT NULL DEFAULT (fec_inicio + INTERVAL '6 months'), -- Se asume que la duración lectiva es de 6 meses a partir de la fecha de inicio
+    fec_fin_productiva      DATE                        NOT NULL, --- fecha fin programa
     val_duracion            DECIMAL(2,0)                NOT NULL, -- Valor dado en meses
-    id_instructor_lider     DECIMAL(10,0)               NOT NULL,
+    id_instructor_lider     DECIMAL(10,0)               NOT NULL, -- necesitamos id
     id_sector               DECIMAL(1,0)                NOT NULL DEFAULT 0,
     id_empresa              DECIMAL(10,0)               NOT NULL,
     id_ocupacion            DECIMAL(4,0)                NOT NULL,
-    id_ciudad               VARCHAR                     NOT NULL,
+    id_ciudad               VARCHAR                     NOT NULL, -- tenemos nombre / no coincide con la DIAN
     cod_convenio            DECIMAL(1,0)                NOT NULL DEFAULT 0,
     nom_convenio            VARCHAR                     NOT NULL DEFAULT 'Sin Convenio',
     ind_amp_cobertura       BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Si es ampliación / FALSE=No es ampliación
@@ -2507,8 +2523,8 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
 (
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
-    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado
-    num_llamados            SMALLINT                    NOT NULL,   -- Cantidad de llamados de atención acumulados
+    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado
+    num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
