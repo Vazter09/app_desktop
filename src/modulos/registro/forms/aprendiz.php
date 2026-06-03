@@ -18,106 +18,49 @@ try {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $pdo = $pdo;
+        $postOrNull = static function (string $key): ?string {
+            $v = $_POST[$key] ?? '';
+            $v = is_string($v) ? trim($v) : '';
+            return $v === '' ? null : $v;
+        };
 
-        // 1. Insertar en tab_personas
-        $sqlPersona = "
-            INSERT INTO tab_personas (
-                id_persona, id_tipo_docum, id_tipo_persona,
-                nom_persona, ape_persona, mail_persona,
-                fec_nacimiento, ind_genero,
-                fec_ultima_entrada, fec_ultima_salida,
-                id_nivel_estudio, id_profesion,
-                id_dpto_reside, id_ciudad_reside, dir_ciudad_reside,
-                tel_persona_fijo, tel_persona_movil,
-                nom_contacto_emergencias, tel_contacto_emergencias,
-                ind_envio_correo, ind_estado,
-                usr_insert, fec_insert  
-            ) VALUES (
-                :id_persona, :id_tipo_docum, 1,
-                :nom_persona, :ape_persona, :mail_persona,
-                :fec_nacimiento, :ind_genero,
-                NOW(), NOW(),
-                :id_nivel_estudio, :id_profesion,
-                :id_dpto_reside, :id_ciudad_reside, :dir_ciudad_reside,
-                :tel_persona_fijo, :tel_persona_movil,
-                :nom_contacto_emergencias, :tel_contacto_emergencias,
-                :ind_envio_correo, TRUE,
-                :usr_insert, NOW()
-            )
-        ";
-
-        $stmtP = $pdo->prepare($sqlPersona);
-        $stmtP->execute([
-            ':id_persona'              => $_POST['id_persona'],
-            ':id_tipo_docum'           => $_POST['id_tipo_docum'],
-            ':nom_persona'             => $_POST['nom_persona'],
-            ':ape_persona'             => $_POST['ape_persona'],
-            ':mail_persona'            => $_POST['mail_persona'],
-            ':fec_nacimiento'          => $_POST['fec_nacimiento'],
-            ':ind_genero'              => $_POST['ind_genero'],
-            ':id_nivel_estudio'        => $_POST['id_nivel_estudio'],
-            ':id_profesion'            => $_POST['id_profesion'],
-            ':id_dpto_reside'          => $_POST['id_dpto_reside'],
-            ':id_ciudad_reside'        => $_POST['id_ciudad_reside'],
-            ':dir_ciudad_reside'       => $_POST['dir_ciudad_reside'],
-            ':tel_persona_fijo'        => $_POST['tel_persona_fijo'],
-            ':tel_persona_movil'       => $_POST['tel_persona_movil'],
-            ':nom_contacto_emergencias'=> $_POST['nom_contacto_emergencias'],
-            ':tel_contacto_emergencias'=> $_POST['tel_contacto_emergencias'],
-            ':ind_envio_correo'        => isset($_POST['ind_envio_correo']) ? 'true' : 'false',
-            ':usr_insert'              => registroDisplayUsername(),
+        $stmt_fun_registrar_aprendiz->execute([
+            $_POST['id_persona'],
+            $_POST['id_tipo_docum'],
+            $_POST['nom_persona'],
+            $_POST['ape_persona'],
+            $_POST['mail_persona'],
+            $_POST['fec_nacimiento'],
+            $_POST['ind_genero'],
+            $_POST['id_nivel_estudio'],
+            $_POST['id_profesion'],
+            $_POST['id_dpto_reside'],
+            $_POST['id_ciudad_reside'],
+            $_POST['dir_ciudad_reside'],
+            $_POST['tel_persona_fijo'],
+            $_POST['tel_persona_movil'],
+            $_POST['nom_contacto_emergencias'],
+            $_POST['tel_contacto_emergencias'],
+            isset($_POST['ind_envio_correo']) ? 'true' : 'false',
+            $postOrNull('tel_alterno'),
+            $postOrNull('tel_sede'),
+            $postOrNull('ext_sede'),
+            $postOrNull('tel_padre_fijo'),
+            $postOrNull('tel_padre_movil'),
+            $postOrNull('val_mail_institucional'),
+            $_POST['ind_etdo_formacion'],
+            registroDisplayUsername(),
+            $postOrNull('id_ficha'),
         ]);
 
-        // 2. Insertar en tab_aprendices
-        $sqlAprendiz = "
-            INSERT INTO tab_aprendices (
-                id_aprendiz, datos_aprendiz,
-                ind_etdo_formacion, num_llamados,
-                usr_insert, fec_insert
-            ) VALUES (
-                :id_aprendiz,
-                ROW(:tel_alterno, :tel_sede, :ext_sede,
-                    :tel_padre_fijo, :tel_padre_movil,
-                    :val_mail_institucional,
-                    :nom_contacto_e, :tel_contacto_e)::datos_personales_aprendiz,
-                :ind_etdo_formacion, 0,
-                :usr_insert, NOW()
-            )
-        ";
-
-        $stmtA = $pdo->prepare($sqlAprendiz);
-        $stmtA->execute([
-            ':id_aprendiz'           => $_POST['id_persona'],
-            ':tel_alterno'           => $_POST['tel_alterno']           ?: null,
-            ':tel_sede'              => $_POST['tel_sede']              ?: null,
-            ':ext_sede'              => $_POST['ext_sede']              ?: null,
-            ':tel_padre_fijo'        => $_POST['tel_padre_fijo']        ?: null,
-            ':tel_padre_movil'       => $_POST['tel_padre_movil']       ?: null,
-            ':val_mail_institucional'=> $_POST['val_mail_institucional']?: null,
-            ':nom_contacto_e'        => $_POST['nom_contacto_emergencias'],
-            ':tel_contacto_e'        => $_POST['tel_contacto_emergencias'],
-            ':ind_etdo_formacion'    => $_POST['ind_etdo_formacion'],
-            ':usr_insert'            => registroDisplayUsername(),
-        ]);
-
-        // 3. Si se eligió una ficha, vincular
-        if (!empty($_POST['id_ficha'])) {
-            $sqlFicha = "
-                INSERT INTO tab_aprendices_fichas (id_ficha, id_aprendiz, usr_insert, fec_insert)
-                VALUES (:id_ficha, :id_aprendiz, :usr_insert, NOW())
-            ";
-            $stmtF = $pdo->prepare($sqlFicha);
-            $stmtF->execute([
-                ':id_ficha'    => $_POST['id_ficha'],
-                ':id_aprendiz' => $_POST['id_persona'],
-                ':usr_insert'  => registroDisplayUsername(),
-            ]);
+        $idRegistrado = $stmt_fun_registrar_aprendiz->fetchColumn();
+        if ($idRegistrado === false || trim((string) $idRegistrado) === '') {
+            throw new RuntimeException('No se pudo registrar el aprendiz.');
         }
 
         $success = true;
-    } catch (PDOException $e) {
-        $error = 'Error al guardar el aprendiz: ' . $e->getMessage();
+    } catch (Throwable $e) {
+        $error = ErrorHandler::userMessageFromException($e);
     }
 }
 ?>
@@ -182,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="2">Masculino</option>
                             <option value="3">No Binario</option>
                             <option value="4">Trans</option>
+                            <option value="99">No Definido</option>
                         </select>
                     </div>
                     <div class="field-group">
@@ -241,6 +185,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="id_ciudad_reside">Ciudad <span class="required">*</span></label>
                         <select id="id_ciudad_reside" name="id_ciudad_reside" required>
                             <option value="">— Seleccione departamento —</option>
+                            <?php foreach ($ciudades as $c): ?>
+                            <option value="<?= htmlspecialchars($c['id_ciudad']) ?>">
+                                <?= htmlspecialchars($c['nom_ciudad']) ?>
+                            </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="field-group span-2">

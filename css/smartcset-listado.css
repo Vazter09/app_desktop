@@ -18,6 +18,13 @@
 .smart-listado-paginacion .page-item.active .page-link {
     background-color: var(--v-oscuro, #004d40);
     border-color: var(--v-oscuro, #004d40);
+    color: #fff;
+}
+
+/* Sin scroll interno: solo desplazamiento de la página principal */
+.smart-listado .scroll-lista {
+    max-height: none;
+    overflow-y: visible;
 }
 
 #personas-listado-host.is-loading,

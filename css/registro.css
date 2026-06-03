@@ -15,44 +15,59 @@
     --surface:       rgba(15,23,42,0.08);
     --surface-soft:  rgba(15,23,42,0.04);
     --surface-hover: rgba(15,23,42,0.12);
-    --cyan-glow:     0 0 15px rgba(11,116,199,0.18);
-    --teal:          #0e8c6c;
-    --blue:          #2366ff;
-    --purple:        #6e5bff;
+    --cyan-glow:     0 0 15px color-mix(in srgb, var(--cyan) 22%, transparent);
+    --cyan-dim:      color-mix(in srgb, var(--cyan) 12%, transparent);
+    --teal:          var(--cyan);
+    --blue:          var(--v-oscuro, #2366ff);
+    --purple:        var(--purple-accent, #6e5bff);
     --orange:        #d97706;
     --error:         #c026d3;
-    --success:       #0e8c6c;
+    --success:       var(--cyan);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { font-size: 22px; scroll-behavior: smooth; }
 
-body {
+body.registro-theme {
     font-family: 'Rajdhani', sans-serif;
-    background-color: #f1f5fa;
-    color: #1c2d40;
+    background: var(--content-bg, var(--bg-deep));
+    color: var(--text-main, var(--text-primary));
     min-height: 100vh;
     overflow-x: hidden;
-    background-image:
-        linear-gradient(rgba(28,45,64,0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(28,45,64,0.08) 1px, transparent 1px);
     background-size: 50px 50px;
     position: relative;
 }
 
-body::before {
+body.registro-theme:not(.light-theme) {
+    background-image:
+        linear-gradient(var(--grid-line, color-mix(in srgb, var(--v-oliva) 8%, transparent)) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line, color-mix(in srgb, var(--v-oliva) 8%, transparent)) 1px, transparent 1px);
+}
+
+body.registro-theme.light-theme {
+    background-image:
+        linear-gradient(rgba(17, 38, 60, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 38, 60, 0.06) 1px, transparent 1px);
+}
+
+body.registro-theme::before {
     content: '';
     position: fixed;
     top: -50%;
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(ellipse at 30% 20%, rgba(61,163,255,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(143,140,255,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(74,158,255,0.04) 0%, transparent 60%);
+    background:
+        radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--cyan) 10%, transparent) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, color-mix(in srgb, var(--purple, var(--v-oliva)) 8%, transparent) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--blue, var(--cyan)) 5%, transparent) 0%, transparent 60%);
     pointer-events: none;
     z-index: 0;
+}
+
+body.registro-theme.light-theme::before {
+    opacity: 0.55;
 }
 
 /* ─── SCROLLBAR ─── */
@@ -68,9 +83,9 @@ h1, h2, h3 { font-family: 'Orbitron', monospace; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: linear-gradient(90deg, rgba(10,20,32,0.95), rgba(15,30,46,0.9));
+    background: var(--topbar-bg, linear-gradient(90deg, rgba(10,20,32,0.95), rgba(15,30,46,0.9)));
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(125,177,255,0.28);
+    border-bottom: 1px solid var(--surface-border, var(--border));
     padding: 0 2rem;
     display: flex;
     align-items: center;
@@ -92,11 +107,11 @@ h1, h2, h3 { font-family: 'Orbitron', monospace; }
 }
 
 .sys-logo span {
-    color: var(--text-primary);
+    color: var(--text-muted);
     font-weight: 400;
     font-size: 0.75rem;
     letter-spacing: 0.15em;
-    opacity: 0.7;
+    opacity: 0.92;
 }
 
 .sys-nav { display: flex; align-items: center; gap: 1rem; }
@@ -228,8 +243,8 @@ h1, h2, h3 { font-family: 'Orbitron', monospace; }
 
 .person-card {
     position: relative;
-    background: rgba(255,255,255,0.94);
-    border: 1px solid rgba(125,177,255,0.22);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     padding: 2rem 1.8rem;
     text-decoration: none;
     color: inherit;
@@ -262,7 +277,15 @@ h1, h2, h3 { font-family: 'Orbitron', monospace; }
 .person-card:hover {
     border-color: var(--card-accent, var(--cyan));
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 30px rgba(0,245,255,0.1);
+    box-shadow:
+        0 12px 40px color-mix(in srgb, var(--bg-deep) 45%, transparent),
+        0 0 30px color-mix(in srgb, var(--card-accent, var(--cyan)) 16%, transparent);
+}
+
+body.registro-theme.light-theme .person-card:hover {
+    box-shadow:
+        0 12px 32px rgba(16, 40, 68, 0.1),
+        0 0 24px color-mix(in srgb, var(--card-accent, var(--cyan)) 14%, transparent);
 }
 
 .person-card:hover::before { opacity: 1; }
@@ -288,14 +311,14 @@ h1, h2, h3 { font-family: 'Orbitron', monospace; }
     font-family: 'Orbitron', monospace;
     font-size: 1.25rem;
     font-weight: 800;
-    color: #172638;
+    color: var(--text-primary);
     margin-bottom: 0.7rem;
     line-height: 1.2;
 }
 
 .card-desc {
     font-size: 0.9rem;
-    color: rgba(28,45,64,0.74);
+    color: var(--text-muted);
     line-height: 1.5;
 }
 
@@ -321,8 +344,8 @@ h1, h2, h3 { font-family: 'Orbitron', monospace; }
 }
 
 .form-panel {
-    background: rgba(255,255,255,0.95);
-    border: 1px solid rgba(125,177,255,0.26);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     padding: 2.5rem;
     position: relative;
     clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px));
@@ -382,7 +405,7 @@ label {
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.72rem;
     letter-spacing: 0.15em;
-    color: rgba(28,45,64,0.75);
+    color: var(--text-muted);
     text-transform: uppercase;
 }
 
@@ -396,9 +419,9 @@ input[type="password"],
 select,
 textarea {
     width: 100%;
-    background: rgba(244,248,253,0.95);
-    border: 1px solid rgba(125,177,255,0.32);
-    color: #152436;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
     font-family: 'Rajdhani', sans-serif;
     font-size: 1rem;
     font-weight: 500;
@@ -426,7 +449,7 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 0 0 1px var(--panel-accent, var(--cyan)), 0 0 20px rgba(0,245,255,0.1);
 }
 
-input::placeholder, textarea::placeholder { color: rgba(28,45,64,0.45); font-size: 0.9rem; }
+input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 0.65; font-size: 0.9rem; }
 
 textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 2px; }
 
@@ -531,9 +554,9 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     font-family: 'Orbitron', monospace;
     font-size: 1.95rem;
     font-weight: 900;
-    color: #2e8ae6;
+    color: var(--cyan);
     letter-spacing: 0.35em;
-    text-shadow: none;
+    text-shadow: var(--cyan-glow);
     display: block;
     margin-bottom: 0.28rem;
     text-transform: uppercase;
@@ -553,18 +576,18 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
 .login-divider {
     width: 58px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #49a3ff, transparent);
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
     margin: 0.62rem auto;
     box-shadow: none;
 }
 
 .login-panel {
-    background: rgba(255, 255, 255, 0.97);
-    border: 1px solid rgba(108, 152, 205, 0.22);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     padding: 1.7rem 1.85rem 1.7rem;
     position: relative;
     clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
-    box-shadow: 0 16px 36px rgba(13, 33, 56, 0.14);
+    box-shadow: 0 16px 36px color-mix(in srgb, var(--bg-deep) 18%, transparent);
 }
 
 .login-panel::before {
@@ -572,8 +595,8 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #49a3ff 0%, #326dff 100%);
-    box-shadow: none;
+    background: linear-gradient(90deg, var(--cyan) 0%, color-mix(in srgb, var(--cyan) 55%, var(--blue, var(--cyan))) 100%);
+    box-shadow: var(--cyan-glow);
 }
 
 .login-panel::after {
@@ -608,7 +631,7 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.23em;
-    color: #2e719c;
+    color: var(--text-primary);
     text-transform: uppercase;
     line-height: 1.3;
     margin-bottom: 1.25rem;
@@ -636,26 +659,27 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     margin-bottom: 0.4rem;
     font-size: 0.64rem;
     letter-spacing: 0.2em;
-    color: rgba(33, 63, 95, 0.78);
+    color: var(--text-muted);
 }
 
 .login-field input {
     clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-    background: #edf1f7;
-    border-color: #d4ddeb;
-    color: #1f3348;
+    background: var(--surface-soft);
+    border-color: var(--border);
+    color: var(--text-primary);
     min-height: 46px;
     font-size: 0.95rem;
 }
 
 .login-field input::placeholder {
-    color: rgba(70, 96, 124, 0.45);
+    color: var(--text-muted);
+    opacity: 0.65;
 }
 
 .login-field input:focus {
-    border-color: #78adf0;
-    background: #f4f8ff;
-    box-shadow: 0 0 0 1px rgba(73, 163, 255, 0.28);
+    border-color: var(--cyan);
+    background: var(--surface);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cyan) 35%, transparent);
 }
 
 .login-btn {
@@ -666,8 +690,8 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     font-weight: 700;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #ffffff;
-    background: linear-gradient(90deg, #1f7ee5 0%, #326dff 100%);
+    color: var(--bg-deep);
+    background: linear-gradient(90deg, var(--cyan) 0%, color-mix(in srgb, var(--cyan) 70%, var(--blue, var(--cyan))) 100%);
     border: none;
     padding: 0.95rem 1rem;
     cursor: pointer;
@@ -761,10 +785,10 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
     z-index: 200;
     width: 30px;
     height: 30px;
-    border: 1px solid rgba(28,45,64,0.12);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    background: rgba(28,45,64,0.06);
-    color: #1f3348;
+    background: var(--surface);
+    color: var(--text-primary);
     font-size: 0.9rem;
     display: inline-flex;
     align-items: center;
@@ -774,7 +798,7 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
 }
 
 .login-theme-toggle:hover {
-    background: rgba(28,45,64,0.12);
+    background: var(--surface-hover);
     transform: translateY(-1px);
 }
 
@@ -890,7 +914,7 @@ textarea { resize: vertical; min-height: 100px; clip-path: none; border-radius: 
 .data-table-wrap {
     overflow: auto;
     border: 1px solid var(--border);
-    background: rgba(255,255,255,0.02);
+    background: var(--surface-soft);
 }
 
 table.data-table {
@@ -908,17 +932,18 @@ table.data-table {
     padding: 0.85rem 0.9rem;
     color: var(--text-muted);
     border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-soft);
 }
 
 .data-table tbody td {
     padding: 0.85rem 0.9rem;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid var(--border);
     font-size: 0.95rem;
+    color: var(--text-primary);
 }
 
 .data-table tbody tr:hover {
-    background: rgba(255,255,255,0.04);
+    background: var(--surface-hover);
 }
 
 .mono { font-family: 'Share Tech Mono', monospace; font-size: 0.82rem; letter-spacing: 0.02em; }
@@ -1047,7 +1072,7 @@ table.data-table {
 }
 
 .breadcrumb a { color: var(--cyan); text-decoration: none; transition: var(--transition); }
-.breadcrumb a:hover { color: #fff; }
+.breadcrumb a:hover { color: var(--text-primary); }
 .breadcrumb .sep { opacity: 0.3; }
 .breadcrumb .current { color: var(--text-primary); }
 
@@ -1062,19 +1087,22 @@ table.data-table {
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 2px;
     background: linear-gradient(
         90deg,
         transparent 0%,
-        color-mix(in srgb, var(--v-oliva, #6b8e23) 75%, transparent) 50%,
+        color-mix(in srgb, var(--cyan) 55%, transparent) 50%,
         transparent 100%
     );
-    box-shadow:
-        0 0 10px color-mix(in srgb, var(--cyan, var(--v-oliva, #6b8e23)) 50%, transparent),
-        0 0 24px color-mix(in srgb, var(--v-oliva, #6b8e23) 30%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cyan) 35%, transparent);
     animation: scanline 6s linear infinite;
     pointer-events: none;
     z-index: 9999;
+    opacity: 0.65;
+}
+
+body.registro-theme.light-theme .scanline {
+    opacity: 0.22;
 }
 
 @media (prefers-reduced-motion: reduce) {

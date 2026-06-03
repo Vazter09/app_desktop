@@ -17,59 +17,31 @@ try {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $pdo = $pdo;
-
-        // Contratista: tipo_persona = 4
-        $sql = "
-            INSERT INTO tab_personas (
-                id_persona, id_tipo_docum, id_tipo_persona,
-                nom_persona, ape_persona, mail_persona,
-                fec_nacimiento, ind_genero,
-                fec_ultima_entrada, fec_ultima_salida,
-                id_nivel_estudio, id_profesion,
-                id_dpto_reside, id_ciudad_reside, dir_ciudad_reside,
-                tel_persona_fijo, tel_persona_movil,
-                nom_contacto_emergencias, tel_contacto_emergencias,
-                ind_envio_correo, ind_estado,
-                usr_insert, fec_insert
-            ) VALUES (
-                :id_persona, :id_tipo_docum, 4,
-                :nom_persona, :ape_persona, :mail_persona,
-                :fec_nacimiento, :ind_genero,
-                NOW(), NOW(),
-                :id_nivel_estudio, :id_profesion,
-                :id_dpto_reside, :id_ciudad_reside, :dir_ciudad_reside,
-                :tel_persona_fijo, :tel_persona_movil,
-                :nom_contacto_emergencias, :tel_contacto_emergencias,
-                :ind_envio_correo, TRUE,
-                :usr_insert, NOW()
-            )
-        ";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':id_persona'              => $_POST['id_persona'],
-            ':id_tipo_docum'           => $_POST['id_tipo_docum'],
-            ':nom_persona'             => $_POST['nom_persona'],
-            ':ape_persona'             => $_POST['ape_persona'],
-            ':mail_persona'            => $_POST['mail_persona'],
-            ':fec_nacimiento'          => $_POST['fec_nacimiento'],
-            ':ind_genero'              => $_POST['ind_genero'],
-            ':id_nivel_estudio'        => $_POST['id_nivel_estudio'],
-            ':id_profesion'            => $_POST['id_profesion'],
-            ':id_dpto_reside'          => $_POST['id_dpto_reside'],
-            ':id_ciudad_reside'        => $_POST['id_ciudad_reside'],
-            ':dir_ciudad_reside'       => $_POST['dir_ciudad_reside'],
-            ':tel_persona_fijo'        => $_POST['tel_persona_fijo'],
-            ':tel_persona_movil'       => $_POST['tel_persona_movil'],
-            ':nom_contacto_emergencias'=> $_POST['nom_contacto_emergencias'],
-            ':tel_contacto_emergencias'=> $_POST['tel_contacto_emergencias'],
-            ':ind_envio_correo'        => isset($_POST['ind_envio_correo']) ? 'true' : 'false',
-            ':usr_insert'              => registroDisplayUsername(),
+        $stmt_fun_registrar_contratista->execute([
+            $_POST['id_persona'],
+            $_POST['id_tipo_docum'],
+            $_POST['nom_persona'],
+            $_POST['ape_persona'],
+            $_POST['mail_persona'],
+            $_POST['fec_nacimiento'],
+            $_POST['ind_genero'],
+            $_POST['id_nivel_estudio'],
+            $_POST['id_profesion'],
+            $_POST['id_dpto_reside'],
+            $_POST['id_ciudad_reside'],
+            $_POST['dir_ciudad_reside'],
+            $_POST['tel_persona_fijo'],
+            $_POST['tel_persona_movil'],
+            $_POST['nom_contacto_emergencias'],
+            $_POST['tel_contacto_emergencias'],
+            isset($_POST['ind_envio_correo']) ? 'true' : 'false',
+            registroDisplayUsername(),
         ]);
+        $stmt_fun_registrar_contratista->fetchColumn();
 
         $success = true;
-    } catch (PDOException $e) {
-        $error = 'Error al guardar el contratista: ' . $e->getMessage();
+    } catch (Throwable $e) {
+        $error = ErrorHandler::userMessageFromException($e);
     }
 }
 ?>
@@ -82,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-container">
-            <p class="section-title" em style="color:#ff7b2e;text-shadow:0 0 20px rgba(255,123,46,0.5)">Módulo 04</p>
+            <p class="section-title" style="color:#ff7b2e;text-shadow:0 0 20px rgba(255,123,46,0.5)">Módulo 04</p>
             <h1 class="section-heading" style="margin-bottom:0.3rem">
                 Registro de <em style="color:#ff7b2e;text-shadow:0 0 20px rgba(255,123,46,0.5)">Contratista</em>
             </h1>
@@ -187,16 +159,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <div class="form-section-title">Datos del Contrato y Perfil</div>
+                <div class="form-section-title">Perfil y referencia de contrato</div>
+                <p class="field-hint" style="margin:0 0 1rem;max-width:52rem">
+                    Por ahora solo se guardan los datos personales del contratista (tipo Contratista).
+                    Centro, número de contrato y vigencias se registrarán cuando exista el módulo de contratos en base de datos.
+                </p>
                 <div class="form-grid">
                     <div class="field-group">
-                        <label>Centro de Adscripción <span class="required">*</span></label>
-                        <select name="id_centro" required>
+                        <label>Centro de Adscripción</label>
+                        <select name="id_centro">
                             <option value="">— Seleccione —</option>
                             <?php foreach ($centros as $c): ?>
                             <option value="<?= htmlspecialchars($c['id_centro']) ?>"><?= htmlspecialchars($c['nom_centro']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <span class="field-hint">Referencia; no se almacena en este registro</span>
                     </div>
                     <div class="field-group">
                         <label>Nivel de Estudio <span class="required">*</span></label>
@@ -218,20 +195,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="field-group">
                         <label>Número de Contrato</label>
-                        <input type="text" name="num_contrato" placeholder="Ej: 001-2025">
-                        <span class="field-hint">Se gestiona en la tabla de contratos</span>
+                        <input type="text" name="num_contrato" placeholder="Ej: 001-2025" autocomplete="off">
+                        <span class="field-hint">Solo referencia; no se guarda aún</span>
                     </div>
                     <div class="field-group">
                         <label>Fecha Inicio Contrato</label>
-                        <input type="date" name="fec_inicio_contrato">
+                        <input type="date" name="fec_inicio_contrato" autocomplete="off">
+                        <span class="field-hint">Solo referencia; no se guarda aún</span>
                     </div>
                     <div class="field-group">
                         <label>Fecha Fin Contrato</label>
-                        <input type="date" name="fec_fin_contrato">
+                        <input type="date" name="fec_fin_contrato" autocomplete="off">
+                        <span class="field-hint">Solo referencia; no se guarda aún</span>
                     </div>
                     <div class="field-group span-2">
                         <label>Objeto del Contrato</label>
-                        <textarea name="objeto_contrato" placeholder="Descripción del objeto contractual..."></textarea>
+                        <textarea name="objeto_contrato" placeholder="Descripción del objeto contractual..." autocomplete="off"></textarea>
+                        <span class="field-hint">Solo referencia; no se guarda aún</span>
                     </div>
                 </div>
 

@@ -182,6 +182,55 @@ try {
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
+    // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
+    $sql_fun_registrar_persona = "SELECT fun_registrar_persona(
+        ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
+        ?::VARCHAR, ?::DATE, ?::NUMERIC,
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN, ?::BOOLEAN, ?::VARCHAR
+    )";
+    $stmt_fun_registrar_persona = $pdo->prepare($sql_fun_registrar_persona);
+
+    $sql_fun_registrar_contratista = "SELECT fun_registrar_contratista(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::DATE, ?::NUMERIC,
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::BOOLEAN, ?::VARCHAR
+    )";
+    $stmt_fun_registrar_contratista = $pdo->prepare($sql_fun_registrar_contratista);
+
+    $sql_fun_registrar_aprendiz = "SELECT fun_registrar_aprendiz(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::DATE, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN,
+        ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC,
+        ?::VARCHAR, ?::NUMERIC, ?::TEXT, ?::NUMERIC
+    )";
+    $stmt_fun_registrar_aprendiz = $pdo->prepare($sql_fun_registrar_aprendiz);
+
+    $sql_fun_registrar_instructor = "SELECT fun_registrar_instructor(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::DATE,
+        ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN, ?::NUMERIC, ?::NUMERIC,
+        ?::BOOLEAN, ?::BOOLEAN, ?::BOOLEAN, ?::NUMERIC, ?::TEXT
+    )";
+    $stmt_fun_registrar_instructor = $pdo->prepare($sql_fun_registrar_instructor);
+
+    $sql_fun_registrar_funcionario = "SELECT fun_registrar_funcionario(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::DATE, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::DATE,
+        ?::NUMERIC, ?::VARCHAR
+    )";
+    $stmt_fun_registrar_funcionario = $pdo->prepare($sql_fun_registrar_funcionario);
+
     // --- 7. SECCIÓN PERFILES (tab_menu_usuarios V.1.3) ---
 // V.1.3: La función ahora solo necesita 2 parámetros (sin nom_programa)
     $sql_ins_perfil = "SELECT fun_insert_menu_usuarios(?::VARCHAR, ?::VARCHAR)";

@@ -1,24 +1,54 @@
-(function() {
+(function () {
     const toggle = document.getElementById('theme-toggle');
     const body = document.body;
-    const storageKey = 'cset-theme-mode';
+    const storageKey = 'smartcset_theme';
+    const legacyKey = 'cset-theme-mode';
+    const lightTheme = 'light';
+    const darkTheme = 'dark';
 
     if (!toggle || !body) {
         return;
     }
 
-    const setTheme = theme => {
-        body.classList.toggle('light-theme', theme === 'light');
-        toggle.textContent = theme === 'light' ? '✹' : '☾';
-        toggle.title = theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
-        localStorage.setItem(storageKey, theme);
-    };
+    function getStoredTheme() {
+        try {
+            const current = localStorage.getItem(storageKey);
+            if (current === lightTheme || current === darkTheme) {
+                return current;
+            }
+            const legacy = localStorage.getItem(legacyKey);
+            if (legacy === lightTheme || legacy === darkTheme) {
+                localStorage.setItem(storageKey, legacy);
+                localStorage.removeItem(legacyKey);
+                return legacy;
+            }
+        } catch (err) {
+            /* noop: almacenamiento no disponible */
+        }
+        return null;
+    }
 
-    const savedTheme = localStorage.getItem(storageKey);
-    const defaultTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-    setTheme(defaultTheme);
+    function setStoredTheme(value) {
+        try {
+            localStorage.setItem(storageKey, value);
+        } catch (err) {
+            /* noop */
+        }
+    }
 
-    toggle.addEventListener('click', () => {
-        setTheme(body.classList.contains('light-theme') ? 'dark' : 'light');
+    function applyTheme(theme) {
+        const isLight = theme === lightTheme;
+        body.classList.toggle('light-theme', isLight);
+        toggle.textContent = isLight ? '✹' : '☾';
+        toggle.title = isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+        toggle.setAttribute('aria-label', toggle.title);
+    }
+
+    applyTheme(getStoredTheme() === lightTheme ? lightTheme : darkTheme);
+
+    toggle.addEventListener('click', function () {
+        const nextTheme = body.classList.contains('light-theme') ? darkTheme : lightTheme;
+        applyTheme(nextTheme);
+        setStoredTheme(nextTheme);
     });
 })();

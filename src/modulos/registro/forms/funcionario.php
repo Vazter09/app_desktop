@@ -10,66 +10,53 @@ try {
     $profesiones = registroGetProfesiones($pdo);
     $dptos       = registroGetDepartamentos($pdo);
     $centros     = registroGetCentros($pdo);
+    $areas       = registroGetAreas($pdo);
+    $cargos      = registroGetCargos($pdo);
 } catch (Exception $e) {
     $error = 'Error al cargar catálogos: ' . $e->getMessage();
-    $tiposDoc = $nivelesEst = $profesiones = $dptos = $centros = [];
+    $tiposDoc = $nivelesEst = $profesiones = $dptos = $centros = $areas = $cargos = [];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $pdo = $pdo;
+        $idCentro = isset($_POST['id_centro']) && $_POST['id_centro'] !== ''
+            ? $_POST['id_centro']
+            : null;
 
-        // Funcionario: tipo_persona = 3
-        $sql = "
-            INSERT INTO tab_personas (
-                id_persona, id_tipo_docum, id_tipo_persona,
-                nom_persona, ape_persona, mail_persona,
-                fec_nacimiento, ind_genero,
-                fec_ultima_entrada, fec_ultima_salida,
-                id_nivel_estudio, id_profesion,
-                id_dpto_reside, id_ciudad_reside, dir_ciudad_reside,
-                tel_persona_fijo, tel_persona_movil,
-                nom_contacto_emergencias, tel_contacto_emergencias,
-                ind_envio_correo, ind_estado,
-                usr_insert, fec_insert
-            ) VALUES (
-                :id_persona, :id_tipo_docum, 3,
-                :nom_persona, :ape_persona, :mail_persona,
-                :fec_nacimiento, :ind_genero,
-                NOW(), NOW(),
-                :id_nivel_estudio, :id_profesion,
-                :id_dpto_reside, :id_ciudad_reside, :dir_ciudad_reside,
-                :tel_persona_fijo, :tel_persona_movil,
-                :nom_contacto_emergencias, :tel_contacto_emergencias,
-                :ind_envio_correo, TRUE,
-                :usr_insert, NOW()
-            )
-        ";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':id_persona'              => $_POST['id_persona'],
-            ':id_tipo_docum'           => $_POST['id_tipo_docum'],
-            ':nom_persona'             => $_POST['nom_persona'],
-            ':ape_persona'             => $_POST['ape_persona'],
-            ':mail_persona'            => $_POST['mail_persona'],
-            ':fec_nacimiento'          => $_POST['fec_nacimiento'],
-            ':ind_genero'              => $_POST['ind_genero'],
-            ':id_nivel_estudio'        => $_POST['id_nivel_estudio'],
-            ':id_profesion'            => $_POST['id_profesion'],
-            ':id_dpto_reside'          => $_POST['id_dpto_reside'],
-            ':id_ciudad_reside'        => $_POST['id_ciudad_reside'],
-            ':dir_ciudad_reside'       => $_POST['dir_ciudad_reside'],
-            ':tel_persona_fijo'        => $_POST['tel_persona_fijo'],
-            ':tel_persona_movil'       => $_POST['tel_persona_movil'],
-            ':nom_contacto_emergencias'=> $_POST['nom_contacto_emergencias'],
-            ':tel_contacto_emergencias'=> $_POST['tel_contacto_emergencias'],
-            ':ind_envio_correo'        => isset($_POST['ind_envio_correo']) ? 'true' : 'false',
-            ':usr_insert'              => registroDisplayUsername(),
+        $stmt_fun_registrar_funcionario->execute([
+            $_POST['id_persona'] ?? null,
+            $_POST['id_tipo_docum'] ?? null,
+            $_POST['nom_persona'] ?? null,
+            $_POST['ape_persona'] ?? null,
+            $_POST['mail_persona'] ?? null,
+            $_POST['fec_nacimiento'] ?? null,
+            $_POST['ind_genero'] ?? null,
+            $_POST['id_nivel_estudio'] ?? null,
+            $_POST['id_profesion'] ?? null,
+            $_POST['id_dpto_reside'] ?? null,
+            $_POST['id_ciudad_reside'] ?? null,
+            $_POST['dir_ciudad_reside'] ?? null,
+            $_POST['tel_persona_fijo'] ?? null,
+            $_POST['tel_persona_movil'] ?? null,
+            $_POST['nom_contacto_emergencias'] ?? null,
+            $_POST['tel_contacto_emergencias'] ?? null,
+            isset($_POST['ind_envio_correo']) ? 'true' : 'false',
+            $_POST['id_area'] ?? null,
+            $_POST['id_cargo'] ?? null,
+            $_POST['val_grado'] ?? null,
+            $_POST['fec_ingreso_planta'] ?? null,
+            $idCentro,
+            registroDisplayUsername(),
         ]);
 
+        $resultado = $stmt_fun_registrar_funcionario->fetchColumn();
+        if ($resultado !== 'OK') {
+            throw new RuntimeException('No se pudo registrar el funcionario.');
+        }
+
         $success = true;
-    } catch (PDOException $e) {
-        $error = 'Error al guardar el funcionario: ' . $e->getMessage();
+    } catch (Throwable $e) {
+        $error = ErrorHandler::userMessageFromException($e);
     }
 }
 ?>
@@ -82,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-container">
-            <p class="section-title" em style="color:#9b6dff;text-shadow:0 0 20px rgba(155,109,255,0.5)">Módulo 03</p>
+            <p class="section-title" style="color:#9b6dff;text-shadow:0 0 20px rgba(155,109,255,0.5)">Módulo 03</p>
             <h1 class="section-heading" style="margin-bottom:0.3rem">
                 Registro de <em style="color:#9b6dff;text-shadow:0 0 20px rgba(155,109,255,0.5)">Funcionario</em>
             </h1>
@@ -187,16 +174,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <div class="form-section-title">Perfil Académico y Cargo</div>
+                <div class="form-section-title">Perfil Académico y Vinculación</div>
                 <div class="form-grid">
                     <div class="field-group">
                         <label>Centro de Adscripción</label>
-                        <select name="id_centro">
-                            <option value="">— Seleccione —</option>
+                        <select id="id_centro" name="id_centro" onchange="filtrarAreasPorCentro()">
+                            <option value="">— Todos los centros —</option>
                             <?php foreach ($centros as $c): ?>
-                            <option value="<?= htmlspecialchars($c['id_centro']) ?>"><?= htmlspecialchars($c['nom_centro']) ?></option>
+                            <option value="<?= htmlspecialchars((string) $c['id_centro']) ?>"><?= htmlspecialchars($c['nom_centro']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <span class="field-hint">Opcional: filtra las áreas del centro</span>
+                    </div>
+                    <div class="field-group">
+                        <label>Área de Trabajo <span class="required">*</span></label>
+                        <select id="id_area" name="id_area" required>
+                            <option value="">— Seleccione —</option>
+                            <?php foreach ($areas as $a): ?>
+                            <option value="<?= htmlspecialchars((string) $a['id_area']) ?>"
+                                    data-centro="<?= htmlspecialchars((string) $a['id_centro']) ?>">
+                                <?= htmlspecialchars($a['nom_area']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>Cargo <span class="required">*</span></label>
+                        <select name="id_cargo" required>
+                            <option value="">— Seleccione —</option>
+                            <?php foreach ($cargos as $cg): ?>
+                            <option value="<?= htmlspecialchars((string) $cg['id_cargo']) ?>">
+                                <?= htmlspecialchars($cg['nom_cargo']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>Grado <span class="required">*</span></label>
+                        <input type="text" name="val_grado" placeholder="Ej: 11, 12, Técnico" maxlength="50" required>
+                    </div>
+                    <div class="field-group">
+                        <label>Fecha ingreso a planta <span class="required">*</span></label>
+                        <input type="date" name="fec_ingreso_planta" required>
                     </div>
                     <div class="field-group">
                         <label>Nivel de Estudio <span class="required">*</span></label>
@@ -215,11 +234,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="<?= htmlspecialchars($p['id_profesion']) ?>"><?= htmlspecialchars($p['nom_profesion']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
-                    <div class="field-group">
-                        <label>Cargo / Dependencia</label>
-                        <input type="text" name="cargo" placeholder="Ej: Coordinador Académico">
-                        <span class="field-hint">Campo informativo, no se almacena en tab_personas</span>
                     </div>
                 </div>
 
@@ -249,12 +263,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         sel.innerHTML = '<option value="">Cargando...</option>';
         if (!idDpto) { sel.innerHTML = '<option value="">— Seleccione departamento —</option>'; return; }
         fetch('../ajax_ciudades.php?id_dpto=' + encodeURIComponent(idDpto))
-            .then(r => r.json())
+            .then(r => r.json())  
             .then(data => {
                 sel.innerHTML = '<option value="">— Seleccione ciudad —</option>';
                 data.forEach(c => { sel.innerHTML += `<option value="${c.id_ciudad}">${c.nom_ciudad}</option>`; });
             })
             .catch(() => { sel.innerHTML = '<option value="">Error al cargar</option>'; });
+    }
+
+    function filtrarAreasPorCentro() {
+        const centro = document.getElementById('id_centro').value;
+        const sel = document.getElementById('id_area');
+        const prev = sel.value;
+        Array.from(sel.options).forEach((opt, idx) => {
+            if (idx === 0) {
+                opt.hidden = false;
+                return;
+            }
+            const optCentro = opt.getAttribute('data-centro') || '';
+            opt.hidden = centro !== '' && optCentro !== centro;
+        });
+        if (prev && sel.querySelector(`option[value="${prev}"]:not([hidden])`)) {
+            sel.value = prev;
+        } else {
+            sel.value = '';
+        }
     }
     </script>
     <?php registroIncludeFooterScripts(); ?>

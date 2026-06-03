@@ -35,8 +35,7 @@ function personasListadoFiltrosFields(): array
 function personasListadoTablaColumnas(): array
 {
     return [
-        ['key' => 'tipo', 'label' => 'Tipo', 'th_class' => 'ps-3 py-2', 'td_class' => 'ps-3 py-2 fw-semibold'],
-        ['key' => 'id_persona', 'label' => 'Documento', 'td_class' => 'py-2 fw-bold'],
+        ['key' => 'id_persona', 'label' => 'Documento', 'th_class' => 'ps-3 py-2', 'td_class' => 'ps-3 py-2 fw-bold'],
         ['key' => 'nombres', 'label' => 'Nombres y apellidos', 'td_class' => 'py-2'],
         [
             'key' => 'correo',

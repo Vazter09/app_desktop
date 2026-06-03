@@ -7,19 +7,14 @@ if (isset($_GET['logout'])) {
     registroLogout();
 }
 
-$accent = AppConfig::themeTokensDark()['--cyan'] ?? '#00e5b0';
-$blue = AppConfig::themeTokensDark()['--blue'] ?? '#4a9eff';
-$purple = AppConfig::themeTokensDark()['--purple'] ?? '#9b6dff';
-$orange = AppConfig::themeTokensDark()['--orange'] ?? '#ff7b2e';
-
 $personTypes = [
     [
         'label' => 'Módulo 01',
         'title' => 'Aprendiz',
         'desc'  => 'Registro de aprendices vinculados a fichas de formación del SENA.',
         'icon'  => '🎓',
-        'color' => $accent,
-        'dim'   => 'rgba(0,229,176,0.1)',
+        'color' => 'var(--cyan)',
+        'dim'   => 'var(--cyan-dim)',
         'url'   => 'forms/aprendiz.php',
     ],
     [
@@ -27,8 +22,8 @@ $personTypes = [
         'title' => 'Instructor',
         'desc'  => 'Gestión de instructores de planta y contratistas del centro de formación.',
         'icon'  => '👨‍🏫',
-        'color' => $blue,
-        'dim'   => 'rgba(74,158,255,0.1)',
+        'color' => 'var(--blue)',
+        'dim'   => 'color-mix(in srgb, var(--blue) 14%, transparent)',
         'url'   => 'forms/instructor.php',
     ],
     [
@@ -36,8 +31,8 @@ $personTypes = [
         'title' => 'Funcionario',
         'desc'  => 'Registro de funcionarios administrativos y de apoyo institucional.',
         'icon'  => '🏛️',
-        'color' => $purple,
-        'dim'   => 'rgba(155,109,255,0.1)',
+        'color' => 'var(--purple)',
+        'dim'   => 'color-mix(in srgb, var(--purple) 14%, transparent)',
         'url'   => 'forms/funcionario.php',
     ],
     [
@@ -45,8 +40,8 @@ $personTypes = [
         'title' => 'Contratista',
         'desc'  => 'Administración de contratistas y personal externo vinculado al centro.',
         'icon'  => '🛠️',
-        'color' => $orange,
-        'dim'   => 'rgba(255,123,46,0.1)',
+        'color' => 'var(--orange)',
+        'dim'   => 'color-mix(in srgb, var(--orange) 14%, transparent)',
         'url'   => 'forms/contratista.php',
     ],
 ];

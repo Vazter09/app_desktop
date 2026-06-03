@@ -94,6 +94,11 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/registro/fun_registrar_persona.sql"
+  "$ROOT/database/functions/registro/fun_registrar_contratista.sql"
+  "$ROOT/database/functions/registro/fun_registrar_funcionario.sql"
+  "$ROOT/database/functions/registro/fun_registrar_instructor.sql"
+  "$ROOT/database/functions/registro/fun_registrar_aprendiz.sql"
   "$ROOT/database/functions/config/fun_update_tab_config_sistema.sql"
 )
 for f in "${FUNCS[@]}"; do

@@ -32,10 +32,10 @@ Funciones:
 - `registroGetDepartamentos(PDO $pdo): array` — retorna departamentos de Colombia
 - `registroGetCiudades(PDO $pdo, string $id_dpto): array` — retorna ciudades de un departamento
 - `registroGetTiposPersona(PDO $pdo): array` — retorna tipos de persona (aprendiz, instructor, etc.)
-- `registroGetFichas(PDO $pdo): array` — retorna fichas activas (para aprendices)
-- `registroGetProgramas(PDO $pdo): array` — retorna programas de formación
-- `registroGetAreas(PDO $pdo): array` — retorna áreas de conocimiento
-- `registroGetCargos(PDO $pdo): array` — retorna cargos disponibles
+- `registroGetFichas(PDO $pdo): array` — fichas con `ind_abierta = TRUE`; incluye `nom_programa`, `nom_centro` y `etiqueta` (id + contexto)
+- `registroGetAreas(PDO $pdo): array` — áreas con `nom_centro` y `etiqueta`
+- `registroGetCargos(PDO $pdo): array` — cargos con `etiqueta`
+- También: `registroGetCentros`, `registroGetRedes`, `registroGetNivelesEstudio`, `registroGetProfesiones`
 
 ### personas_list.php
 

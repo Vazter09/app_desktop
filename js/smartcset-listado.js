@@ -5,6 +5,8 @@
 (function () {
     const PARTIAL_PARAM = 'partial';
     const PARTIAL_VALUE = '1';
+    const SEARCH_DEBOUNCE_MS = 250;
+    const debounceTimers = new WeakMap();
 
     function getHost(el) {
         return el?.closest?.('[data-smart-listado-host]')
@@ -36,11 +38,66 @@
         host.dispatchEvent(new CustomEvent('smartcset:listado:mounted', { bubbles: true }));
     }
 
+    function isFiltroTextInput(el) {
+        if (!el || el.tagName !== 'INPUT') {
+            return false;
+        }
+        const type = (el.type || 'text').toLowerCase();
+        if (type === 'hidden' || type === 'submit' || type === 'button' || type === 'checkbox' || type === 'radio') {
+            return false;
+        }
+        return type === 'text' || type === 'search' || type === '';
+    }
+
+    function captureFiltroFocus(host) {
+        const active = document.activeElement;
+        const form = active?.closest?.('[data-smart-listado-filtros]');
+        if (!form || !host.contains(form) || !isFiltroTextInput(active)) {
+            return null;
+        }
+        const name = active.getAttribute('name');
+        if (!name) {
+            return null;
+        }
+        return {
+            name,
+            selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+            selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+        };
+    }
+
+    function restoreFiltroFocus(host, state) {
+        if (!state?.name) {
+            return;
+        }
+        const form = host.querySelector('[data-smart-listado-filtros]');
+        if (!form) {
+            return;
+        }
+        const input = form.querySelector(`input[name="${CSS.escape(state.name)}"]`);
+        if (!input || !isFiltroTextInput(input)) {
+            return;
+        }
+        input.focus({ preventScroll: true });
+        if (state.selectionStart !== null && typeof input.setSelectionRange === 'function') {
+            const len = input.value.length;
+            const start = Math.min(state.selectionStart, len);
+            const end = Math.min(state.selectionEnd ?? state.selectionStart, len);
+            try {
+                input.setSelectionRange(start, end);
+            } catch (_) {
+                /* input no editable */
+            }
+        }
+    }
+
     async function loadIntoHost(host, url, push) {
+        const focusState = captureFiltroFocus(host);
         host.classList.add('is-loading');
         try {
             const html = await fetchPartial(url);
             host.innerHTML = html;
+            restoreFiltroFocus(host, focusState);
             updateHistory(url, push);
             dispatchMounted(host);
         } catch (_) {
@@ -48,6 +105,27 @@
         } finally {
             host.classList.remove('is-loading');
         }
+    }
+
+    function clearSearchDebounce(host) {
+        const timer = debounceTimers.get(host);
+        if (timer) {
+            clearTimeout(timer);
+            debounceTimers.delete(host);
+        }
+    }
+
+    function applyFiltrosForm(form, host) {
+        const url = new URL(form.action || window.location.href, window.location.href);
+        const data = new FormData(form);
+        url.search = '';
+        data.forEach((value, key) => {
+            if (String(value).trim() !== '') {
+                url.searchParams.set(key, String(value));
+            }
+        });
+        url.searchParams.set('page', '1');
+        loadIntoHost(host, url.toString(), true);
     }
 
     function bind(host) {
@@ -62,26 +140,44 @@
                 return;
             }
             e.preventDefault();
-            const url = new URL(form.action || window.location.href, window.location.href);
-            const data = new FormData(form);
-            url.search = '';
-            data.forEach((value, key) => {
-                if (String(value).trim() !== '') {
-                    url.searchParams.set(key, String(value));
-                }
-            });
-            url.searchParams.set('page', '1');
-            loadIntoHost(host, url.toString(), true);
+            clearSearchDebounce(host);
+            applyFiltrosForm(form, host);
+        });
+
+        host.addEventListener('input', (e) => {
+            const form = e.target.closest('[data-smart-listado-filtros]');
+            if (!form || !host.contains(form)) {
+                return;
+            }
+            const textInput = e.target.closest('input[type="text"], input[type="search"], input:not([type])');
+            if (!textInput || textInput.type === 'hidden' || !form.contains(textInput)) {
+                return;
+            }
+            clearSearchDebounce(host);
+            debounceTimers.set(host, setTimeout(() => {
+                debounceTimers.delete(host);
+                applyFiltrosForm(form, host);
+            }, SEARCH_DEBOUNCE_MS));
         });
 
         host.addEventListener('change', (e) => {
-            const select = e.target.closest('[data-smart-listado-per-page]');
-            if (!select || !host.contains(select)) {
+            const perPage = e.target.closest('[data-smart-listado-per-page]');
+            if (perPage && host.contains(perPage)) {
+                const form = perPage.closest('form');
+                if (form) {
+                    form.requestSubmit();
+                }
                 return;
             }
-            const form = select.closest('form');
-            if (form) {
-                form.requestSubmit();
+
+            const form = e.target.closest('[data-smart-listado-filtros]');
+            if (!form || !host.contains(form)) {
+                return;
+            }
+            const select = e.target.closest('select');
+            if (select && form.contains(select)) {
+                clearSearchDebounce(host);
+                applyFiltrosForm(form, host);
             }
         });
 
