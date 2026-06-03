@@ -176,7 +176,11 @@ BEGIN
         PERFORM smartcset_raise_validacion('Seleccione un estado de formación válido.');
     END IF;
 
-    IF wid_ficha IS NOT NULL AND NOT EXISTS (
+    IF wid_ficha IS NULL THEN
+        PERFORM smartcset_raise_validacion('Seleccione la ficha de formación del aprendiz.');
+    END IF;
+
+    IF NOT EXISTS (
         SELECT 1 FROM tab_fichas WHERE id_ficha = wid_ficha
     ) THEN
         PERFORM smartcset_raise_validacion(
@@ -230,13 +234,11 @@ BEGIN
         TRIM(wusr), CURRENT_TIMESTAMP
     );
 
-    IF wid_ficha IS NOT NULL THEN
-        INSERT INTO tab_aprendices_fichas (
-            id_ficha, id_aprendiz, usr_insert, fec_insert
-        ) VALUES (
-            wid_ficha, wid_persona, TRIM(wusr), CURRENT_TIMESTAMP
-        );
-    END IF;
+    INSERT INTO tab_aprendices_fichas (
+        id_ficha, id_aprendiz, usr_insert, fec_insert
+    ) VALUES (
+        wid_ficha, wid_persona, TRIM(wusr), CURRENT_TIMESTAMP
+    );
 
     RETURN wid_persona::TEXT;
 EXCEPTION

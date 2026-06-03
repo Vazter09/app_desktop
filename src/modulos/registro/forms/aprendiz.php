@@ -1,10 +1,11 @@
 <?php
 require_once __DIR__ . '/../init.php';
+require_once __DIR__ . '/../lib/registro_persistencia.php';
 registroRequireAccess();
 
 $success = false;
 $error   = '';
-// Cargar catálogos para los select
+
 try {
     $tiposDoc    = registroGetTiposDocumento($pdo);
     $nivelesEst  = registroGetNivelesEstudio($pdo);
@@ -50,46 +51,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $postOrNull('val_mail_institucional'),
             $_POST['ind_etdo_formacion'],
             registroDisplayUsername(),
-            $postOrNull('id_ficha'),
+            $_POST['id_ficha'],
         ]);
 
         $idRegistrado = $stmt_fun_registrar_aprendiz->fetchColumn();
         if ($idRegistrado === false || trim((string) $idRegistrado) === '') {
-            throw new RuntimeException('No se pudo registrar el aprendiz.');
+            throw new RuntimeException('No se pudo actualizar los datos del aprendiz.');
         }
 
         $success = true;
     } catch (Throwable $e) {
-        $error = ErrorHandler::userMessageFromException($e);
+        $handled = registroHandlePostException($e);
+        $error   = $handled['msg'];
     }
 }
 ?>
-<?php registroIncludeHead('Registro Aprendiz', '#00e5b0'); registroIncludeHeader(); ?>
+<?php registroIncludeHead('Actualización Aprendiz', '#00e5b0'); registroIncludeHeader(); ?>
     <main class="main-wrapper">
         <div class="breadcrumb animate-in">
             <a href="../index.php">INICIO</a>
             <span class="sep">//</span>
-            <span class="current">REGISTRO APRENDIZ</span>
+            <span class="current">ACTUALIZACIÓN APRENDIZ</span>
         </div>
 
         <div class="form-container">
             <p class="section-title">Módulo 01</p>
-            <h1 class="section-heading" style="margin-bottom:0.3rem">Registro de <em>Aprendiz</em></h1>
-            <p class="section-sub">Complete todos los campos obligatorios para registrar un nuevo aprendiz en el sistema.</p>
+            <h1 class="section-heading" style="margin-bottom:0.3rem">Actualización de datos del <em>Aprendiz</em></h1>
+            <p class="section-sub">Busque al aprendiz por documento, revise la información cargada y actualice los campos obligatorios en persona, aprendiz y ficha de formación.</p>
 
             <?php if ($success): ?>
-            <div class="alert alert-success">✔ Aprendiz registrado exitosamente en el sistema.</div>
+            <div class="alert alert-success">✔ Datos del aprendiz actualizados correctamente.</div>
             <?php endif; ?>
             <?php if ($error): ?>
             <div class="alert alert-error">⚠ <?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
 
-            <form method="POST" class="form-panel animate-in"
-                  style="animation-delay:0.1s">
+            <form method="POST" id="registro-form-aprendiz" class="form-panel animate-in" style="animation-delay:0.1s">
 
-                <!-- IDENTIFICACIÓN -->
-                <div class="form-section-title">Identificación Personal</div>
-                <div class="form-grid">
+                <div class="registro-accordion" id="registro-accordion-aprendiz">
+
+                <!-- PERSONA (tab_personas) -->
+                <div class="form-section-title form-section-title--plain">Persona</div>
+                <div class="registro-accordion" id="registro-accordion-persona">
+
+                <div class="registro-accordion-item is-open" id="acc-persona-ident">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-persona-ident" aria-expanded="true" aria-controls="panel-persona-ident">
+                        Identificación
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-persona-ident" role="region" aria-labelledby="trigger-persona-ident">
+                <div class="form-grid cols-2">
+                    <div class="field-group">
+                        <label for="id_persona">Número de Documento <span class="required">*</span></label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="6" maxlength="10"
+                               id="id_persona" name="id_persona" placeholder="1234567890" required autofocus>
+                    </div>
                     <div class="field-group">
                         <label for="id_tipo_docum">Tipo de Documento <span class="required">*</span></label>
                         <select id="id_tipo_docum" name="id_tipo_docum" required>
@@ -102,16 +118,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </select>
                     </div>
                     <div class="field-group">
-                        <label for="id_persona">Número de Documento <span class="required">*</span></label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10" id="id_persona" name="id_persona" placeholder="1234567890" required>
-                    </div>
-                    <div class="field-group">
                         <label for="nom_persona">Nombres <span class="required">*</span></label>
-                        <input type="text" id="nom_persona" name="nom_persona" placeholder="Nombres completos" required>
+                        <input type="text" id="nom_persona" name="nom_persona" placeholder="Nombres completos" required maxlength="40">
                     </div>
                     <div class="field-group">
                         <label for="ape_persona">Apellidos <span class="required">*</span></label>
-                        <input type="text" id="ape_persona" name="ape_persona" placeholder="Apellidos completos" required>
+                        <input type="text" id="ape_persona" name="ape_persona" placeholder="Apellidos completos" required maxlength="30">
                     </div>
                     <div class="field-group">
                         <label for="fec_nacimiento">Fecha de Nacimiento <span class="required">*</span></label>
@@ -125,51 +137,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="2">Masculino</option>
                             <option value="3">No Binario</option>
                             <option value="4">Trans</option>
-                            <option value="99">No Definido</option>
                         </select>
                     </div>
-                    <div class="field-group">
+                    <div class="field-group span-2">
                         <label for="mail_persona">Correo Personal <span class="required">*</span></label>
                         <input type="email" id="mail_persona" name="mail_persona" placeholder="correo@ejemplo.com" required>
                     </div>
+                </div>
+                    </div>
+                </div>
+
+                <div class="registro-accordion-item" id="acc-persona-tel">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-persona-tel" aria-expanded="false" aria-controls="panel-persona-tel">
+                        Teléfonos
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-persona-tel" role="region" aria-labelledby="trigger-persona-tel">
+                <div class="form-grid cols-2">
                     <div class="field-group">
                         <label for="tel_persona_fijo">Teléfono Fijo <span class="required">*</span></label>
                         <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
                                id="tel_persona_fijo" name="tel_persona_fijo" placeholder="6011234567" required>
                     </div>
                     <div class="field-group">
-                        <label for="val_mail_institucional">Correo Institucional</label>
-                        <input type="email" id="val_mail_institucional" name="val_mail_institucional" placeholder="usuario@sena.edu.co">
-                    </div>
-                </div>
-
-                <!-- CONTACTO -->
-                <div class="form-section-title">Información de Contacto</div>
-                <div class="form-grid">
-                    
-                    <div class="field-group">
                         <label for="tel_persona_movil">Teléfono Móvil <span class="required">*</span></label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10" id="tel_persona_movil" name="tel_persona_movil" placeholder="3001234567" required>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                               id="tel_persona_movil" name="tel_persona_movil" placeholder="3001234567" required>
                     </div>
-                    <div class="field-group">
-                        <label for="tel_alterno">Teléfono Alterno</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10" id="tel_alterno" name="tel_alterno" placeholder="3009876543">
-                    </div>
-                
-                    <div class="field-group">
-                        <label for="nom_contacto_emergencias">Contacto de Emergencias <span class="required">*</span></label>
-                        <input type="text" id="nom_contacto_emergencias" name="nom_contacto_emergencias" placeholder="Nombre completo" required>
-                    </div>
-
-                    <div class="field-group">
-                        <label for="tel_contacto_emergencias">Tel. Emergencias <span class="required">*</span></label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10" id="tel_contacto_emergencias" name="tel_contacto_emergencias" placeholder="3001234567" required>
+                </div>
                     </div>
                 </div>
 
-                <!-- UBICACIÓN -->
-                <div class="form-section-title">Ubicación de Residencia</div>
-                <div class="form-grid">
+                <div class="registro-accordion-item" id="acc-persona-ubic">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-persona-ubic" aria-expanded="false" aria-controls="panel-persona-ubic">
+                        Ubicación de Residencia
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-persona-ubic" role="region" aria-labelledby="trigger-persona-ubic">
+                <div class="form-grid cols-2">
                     <div class="field-group">
                         <label for="id_dpto_reside">Departamento <span class="required">*</span></label>
                         <select id="id_dpto_reside" name="id_dpto_reside" required onchange="cargarCiudades(this.value)">
@@ -185,22 +190,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="id_ciudad_reside">Ciudad <span class="required">*</span></label>
                         <select id="id_ciudad_reside" name="id_ciudad_reside" required>
                             <option value="">— Seleccione departamento —</option>
-                            <?php foreach ($ciudades as $c): ?>
-                            <option value="<?= htmlspecialchars($c['id_ciudad']) ?>">
-                                <?= htmlspecialchars($c['nom_ciudad']) ?>
-                            </option>
-                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="field-group span-2">
                         <label for="dir_ciudad_reside">Dirección de Residencia <span class="required">*</span></label>
-                        <input type="text" id="dir_ciudad_reside" name="dir_ciudad_reside" placeholder="Calle 12 # 34-56, Barrio..." required>
+                        <input type="text" id="dir_ciudad_reside" name="dir_ciudad_reside"
+                               placeholder="Calle 12 # 34-56, Barrio..." required minlength="10" maxlength="100">
+                    </div>
+                </div>
                     </div>
                 </div>
 
-                <!-- ACADÉMICO -->
-                <div class="form-section-title">Información Académica</div>
-                <div class="form-grid">
+                <div class="registro-accordion-item" id="acc-persona-formacion">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-persona-formacion" aria-expanded="false" aria-controls="panel-persona-formacion">
+                        Formación
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-persona-formacion" role="region" aria-labelledby="trigger-persona-formacion">
+                <div class="form-grid cols-2">
                     <div class="field-group">
                         <label for="id_nivel_estudio">Nivel de Estudio <span class="required">*</span></label>
                         <select id="id_nivel_estudio" name="id_nivel_estudio" required>
@@ -223,8 +230,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                </div>
+                    </div>
+                </div>
+
+                <div class="registro-accordion-item" id="acc-persona-emergencias">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-persona-emergencias" aria-expanded="false" aria-controls="panel-persona-emergencias">
+                        Contacto de Emergencias
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-persona-emergencias" role="region" aria-labelledby="trigger-persona-emergencias">
+                <div class="form-grid cols-2">
                     <div class="field-group">
-                        <label for="ind_etdo_formacion">Estado de Formación <span class="required">*</span></label>
+                        <label for="nom_contacto_emergencias">Nombre <span class="required">*</span></label>
+                        <input type="text" id="nom_contacto_emergencias" name="nom_contacto_emergencias"
+                               placeholder="Nombre completo" required minlength="5" maxlength="60">
+                    </div>
+                    <div class="field-group">
+                        <label for="tel_contacto_emergencias">Teléfono <span class="required">*</span></label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                               id="tel_contacto_emergencias" name="tel_contacto_emergencias" placeholder="3001234567" required>
+                    </div>
+                </div>
+                    </div>
+                </div>
+
+                <div class="registro-accordion-item" id="acc-persona-preferencias">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-persona-preferencias" aria-expanded="false" aria-controls="panel-persona-preferencias">
+                        Preferencias de Comunicación
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-persona-preferencias" role="region" aria-labelledby="trigger-persona-preferencias">
+                <div class="toggle-group">
+                    <label class="toggle">
+                        <input type="checkbox" name="ind_envio_correo" value="1" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label">Autoriza recibir correos electrónicos del sistema</span>
+                </div>
+                    </div>
+                </div>
+
+                </div>
+
+                <!-- APRENDIZ (tab_aprendices + datos_personales_aprendiz) -->
+                <div class="registro-accordion-item" id="acc-aprendiz">
+                    <button type="button" class="registro-accordion-trigger form-section-title" id="trigger-aprendiz"
+                            aria-expanded="false" aria-controls="panel-aprendiz">
+                        Aprendiz
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-aprendiz" role="region" aria-labelledby="trigger-aprendiz">
+                        <div class="registro-accordion">
+
+                <div class="registro-accordion-item" id="acc-aprendiz-estado">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-aprendiz-estado" aria-expanded="false" aria-controls="panel-aprendiz-estado">
+                        Estado de Formación
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-aprendiz-estado" role="region" aria-labelledby="trigger-aprendiz-estado">
+                <div class="form-grid cols-2">
+                    <div class="field-group">
+                        <label for="ind_etdo_formacion">Estado <span class="required">*</span></label>
                         <select id="ind_etdo_formacion" name="ind_etdo_formacion" required>
                             <option value="1">En Formación</option>
                             <option value="2">Aplazado</option>
@@ -235,32 +301,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="7">Desertado</option>
                         </select>
                     </div>
+                </div>
+                    </div>
+                </div>
+
+                <div class="registro-accordion-item" id="acc-aprendiz-contacto">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-aprendiz-contacto" aria-expanded="false" aria-controls="panel-aprendiz-contacto">
+                        Contacto Institucional y Familiar
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-aprendiz-contacto" role="region" aria-labelledby="trigger-aprendiz-contacto">
+                <div class="form-grid cols-2">
+                    <div class="field-group span-2">
+                        <label for="val_mail_institucional">Correo Institucional</label>
+                        <input type="email" id="val_mail_institucional" name="val_mail_institucional"
+                               placeholder="usuario@sena.edu.co">
+                    </div>
                     <div class="field-group">
-                        <label for="id_ficha">Ficha de Formación</label>
-                        <select id="id_ficha" name="id_ficha">
-                            <option value="">— Sin asignar —</option>
+                        <label for="tel_alterno">Teléfono Alterno</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                               id="tel_alterno" name="tel_alterno" placeholder="3009876543">
+                    </div>
+                    <div class="field-group">
+                        <label for="tel_sede">Teléfono Sede</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                               id="tel_sede" name="tel_sede" placeholder="6011234567">
+                    </div>
+                    <div class="field-group">
+                        <label for="ext_sede">Extensión Sede</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" min="0" max="99999999"
+                               id="ext_sede" name="ext_sede" placeholder="1234">
+                    </div>
+                    <div class="field-group">
+                        <label for="tel_padre_fijo">Tel. Acudiente Fijo</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                               id="tel_padre_fijo" name="tel_padre_fijo" placeholder="6011234567">
+                    </div>
+                    <div class="field-group">
+                        <label for="tel_padre_movil">Tel. Acudiente Móvil</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                               id="tel_padre_movil" name="tel_padre_movil" placeholder="3001234567">
+                    </div>
+                </div>
+                    </div>
+                </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FICHA (tab_aprendices_fichas) -->
+                <div class="registro-accordion-item" id="acc-ficha">
+                    <button type="button" class="registro-accordion-trigger form-section-title" id="trigger-ficha"
+                            aria-expanded="false" aria-controls="panel-ficha">
+                        Ficha de Formación
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-ficha" role="region" aria-labelledby="trigger-ficha">
+                <div class="form-grid cols-2">
+                    <div class="field-group span-2">
+                        <label for="id_ficha">Ficha <span class="required">*</span></label>
+                        <select id="id_ficha" name="id_ficha" required>
+                            <option value="">— Seleccione ficha —</option>
                             <?php foreach ($fichas as $f): ?>
-                            <option value="<?= htmlspecialchars($f['id_ficha']) ?>">
-                                Ficha <?= htmlspecialchars($f['id_ficha']) ?>
+                            <option value="<?= htmlspecialchars((string) $f['id_ficha']) ?>">
+                                <?= htmlspecialchars($f['etiqueta'] ?? (string) $f['id_ficha']) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
+                    </div>
+                </div>
 
-                <!-- PREFERENCIAS -->
-                <div class="form-section-title">Preferencias de Comunicación</div>
-                <div class="toggle-group">
-                    <label class="toggle">
-                        <input type="checkbox" name="ind_envio_correo" value="1" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span class="toggle-label">Autoriza recibir correos electrónicos del sistema</span>
                 </div>
 
                 <div class="btn-row">
                     <button type="submit" class="btn-primary">
-                        ✔ Registrar Aprendiz
+                        Actualizar Datos
                     </button>
                     <a href="../index.php" class="btn-secondary">← Volver</a>
                     <button type="reset" class="btn-secondary">↺ Limpiar</button>
@@ -269,27 +386,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script>
-    function cargarCiudades(idDpto) {
-        const sel = document.getElementById('id_ciudad_reside');
-        sel.innerHTML = '<option value="">Cargando...</option>';
-        if (!idDpto) {
-            sel.innerHTML = '<option value="">— Seleccione departamento —</option>';
-            return;
-        }
-        fetch('../ajax_ciudades.php?id_dpto=' + encodeURIComponent(idDpto))
-            .then(r => r.json())
-            .then(data => {
-                sel.innerHTML = '<option value="">— Seleccione ciudad —</option>';
-                data.forEach(c => {
-                    sel.innerHTML += `<option value="${c.id_ciudad}">${c.nom_ciudad}</option>`;
-                });
-            })
-            .catch(() => {
-                sel.innerHTML = '<option value="">Error al cargar</option>';
-            });
-    }
-    </script>
+    <?php
+    $regHref = registroAssetHref();
+    $vAccordion = @filemtime(dirname(__DIR__, 4) . '/js/registro-form-accordion.js') ?: time();
+    $vBuscar = @filemtime(dirname(__DIR__, 4) . '/js/registro-aprendiz-buscar.js') ?: time();
+    ?>
+    <script src="<?= htmlspecialchars($regHref) ?>js/registro-form-accordion.js?v=<?= (int) $vAccordion ?>"></script>
+    <script src="<?= htmlspecialchars($regHref) ?>js/registro-aprendiz-buscar.js?v=<?= (int) $vBuscar ?>"></script>
     <?php registroIncludeFooterScripts(); ?>
 </body>
 </html>

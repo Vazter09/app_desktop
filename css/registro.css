@@ -1121,10 +1121,219 @@ body.registro-theme.light-theme .scanline {
     animation: fadeInUp 0.5s ease forwards;
 }
 
+/* ─── ACCORDION (formularios registro) ─── */
+.registro-accordion {
+    --accordion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --accordion-duration: 0.35s;
+    --accordion-panel-pad-top: 0.75rem;
+    --accordion-panel-pad-bottom: 0.5rem;
+    --accordion-nested-gap: 0.5rem;
+    --accordion-main-gap: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--accordion-main-gap);
+}
+
+/* Triggers — botón con la misma apariencia que .form-section-title */
+.registro-accordion-trigger.form-section-title {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    margin: 0;
+    padding-bottom: 0.5rem;
+}
+
+.registro-accordion-trigger.form-section-title::after {
+    content: '';
+    margin-left: auto;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    opacity: 0.4;
+    flex-shrink: 0;
+    transition: transform var(--accordion-duration) var(--accordion-ease),
+                opacity var(--accordion-duration) var(--accordion-ease);
+}
+
+.registro-accordion-item.is-open > .registro-accordion-trigger.form-section-title::after {
+    transform: rotate(-135deg);
+    opacity: 0.65;
+}
+
+.registro-accordion-trigger.form-section-title:hover {
+    color: color-mix(in srgb, var(--panel-accent, var(--cyan)) 88%, white);
+}
+
+.registro-accordion-trigger.form-section-title:focus {
+    outline: none;
+}
+
+.registro-accordion-trigger.form-section-title:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--panel-accent, var(--cyan)) 30%, transparent);
+}
+
+/* Título estático de sección (sin acordeón) dentro del formulario */
+.registro-accordion > .form-section-title:not(.registro-accordion-trigger) {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+/* Sub-secciones de Persona (acordeón independiente, no anidado en panel) */
+#registro-accordion-persona .registro-accordion-trigger.form-section-title {
+    margin: 0;
+    padding-bottom: 0.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+}
+
+#registro-accordion-persona .registro-accordion-item:not(.is-open) > .registro-accordion-trigger.form-section-title {
+    margin-bottom: 0;
+}
+
+#registro-accordion-persona .registro-accordion-item.is-open > .registro-accordion-panel > * {
+    padding-top: 0.5rem;
+    padding-bottom: 0.25rem;
+}
+
+/* Raíz: lista compacta de 3 bloques principales */
+.registro-accordion > .registro-accordion-item > .registro-accordion-trigger.form-section-title {
+    margin: 0;
+    padding-bottom: 0.5rem;
+}
+
+.registro-accordion > .registro-accordion-item:not(.is-open) > .registro-accordion-trigger.form-section-title {
+    margin-bottom: 0;
+}
+
+/* Sub-secciones: solo el título visible cuando está cerrada */
+.registro-accordion-panel .registro-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--accordion-nested-gap);
+}
+
+.registro-accordion-panel .registro-accordion .registro-accordion-trigger.form-section-title {
+    margin: 0;
+    padding-bottom: 0.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+}
+
+.registro-accordion-panel .registro-accordion .registro-accordion-item:not(.is-open) > .registro-accordion-trigger.form-section-title {
+    margin-bottom: 0;
+}
+
+/* Panel colapsable — grid 0fr/1fr; contenido oculto incluye sub-triggers */
+.registro-accordion-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition: grid-template-rows var(--accordion-duration) var(--accordion-ease);
+}
+
+.registro-accordion-item.is-open > .registro-accordion-panel {
+    grid-template-rows: 1fr;
+}
+
+.registro-accordion-panel > * {
+    overflow: hidden;
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.registro-accordion-item.is-open > .registro-accordion-panel > * {
+    padding-top: var(--accordion-panel-pad-top);
+    padding-bottom: var(--accordion-panel-pad-bottom);
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Sub-panel abierto: menos espacio entre título y campos */
+.registro-accordion-panel .registro-accordion .registro-accordion-item.is-open > .registro-accordion-panel > * {
+    padding-top: 0.5rem;
+    padding-bottom: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .registro-accordion-panel {
+        transition: none;
+    }
+
+    .registro-accordion-trigger.form-section-title::after {
+        transition: none;
+    }
+}
+
+/* ─── FORM APRENDIZ: bloque "Persona" sin //; acordeón conserva prefijo ─── */
+#registro-form-aprendiz .form-section-title--plain::before {
+    content: none;
+}
+
+#registro-form-aprendiz > .registro-accordion > .form-section-title--plain:not(.registro-accordion-trigger) {
+    font-size: 0.95rem;
+    letter-spacing: 0.28em;
+}
+
+#registro-form-aprendiz .registro-accordion-trigger.form-section-title {
+    font-size: 0.85rem;
+    letter-spacing: 0.24em;
+}
+
+#registro-form-aprendiz #registro-accordion-persona .registro-accordion-trigger.form-section-title,
+#registro-form-aprendiz .registro-accordion-panel .registro-accordion .registro-accordion-trigger.form-section-title {
+    font-size: 0.85rem;
+    letter-spacing: 0.24em;
+}
+
+#registro-form-aprendiz .registro-aprendiz-hint {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    margin-top: 0.35rem;
+    line-height: 1.4;
+}
+
+#registro-form-aprendiz .registro-aprendiz-hint--info {
+    color: var(--panel-accent, var(--cyan));
+    opacity: 0.85;
+}
+
+#registro-form-aprendiz .registro-aprendiz-hint--ok {
+    color: var(--success);
+}
+
+#registro-form-aprendiz .registro-aprendiz-hint--warn {
+    color: var(--orange, #d97706);
+}
+
 /* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+    .form-grid,
+    .form-grid.cols-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+    .form-container {
+        max-width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .form-grid.cols-3 { grid-template-columns: 1fr; }
+    .form-grid,
+    .form-grid.cols-2,
+    .form-grid.cols-3,
+    .form-grid.cols-4 {
+        grid-template-columns: 1fr;
+    }
     .field-group.span-2, .field-group.span-3 { grid-column: span 1; }
     .section-heading { font-size: 1.6rem; }
     .form-panel { padding: 1.5rem; }
