@@ -25,8 +25,12 @@ require_once __DIR__ . '/src/core/helpers.php';
 $w_error = '';
 $w_user_value = '';
 
-if (isset($_GET['sesion']) && $_GET['sesion'] === 'invalida') {
-    $w_error = 'Su sesión ya no está activa. Ingrese nuevamente.';
+if (isset($_GET['sesion'])) {
+    if ($_GET['sesion'] === 'invalida') {
+        $w_error = 'Su sesión ya no está activa. Ingrese nuevamente.';
+    } elseif ($_GET['sesion'] === 'ip') {
+        $w_error = 'Su sesión se cerró porque la conexión no coincide con la del inicio de sesión. Ingrese nuevamente.';
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -47,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // 3. VALIDACIÓN DE CONTRASEÑA (Compatible con crypt bf de tu SQL)
                 if (password_verify($w_pass, $w_reg['pass_usuario'])) {
 
-                    $w_ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+                    $w_ip = smartcsetClientIp();
                     $w_id_sesion = accesoIngresoSesion(
                         $stmt_fun_ingreso_sesion,
                         (string) $w_reg['id_usuario'],

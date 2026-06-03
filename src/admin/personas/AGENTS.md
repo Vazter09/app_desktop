@@ -10,7 +10,7 @@ Menú padre en BD: **Personas** (`id_menu = 03`).
 
 ```
 personas/
-├── config.php              ← Config. módulo (0305): flags y credenciales standalone
+├── config.php              ← Config. módulo (0402, hijo del menú raíz Configuración 04)
 ├── lib/
 │   ├── listado_index.php   ← Bootstrap común de listados (layout + partial AJAX)
 │   ├── fragment_tabla_base.php

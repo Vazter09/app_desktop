@@ -11,7 +11,7 @@ BEGIN
     END IF;
 
     w_cod := UPPER(NULLIF(TRIM(p_cod_cierre), ''));
-    IF w_cod IS NULL OR w_cod NOT IN ('LOGOUT', 'ADMIN', 'TIMEOUT') THEN
+    IF w_cod IS NULL OR w_cod NOT IN ('LOGOUT', 'ADMIN', 'TIMEOUT', 'IP_MISMATCH') THEN
         PERFORM smartcset_raise_validacion('Código de cierre de sesión no válido.');
     END IF;
 

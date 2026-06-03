@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_guardar_registro'
 
 $c = $config;
 $page_title = 'Config. módulo personas';
-$active_menu_id = '0305';
+$active_menu_id = '0402';
 $wnom_usuario = $_SESSION['nom_usuario'] ?? '';
 
 include __DIR__ . '/../../layout/head.php';

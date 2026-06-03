@@ -62,3 +62,19 @@ bash tools/setup_db.sh             # funciones + seeds sobre BD existente
 ```
 
 Diagnóstico: `http://localhost:8080/tools/diagnose_bd.php`
+
+### Menús Personas (desarrollo)
+
+Tras cambiar rutas o permisos del módulo Personas, sincronizar sin tocar la BD a mano:
+
+```bash
+bash tools/sync_menus_personas.sh
+```
+
+Asigna menús Personas (`03`, `0300`–`0304`) y Configuración (`04`, `0401`, `0402`) a `admin.smart`. Otros usuarios:
+
+```bash
+bash tools/sync_menus_personas.sh admin.smart porteria
+```
+
+Lee credenciales de `.env` y aplica `database/seeds/seed_menus_personas_dev.sql` (idempotente).

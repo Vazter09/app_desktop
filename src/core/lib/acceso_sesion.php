@@ -6,9 +6,10 @@ declare(strict_types=1);
  * Listados admin usan SELECT en prepare.php, igual que portería.
  */
 
-const ACCESO_SESION_CIERRE_LOGOUT  = 'LOGOUT';
-const ACCESO_SESION_CIERRE_ADMIN   = 'ADMIN';
-const ACCESO_SESION_CIERRE_TIMEOUT = 'TIMEOUT';
+const ACCESO_SESION_CIERRE_LOGOUT      = 'LOGOUT';
+const ACCESO_SESION_CIERRE_ADMIN       = 'ADMIN';
+const ACCESO_SESION_CIERRE_TIMEOUT     = 'TIMEOUT';
+const ACCESO_SESION_CIERRE_IP_MISMATCH = 'IP_MISMATCH';
 
 const ACCESO_PRESENCIA_ACTIVO       = 'ACTIVO';
 const ACCESO_PRESENCIA_AUSENTE      = 'AUSENTE';
@@ -161,4 +162,30 @@ function accesoValidarSesionActiva(
     }
 
     return (string) $ultActividad;
+}
+
+/**
+ * IP registrada al abrir la sesión (ip_cliente), o null si no hay fila activa.
+ *
+ * @throws PDOException
+ */
+function accesoObtenerIpSesionActiva(
+    PDOStatement $stmtIpSesion,
+    int $idSesion,
+    string $idUsuario
+): ?string {
+    if ($idSesion < 1 || trim($idUsuario) === '') {
+        return null;
+    }
+
+    $stmtIpSesion->execute([$idSesion, $idUsuario]);
+    $ip = $stmtIpSesion->fetchColumn();
+
+    if ($ip === false || $ip === null) {
+        return null;
+    }
+
+    $ip = trim((string) $ip);
+
+    return $ip === '' ? null : $ip;
 }

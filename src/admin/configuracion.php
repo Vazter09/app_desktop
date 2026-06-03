@@ -168,7 +168,7 @@ function configuracionBotonRestaurar(string $section, string $tituloCorto): void
     <?php
 }
 $page_title     = 'Config. sistema';
-$active_menu_id = '0205';
+$active_menu_id = '0401';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 $logo_path_db   = $c['path_logo'] ?? 'img/logo-sena.png';
 $logo_preview_url = htmlspecialchars(smartcsetLogoUrl('../../'), ENT_QUOTES, 'UTF-8');

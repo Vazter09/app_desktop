@@ -6,6 +6,10 @@ declare(strict_types=1);
  */
 final class Db
 {
+    public const SESION_OK = 0;
+    public const SESION_INVALID = 1;
+    public const SESION_IP_MISMATCH = 2;
+
     /**
      * Intervalo mínimo entre UPDATE de ult_actividad en navegación (segundos).
      * El heartbeat (`smartcset-presencia.js`) actualiza con la misma cadencia vía AJAX.
@@ -36,23 +40,25 @@ final class Db
     }
 
     /**
-     * Valida sesión activa en BD, aplica timeout y actualiza ult_actividad/ruta.
-     * Retorna false si debe redirigir al login (sesión inválida o expirada).
+     * Valida sesión activa en BD, timeout, IP (opcional) y actualiza ult_actividad/ruta.
+     *
+     * @return self::SESION_OK|self::SESION_INVALID|self::SESION_IP_MISMATCH
      */
     public static function gestionarSesionEnRequest(
         PDOStatement $stmtConsultarSesion,
         PDOStatement $stmtSalidaSesion,
         PDOStatement $stmtTouchSesion,
-        int $sessionTimeoutSeg
-    ): bool {
+        int $sessionTimeoutSeg,
+        ?PDOStatement $stmtSesionIp = null
+    ): int {
         if (empty($_SESSION['id_sesion']) || empty($_SESSION['id_usuario'])) {
-            return false;
+            return self::SESION_INVALID;
         }
 
         $idSesion = (int) $_SESSION['id_sesion'];
         $idUsuario = (string) $_SESSION['id_usuario'];
         if ($idSesion < 1 || $idUsuario === '') {
-            return false;
+            return self::SESION_INVALID;
         }
 
         try {
@@ -61,7 +67,31 @@ final class Db
 
             $ultActividadStr = accesoValidarSesionActiva($stmtConsultarSesion, $idSesion, $idUsuario);
             if ($ultActividadStr === null) {
-                return false;
+                return self::SESION_INVALID;
+            }
+
+            if (
+                smartcsetSesionValidarIp()
+                && $stmtSesionIp !== null
+            ) {
+                $ipRegistrada = accesoObtenerIpSesionActiva($stmtSesionIp, $idSesion, $idUsuario);
+                $ipActual = smartcsetClientIp();
+                if (!smartcsetSesionIpCoincide($ipRegistrada, $ipActual)) {
+                    accesoSalidaSesion(
+                        $stmtSalidaSesion,
+                        $idSesion,
+                        ACCESO_SESION_CIERRE_IP_MISMATCH,
+                        $idUsuario
+                    );
+                    error_log(
+                        'sesion IP_MISMATCH: sesion=' . $idSesion
+                        . ' usuario=' . $idUsuario
+                        . ' registrada=' . ($ipRegistrada ?? '')
+                        . ' actual=' . $ipActual
+                    );
+
+                    return self::SESION_IP_MISMATCH;
+                }
             }
 
             $ultActividad = smartcsetDbTimestampEpoch($ultActividadStr);
@@ -73,16 +103,18 @@ final class Db
                         ACCESO_SESION_CIERRE_TIMEOUT,
                         $idUsuario
                     );
-                    return false;
+
+                    return self::SESION_INVALID;
                 }
             }
 
             self::touchSesionSiCorresponde($stmtTouchSesion, $idSesion);
 
-            return true;
+            return self::SESION_OK;
         } catch (Throwable $e) {
             error_log('gestionar sesion: ' . $e->getMessage());
-            return false;
+
+            return self::SESION_INVALID;
         }
     }
 

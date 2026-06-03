@@ -81,6 +81,7 @@ try {
     $stmt_fun_salida_sesion = $pdo->prepare(PrepareAuthSql::SALIDA_SESION);
     $stmt_fun_touch_sesion = $pdo->prepare(PrepareAuthSql::TOUCH_SESION);
     $stmt_fun_validar_sesion_activa = $pdo->prepare(PrepareAuthSql::VALIDAR_SESION_ACTIVA);
+    $stmt_sesion_ip_activa = $pdo->prepare(PrepareAuthSql::SESION_IP_ACTIVA);
 
     $sql_list_sesiones_activas = "SELECT s.id_sesion, s.id_usuario, u.nom_usuario, u.mail_usuario,
                                         u.ind_usuario, s.fec_inicio, s.ult_actividad,
@@ -188,17 +189,21 @@ try {
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
         require_once __DIR__ . '/helpers.php';
 
-        if (!Db::gestionarSesionEnRequest(
+        $estadoSesion = Db::gestionarSesionEnRequest(
             $stmt_fun_validar_sesion_activa,
             $stmt_fun_salida_sesion,
             $stmt_fun_touch_sesion,
-            SESSION_TIMEOUT
-        )) {
+            SESSION_TIMEOUT,
+            $stmt_sesion_ip_activa
+        );
+
+        if ($estadoSesion !== Db::SESION_OK) {
             $_SESSION = [];
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_destroy();
             }
-            header('Location: ' . smartcsetLoginUrl() . '?sesion=invalida');
+            $sesionQuery = $estadoSesion === Db::SESION_IP_MISMATCH ? 'ip' : 'invalida';
+            header('Location: ' . smartcsetLoginUrl() . '?sesion=' . $sesionQuery);
             exit();
         }
     }

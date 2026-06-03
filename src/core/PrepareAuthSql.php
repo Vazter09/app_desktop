@@ -19,4 +19,9 @@ SQL;
 
     /** NULL = sesión inválida; TEXT = ult_actividad de la sesión activa. */
     public const VALIDAR_SESION_ACTIVA = 'SELECT fun_validar_sesion_activa(?::INTEGER, ?::TEXT)';
+
+    public const SESION_IP_ACTIVA = <<<'SQL'
+SELECT ip_cliente FROM tab_sesiones
+WHERE id_sesion = ?::INTEGER AND id_usuario = ?::TEXT AND fec_fin IS NULL
+SQL;
 }

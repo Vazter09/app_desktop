@@ -122,7 +122,8 @@ for f in \
   "$ROOT/database/migrations/update_menu_personas_refactor.sql" \
   "$ROOT/database/migrations/add_unique_ingreso_persona_dia.sql" \
   "$ROOT/database/migrations/update_logo_sena_default.sql" \
-  "$ROOT/database/migrations/add_menu_sesiones_0206.sql"
+  "$ROOT/database/migrations/add_menu_sesiones_0206.sql" \
+  "$ROOT/database/migrations/update_fun_salida_sesion_ip_mismatch.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

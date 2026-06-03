@@ -159,6 +159,60 @@ function smartcsetLoginUrl(): string
     return smartcsetProjectAssetHref() . 'index.php';
 }
 
+/**
+ * IP del cliente para sesiones (login y validación).
+ * Con SESION_TRUST_PROXY=1 usa el primer X-Forwarded-For si es IP válida.
+ */
+function smartcsetClientIp(): string
+{
+    if (defined('SESION_TRUST_PROXY') && SESION_TRUST_PROXY) {
+        $forwarded = trim((string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
+        if ($forwarded !== '') {
+            $first = trim(explode(',', $forwarded)[0]);
+            if (filter_var($first, FILTER_VALIDATE_IP)) {
+                return substr($first, 0, 45);
+            }
+        }
+    }
+
+    $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    if ($remote !== '' && filter_var($remote, FILTER_VALIDATE_IP)) {
+        return substr($remote, 0, 45);
+    }
+
+    return '';
+}
+
+/** true si SESION_VALIDAR_IP está activo en .env. */
+function smartcsetSesionValidarIp(): bool
+{
+    return defined('SESION_VALIDAR_IP') && SESION_VALIDAR_IP;
+}
+
+/**
+ * Compara IP guardada en tab_sesiones con la IP actual del request.
+ * Si no hay IP registrada (sesión antigua), no bloquea.
+ */
+function smartcsetSesionIpCoincide(?string $ipRegistrada, string $ipActual): bool
+{
+    $ipRegistrada = $ipRegistrada !== null ? trim($ipRegistrada) : '';
+    $ipActual = trim($ipActual);
+
+    if ($ipRegistrada === '') {
+        return true;
+    }
+
+    if ($ipActual === '') {
+        return false;
+    }
+
+    if (str_contains($ipRegistrada, ':') || str_contains($ipActual, ':')) {
+        return strtolower($ipRegistrada) === strtolower($ipActual);
+    }
+
+    return $ipRegistrada === $ipActual;
+}
+
 /** Endpoint POST del heartbeat de presencia (relativo a la página actual). */
 function smartcsetSesionHeartbeatUrl(): string
 {

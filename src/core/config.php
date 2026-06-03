@@ -33,6 +33,17 @@ date_default_timezone_set(APP_TIMEZONE);
 define('SESION_PRESENCIA_ACTIVO_MIN', max(1, (int) EnvLoader::get('SESION_PRESENCIA_ACTIVO_MIN', '5')));
 define('SESION_HEARTBEAT_SEG', max(15, (int) EnvLoader::get('SESION_HEARTBEAT_SEG', '60')));
 
+// Validar que la IP del request coincida con ip_cliente de tab_sesiones (anti secuestro de cookie).
+define(
+    'SESION_VALIDAR_IP',
+    filter_var(EnvLoader::get('SESION_VALIDAR_IP', '1'), FILTER_VALIDATE_BOOLEAN)
+);
+// Tras proxy/Nginx confiable: usar el primer valor de X-Forwarded-For como IP del cliente.
+define(
+    'SESION_TRUST_PROXY',
+    filter_var(EnvLoader::get('SESION_TRUST_PROXY', '0'), FILTER_VALIDATE_BOOLEAN)
+);
+
 // Notación para variables globales
 $w_error_db = "Error de conexión: ";
 

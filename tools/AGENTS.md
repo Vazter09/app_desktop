@@ -36,6 +36,17 @@ Script PowerShell para levantar servidor de desarrollo en Windows.
 - Levanta servidor en `http://localhost:8080`
 - Abre navegador automáticamente
 
+### sync_menus_personas.sh
+
+Sincroniza menús del módulo **Personas** (`03`, `0300`–`0305`) y permisos en `tab_menu_usuarios`. Idempotente para desarrollo.
+
+```bash
+bash tools/sync_menus_personas.sh
+bash tools/sync_menus_personas.sh admin.smart otro.usuario
+```
+
+SQL: `database/seeds/seed_menus_personas_dev.sql`
+
 ### setup_db.sh
 
 Despliega funciones mínimas en una BD **ya existente**: sesiones (login), menús, usuarios admin.

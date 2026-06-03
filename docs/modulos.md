@@ -61,7 +61,7 @@ Migración: [`database/migrations/update_modulos_rutas_organizadas.sql`](../data
 ## Configuración visual y módulo registro
 
 - Tabla: `tab_config_sistema` (una fila).
-- Admin: **Config. sistema** → `src/admin/configuracion.php` (menú `0205`).
+- Admin: **Config. sistema** → `src/admin/configuracion.php` (menú `0401`).
 - Estilos del módulo registro: [`css/registro.css`](../css/registro.css) + variables inyectadas desde [`src/layout/theme_vars.php`](../src/layout/theme_vars.php).
 - Migración en BD existente: `./database/migrations/run_config_sistema.sh`
 

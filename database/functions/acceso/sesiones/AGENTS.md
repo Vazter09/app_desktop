@@ -11,7 +11,7 @@ Igual que el resto del proyecto (`fun_ingreso_sesion`, `fun_salida_sesion`): **`
 | Función | Retorno TEXT |
 |---------|----------------|
 | `fun_ingreso_sesion` | `id_sesion` |
-| `fun_salida_sesion` | `'OK'` |
+| `fun_salida_sesion` | `'OK'` (códigos: LOGOUT, ADMIN, TIMEOUT, IP_MISMATCH) |
 | `fun_actualizar_sesion_actividad` | `'OK'` |
 | `fun_validar_sesion_activa` | `ult_actividad` o `NULL` si no hay sesión activa |
 
