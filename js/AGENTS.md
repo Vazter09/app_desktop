@@ -32,7 +32,9 @@
 | `salidas.js` | porteria | Formulario salida + tabla salidas hoy |
 | `porteria-captura.js` | porteria | Modo escáner: enfoque campo documento |
 | `porteria-medios.js` | porteria | Modo foto: captura cámara |
-| `registro-listado-admin.js` | admin/registro | Filtros y acciones |
+| `smartcset-listado.js` | global | Filtros GET + paginación AJAX en listados (`SmartcsetListado`) |
+| `personas-listado-admin.js` | admin/personas | Navegación AJAX entre listados por tipo |
+| `registro-listado-admin.js` | (legacy) | Sustituido por personas-listado-admin.js |
 | `registro-theme-toggle.js` | registro | Cambio tema claro/oscuro |
 | `logo-upload.js` | admin | Subida drag-and-drop de logo |
 | `login.js` | index.php | Comportamiento pantalla login |

@@ -3,6 +3,35 @@
     max-height: min(70vh, 640px);
 }
 
-tr.sesion-propia {
-    background: rgba(107, 142, 35, 0.08);
+tr.sesion-propia > * {
+    background: var(--surface-hover, color-mix(in srgb, var(--v-oliva) 12%, transparent)) !important;
+}
+
+.presencia-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.presencia-activo {
+    background-color: color-mix(in srgb, #198754 22%, transparent);
+    color: #75b798;
+    border: 1px solid color-mix(in srgb, #198754 45%, transparent);
+}
+
+.presencia-ausente {
+    background-color: color-mix(in srgb, #ffc107 22%, transparent);
+    color: #ffda6a;
+    border: 1px solid color-mix(in srgb, #ffc107 45%, transparent);
+}
+
+.presencia-desconectado {
+    background-color: color-mix(in srgb, #6c757d 25%, transparent);
+    color: #adb5bd;
+    border: 1px solid color-mix(in srgb, #6c757d 50%, transparent);
+}
+
+.presencia-desconocido {
+    background-color: var(--surface-hover, rgba(255, 255, 255, 0.08));
+    color: inherit;
 }

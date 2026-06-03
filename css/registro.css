@@ -1051,7 +1051,7 @@ table.data-table {
 .breadcrumb .sep { opacity: 0.3; }
 .breadcrumb .current { color: var(--text-primary); }
 
-/* ─── SCAN LINE ANIMATION ─── */
+/* ─── SCAN LINE ANIMATION (efecto escáner / CRT) ─── */
 @keyframes scanline {
     0%   { transform: translateY(-100%); }
     100% { transform: translateY(100vh); }
@@ -1059,12 +1059,29 @@ table.data-table {
 
 .scanline {
     position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(0,245,255,0.06), transparent);
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--v-oliva, #6b8e23) 75%, transparent) 50%,
+        transparent 100%
+    );
+    box-shadow:
+        0 0 10px color-mix(in srgb, var(--cyan, var(--v-oliva, #6b8e23)) 50%, transparent),
+        0 0 24px color-mix(in srgb, var(--v-oliva, #6b8e23) 30%, transparent);
     animation: scanline 6s linear infinite;
     pointer-events: none;
     z-index: 9999;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scanline {
+        animation: none;
+        opacity: 0;
+    }
 }
 
 @keyframes fadeInUp {

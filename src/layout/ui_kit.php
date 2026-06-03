@@ -11,7 +11,11 @@ $_v_confirm = @filemtime($_ui_root . '/js/smartcset-confirm.js') ?: time();
 ?>
 <div id="toast-container" class="toast-container smart-toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true"></div>
 <?php include __DIR__ . '/partials/ui_confirm_modal.php'; ?>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php
+$bootstrap_vendor_mode = 'scripts';
+$bootstrap_asset_href = $_ui_prefix;
+include __DIR__ . '/partials/bootstrap_vendor.php';
+?>
 <script src="<?= htmlspecialchars($_ui_prefix) ?>js/smartcset-forms.js?v=<?= (int) $_v_forms ?>"></script>
 <script src="<?= htmlspecialchars($_ui_prefix) ?>js/smartcset-toast.js?v=<?= (int) $_v_toast ?>"></script>
 <script src="<?= htmlspecialchars($_ui_prefix) ?>js/smartcset-confirm.js?v=<?= (int) $_v_confirm ?>"></script>

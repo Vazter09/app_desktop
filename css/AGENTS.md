@@ -2,7 +2,7 @@
 
 ## Propósito
 
-11 archivos CSS que estilizan la aplicación. Bootstrap 5.3 via CDN + CSS personalizado. No hay build step, preprocesador ni minificación.
+CSS de la aplicación + vendor local (`css/vendor/` Bootstrap 5.3.0 e Icons 1.10.0). Sin build step ni preprocesador.
 
 ---
 
@@ -14,9 +14,16 @@
 | `components.css` | Componentes reutilizables (badges, alertas, botones) |
 | `layout.css` | Estructura principal (sidebar, topbar, contenido) |
 | `style_crud.css` | Tablas, formularios CRUD, modales |
-| `style_menu_principal.css` | Dashboard de bienvenida y tarjetas |
+| `style_menu_principal.css` | Dashboard legacy (navbar); el panel usa `layout.css` |
+| `login.css` | Pantalla de login (`index.php`) |
+| `auth-recuperar.css` | Recuperación de contraseña |
+| `auth-cambiar-clave.css` | Cambio de contraseña |
+| `menu-calculadora.css` | Calculadora flotante del menú principal |
+| `crud-row-highlight.css` | Fila resaltada en CRUD (usuarios, menús, entradas) |
 | `registro.css` | Tema oscuro sci-fi del módulo registro |
-| `registro-listado-admin.css` | Tabla de listado administrativo |
+| `smartcset-listado.css` | Filtros y paginación de listados reutilizables |
+| `personas-listado-admin.css` | Tabla de listados admin (módulo Personas) |
+| `registro-listado-admin.css` | (legacy) | Sustituido por personas-listado-admin.css |
 | `menu_usuarios.css` | Interfaz de asignación de menús |
 | `modulos_ingresos.css` | Formulario de ingreso |
 | `modulos_salidas.css` | Formulario de salida |
@@ -47,8 +54,7 @@ Inyectadas por `theme_vars.php` en `<head>`:
 
 ## Dependencias
 
-- Bootstrap 5.3 via CDN en `layout/head.php`
-- Bootstrap Icons via CDN en `layout/head.php`
+- Bootstrap 5.3.0 e Icons 1.10.0 en `css/vendor/` (partial `src/layout/partials/bootstrap_vendor.php`)
 - `theme_vars.php` inyecta variables CSS
 
 ---

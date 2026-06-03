@@ -26,7 +26,7 @@
 ## 4) Listados en admin (0301–0304)
 
 - Desde el login principal, abrir **Registro personas → Aprendiz** (y los demás tipos).
-- Debe cargar `src/admin/registro/listado.php` con tabla (Tipo, Documento, Nombres, Correo, Ubicación, F. Nac., Estado).
+- Debe cargar `src/admin/personas/aprendices/index.php` (y rutas hermanas) con tabla (Tipo, Documento, Nombres, Correo, Dirección, F. Nac., Estado).
 - El botón **+ Registrar nuevo** enlaza al formulario del módulo público (requiere sesión de registro si se usa directamente).
 
 ## 5) Formularios `forms/*.php`

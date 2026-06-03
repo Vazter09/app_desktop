@@ -56,8 +56,9 @@ run_sql() {
   "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$f"
 }
 
-echo "==> Migración tab_sesiones"
+echo "==> Migración tab_sesiones (auditoría)"
 run_sql "$ROOT/database/migrations/add_tab_sesiones.sql"
+run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
 
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
@@ -81,6 +82,9 @@ FUNCS=(
   "$ROOT/database/functions/acceso/sesiones/fun_ingreso_sesion.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_salida_sesion.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_actualizar_sesion_actividad.sql"
+  "$ROOT/database/migrations/drop_fun_sesiones_table_returns.sql"
+  "$ROOT/database/functions/acceso/sesiones/fun_validar_sesion_activa.sql"
+  "$ROOT/database/functions/acceso/sesiones/fun_archivar_sesiones_antiguas.sql"
   "$ROOT/database/functions/porteria/fun_upsert_persona_visitante.sql"
   "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_ingreso.sql"
@@ -96,6 +100,8 @@ done
 run_sql "$ROOT/database/migrations/drop_fun_registrar_sesion.sql"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -c "CREATE SEQUENCE IF NOT EXISTS seq_log_ingresos START WITH 1 INCREMENT BY 1;"
+"$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+  -c "CREATE SEQUENCE IF NOT EXISTS seq_sesiones START WITH 1 INCREMENT BY 1;"
 
 for f in \
   "$ROOT/database/migrations/update_menu_padre_raiz_00.sql" \
@@ -109,11 +115,14 @@ for f in \
   "$ROOT/database/migrations/refactor_ingreso_abierto_salida.sql" \
   "$ROOT/database/migrations/add_menu_registro_salida_0103.sql" \
   "$ROOT/database/migrations/add_tab_config_sistema.sql" \
+  "$ROOT/database/migrations/fix_fun_update_tab_config_sistema.sql" \
   "$ROOT/database/migrations/add_menu_config_y_registro.sql" \
   "$ROOT/database/migrations/update_modulos_rutas_organizadas.sql" \
   "$ROOT/database/migrations/update_menu_registro_listado_admin.sql" \
+  "$ROOT/database/migrations/update_menu_personas_refactor.sql" \
   "$ROOT/database/migrations/add_unique_ingreso_persona_dia.sql" \
-  "$ROOT/database/migrations/update_logo_sena_default.sql"
+  "$ROOT/database/migrations/update_logo_sena_default.sql" \
+  "$ROOT/database/migrations/add_menu_sesiones_0206.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

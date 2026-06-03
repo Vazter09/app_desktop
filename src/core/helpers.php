@@ -153,6 +153,64 @@ function validarLongitudPassword(string $password, bool $esObligatoria = true): 
  * Prefijo relativo (../…) desde la página actual hasta la raíz del proyecto (css/, js/).
  * Cubre src/modulos/*, src/admin/*, src/menu, src/usuarios, etc.
  */
+/** URL relativa al login (index.php) desde la página actual. */
+function smartcsetLoginUrl(): string
+{
+    return smartcsetProjectAssetHref() . 'index.php';
+}
+
+/** Endpoint POST del heartbeat de presencia (relativo a la página actual). */
+function smartcsetSesionHeartbeatUrl(): string
+{
+    return smartcsetProjectAssetHref() . 'src/core/ajax_sesion_heartbeat.php';
+}
+
+/** Zona horaria de visualización (Colombia por defecto). */
+function smartcsetAppTimezone(): string
+{
+    return defined('APP_TIMEZONE') ? APP_TIMEZONE : 'America/Bogota';
+}
+
+/** Zona en la que PostgreSQL escribe CURRENT_TIMESTAMP (servidor suele ser UTC). */
+function smartcsetDbTimezone(): string
+{
+    return defined('DB_TIMEZONE') ? DB_TIMEZONE : 'UTC';
+}
+
+/**
+ * Formatea un TIMESTAMP de BD (sin zona) a hora local de la aplicación.
+ */
+function smartcsetFormatDbTimestamp(?string $timestamp, string $format = 'd/m/Y H:i'): string
+{
+    $timestamp = trim((string) $timestamp);
+    if ($timestamp === '') {
+        return '—';
+    }
+
+    try {
+        $dt = new DateTimeImmutable($timestamp, new DateTimeZone(smartcsetDbTimezone()));
+
+        return $dt->setTimezone(new DateTimeZone(smartcsetAppTimezone()))->format($format);
+    } catch (Exception) {
+        return '—';
+    }
+}
+
+/** Epoch UTC para comparar timeouts con timestamps de BD. */
+function smartcsetDbTimestampEpoch(?string $timestamp): ?int
+{
+    $timestamp = trim((string) $timestamp);
+    if ($timestamp === '') {
+        return null;
+    }
+
+    try {
+        return (new DateTimeImmutable($timestamp, new DateTimeZone(smartcsetDbTimezone())))->getTimestamp();
+    } catch (Exception) {
+        return null;
+    }
+}
+
 function smartcsetProjectAssetHref(): string
 {
     $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));

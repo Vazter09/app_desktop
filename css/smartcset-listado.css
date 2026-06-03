@@ -1,0 +1,27 @@
+/* Componentes reutilizables de listado (filtros, tabla, paginación) */
+.smart-listado-filtros-wrap {
+    background: var(--bs-body-bg, #fff);
+}
+
+.smart-listado-filtros .form-label {
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.smart-listado-paginacion-wrap .pagination {
+    margin-bottom: 0;
+}
+
+.smart-listado-paginacion .page-link {
+    color: var(--v-oscuro, #004d40);
+}
+
+.smart-listado-paginacion .page-item.active .page-link {
+    background-color: var(--v-oscuro, #004d40);
+    border-color: var(--v-oscuro, #004d40);
+}
+
+#personas-listado-host.is-loading,
+[data-smart-listado-host].is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+}

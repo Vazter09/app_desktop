@@ -38,11 +38,8 @@ function registroIncludeHead(string $pageTitle, string $panelAccent = ''): void
     <title><?= $title ?> | <?= $nom ?></title>
     <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>css/registro.css?v=<?= (int) $vReg ?>">
     <?php include dirname(__DIR__, 2) . '/layout/theme_vars.php'; ?>
-    <?php if ($panelAccent !== ''): ?>
-    <style>:root { --panel-accent: <?= htmlspecialchars($panelAccent, ENT_QUOTES, 'UTF-8') ?>; }</style>
-    <?php endif; ?>
 </head>
-<body class="registro-theme">
+<body class="registro-theme"<?= $panelAccent !== '' ? ' style="--panel-accent:' . htmlspecialchars($panelAccent, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
     <div class="scanline"></div>
     <?php
 }

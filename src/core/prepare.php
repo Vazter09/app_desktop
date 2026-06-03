@@ -9,6 +9,7 @@ require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';
 require_once __DIR__ . '/PrepareAuthSql.php';
+require_once __DIR__ . '/lib/acceso_sesion.php';
 
 try {
     $pdo = Db::connect();
@@ -75,20 +76,19 @@ try {
     $stmt_del_menu = $pdo->prepare($sql_fun_del_menu);
 
 
-    // --- 5. SECCIÓN DE SESIONES (tab_sesiones V.1.7+: sin token_sesion) ---
+    // --- 5. SECCIÓN DE SESIONES (escritura/validación: funciones PL/pgSQL; listado: SELECT) ---
     $stmt_fun_ingreso_sesion = $pdo->prepare(PrepareAuthSql::INGRESO_SESION);
+    $stmt_fun_salida_sesion = $pdo->prepare(PrepareAuthSql::SALIDA_SESION);
+    $stmt_fun_touch_sesion = $pdo->prepare(PrepareAuthSql::TOUCH_SESION);
+    $stmt_fun_validar_sesion_activa = $pdo->prepare(PrepareAuthSql::VALIDAR_SESION_ACTIVA);
 
-    $sql_fun_salida_sesion = "SELECT fun_salida_sesion(?::TEXT)";
-    $stmt_fun_salida_sesion = $pdo->prepare($sql_fun_salida_sesion);
-
-    $sql_fun_touch_sesion = "SELECT fun_actualizar_sesion_actividad(?::TEXT)";
-    $stmt_fun_touch_sesion = $pdo->prepare($sql_fun_touch_sesion);
-
-    $sql_list_sesiones_activas = "SELECT s.id_usuario, u.nom_usuario, u.mail_usuario, u.ind_usuario,
-                                        s.fec_inicio, s.ult_actividad
+    $sql_list_sesiones_activas = "SELECT s.id_sesion, s.id_usuario, u.nom_usuario, u.mail_usuario,
+                                        u.ind_usuario, s.fec_inicio, s.ult_actividad,
+                                        s.ult_ruta, s.ult_menu_id, s.ip_cliente
                                  FROM tab_sesiones s
                                  INNER JOIN tab_usuarios u ON u.id_usuario = s.id_usuario
-                                 ORDER BY s.fec_inicio DESC";
+                                 WHERE s.fec_fin IS NULL
+                                 ORDER BY s.ult_actividad DESC";
     $stmt_list_sesiones_activas = $pdo->prepare($sql_list_sesiones_activas);
 
     // --- 6. SECCIÓN CSET - ENTRADAS AL CENTRO (tab_entradas_centro V.1.5: id_centro, id_sede) ---
@@ -181,8 +181,26 @@ try {
     );
     $stmt_list_menus = $pdo->prepare("SELECT id_menu, nom_menu, ind_id_padre, nom_programa FROM tab_menus ORDER BY id_menu ASC");
 
+    if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+        session_start();
+    }
+
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
-        Db::touchSesionSiCorresponde($stmt_fun_touch_sesion, (string) $_SESSION['id_usuario']);
+        require_once __DIR__ . '/helpers.php';
+
+        if (!Db::gestionarSesionEnRequest(
+            $stmt_fun_validar_sesion_activa,
+            $stmt_fun_salida_sesion,
+            $stmt_fun_touch_sesion,
+            SESSION_TIMEOUT
+        )) {
+            $_SESSION = [];
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_destroy();
+            }
+            header('Location: ' . smartcsetLoginUrl() . '?sesion=invalida');
+            exit();
+        }
     }
 
 } catch (PDOException $e) {

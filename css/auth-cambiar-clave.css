@@ -1,0 +1,31 @@
+/**
+ * Cambio de contraseña autenticado (src/auth/cambiar_clave.php)
+ */
+.auth-cambiar-clave-page .logo-derecha {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    max-width: 120px;
+    z-index: 1050;
+}
+
+.auth-cambiar-clave-page .auth-shell {
+    min-height: 80vh;
+}
+
+.auth-cambiar-clave-page .auth-card {
+    width: 400px;
+    max-width: 100%;
+}
+
+.auth-cambiar-clave-page .btn-guardar-institucional {
+    background-color: #003366;
+    border-color: #003366;
+    color: #fff;
+}
+
+.auth-cambiar-clave-page .btn-guardar-institucional:hover {
+    background-color: #004080;
+    border-color: #004080;
+    color: #fff;
+}

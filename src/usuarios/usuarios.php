@@ -2,7 +2,6 @@
 require_once(__DIR__ . '/../core/prepare.php');
 require_once(__DIR__ . '/../core/ErrorHandler.php');
 require_once(__DIR__ . '/../core/helpers.php');
-session_start();
 
 if (!isset($_SESSION['id_usuario'])) {
     header("Location: ../../index.php");
@@ -74,7 +73,8 @@ $page_title     = 'Usuarios';
 $active_menu_id = '0201';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
-$extra_css = '.usuario-editando { background: rgba(107, 142, 35, 0.12) !important; }';
+$_crud_hl_v = @filemtime(dirname(__DIR__, 2) . '/css/crud-row-highlight.css') ?: time();
+$extra_stylesheets = '<link rel="stylesheet" href="../../css/crud-row-highlight.css?v=' . (int) $_crud_hl_v . '">';
 
 include __DIR__ . '/../layout/head.php';
 include __DIR__ . '/../layout/sidebar.php';

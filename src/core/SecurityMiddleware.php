@@ -29,7 +29,7 @@ class SecurityMiddleware {
         header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
         
         // CSP: Content Security Policy (básico, ajustar según necesidad)
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:;");
+        header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;");
     }
 
     private static function enforceHTTPS() {

@@ -45,11 +45,16 @@ echo "==> Base de datos existente: $DB_NAME"
 
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
 
-echo "==> Sesiones (login)"
+echo "==> Sesiones (auditoría)"
+run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
 run_sql "$ROOT/database/functions/acceso/sesiones/fun_ingreso_sesion.sql"
 run_sql "$ROOT/database/functions/acceso/sesiones/fun_salida_sesion.sql"
 run_sql "$ROOT/database/functions/acceso/sesiones/fun_actualizar_sesion_actividad.sql"
+run_sql "$ROOT/database/migrations/drop_fun_sesiones_table_returns.sql"
+run_sql "$ROOT/database/functions/acceso/sesiones/fun_validar_sesion_activa.sql"
+run_sql "$ROOT/database/functions/acceso/sesiones/fun_archivar_sesiones_antiguas.sql"
 run_sql "$ROOT/database/migrations/drop_fun_registrar_sesion.sql"
+run_sql "$ROOT/database/migrations/add_menu_sesiones_0206.sql"
 
 echo "==> Menús"
 run_sql "$ROOT/database/functions/acceso/menus/fun_insert_tab_menus.sql"

@@ -86,7 +86,9 @@ try {
 $page_title     = 'Entradas al centro';
 $active_menu_id = '0101';
 $wnom_usuario   = $_SESSION['nom_usuario'];
-$extra_css      = '.entrada-editando { background: rgba(107, 142, 35, 0.12) !important; }';
+$_crud_hl_v = @filemtime(dirname(__DIR__, 3) . '/css/crud-row-highlight.css') ?: time();
+$extra_stylesheets = '<link rel="stylesheet" href="' . htmlspecialchars($smartcset_asset_href, ENT_QUOTES, 'UTF-8')
+    . 'css/crud-row-highlight.css?v=' . (int) $_crud_hl_v . '">';
 
 include modulosLayout('layout/head.php');
 include modulosLayout('layout/sidebar.php');
