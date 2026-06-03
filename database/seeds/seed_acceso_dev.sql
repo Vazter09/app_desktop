@@ -1,6 +1,11 @@
--- Datos de desarrollo — módulo acceso SMARTCSET
--- Ejecutar después de bootstrap_modulo_acceso.sql
+-- Datos operativos mínimos — módulo acceso / registro / portería SMARTCSET
+-- Ejecutar después del schema (y, en producción, después de inserts SENA: regionales, centros, sedes, geo, profesiones).
+-- Idempotente: ON CONFLICT DO NOTHING en todos los INSERT.
+--
+-- NO incluye: regionales, centros, sedes, catálogo DANE (dptos/ciudades masivos), profesiones SENA.
+-- Solo sentinelas 00/00000 y profesión 00 cuando hace falta portería/visitante demo.
 
+-- Sentinelas geográficas (no duplican el catálogo DANE; portería usa estos defaults en upsert mínimo)
 INSERT INTO tab_dptos (id_dpto, nom_dpto, usr_insert, fec_insert)
 VALUES ('00', 'Sin Departamento', 'seed', NOW())
 ON CONFLICT (id_dpto) DO NOTHING;
@@ -25,10 +30,13 @@ INSERT INTO tab_profesiones (id_profesion, nom_profesion, usr_insert, fec_insert
 VALUES ('00', 'Genérica', 'seed', NOW())
 ON CONFLICT (id_profesion) DO NOTHING;
 
+-- IDs alineados con listados admin (personasResolveTipoId por nombre)
 INSERT INTO tab_tipos_persona (id_tipo_persona, nom_tipo_persona, usr_insert, fec_insert) VALUES
     (1, 'Visitante', 'seed', NOW()),
     (2, 'Aprendiz', 'seed', NOW()),
     (3, 'Instructor', 'seed', NOW()),
+    (4, 'Funcionario', 'seed', NOW()),
+    (5, 'Contratista', 'seed', NOW()),
     (99, 'Sin tipo', 'seed', NOW())
 ON CONFLICT (id_tipo_persona) DO NOTHING;
 
@@ -38,35 +46,33 @@ INSERT INTO tab_metodos_aut (id_metodo_aut, nom_metodo_aut, usr_insert, fec_inse
     (3, 'Código de barras', 'seed', NOW())
 ON CONFLICT (id_metodo_aut) DO NOTHING;
 
--- Cadena institucional mínima (V.1.5: tab_entradas_centro exige id_centro + id_sede)
-INSERT INTO tab_regionales (
-    id_regional, nom_regional, dir_regional, id_dpto, tel_regional,
-    num_extension_tel, nom_director, usr_insert, fec_insert
-) VALUES (
-    '99', 'Regional desarrollo', 'Sin dirección', '00', 6010000000, 0, 'Seed', 'seed', NOW()
-) ON CONFLICT (id_regional) DO NOTHING;
+-- Puertas del centro: solo si ya hay sedes (p. ej. tras inserts SENA) y aún no hay entradas
+DO $$
+DECLARE
+    w_centro DECIMAL(4,0);
+    w_sede   DECIMAL(1,0);
+BEGIN
+    IF EXISTS (SELECT 1 FROM tab_entradas_centro LIMIT 1) THEN
+        RETURN;
+    END IF;
 
-INSERT INTO tab_centros (
-    id_centro, nom_centro, dir_centro, tel_centro, num_extension_tel,
-    nom_subdirector, id_regional, usr_insert, fec_insert
-) VALUES (
-    9001, 'Centro desarrollo SMARTCSET', 'Sin dirección', 6010000001, 0,
-    'Seed', '99', 'seed', NOW()
-) ON CONFLICT (id_centro) DO NOTHING;
+    SELECT s.id_centro, s.id_sede
+      INTO w_centro, w_sede
+      FROM tab_sedes s
+     ORDER BY s.id_centro, s.id_sede
+     LIMIT 1;
 
-INSERT INTO tab_sedes (
-    id_centro, id_sede, nom_sede, dir_sede, nom_encargado, tel_sede,
-    usr_insert, fec_insert
-) VALUES (
-    9001, 1, 'Sede principal', 'Sin dirección', 'Seed', 6010000002, 'seed', NOW()
-) ON CONFLICT (id_centro, id_sede) DO NOTHING;
+    IF w_centro IS NULL THEN
+        RAISE NOTICE 'seed_acceso_dev: sin tab_sedes; omitiendo tab_entradas_centro';
+        RETURN;
+    END IF;
 
-INSERT INTO tab_entradas_centro (
-    id_entrada_centro, nom_entrada_centro, id_centro, id_sede, usr_insert, fec_insert
-) VALUES
-    (1, 'Entrada principal', 9001, 1, 'seed', NOW()),
-    (2, 'Entrada visitantes', 9001, 1, 'seed', NOW())
-ON CONFLICT (id_entrada_centro) DO NOTHING;
+    INSERT INTO tab_entradas_centro (id_entrada_centro, nom_entrada_centro, id_centro, id_sede, usr_insert, fec_insert)
+    VALUES
+        (1, 'Entrada principal', w_centro, w_sede, 'seed', NOW()),
+        (2, 'Entrada visitantes', w_centro, w_sede, 'seed', NOW())
+    ON CONFLICT (id_entrada_centro) DO NOTHING;
+END $$;
 
 -- Usuario demo: admin.smart / AdminSmart2026!
 INSERT INTO tab_usuarios (
@@ -83,7 +89,7 @@ INSERT INTO tab_usuarios (
     NOW()
 ) ON CONFLICT (id_usuario) DO NOTHING;
 
--- Usuario portería (menús 0102/0103 vía migraciones)
+-- Usuario portería: porteria / Porteria2026!
 INSERT INTO tab_usuarios (
     id_usuario, nom_usuario, pass_usuario, mail_usuario,
     ind_usuario, ind_estado, usr_insert, fec_insert
@@ -98,7 +104,7 @@ INSERT INTO tab_usuarios (
     NOW()
 ) ON CONFLICT (id_usuario) DO NOTHING;
 
--- Visitante de prueba
+-- Visitante de prueba (usa sentinelas; no depende de catálogo DANE cargado)
 INSERT INTO tab_personas (
     id_persona, id_tipo_docum, id_tipo_persona, nom_persona, ape_persona,
     mail_persona, ind_genero, fec_ultima_entrada, fec_ultima_salida,

@@ -16,24 +16,20 @@ CRUD completo de entradas:
 - POST — procesa inserción/actualización
 
 **Campos:**
-- `id_entrada_centro` — código de puerta (1-9)
+- `id_entrada_centro` — código de puerta (1-9), **asignado automáticamente** al crear vía `fun_upsert_tab_entradas_centro`
 - `nom_entrada_centro` — nombre descriptivo (ej. "Puerta Principal")
 - `descripcion` — descripción adicional (opcional)
 - `ind_estado` — estado activo/inactivo
 
 **Depende de:**
-- Prepared statements para operaciones CRUD en `tab_entradas_centro`
-- Cadena institucional: `id_centro` y `id_sede` seteados en constantes del proyecto
+- `$stmt_list_entradas` — listado con join a sede/centro
+- `$stmt_fun_upsert_entrada` → `fun_upsert_tab_entradas_centro`
+- `$stmt_fun_delete_entrada` → `fun_delete_tab_entradas_centro`
+- Catálogo `tab_sedes` + `tab_centros`: el modal exige elegir sede (`sel_sede` = `id_centro:id_sede`)
 
 ### init.php
 
-Bootstrap del módulo. Carga `prepare.php` y define constantes de centro/sede.
-
-**Constantes:**
-```php
-define('CSET_ID_CENTRO_DEV', 1);  // Centro para desarrollo
-define('CSET_ID_SEDE_DEV', 1);    // Sede para desarrollo
-```
+Bootstrap del módulo. Carga `prepare.php`.
 
 ---
 
@@ -56,8 +52,8 @@ define('CSET_ID_SEDE_DEV', 1);    // Sede para desarrollo
 
 ## Convenciones específicas
 
-- Los códigos 1-9 son fijos — no son IDs asignados automáticamente
-- Las constantes `CSET_ID_CENTRO_DEV` y `CSET_ID_SEDE_DEV` definen el contexto institucional para desarrollo
+- Los códigos 1-9 son fijos — no son IDs asignados automáticamente (PK global, no por sede)
+- Al crear/editar se elige sede en UI; el listado muestra centro y sede
 
 ---
 
@@ -65,5 +61,4 @@ define('CSET_ID_SEDE_DEV', 1);    // Sede para desarrollo
 
 - No permitir crear puerta con código 0 o >9 — rango 1-9 es obligatorio
 - No permitir desactivar la última entrada activa — validar siempre
-- No cambiar los valores de `CSET_ID_CENTRO_DEV` y `CSET_ID_SEDE_DEV` sin actualizar BD también
 - No asumir que `id_centro` y `id_sede` siempre existen — validar en `tab_sedes`

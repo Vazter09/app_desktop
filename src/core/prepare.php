@@ -93,10 +93,24 @@ try {
     $stmt_list_sesiones_activas = $pdo->prepare($sql_list_sesiones_activas);
 
     // --- 6. SECCIÓN CSET - ENTRADAS AL CENTRO (tab_entradas_centro V.1.5: id_centro, id_sede) ---
-    $sql_list_entradas = "SELECT id_entrada_centro AS id_entrada, nom_entrada_centro AS nom_entrada
-                          FROM tab_entradas_centro
-                          ORDER BY id_entrada_centro ASC";
+    $sql_list_entradas = "SELECT e.id_entrada_centro AS id_entrada,
+                                 e.nom_entrada_centro AS nom_entrada,
+                                 e.id_centro,
+                                 e.id_sede,
+                                 COALESCE(c.nom_centro, '') AS nom_centro,
+                                 COALESCE(s.nom_sede, '') AS nom_sede
+                          FROM tab_entradas_centro e
+                          INNER JOIN tab_sedes s
+                                  ON s.id_centro = e.id_centro AND s.id_sede = e.id_sede
+                          INNER JOIN tab_centros c ON c.id_centro = e.id_centro
+                          ORDER BY e.id_entrada_centro ASC";
     $stmt_list_entradas = $pdo->prepare($sql_list_entradas);
+
+    $sql_fun_upsert_entrada = 'SELECT fun_upsert_tab_entradas_centro(?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC, ?::TEXT)';
+    $stmt_fun_upsert_entrada = $pdo->prepare($sql_fun_upsert_entrada);
+
+    $sql_fun_delete_entrada = 'SELECT fun_delete_tab_entradas_centro(?::NUMERIC)';
+    $stmt_fun_delete_entrada = $pdo->prepare($sql_fun_delete_entrada);
 
     // --- 6b. REGISTRO DE INGRESOS (portería → tab_log_ingresos) ---
     $stmt_list_tipos_doc = $pdo->prepare(

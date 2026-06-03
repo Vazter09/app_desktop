@@ -79,6 +79,8 @@ FUNCS=(
   "$ROOT/database/functions/acceso/menus/fun_delete_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_insert_menu_usuarios.sql"
   "$ROOT/database/functions/acceso/menus/fun_delete_perfil_usuario.sql"
+  "$ROOT/database/functions/acceso/entradas/fun_upsert_tab_entradas_centro.sql"
+  "$ROOT/database/functions/acceso/entradas/fun_delete_tab_entradas_centro.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_ingreso_sesion.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_salida_sesion.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_actualizar_sesion_actividad.sql"
