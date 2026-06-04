@@ -10,6 +10,9 @@
     const toggleMobileBtn = document.getElementById('sidebar-toggle-mobile');
     const overlay = document.getElementById('sidebar-overlay');
     const themeToggleBtn = document.getElementById('theme-toggle');
+    const notificationsRoot = document.getElementById('topbar-notifications');
+    const notificationsToggleBtn = document.getElementById('notifications-toggle');
+    const notificationsPanel = document.getElementById('notifications-panel');
     const body = document.body;
     const themeStorageKey = 'smartcset_theme';
     const darkTheme = 'dark';
@@ -57,6 +60,35 @@
             const nextTheme = body.classList.contains('light-theme') ? darkTheme : lightTheme;
             applyTheme(nextTheme);
             setStoredTheme(nextTheme);
+        });
+    }
+
+    function setNotificationsOpen(open) {
+        if (!notificationsToggleBtn || !notificationsPanel) return;
+        notificationsToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        notificationsPanel.hidden = !open;
+    }
+
+    function closeNotificationsPanel() {
+        setNotificationsOpen(false);
+    }
+
+    if (notificationsToggleBtn && notificationsPanel) {
+        notificationsToggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isOpen = notificationsToggleBtn.getAttribute('aria-expanded') === 'true';
+            setNotificationsOpen(!isOpen);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!notificationsRoot || notificationsPanel.hidden) return;
+            if (!notificationsRoot.contains(e.target)) {
+                closeNotificationsPanel();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeNotificationsPanel();
         });
     }
 
