@@ -745,28 +745,38 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     });
 
     /* ---- Paso 1 → 2: usar resultado pre-cargado o esperar fetch en vuelo ---- */
-    btnSig.addEventListener("click", function() {
-        if (fetchResult !== null) {
-            goStep(2);
-            showLoading(false);
-            renderStep2(fetchResult);
-        } else if (fetchPromise !== null) {
-            showLoading(true);
-            goStep(2);
-            fetchPromise.then(function(data) {
+    if (btnSig) {
+        btnSig.addEventListener("click", function() {
+            console.log("Click en Continuar. fetchResult:", fetchResult, "fetchPromise:", fetchPromise);
+            if (fetchResult !== null) {
+                console.log("Usando fetchResult pre-cargado");
+                goStep(2);
                 showLoading(false);
-                renderStep2(data);
-            });
-        } else {
-            showLoading(true);
-            goStep(2);
-            prefetch();
-            fetchPromise.then(function(data) {
-                showLoading(false);
-                renderStep2(data);
-            });
-        }
-    });
+                renderStep2(fetchResult);
+            } else if (fetchPromise !== null) {
+                console.log("Esperando fetchPromise");
+                showLoading(true);
+                goStep(2);
+                fetchPromise.then(function(data) {
+                    console.log("fetchPromise resuelta:", data);
+                    showLoading(false);
+                    renderStep2(data);
+                });
+            } else {
+                console.log("Iniciando prefetch");
+                showLoading(true);
+                goStep(2);
+                prefetch();
+                fetchPromise.then(function(data) {
+                    console.log("prefetch resuelta:", data);
+                    showLoading(false);
+                    renderStep2(data);
+                });
+            }
+        });
+    } else {
+        console.error("btnSig no encontrado");
+    }
 
     /* ---- Paso 2: volver al paso 1 ---- */
     function irPaso1Reset() {
