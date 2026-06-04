@@ -1254,7 +1254,7 @@ CREATE TABLE IF NOT EXISTS tab_personas
     id_tipo_persona             DECIMAL(2,0)                NOT NULL DEFAULT 1,
     nom_persona                 VARCHAR(40)                 NOT NULL CHECK(LENGTH(nom_persona) >= 3),
     ape_persona                 VARCHAR(30)                 NOT NULL CHECK(LENGTH(ape_persona) >= 2),
-    mail_persona                mail_personal               NOT NULL DEFAULT 'Sin Correo',
+    mail_persona                mail_personal               NOT NULL DEFAULT 'sin_correo@correo.com',
     fec_nacimiento              DATE                        NOT NULL DEFAULT '1900-01-01',
     ind_genero                  DECIMAL(2,0)                NOT NULL DEFAULT 99,  -- 99=No definido
  -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
@@ -1365,16 +1365,16 @@ CREATE TYPE datos_personales_aprendiz AS
 CREATE TABLE IF NOT EXISTS tab_instructores
 (
     id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
-    id_centro               DECIMAL(4,0)                NOT NULL,
-    ind_tipo_contrato       BOOLEAN                     NOT NULL, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
-    ind_contratado_actual   BOOLEAN                     NOT NULL, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
+    id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
+    ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
+    ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
     ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
     ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
-    id_nivel_estudio        DECIMAL(2,0)                NOT NULL,
-    id_profesion            VARCHAR                     NOT NULL,
-    id_red                  DECIMAL(2,0)                NOT NULL,
+    id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
+    id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
+    id_red                  DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_disponibilidad      BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Disponible / FALSE=No Disponible (Ocupado con tiempo completo)
-    ind_estado              DECIMAL(1,0)                NOT NULL CHECK(ind_estado >= 0 AND ind_estado <= 9), -- 0=Activo,2=Suspendido,3=Bloqueado,9=Inactivo;
+    ind_estado              DECIMAL(1,0)                NOT NULL CHECK(ind_estado >= 0 AND ind_estado <= 9) DEFAULT 0, -- 0=Activo,2=Suspendido,3=Bloqueado,9=Inactivo;
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1674,8 +1674,8 @@ CREATE TABLE IF NOT EXISTS tab_programas
     ind_tipo                VARCHAR    		            NOT NULL, -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
     val_duracion_lect_hrs   DECIMAL(4,0)                NOT NULL,
     val_duracion_prod_hrs   DECIMAL(4,0)                NOT NULL,
-    val_duracion_lect_mes   DECIMAL(2,0)                NOT NULL,
-    val_duracion_prod_mes   DECIMAL(2,0)                NOT NULL,
+    val_duracion_lect_mes   DECIMAL(2,0)                NOT NULL DEFAULT 0,
+    val_duracion_prod_mes   DECIMAL(2,0)                NOT NULL DEFAULT 0,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2419,38 +2419,38 @@ CREATE TABLE IF NOT EXISTS tab_prog_especiales
 CREATE TABLE IF NOT EXISTS tab_fichas
 (
     id_ficha                DECIMAL(10,0)               NOT NULL,
-    id_centro               DECIMAL(2,0)                NOT NULL,
+    id_centro               DECIMAL(4,0)                NOT NULL,
     id_programa             DECIMAL(8,0)                NOT NULL,
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL,
     ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche
     ind_modalidad           DECIMAL(1,0)                NOT NULL, -- 1=PRESENCIAL / 2=VIRTUAL / 3= DISTANCIA
     fec_inicio              DATE                        NOT NULL,
-     fec_fin_lectiva         DATE                        NOT NULL DEFAULT (fec_inicio + INTERVAL '6 months'), -- Se asume que la duración lectiva es de 6 meses a partir de la fecha de inicio
+    fec_fin_lectiva         DATE                        NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Se asume que la duración lectiva es de 6 meses a partir de la fecha de inicio
     fec_fin_productiva      DATE                        NOT NULL, --- fecha fin programa
-    val_duracion            DECIMAL(2,0)                NOT NULL, -- Valor dado en meses
-    id_instructor_lider     DECIMAL(10,0)               NOT NULL, -- necesitamos id
+    val_duracion            DECIMAL(2,0)                NOT NULL DEFAULT 1, -- Valor dado en meses
+    id_instructor_lider     DECIMAL(10,0)               NOT NULL DEFAULT 77777777,
     id_sector               DECIMAL(1,0)                NOT NULL DEFAULT 0,
-    id_empresa              DECIMAL(10,0)               NOT NULL,
-    id_ocupacion            DECIMAL(4,0)                NOT NULL,
-    id_ciudad               VARCHAR                     NOT NULL, -- tenemos nombre / no coincide con la DIAN
+    id_empresa              DECIMAL(10,0)               NOT NULL DEFAULT 999,
+    id_ocupacion            DECIMAL(4,0)                NOT NULL DEFAULT 0,
+    id_ciudad               VARCHAR                     NOT NULL DEFAULT 68001, -- tenemos nombre / no coincide con la DIAN
     cod_convenio            DECIMAL(1,0)                NOT NULL DEFAULT 0,
     nom_convenio            VARCHAR                     NOT NULL DEFAULT 'Sin Convenio',
     ind_amp_cobertura       BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Si es ampliación / FALSE=No es ampliación
     id_prog_especial        DECIMAL(6,0)                NOT NULL DEFAULT 0,
-    ind_abierta             BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Abierta / FALSE=Cerrada
-    nom_vocero              VARCHAR                     NOT NULL CHECK(LENGTH(nom_vocero) >= 3 AND LENGTH(nom_vocero) <= 50),
-    tel_vocero              telefono_movil              NOT NULL, -- Validación para teléfonos móviles colombianos
-    mail_vocero             mail_personal               NOT NULL,
+    ind_abierta             BOOLEAN                     NOT NULL DEFAULT FALSE, --TRUE=Abierta / FALSE=Cerrada
+    nom_vocero              VARCHAR                     NOT NULL CHECK(LENGTH(nom_vocero) >= 3 AND LENGTH(nom_vocero) <= 50) DEFAULT 'Sin Vocero',
+    tel_vocero              telefono_movil              NOT NULL DEFAULT 3000000000, -- Validación para teléfonos móviles colombianos
+    mail_vocero             mail_personal               NOT NULL DEFAULT 'sin_correo@correo.com',
     val_cupo                DECIMAL(3,0)                NOT NULL DEFAULT 30,
     id_ambiente_base        VARCHAR                     NOT NULL DEFAULT 'Sin Ambiente Base',
-    num_inscritos_opcion1   DECIMAL(3,0)                NOT NULL,
-    num_inscritos_opcion2   DECIMAL(3,0)                NOT NULL,
-    ind_estado              DECIMAL(1,0)                NOT NULL, --1=Inscripción/2=En matrícula/3=Ejecución/7=Terminada * Fecha/8=Terminada
+    num_inscritos_opcion1   DECIMAL(3,0)                NOT NULL DEFAULT 0,
+    num_inscritos_opcion2   DECIMAL(3,0)                NOT NULL DEFAULT 0,
+    ind_estado              DECIMAL(1,0)                NOT NULL DEFAULT 1, --1=Inscripción/2=En matrícula/3=Ejecución/7=Terminada * Fecha/8=Terminada
     num_cursos              DECIMAL(2,0)                NOT NULL DEFAULT 1,
     tot_aprendices_masc     DECIMAL(3,0)                NOT NULL,
     tot_aprendices_fem      DECIMAL(3,0)                NOT NULL,
     tot_aprendices_nobin    DECIMAL(2,0)                NOT NULL,
-    tot_aprendices_trans    DECIMAL(2,0)                NOT NULL,
+    tot_aprendices_trans    DECIMAL(2,0)                NOT NULL DEFAULT 0,
     total_aprendices        DECIMAL(4,0) GENERATED ALWAYS AS
                                         (
                                          COALESCE(tot_aprendices_masc, 0::DECIMAL(3,0))  +
