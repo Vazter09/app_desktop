@@ -143,6 +143,25 @@
         });
     }
 
+    /** Hora local (APP) desde TIMESTAMP de BD interpretado como UTC. */
+    function formatDbTime(timestamp) {
+        const s = String(timestamp || '').trim();
+        if (!s) {
+            return '—';
+        }
+        const iso = s.includes('T') ? s : s.replace(' ', 'T');
+        const utc = /[Zz]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`;
+        const d = new Date(utc);
+        if (Number.isNaN(d.getTime())) {
+            return '—';
+        }
+        return d.toLocaleTimeString('es-CO', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Bogota',
+        });
+    }
+
     global.PorteriaCaptura = {
         METODO_MANUAL,
         METODO_BARRAS,
@@ -150,5 +169,6 @@
         parseCapturaDocumento,
         metodoAutDesdeOrigen,
         enlazarCapturaDocumento,
+        formatDbTime,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

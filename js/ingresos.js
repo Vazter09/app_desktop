@@ -84,9 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function mostrarIngresoAbierto(ingreso) {
         puedeIngresar = false;
-        const hora = ingreso.fec_ingreso
-            ? new Date(ingreso.fec_ingreso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-            : '—';
+        const hora = PorteriaCaptura.formatDbTime(ingreso.fec_ingreso);
         setBadge('blocked', `Ingreso activo #${ingreso.id_ingreso}`);
         setBloqueoMsg(
             true,

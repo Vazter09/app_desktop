@@ -64,9 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function mostrarIngreso(row) {
         const nom = `${row.nom_persona || ''} ${row.ape_persona || ''}`.trim();
-        const hora = row.fec_ingreso
-            ? new Date(row.fec_ingreso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-            : '—';
+        const hora = PorteriaCaptura.formatDbTime(row.fec_ingreso);
 
         document.getElementById('resumen_nombre').textContent = nom;
         document.getElementById('resumen_id_ingreso').textContent = row.id_ingreso;

@@ -202,7 +202,7 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
                             ?>
                             <tr class="<?= $esReciente ? 'ingreso-reciente' : '' ?>">
                                 <td class="text-muted fw-semibold"><?= (int) $row['id_ingreso'] ?></td>
-                                <td class="text-nowrap"><?= htmlspecialchars(date('H:i', strtotime($row['fec_ingreso']))) ?></td>
+                                <td class="text-nowrap"><?= htmlspecialchars(smartcsetFormatDbTimestamp($row['fec_ingreso'], 'H:i')) ?></td>
                                 <td>
                                     <span class="v-nom" title="<?= htmlspecialchars($nomCompleto) ?>"><?= htmlspecialchars($nomCompleto) ?></span>
                                     <span class="v-doc"><?= htmlspecialchars($row['id_tipo_docum']) ?> <?= htmlspecialchars((string) $row['id_persona']) ?></span>
