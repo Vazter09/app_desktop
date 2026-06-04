@@ -641,15 +641,12 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     var prefetchTimer    = null;
 
     /* ---- Refs ---- */
-    console.log("[SALIDA] Inicializando modal...");
     var modalEl  = document.getElementById("documentModal");
-    console.log("[SALIDA] modalEl:", modalEl);
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
     var btnFinal = document.getElementById("dm-btn-final");
     var stepSub  = document.getElementById("dm-brand-sub");
-    console.log("[SALIDA] btnSig:", btnSig, "btnFinal:", btnFinal, "stepSub:", stepSub);
 
     /* ---- Pre-fetch directo a consultar.php ---- */
     function prefetch() {
@@ -670,8 +667,8 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     function goStep(n) {
         var curr = document.getElementById("dm-slide-" + step);
         var next = document.getElementById("dm-slide-" + n);
-        if (!next) return;
-        curr.classList.remove("active");
+        if (!next) { console.error("goStep: no encontré dm-slide-" + n); return; }
+        if (curr) curr.classList.remove("active");
         step = n;
         next.classList.add("active");
         document.querySelectorAll(".dm-step-dot").forEach(function(d) {
@@ -707,7 +704,7 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
 
     function renderStep2(data) {
         var ingreso = data && data.ingreso_abierto;
-        if (data && data.puede_salir && ingreso) {
+        if (ingreso && data.puede_salir) {
             var nombre = (ingreso.nom_persona + " " + (ingreso.ape_persona || "")).trim();
             var f = document.getElementById("dm-persona-found");
             f.style.display = "block";
@@ -715,6 +712,7 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
             document.getElementById("dm-persona-tipo-text").textContent = ingreso.nom_tipo_persona || "Registrado";
             document.getElementById("dm-persona-doc-text").textContent  = "Ingreso #" + ingreso.id_ingreso;
             document.getElementById("dm-confirm-name").textContent      = ingreso.nom_persona.split(" ")[0];
+            document.getElementById("hid_id_ingreso").value = ingreso.id_ingreso;
         } else {
             var nv = document.getElementById("dm-persona-nueva");
             nv.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:16px var(--dm-pad)";
@@ -748,40 +746,30 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     });
 
     /* ---- Paso 1 → 2: usar resultado pre-cargado o esperar fetch en vuelo ---- */
-    if (btnSig) {
-        btnSig.addEventListener("click", function() {
-            console.log("Click en Continuar. fetchResult:", fetchResult, "fetchPromise:", fetchPromise);
-            if (fetchResult !== null) {
-                console.log("Usando fetchResult pre-cargado");
-                goStep(2);
+    btnSig.addEventListener("click", function() {
+        if (fetchResult !== null) {
+            goStep(2);
+            showLoading(false);
+            renderStep2(fetchResult);
+        } else if (fetchPromise !== null) {
+            showLoading(true);
+            goStep(2);
+            fetchPromise.then(function(data) {
                 showLoading(false);
-                renderStep2(fetchResult);
-            } else if (fetchPromise !== null) {
-                console.log("Esperando fetchPromise");
-                showLoading(true);
-                goStep(2);
-                fetchPromise.then(function(data) {
-                    console.log("fetchPromise resuelta:", data);
-                    showLoading(false);
-                    renderStep2(data);
-                });
-            } else {
-                console.log("Iniciando prefetch");
-                showLoading(true);
-                goStep(2);
-                prefetch();
-                fetchPromise.then(function(data) {
-                    console.log("prefetch resuelta:", data);
-                    showLoading(false);
-                    renderStep2(data);
-                });
-            }
-        });
-    } else {
-        console.error("btnSig no encontrado");
-    }
+                renderStep2(data);
+            });
+        } else {
+            showLoading(true);
+            goStep(2);
+            prefetch();
+            fetchPromise.then(function(data) {
+                showLoading(false);
+                renderStep2(data);
+            });
+        }
+    });
 
-    /* ---- Paso 2: volver al paso 1 ---- */
+    /* ---- Paso 2: Sí → confirmar salida, No → volver paso 1 ---- */
     function irPaso1Reset() {
         num = ""; fetchResult = null; fetchPromise = null;
         renderNum();
@@ -790,26 +778,21 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
         document.getElementById("txt_documento").value = "";
     }
 
-    document.getElementById("dm-btn-no").addEventListener("click", irPaso1Reset);
-    document.getElementById("dm-btn-no-nueva").addEventListener("click", irPaso1Reset);
-
-    /* ---- Paso 2: confirmar → auto-submit ---- */
-    btnFinal.addEventListener("click", function() {
+    document.getElementById("dm-btn-si").addEventListener("click", function() {
         var fDoc = document.getElementById("txt_documento");
         var fTip = document.getElementById("sel_tipo_doc");
-        var fCap = document.getElementById("hid_captura_raw");
-        var fMet = document.getElementById("hid_metodo_aut");
 
         if (fDoc) fDoc.value = num;
         if (fTip) {
             var ccOpt = Array.from(fTip.options).find(function(o) { return o.value === "CC"; });
             if (ccOpt) fTip.value = "CC";
         }
-        if (fCap) fCap.value = "";
-        if (fMet) fMet.value = "1";
 
         document.getElementById("form_salida").submit();
     });
+
+    document.getElementById("dm-btn-no").addEventListener("click", irPaso1Reset);
+    document.getElementById("dm-btn-no-nueva").addEventListener("click", irPaso1Reset);
 
     /* ---- Reset al abrir ---- */
     modalEl.addEventListener("show.bs.modal", function() {
