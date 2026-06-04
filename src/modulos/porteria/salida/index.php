@@ -650,32 +650,67 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
 
     /* ---- Pre-fetch directo a consultar.php ---- */
     function prefetch() {
-        if (num.length < 5) { fetchResult = null; fetchPromise = null; return; }
+        console.log("prefetch() llamado, num.length:", num.length);
+        if (num.length < 5) {
+            console.log("prefetch cancelado: num.length < 5");
+            fetchResult = null;
+            fetchPromise = null;
+            return;
+        }
+        console.log("Iniciando fetch a consultar.php con documento:", num);
         fetchPromise = fetch(
             "consultar.php?" + new URLSearchParams({documento: num, tipo_doc: "CC"}),
             {headers: {Accept: "application/json"}}
         )
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            console.log("Respuesta recibida:", r);
+            return r.json();
+        })
         .then(function(data) {
+            console.log("JSON parseado:", data);
             fetchResult = data.ok ? data : null;
+            console.log("fetchResult seteado a:", fetchResult);
             return fetchResult;
         })
-        .catch(function() { fetchResult = null; return null; });
+        .catch(function(err) {
+            console.error("Error en prefetch:", err);
+            fetchResult = null;
+            return null;
+        });
     }
 
     /* ---- Navegar entre pasos ---- */
     function goStep(n) {
+        console.log("goStep(" + n + ") - paso actual: " + step);
         var curr = document.getElementById("dm-slide-" + step);
         var next = document.getElementById("dm-slide-" + n);
-        if (!next) { console.error("goStep: no encontré dm-slide-" + n); return; }
-        if (curr) curr.classList.remove("active");
+        console.log("curr elemento:", curr);
+        console.log("next elemento:", next);
+
+        if (!next) {
+            console.error("ERROR goStep: no encontré dm-slide-" + n);
+            return;
+        }
+
+        if (curr) {
+            console.log("Removiendo clase active de dm-slide-" + step);
+            curr.classList.remove("active");
+        }
+
         step = n;
+        console.log("Agregando clase active a dm-slide-" + n);
         next.classList.add("active");
+
         document.querySelectorAll(".dm-step-dot").forEach(function(d) {
             var s = parseInt(d.dataset.s);
             d.className = "dm-step-dot " + (s < n ? "done" : s === n ? "active" : "pending");
         });
-        if (stepSub) stepSub.textContent = "Paso " + n + " de 2";
+
+        if (stepSub) {
+            stepSub.textContent = "Paso " + n + " de 2";
+            console.log("stepSub actualizado a: Paso " + n + " de 2");
+        }
+        console.log("goStep completado exitosamente");
     }
 
     /* ---- Render paso 1 ---- */
@@ -703,19 +738,36 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     }
 
     function renderStep2(data) {
+        console.log("renderStep2 llamado con data:", data);
         var ingreso = data && data.ingreso_abierto;
+        console.log("ingreso:", ingreso);
+        console.log("puede_salir:", data && data.puede_salir);
+
         if (ingreso && data.puede_salir) {
+            console.log("Renderizando ingreso activo encontrado");
             var nombre = (ingreso.nom_persona + " " + (ingreso.ape_persona || "")).trim();
             var f = document.getElementById("dm-persona-found");
-            f.style.display = "block";
-            document.getElementById("dm-persona-nombre").textContent    = nombre;
-            document.getElementById("dm-persona-tipo-text").textContent = ingreso.nom_tipo_persona || "Registrado";
-            document.getElementById("dm-persona-doc-text").textContent  = "Ingreso #" + ingreso.id_ingreso;
-            document.getElementById("dm-confirm-name").textContent      = ingreso.nom_persona.split(" ")[0];
-            document.getElementById("hid_id_ingreso").value = ingreso.id_ingreso;
+            console.log("elemento dm-persona-found:", f);
+            if (f) {
+                f.style.display = "block";
+                document.getElementById("dm-persona-nombre").textContent    = nombre;
+                document.getElementById("dm-persona-tipo-text").textContent = ingreso.nom_tipo_persona || "Registrado";
+                document.getElementById("dm-persona-doc-text").textContent  = "Ingreso #" + ingreso.id_ingreso;
+                document.getElementById("dm-confirm-name").textContent      = ingreso.nom_persona.split(" ")[0];
+                document.getElementById("hid_id_ingreso").value = ingreso.id_ingreso;
+                console.log("Paso 2 renderizado correctamente");
+            } else {
+                console.error("ERROR: no encontré dm-persona-found");
+            }
         } else {
+            console.log("Renderizando sin ingreso activo");
             var nv = document.getElementById("dm-persona-nueva");
-            nv.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:16px var(--dm-pad)";
+            if (nv) {
+                nv.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:16px var(--dm-pad)";
+                console.log("Mostrado estado sin ingreso activo");
+            } else {
+                console.error("ERROR: no encontré dm-persona-nueva");
+            }
         }
     }
 
@@ -746,26 +798,48 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     });
 
     /* ---- Paso 1 → 2: usar resultado pre-cargado o esperar fetch en vuelo ---- */
-    btnSig.addEventListener("click", function() {
-        if (fetchResult !== null) {
-            goStep(2);
-            showLoading(false);
-            renderStep2(fetchResult);
-        } else if (fetchPromise !== null) {
-            showLoading(true);
-            goStep(2);
-            fetchPromise.then(function(data) {
+    btnSig.addEventListener("click", function(e) {
+        e.preventDefault();
+        console.log("=== CLICK CONTINUAR ===");
+        console.log("fetchResult:", fetchResult);
+        console.log("fetchPromise:", fetchPromise);
+
+        try {
+            if (fetchResult !== null) {
+                console.log("[1] Usando fetchResult pre-cargado:", fetchResult);
+                goStep(2);
                 showLoading(false);
-                renderStep2(data);
-            });
-        } else {
-            showLoading(true);
-            goStep(2);
-            prefetch();
-            fetchPromise.then(function(data) {
-                showLoading(false);
-                renderStep2(data);
-            });
+                renderStep2(fetchResult);
+            } else if (fetchPromise !== null) {
+                console.log("[2] Esperando fetchPromise...");
+                showLoading(true);
+                goStep(2);
+                fetchPromise.then(function(data) {
+                    console.log("[2] fetchPromise resuelto:", data);
+                    showLoading(false);
+                    renderStep2(data);
+                }).catch(function(err) {
+                    console.error("[2] Error en fetch:", err);
+                });
+            } else {
+                console.log("[3] Lanzando nuevo prefetch...");
+                showLoading(true);
+                goStep(2);
+                prefetch();
+                if (fetchPromise) {
+                    fetchPromise.then(function(data) {
+                        console.log("[3] Prefetch resuelto:", data);
+                        showLoading(false);
+                        renderStep2(data);
+                    }).catch(function(err) {
+                        console.error("[3] Error en prefetch:", err);
+                    });
+                } else {
+                    console.error("[3] fetchPromise sigue siendo null después de prefetch()");
+                }
+            }
+        } catch (err) {
+            console.error("ERROR EN CLICK CONTINUAR:", err);
         }
     });
 
