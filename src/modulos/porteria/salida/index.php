@@ -641,12 +641,15 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
     var prefetchTimer    = null;
 
     /* ---- Refs ---- */
+    console.log("[SALIDA] Inicializando modal...");
     var modalEl  = document.getElementById("documentModal");
+    console.log("[SALIDA] modalEl:", modalEl);
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
     var btnFinal = document.getElementById("dm-btn-final");
     var stepSub  = document.getElementById("dm-brand-sub");
+    console.log("[SALIDA] btnSig:", btnSig, "btnFinal:", btnFinal, "stepSub:", stepSub);
 
     /* ---- Pre-fetch directo a consultar.php ---- */
     function prefetch() {
