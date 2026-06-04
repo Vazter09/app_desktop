@@ -1,0 +1,52 @@
+/**
+ * Recuperación de contraseña (src/auth/recuperar.php)
+ */
+:root {
+    --auth-recuperar-oscuro: #1b4d3e;
+    --auth-recuperar-claro: #2d5a27;
+}
+
+body.auth-recuperar-page {
+    background: linear-gradient(135deg, var(--auth-recuperar-oscuro) 0%, #000 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+}
+
+.auth-recuperar-page .card-recuperar {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.auth-recuperar-page .btn-verde {
+    background-color: var(--auth-recuperar-claro);
+    color: white;
+    transition: 0.3s;
+}
+
+.auth-recuperar-page .btn-verde:hover {
+    background-color: #3d7a35;
+    color: white;
+}
+
+.auth-recuperar-page .pass-container {
+    position: relative;
+}
+
+.auth-recuperar-page .toggle-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #666;
+}
+
+.auth-recuperar-page .logo-derecha {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    max-width: 120px;
+    z-index: 1050;
+}

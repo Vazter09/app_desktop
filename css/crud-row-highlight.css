@@ -1,0 +1,8 @@
+/**
+ * Fila resaltada en tablas CRUD (edición en curso).
+ */
+.menu-editando,
+.usuario-editando,
+.entrada-editando {
+    background: rgba(107, 142, 35, 0.12) !important;
+}

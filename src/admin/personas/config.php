@@ -4,8 +4,6 @@ require_once __DIR__ . '/../../core/ErrorHandler.php';
 require_once __DIR__ . '/../../core/helpers.php';
 require_once __DIR__ . '/../../core/ConfigSistemaDefaults.php';
 
-session_start();
-
 if (!isset($_SESSION['id_usuario'])) {
     header('Location: ../../../index.php');
     exit();
@@ -98,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_guardar_registro'
                 AppConfig::boot($pdo);
                 $stmt_get_config->execute();
                 $config = $stmt_get_config->fetch(PDO::FETCH_ASSOC) ?: [];
-                $w_mensaje = 'Se restauró la configuración del módulo de registro.';
+                $w_mensaje = 'Se restauró la configuración del módulo de personas.';
             } else {
                 $w_mensaje = 'Error: ' . $res;
                 $w_tipo_alerta = 'danger';
@@ -111,8 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_guardar_registro'
 }
 
 $c = $config;
-$page_title = 'Config. registro personas';
-$active_menu_id = '0305';
+$page_title = 'Config. módulo personas';
+$active_menu_id = '0402';
 $wnom_usuario = $_SESSION['nom_usuario'] ?? '';
 
 include __DIR__ . '/../../layout/head.php';
@@ -127,13 +125,13 @@ include __DIR__ . '/../../layout/topbar.php';
         <div class="card shadow-sm border-0 registro-config-card">
             <div class="card-header bg-corporativo py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <strong style="font-size:0.95rem;">
-                    <i class="bi bi-person-vcard-fill me-2"></i>Configuración — Registro de personas
+                    <i class="bi bi-person-vcard-fill me-2"></i>Configuración — Módulo de personas
                 </strong>
                 <button type="submit" name="btn_restaurar_registro" value="1"
                         class="btn btn-sm btn-light fw-bold"
                         data-smart-confirm
-                        data-smart-confirm-title="Restaurar módulo registro"
-                        data-smart-confirm-message="¿Restaurar la configuración del módulo de registro a los valores por defecto?"
+                        data-smart-confirm-title="Restaurar módulo personas"
+                        data-smart-confirm-message="¿Restaurar la configuración del módulo de personas a los valores por defecto?"
                         data-smart-confirm-ok="Restaurar"
                         data-smart-confirm-variant="warning">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar
@@ -148,10 +146,10 @@ include __DIR__ . '/../../layout/topbar.php';
                             <?= !empty($c['ind_modulo_registro']) ? 'checked' : '' ?>>
                         <div class="config-toggle-item__body">
                             <label class="config-toggle-item__title mb-0" for="chk_modulo">
-                                Habilitar registro de personas
+                                Habilitar módulo de personas (standalone)
                             </label>
                             <span class="config-toggle-item__desc">
-                                Si está desactivado, el menú «Registro personas» y los formularios
+                                Si está desactivado, el menú «Personas» (panel y formularios)
                                 (aprendiz, instructor, etc.) no estarán disponibles.
                             </span>
                         </div>

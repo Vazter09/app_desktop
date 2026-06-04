@@ -49,6 +49,77 @@ class AppConfig
         return $fallback;
     }
 
+    /** Valores legacy del tema sci-fi azul (pre-corporativo). */
+    private const LEGACY_NAVY_THEME_HEX = ['#020917', '#060f24', '#0b1420', '#091826', '#081622'];
+
+    private static function isLegacyNavyThemeValue(string $value): bool
+    {
+        $normalized = self::normalizeHex($value);
+        if ($normalized !== null && in_array($normalized, self::LEGACY_NAVY_THEME_HEX, true)) {
+            return true;
+        }
+
+        $compact = strtolower(preg_replace('/\s+/', '', $value) ?? $value);
+
+        return str_contains($compact, '6,15,36')
+            || str_contains($compact, '9,24,38')
+            || str_contains($compact, '10,26,39')
+            || str_contains($compact, '8,22,34')
+            || str_contains($compact, '150,180,220')
+            || str_contains($compact, '0,245,255')
+            || str_contains($compact, '125,177,255');
+    }
+
+    private static function themeBgDeep(): string
+    {
+        $stored = (string) self::get('theme_bg_deep', '');
+        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
+            return self::darkenHex(self::colorPrimario(), 0.92);
+        }
+
+        return $stored;
+    }
+
+    private static function themeBgCard(): string
+    {
+        $stored = (string) self::get('theme_bg_card', '');
+        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
+            return self::darkenHex(self::colorPrimario(), 0.86);
+        }
+
+        return $stored;
+    }
+
+    private static function themeBgPanel(): string
+    {
+        $stored = (string) self::get('theme_bg_panel', '');
+        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
+            return self::hexToRgba(self::darkenHex(self::colorPrimario(), 0.82), 0.88);
+        }
+
+        return $stored;
+    }
+
+    private static function themeBorder(): string
+    {
+        $stored = (string) self::get('theme_border', '');
+        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
+            return self::hexToRgba(self::colorSecundario(), 0.28);
+        }
+
+        return $stored;
+    }
+
+    private static function themeTextMuted(): string
+    {
+        $stored = (string) self::get('theme_text_muted', '');
+        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
+            return self::hexToRgba(self::colorSecundario(), 0.72);
+        }
+
+        return $stored;
+    }
+
     public static function nomSistema(): string
     {
         return (string) self::get('nom_sistema', 'SmartCSET');
@@ -99,9 +170,9 @@ class AppConfig
         return array_merge([
             '--v-oscuro'       => self::colorPrimario(),
             '--v-oliva'        => self::colorSecundario(),
-            '--bg-deep'        => (string) self::get('theme_bg_deep', '#020917'),
-            '--bg-card'        => (string) self::get('theme_bg_card', '#060f24'),
-            '--bg-panel'       => (string) self::get('theme_bg_panel', 'rgba(6, 15, 36, 0.85)'),
+            '--bg-deep'        => self::themeBgDeep(),
+            '--bg-card'        => self::themeBgCard(),
+            '--bg-panel'       => self::themeBgPanel(),
             '--cyan'           => (string) self::get('theme_accent', '#00e5b0'),
             '--cyan-dim'       => (string) self::get('theme_accent_dim', 'rgba(0, 245, 255, 0.15)'),
             '--teal'           => (string) self::get('theme_accent', '#00e5b0'),
@@ -109,16 +180,16 @@ class AppConfig
             '--purple'         => (string) self::get('theme_purple', '#9b6dff'),
             '--orange'         => (string) self::get('theme_orange', '#ff7b2e'),
             '--text-primary'   => (string) self::get('theme_text_primary', '#e8f4ff'),
-            '--text-muted'     => (string) self::get('theme_text_muted', 'rgba(150,180,220,0.7)'),
-            '--border'         => (string) self::get('theme_border', 'rgba(0,245,255,0.2)'),
+            '--text-muted'     => self::themeTextMuted(),
+            '--border'         => self::themeBorder(),
             '--error'          => (string) self::get('theme_error', '#ff3c6e'),
             '--success'        => (string) self::get('theme_success', '#00e5b0'),
             '--theme-accent'   => (string) self::get('theme_accent', '#00e5b0'),
-        ], self::sidebarThemeTokens());
+        ], self::sidebarThemeTokens(), self::layoutShellTokensDark());
     }
 
     /**
-     * Variables CSS del sidebar derivadas de colores corporativos (Config. sistema).
+     * Variables CSS del sidebar y layout (layout.css) desde colores corporativos.
      *
      * @return array<string, string>
      */
@@ -126,12 +197,81 @@ class AppConfig
     {
         $primary = self::colorPrimario();
         $secondary = self::colorSecundario();
+        $sidebarBg = self::darkenHex($primary, 0.58);
+        $sidebarBgDeep = self::darkenHex($primary, 0.72);
 
         return [
-            '--sidebar-bg'     => self::darkenHex($primary, 0.58),
-            '--sidebar-hover'  => self::hexToRgba($secondary, 0.18),
-            '--sidebar-active' => self::hexToRgba($secondary, 0.35),
-            '--sidebar-border' => self::hexToRgba($secondary, 0.25),
+            '--sidebar-bg'              => $sidebarBg,
+            '--sidebar-hover'           => self::hexToRgba($secondary, 0.18),
+            '--sidebar-active'          => self::hexToRgba($secondary, 0.35),
+            '--sidebar-border'          => self::hexToRgba($secondary, 0.25),
+            '--layout-sidebar-bg'       => "linear-gradient(180deg, {$sidebarBgDeep} 0%, {$sidebarBg} 100%)",
+            '--layout-sidebar-hover'    => self::hexToRgba($secondary, 0.18),
+            '--layout-sidebar-active'   => sprintf(
+                'linear-gradient(90deg, %s, %s)',
+                self::hexToRgba($secondary, 0.84),
+                self::hexToRgba($primary, 0.72)
+            ),
+            '--layout-sidebar-border'   => self::hexToRgba($secondary, 0.28),
+            '--layout-sidebar-accent'   => $secondary,
+        ];
+    }
+
+    /**
+     * Tokens del shell principal (topbar, contenido) — modo oscuro.
+     *
+     * @return array<string, string>
+     */
+    public static function layoutShellTokensDark(): array
+    {
+        $primary = self::colorPrimario();
+        $secondary = self::colorSecundario();
+
+        return [
+            '--content-bg'       => self::themeBgDeep(),
+            '--text-main'        => (string) self::get('theme_text_primary', '#e8f4ff'),
+            '--text-muted'       => self::themeTextMuted(),
+            '--topbar-bg'        => self::hexToRgba(self::darkenHex($primary, 0.55), 0.82),
+            '--cyan-accent'      => $secondary,
+            '--grid-line'        => self::hexToRgba($secondary, 0.08),
+            '--surface-border'   => self::hexToRgba($secondary, 0.28),
+            '--surface-hover'    => self::hexToRgba($secondary, 0.12),
+            '--table-surface-bg' => self::hexToRgba(self::darkenHex($primary, 0.82), 0.92),
+        ];
+    }
+
+    /**
+     * Tokens del shell y sidebar — modo claro (.light-theme).
+     *
+     * @return array<string, string>
+     */
+    public static function layoutShellTokensLight(): array
+    {
+        $primary = self::colorPrimario();
+        $secondary = self::colorSecundario();
+
+        return [
+            '--v-oscuro'                => $primary,
+            '--v-oliva'                 => $secondary,
+            '--layout-sidebar-bg'       => sprintf(
+                'linear-gradient(180deg, %s 0%%, %s 100%%)',
+                self::hexToRgba($primary, 0.07),
+                self::hexToRgba($primary, 0.13)
+            ),
+            '--layout-sidebar-hover'    => self::hexToRgba($secondary, 0.14),
+            '--layout-sidebar-active'   => sprintf(
+                'linear-gradient(90deg, %s, %s)',
+                self::hexToRgba($secondary, 0.22),
+                self::hexToRgba($primary, 0.16)
+            ),
+            '--layout-sidebar-border'   => self::hexToRgba($primary, 0.2),
+            '--layout-sidebar-accent'   => $primary,
+            '--content-bg'              => (string) self::get('theme_light_bg_deep', '#f5f7fb'),
+            '--text-main'               => (string) self::get('theme_light_text_primary', '#111827'),
+            '--text-muted'              => (string) self::get('theme_light_text_muted', 'rgba(55,65,81,0.8)'),
+            '--topbar-bg'               => self::hexToRgba('#ffffff', 0.92),
+            '--cyan-accent'             => $primary,
+            '--cyan'                    => $primary,
         ];
     }
 
@@ -190,13 +330,13 @@ class AppConfig
     /** Tokens para .light-theme. */
     public static function themeTokensLight(): array
     {
-        return [
+        return array_merge([
             '--bg-deep'      => (string) self::get('theme_light_bg_deep', '#f5f7fb'),
             '--bg-card'      => (string) self::get('theme_light_bg_card', '#ffffff'),
-            '--cyan'         => (string) self::get('theme_light_accent', '#0b74c7'),
+            '--cyan'         => self::colorPrimario(),
             '--text-primary' => (string) self::get('theme_light_text_primary', '#111827'),
             '--text-muted'   => (string) self::get('theme_light_text_muted', 'rgba(55,65,81,0.8)'),
-        ];
+        ], self::layoutShellTokensLight());
     }
 
     public static function fontDisplay(): string

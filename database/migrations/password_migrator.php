@@ -23,7 +23,7 @@ $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPT
 $usuarios = $pdo->query("SELECT id_usuario, nom_usuario, pass_usuario, ind_estado FROM tab_usuarios ORDER BY id_usuario")->fetchAll(PDO::FETCH_ASSOC);
 
 echo "<!DOCTYPE html><html><head><meta charset='UTF-8'>
-<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+<link href='../../css/vendor/bootstrap-5.3.0/bootstrap.min.css' rel='stylesheet'>
 <link rel='stylesheet' href='../../css/components.css'>
 </head><body class='container mt-4'>";
 echo "<h3 class='mb-3'>🔐 Migrador de Contraseñas — SistNomina</h3>";

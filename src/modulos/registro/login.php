@@ -39,7 +39,8 @@ $logo = htmlspecialchars(smartcsetLogoUrl($href), ENT_QUOTES, 'UTF-8');
     <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>css/registro.css?v=<?= (int) $vReg ?>">
     <?php include dirname(__DIR__, 2) . '/layout/theme_vars.php'; ?>
 </head>
-<body class="registro-theme light-theme">
+<body class="registro-theme">
+<?php registroThemeInitScript(); ?>
     <div class="login-page">
     <div class="scanline"></div>
     <button id="theme-toggle" class="login-theme-toggle" type="button" aria-label="Cambiar modo de color">🌙</button>

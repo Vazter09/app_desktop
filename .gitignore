@@ -17,7 +17,6 @@ Thumbs.db
 *.sublime-workspace
 
 # PHP
-vendor/
 composer.lock
 *.log
 

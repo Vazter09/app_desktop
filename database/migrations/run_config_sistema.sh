@@ -33,7 +33,7 @@ done
 run() { echo "==> $(basename "$1")"; "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$1"; }
 
 run "$ROOT/migrations/add_tab_config_sistema.sql"
-run "$ROOT/functions/config/fun_update_tab_config_sistema.sql"
+run "$ROOT/migrations/fix_fun_update_tab_config_sistema.sql"
 run "$ROOT/migrations/add_menu_config_y_registro.sql"
 
 if command -v php >/dev/null 2>&1; then

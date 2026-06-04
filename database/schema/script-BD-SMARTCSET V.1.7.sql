@@ -67,7 +67,9 @@ DROP TABLE IF EXISTS tab_ciudades;
 DROP TABLE IF EXISTS tab_dptos;
 DROP TABLE IF EXISTS tab_menu_usuarios;
 DROP TABLE IF EXISTS tab_menus;
+DROP TABLE IF EXISTS tab_sesiones_archivo;
 DROP TABLE IF EXISTS tab_sesiones;
+DROP SEQUENCE IF EXISTS seq_sesiones;
 DROP TABLE IF EXISTS tab_config_sistema;
 DROP TABLE IF EXISTS tab_usuarios;
 DROP DOMAIN IF EXISTS mail_personal;
@@ -369,12 +371,42 @@ CREATE TABLE IF NOT EXISTS tab_usuarios
 );
 
 -- TABLA DE SESIONES DE APLICACIÓN (módulo acceso / login)
+CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
+
 CREATE TABLE IF NOT EXISTS tab_sesiones
 (
-    id_usuario      VARCHAR(20)                 NOT NULL PRIMARY KEY,
+    id_sesion       INTEGER                     NOT NULL DEFAULT nextval('seq_sesiones'),
+    id_usuario      VARCHAR(20)                 NOT NULL,
     fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fec_fin         TIMESTAMP WITHOUT TIME ZONE,
     ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ult_ruta        VARCHAR(255),
+    ult_menu_id     VARCHAR(20),
+    cod_cierre      VARCHAR(20),
+    usr_cierre      VARCHAR(50),
+    ip_cliente      VARCHAR(45),
+    PRIMARY KEY (id_sesion),
     FOREIGN KEY (id_usuario) REFERENCES tab_usuarios (id_usuario)
+);
+
+CREATE UNIQUE INDEX ux_tab_sesiones_usuario_activa
+    ON tab_sesiones (id_usuario) WHERE fec_fin IS NULL;
+
+CREATE INDEX ix_tab_sesiones_fec_fin ON tab_sesiones (fec_fin, fec_inicio);
+
+CREATE TABLE IF NOT EXISTS tab_sesiones_archivo
+(
+    id_sesion       INTEGER                     NOT NULL,
+    id_usuario      VARCHAR(20)                 NOT NULL,
+    fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_fin         TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    ult_ruta        VARCHAR(255),
+    ult_menu_id     VARCHAR(20),
+    cod_cierre      VARCHAR(20),
+    usr_cierre      VARCHAR(50),
+    ip_cliente      VARCHAR(45),
+    PRIMARY KEY (id_sesion)
 );
 
 -- TABLA DE MENÚS

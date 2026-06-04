@@ -54,14 +54,14 @@ No hay archivos `.php` sueltos en la raíz de `modulos/`; solo subcarpetas.
 | Registro ingreso | `src/modulos/porteria/ingreso/index.php` |
 | Registro salida | `src/modulos/porteria/salida/index.php` |
 | Panel registro (operadores) | `src/modulos/registro/index.php` |
-| Aprendiz / Instructor / … (admin) | `src/admin/registro/listado.php?menu=030x` |
+| Aprendices / Instructores / … (admin) | `src/admin/personas/{tipo}/index.php` |
 
 Migración: [`database/migrations/update_modulos_rutas_organizadas.sql`](../database/migrations/update_modulos_rutas_organizadas.sql)
 
 ## Configuración visual y módulo registro
 
 - Tabla: `tab_config_sistema` (una fila).
-- Admin: **Config. sistema** → `src/admin/configuracion.php` (menú `0205`).
+- Admin: **Config. sistema** → `src/admin/configuracion.php` (menú `0401`).
 - Estilos del módulo registro: [`css/registro.css`](../css/registro.css) + variables inyectadas desde [`src/layout/theme_vars.php`](../src/layout/theme_vars.php).
 - Migración en BD existente: `./database/migrations/run_config_sistema.sh`
 
@@ -69,7 +69,7 @@ Migración: [`database/migrations/update_modulos_rutas_organizadas.sql`](../data
 
 - **Administrador**: entra por `index.php` (login principal) y configura el módulo en **Config. sistema** (habilitar módulo + credenciales del login de registro).
 - **Registrantes/operadores**: entran por `src/modulos/registro/login.php` y registran desde el panel `src/modulos/registro/index.php` (tarjetas con enlace a formularios).
-- **Administrador (listados)**: menús 0301–0304 abren `src/admin/registro/listado.php` con tabla por tipo.
+- **Administrador (listados)**: menús 0301–0304 abren `src/admin/personas/{aprendices|instructores|funcionarios|contratistas}/index.php`.
 
 ## Assets y subcarpetas
 

@@ -56,7 +56,9 @@ class EnvLoader {
             'COLOR_VERDE_OLIVA' => '#6B8E23',
             'PATH_LOGO' => 'img/logo-sena.png',
             'SESSION_TIMEOUT' => '1800',
-            'APP_ENV' => 'development'
+            'APP_ENV' => 'development',
+            'DB_TIMEZONE' => 'UTC',
+            'APP_TIMEZONE' => 'America/Bogota',
         ];
         
         foreach ($defaults as $key => $value) {

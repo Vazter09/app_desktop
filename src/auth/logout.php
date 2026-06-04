@@ -1,22 +1,22 @@
 <?php
 session_start();
-require_once(__DIR__ . '/../core/prepare.php');
+require_once __DIR__ . '/../core/prepare.php';
 
 try {
-    if (isset($_SESSION['id_usuario'])) {
-        // Usamos el stmt centralizado de prepare.php para eliminar la sesión
-        $stmt_fun_salida_sesion->execute([$_SESSION['id_usuario']]);
+    if (!empty($_SESSION['id_sesion'])) {
+        accesoSalidaSesion(
+            $stmt_fun_salida_sesion,
+            (int) $_SESSION['id_sesion'],
+            ACCESO_SESION_CIERRE_LOGOUT,
+            (string) ($_SESSION['id_usuario'] ?? '')
+        );
     }
-}
-catch (Exception $e) {
-    // Registrar error en log (opcional pero recomendado)
-    error_log("LOGOUT ERROR para usuario " . ($_SESSION['id_usuario'] ?? 'desconocido') . ": " . $e->getMessage());
+} catch (Exception $e) {
+    error_log('LOGOUT ERROR: ' . $e->getMessage());
 }
 
-// Destruimos la sesión de PHP
 session_unset();
 session_destroy();
 
-// Saltamos a la raíz (donde está el index.php)
-header("Location: ../../index.php");
+header('Location: ../../index.php');
 exit();

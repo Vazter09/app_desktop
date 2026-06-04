@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__, 3) . '/admin/personas/lib/tipo_id.php';
+
+function registroResolveTipoPersonaId(PDO $pdo, string $nomTipo): int
+{
+    return personasResolveTipoId($pdo, $nomTipo);
+}
+
 function registroGetTiposDocumento(PDO $pdo): array
 {
     $stmt = $pdo->query('SELECT id_tipo_docum, nom_tipo_docum FROM tab_tipos_docum ORDER BY nom_tipo_docum');
@@ -52,10 +59,50 @@ function registroGetRedes(PDO $pdo): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function registroGetAreas(PDO $pdo): array
+{
+    $stmt = $pdo->query(
+        'SELECT a.id_area,
+                a.nom_area,
+                a.id_centro,
+                c.nom_centro,
+                a.id_area::TEXT || \' — \' || a.nom_area
+                    || COALESCE(\' (\' || c.nom_centro || \')\', \'\') AS etiqueta
+           FROM tab_areas a
+           LEFT JOIN tab_centros c ON c.id_centro = a.id_centro
+          ORDER BY a.nom_area, a.id_area'
+    );
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function registroGetCargos(PDO $pdo): array
+{
+    $stmt = $pdo->query(
+        'SELECT id_cargo,
+                nom_cargo,
+                id_cargo::TEXT || \' — \' || nom_cargo AS etiqueta
+           FROM tab_cargos
+          ORDER BY nom_cargo, id_cargo'
+    );
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 function registroGetFichas(PDO $pdo): array
 {
     $stmt = $pdo->query(
-        'SELECT id_ficha FROM tab_fichas WHERE ind_abierta = TRUE ORDER BY id_ficha'
+        'SELECT f.id_ficha,
+                f.id_programa,
+                f.id_centro,
+                p.nom_programa,
+                c.nom_centro,
+                f.id_ficha::TEXT
+                    || COALESCE(\' — \' || p.nom_programa, \'\')
+                    || COALESCE(\' (\' || c.nom_centro || \')\', \'\') AS etiqueta
+           FROM tab_fichas f
+           LEFT JOIN tab_programas p ON p.id_programa = f.id_programa
+           LEFT JOIN tab_centros c ON c.id_centro = f.id_centro
+          WHERE f.ind_abierta = TRUE
+          ORDER BY f.id_ficha'
     );
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }

@@ -125,10 +125,10 @@ smartcset/
 │   │
 │   ├── admin/
 │   │   ├── configuracion.php   ← Panel de configuración del sistema (colores, logo, módulos)
-│   │   └── registro/           ← Listado administrativo de personas registradas
-│   │       ├── config.php      ← Configuración específica del listado admin
-│   │       ├── listado.php     ← Vista principal del listado
-│   │       └── listado_fragment.php ← Fragmento HTML para carga AJAX
+│   │   └── personas/           ← Listados admin por tipo + config del módulo registro
+│   │       ├── config.php
+│   │       ├── aprendices/, instructores/, funcionarios/, contratistas/
+│   │       └── lib/            ← listado_index.php, fragmentos AJAX
 │   │
 │   └── modulos/            ← Módulos funcionales del sistema
 │       ├── porteria/       ← Control de acceso físico al centro

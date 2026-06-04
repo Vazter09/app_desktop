@@ -1,0 +1,7 @@
+/* Listados admin — módulo Personas */
+.personas-listado-admin .badge.text-bg-success,
+.personas-listado-admin .badge.text-bg-secondary {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}

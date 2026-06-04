@@ -7,6 +7,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/PrepareAuthSql.php';
+require_once __DIR__ . '/lib/acceso_sesion.php';
 
 try {
     $pdo = Db::connect();

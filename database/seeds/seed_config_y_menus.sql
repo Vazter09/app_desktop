@@ -42,14 +42,16 @@ INSERT INTO tab_menus (id_menu, nom_menu, ind_id_padre, nom_programa, usr_insert
     ('0202', 'Menús', '02', 'src/menu/menus.php', 'seed', NOW()),
     ('0203', 'Accesos', '02', 'src/menu/menu_usuarios.php', 'seed', NOW()),
     ('0204', 'Copiar perfil', '02', 'src/menu/copiar_menu_usuarios.php', 'seed', NOW()),
-    ('0205', 'Config. sistema', '02', 'src/admin/configuracion.php', 'seed', NOW()),
-    ('03', 'Registro personas', '00', 'no_aplica', 'seed', NOW()),
+    ('0206', 'Auditoría sesiones', '02', 'src/admin/sesiones/index.php', 'seed', NOW()),
+    ('04', 'Configuración', '00', 'no_aplica', 'seed', NOW()),
+    ('0401', 'Config. sistema', '04', 'src/admin/configuracion.php', 'seed', NOW()),
+    ('0402', 'Config. módulo', '04', 'src/admin/personas/config.php', 'seed', NOW()),
+    ('03', 'Personas', '00', 'no_aplica', 'seed', NOW()),
     ('0300', 'Panel registro', '03', 'src/modulos/registro/index.php', 'seed', NOW()),
-    ('0305', 'Config. registro', '03', 'src/admin/registro/config.php', 'seed', NOW()),
-    ('0301', 'Aprendiz', '03', 'src/admin/registro/listado.php?menu=0301', 'seed', NOW()),
-    ('0302', 'Instructor', '03', 'src/admin/registro/listado.php?menu=0302', 'seed', NOW()),
-    ('0303', 'Funcionario', '03', 'src/admin/registro/listado.php?menu=0303', 'seed', NOW()),
-    ('0304', 'Contratista', '03', 'src/admin/registro/listado.php?menu=0304', 'seed', NOW())
+    ('0301', 'Aprendices', '03', 'src/admin/personas/aprendices/index.php', 'seed', NOW()),
+    ('0302', 'Instructores', '03', 'src/admin/personas/instructores/index.php', 'seed', NOW()),
+    ('0303', 'Funcionarios', '03', 'src/admin/personas/funcionarios/index.php', 'seed', NOW()),
+    ('0304', 'Contratistas', '03', 'src/admin/personas/contratistas/index.php', 'seed', NOW())
 ON CONFLICT (id_menu) DO UPDATE SET
     nom_menu = EXCLUDED.nom_menu,
     ind_id_padre = EXCLUDED.ind_id_padre,

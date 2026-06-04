@@ -8,11 +8,12 @@ INSERT INTO tab_menus (id_menu, nom_menu, ind_id_padre, nom_programa, usr_insert
     ('0201', 'Usuarios', '02', 'src/usuarios/usuarios.php', 'seed', NOW()),
     ('0202', 'Menús', '02', 'src/menu/menus.php', 'seed', NOW()),
     ('0203', 'Accesos', '02', 'src/menu/menu_usuarios.php', 'seed', NOW()),
-    ('0204', 'Copiar perfil', '02', 'src/menu/copiar_menu_usuarios.php', 'seed', NOW())
+    ('0204', 'Copiar perfil', '02', 'src/menu/copiar_menu_usuarios.php', 'seed', NOW()),
+    ('0206', 'Auditoría sesiones', '02', 'src/admin/sesiones/index.php', 'seed', NOW())
 ON CONFLICT (id_menu) DO NOTHING;
 
 INSERT INTO tab_menu_usuarios (id_usuario, id_menu, usr_insert, fec_insert)
 SELECT 'admin.smart', id_menu, 'seed', NOW()
 FROM tab_menus
-WHERE id_menu IN ('01', '0101', '0102', '0103', '02', '0201', '0202', '0203', '0204')
+WHERE id_menu IN ('01', '0101', '0102', '0103', '02', '0201', '0202', '0203', '0204', '0206')
 ON CONFLICT (id_usuario, id_menu) DO NOTHING;

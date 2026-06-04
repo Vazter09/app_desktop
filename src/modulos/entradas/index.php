@@ -6,87 +6,99 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
-$w_mensaje     = "";
-$w_tipo_alerta = "success";
-$usr_audit     = $_SESSION['id_usuario'];
-$entradas_lista = [];
-/** V.1.5: tab_entradas_centro requiere centro y sede (ver seed_acceso_dev.sql) */
-const CSET_ID_CENTRO_DEV = 9001;
-const CSET_ID_SEDE_DEV = 1;
+$w_mensaje      = '';
+$w_tipo_alerta  = 'success';
+$usr_audit      = $_SESSION['id_usuario'];
+$entradas_lista  = [];
+$sedes_lista     = [];
+$entradas_llenas = false;
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+/**
+ * @return array{0: int, 1: int} id_centro, id_sede
+ */
+function entradasParseSedeSeleccionada(): array
+{
+    $raw = trim((string) ($_POST['sel_sede'] ?? ''));
+    if (!preg_match('/^(\d+):(\d+)$/', $raw, $m)) {
+        throw new Exception('Seleccione la sede donde queda la entrada.');
+    }
+
+    return [(int) $m[1], (int) $m[2]];
+}
+
+function entradasResolveIdEntradaPost(): ?int
+{
+    $raw = trim((string) ($_POST['hid_id_entrada'] ?? ''));
+    if ($raw === '') {
+        return null;
+    }
+
+    $id = (int) $raw;
+    if ($id < 1 || $id > 9) {
+        throw new Exception('El código de entrada no es válido.');
+    }
+
+    return $id;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (isset($_POST['btn_guardar'])) {
-            $w_id  = (int) ($_POST['txt_id_entrada'] ?? 0);
-            $w_nom = strtoupper(trim($_POST['txt_nom_entrada'] ?? ''));
+            $w_id  = entradasResolveIdEntradaPost();
+            $w_nom = trim($_POST['txt_nom_entrada'] ?? '');
+            [$w_centro, $w_sede] = entradasParseSedeSeleccionada();
 
-            if ($w_id < 1 || $w_id > 9) {
-                throw new Exception('El código de entrada debe ser un número entre 1 y 9.');
-            }
-            if (strlen($w_nom) < 3) {
-                throw new Exception('El nombre de la entrada debe tener al menos 3 caracteres.');
-            }
+            $stmt_fun_upsert_entrada->bindValue(1, $w_id, $w_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $stmt_fun_upsert_entrada->bindValue(2, $w_nom);
+            $stmt_fun_upsert_entrada->bindValue(3, $w_centro, PDO::PARAM_INT);
+            $stmt_fun_upsert_entrada->bindValue(4, $w_sede, PDO::PARAM_INT);
+            $stmt_fun_upsert_entrada->bindValue(5, $usr_audit);
+            $stmt_fun_upsert_entrada->execute();
 
-            $stmt_check = $pdo->prepare(
-                "SELECT 1 FROM tab_entradas_centro WHERE id_entrada_centro = ?::NUMERIC"
-            );
-            $stmt_check->execute([$w_id]);
-
-            if ($stmt_check->fetch()) {
-                $stmt_upd = $pdo->prepare(
-                    "UPDATE tab_entradas_centro
-                     SET nom_entrada_centro = ?::VARCHAR,
-                         usr_update = ?::VARCHAR,
-                         fec_update = CURRENT_TIMESTAMP
-                     WHERE id_entrada_centro = ?::NUMERIC"
-                );
-                $stmt_upd->execute([$w_nom, $usr_audit, $w_id]);
-                $w_mensaje = "Entrada actualizada correctamente.";
-            } else {
-                $stmt_ins = $pdo->prepare(
-                    "INSERT INTO tab_entradas_centro (
-                         id_entrada_centro, nom_entrada_centro, id_centro, id_sede,
-                         usr_insert, fec_insert
-                     ) VALUES (?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, CURRENT_TIMESTAMP)"
-                );
-                $stmt_ins->execute([$w_id, $w_nom, CSET_ID_CENTRO_DEV, CSET_ID_SEDE_DEV, $usr_audit]);
-                $w_mensaje = "Entrada registrada correctamente.";
-            }
+            $w_codigo = (string) ($stmt_fun_upsert_entrada->fetchColumn() ?: '');
+            $w_mensaje = $w_codigo !== ''
+                ? sprintf('Entrada %s guardada correctamente.', $w_codigo)
+                : 'Entrada guardada correctamente.';
         }
 
         if (isset($_POST['btn_eliminar'])) {
             $w_id_del = (int) ($_POST['hid_id_entrada'] ?? 0);
-            $stmt_del = $pdo->prepare(
-                "DELETE FROM tab_entradas_centro WHERE id_entrada_centro = ?::NUMERIC"
-            );
-            $stmt_del->execute([$w_id_del]);
-            $w_mensaje = "Entrada eliminada correctamente.";
+            $stmt_fun_delete_entrada->execute([$w_id_del]);
+            $stmt_fun_delete_entrada->fetchColumn();
+            $w_mensaje = 'Entrada eliminada correctamente.';
         }
     } catch (PDOException $e) {
-        if ($e->getCode() === '23503') {
-            $w_mensaje = "No se puede eliminar: la entrada está en uso en registros de ingreso.";
-        } else {
-            $w_mensaje = ErrorHandler::handleDatabaseException($e)['message'];
-        }
-        $w_tipo_alerta = "danger";
+        $w_mensaje     = ErrorHandler::userMessageFromException($e);
+        $w_tipo_alerta = 'danger';
     } catch (Exception $e) {
-        $w_mensaje     = ErrorHandler::handleValidationException($e)['message'];
-        $w_tipo_alerta = "danger";
+        $w_mensaje     = ErrorHandler::userMessageFromException($e);
+        $w_tipo_alerta = 'danger';
     }
 }
 
 try {
+    $stmt_sedes = $pdo->query(
+        'SELECT s.id_centro, s.id_sede, c.nom_centro, s.nom_sede
+         FROM tab_sedes s
+         INNER JOIN tab_centros c ON c.id_centro = s.id_centro
+         ORDER BY c.nom_centro, s.id_sede'
+    );
+    $sedes_lista = $stmt_sedes->fetchAll(PDO::FETCH_ASSOC);
+
     $stmt_list_entradas->execute();
     $entradas_lista = $stmt_list_entradas->fetchAll();
+    $entradas_llenas = count($entradas_lista) >= 9;
 } catch (PDOException $e) {
-    $w_mensaje     = "Error al cargar entradas: " . ErrorHandler::handleDatabaseException($e)['message'];
-    $w_tipo_alerta = "danger";
+    $w_mensaje     = 'Error al cargar entradas: ' . ErrorHandler::handleDatabaseException($e)['message'];
+    $w_tipo_alerta = 'danger';
 }
 
 $page_title     = 'Entradas al centro';
 $active_menu_id = '0101';
 $wnom_usuario   = $_SESSION['nom_usuario'];
-$extra_css      = '.entrada-editando { background: rgba(107, 142, 35, 0.12) !important; }';
+$_crud_hl_v = @filemtime(dirname(__DIR__, 3) . '/css/crud-row-highlight.css') ?: time();
+$extra_stylesheets = '<link rel="stylesheet" href="' . htmlspecialchars($smartcset_asset_href, ENT_QUOTES, 'UTF-8')
+    . 'css/crud-row-highlight.css?v=' . (int) $_crud_hl_v . '">';
 
 include modulosLayout('layout/head.php');
 include modulosLayout('layout/sidebar.php');
@@ -94,6 +106,12 @@ include modulosLayout('layout/topbar.php');
 ?>
 
 <?php renderPageFlash($w_mensaje, $w_tipo_alerta); ?>
+
+<?php if ($sedes_lista === []): ?>
+<div class="alert alert-warning small mb-3">
+    No hay sedes registradas en <code>tab_sedes</code>. Cargue la cadena institucional (centro + sede) antes de crear entradas.
+</div>
+<?php endif; ?>
 
 <div class="row g-3">
     <div class="col-12">
@@ -103,7 +121,14 @@ include modulosLayout('layout/topbar.php');
                     <i class="bi bi-door-open-fill me-2"></i>Entradas al centro
                     <span class="badge bg-light text-dark ms-1" style="font-size:0.72rem;"><?= count($entradas_lista) ?></span>
                 </strong>
-                <button type="button" id="btn_nueva_entrada" class="btn btn-sm btn-light fw-bold">
+                <button type="button" id="btn_nueva_entrada" class="btn btn-sm btn-light fw-bold"
+                    <?php
+                    if ($sedes_lista === []) {
+                        echo 'disabled title="Registre sedes primero"';
+                    } elseif ($entradas_llenas) {
+                        echo 'disabled title="Máximo 9 entradas (códigos 1–9)"';
+                    }
+                    ?>>
                     <i class="bi bi-plus-circle me-1"></i>Nueva entrada
                 </button>
             </div>
@@ -113,13 +138,14 @@ include modulosLayout('layout/topbar.php');
                         <tr style="font-size:0.85rem;">
                             <th class="ps-3 py-2 text-center" width="80">Código</th>
                             <th class="py-2">Nombre</th>
+                            <th class="py-2">Centro / Sede</th>
                             <th class="text-center py-2" width="100">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($entradas_lista)): ?>
                         <tr>
-                            <td colspan="3" class="text-center text-muted py-4 small">
+                            <td colspan="4" class="text-center text-muted py-4 small">
                                 No hay entradas registradas. Pulse <strong>Nueva entrada</strong>.
                             </td>
                         </tr>
@@ -130,13 +156,21 @@ include modulosLayout('layout/topbar.php');
                             <td class="py-2" style="color:var(--v-oscuro);font-weight:500;">
                                 <?= htmlspecialchars($b['nom_entrada']) ?>
                             </td>
+                            <td class="py-2 small text-muted">
+                                <?= htmlspecialchars($b['nom_centro']) ?>
+                                <span class="text-secondary">·</span>
+                                Sede <?= (int) $b['id_sede'] ?>:
+                                <?= htmlspecialchars($b['nom_sede']) ?>
+                            </td>
                             <td class="text-center py-2">
                                 <div class="btn-group btn-group-sm">
                                     <button type="button"
                                             class="btn btn-outline-primary border-0 btn-editar-entrada"
                                             title="Editar"
                                             data-id="<?= (int) $b['id_entrada'] ?>"
-                                            data-nom="<?= htmlspecialchars($b['nom_entrada']) ?>">
+                                            data-nom="<?= htmlspecialchars($b['nom_entrada']) ?>"
+                                            data-centro="<?= (int) $b['id_centro'] ?>"
+                                            data-sede="<?= (int) $b['id_sede'] ?>">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
                                     <form method="POST" class="d-inline" data-smart-confirm
@@ -172,22 +206,43 @@ include modulosLayout('layout/topbar.php');
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form method="POST" id="form_entrada" data-watch-unsaved>
+                <input type="hidden" name="hid_id_entrada" id="hid_id_entrada" value="">
                 <div class="modal-body" style="background:#f8faf8;">
                     <div class="form-section mb-0">
                         <div class="form-section-title">Datos de la entrada</div>
+                        <div id="f_codigo_badge" class="alert alert-light border small py-2 mb-3 d-none" role="status">
+                            Código asignado: <strong id="f_codigo_text"></strong>
+                        </div>
                         <div class="row g-3">
-                            <div class="col-sm-4">
-                                <label class="form-label" for="f_id">Código</label>
-                                <input type="text" name="txt_id_entrada" id="f_id"
-                                       class="form-control form-control-sm input-numeric"
-                                       required inputmode="numeric" pattern="[1-9]" maxlength="1"
-                                       data-numeric-only="1-9" autocomplete="off" placeholder="1–9">
-                                <div class="form-text">Un solo dígito por centro.</div>
+                            <div class="col-12">
+                                <label class="form-label" for="f_sede">Centro y sede <span class="text-danger">*</span></label>
+                                <select name="sel_sede" id="f_sede" class="form-select form-select-sm" required>
+                                    <option value="">— Seleccione sede —</option>
+                                    <?php foreach ($sedes_lista as $s): ?>
+                                    <?php
+                                        $optVal = (int) $s['id_centro'] . ':' . (int) $s['id_sede'];
+                                        $optLbl = sprintf(
+                                            '%s — %s (centro %s, sede %s)',
+                                            $s['nom_centro'],
+                                            $s['nom_sede'],
+                                            $s['id_centro'],
+                                            $s['id_sede']
+                                        );
+                                    ?>
+                                    <option value="<?= htmlspecialchars($optVal) ?>">
+                                        <?= htmlspecialchars($optLbl) ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text">La entrada queda asociada a esa sede.</div>
                             </div>
-                            <div class="col-sm-8">
-                                <label class="form-label" for="f_nom">Nombre</label>
+                            <div class="col-12">
+                                <label class="form-label" for="f_nom">Nombre de la entrada <span class="text-danger">*</span></label>
                                 <input type="text" name="txt_nom_entrada" id="f_nom" class="form-control form-control-sm"
-                                       required minlength="3" placeholder="Ej. Entrada principal">
+                                       required minlength="5" placeholder="Ej. Entrada principal">
+                                <div class="form-text" id="f_nom_hint">
+                                    Al crear, el sistema asigna automáticamente el siguiente código libre (1–9).
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -204,6 +259,8 @@ include modulosLayout('layout/topbar.php');
 </div>
 
 <?php
-$extra_js = '<script src="' . htmlspecialchars($smartcset_asset_href) . 'js/entradas.js"></script>';
+$_v_entradas_js = @filemtime(dirname(__DIR__, 3) . '/js/entradas.js') ?: time();
+$extra_js = '<script src="' . htmlspecialchars($smartcset_asset_href, ENT_QUOTES, 'UTF-8')
+    . 'js/entradas.js?v=' . (int) $_v_entradas_js . '"></script>';
 include modulosLayout('layout/footer.php');
 ?>

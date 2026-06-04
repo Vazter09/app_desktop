@@ -11,15 +11,18 @@ $_v_comp   = @filemtime($_asset_root . '/css/components.css') ?: time();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title ?? 'SmartCSET') ?> | SmartCSET</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <?php
+    $bootstrap_vendor_mode = 'head';
+    $bootstrap_asset_href = $_asset_href;
+    include __DIR__ . '/partials/bootstrap_vendor.php';
+    ?>
+    <?php include __DIR__ . '/theme_vars.php'; ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($_asset_href) ?>css/layout.css?v=<?= (int) $_v_layout ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($_asset_href) ?>css/style_crud.css?v=<?= (int) $_v_crud ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($_asset_href) ?>css/components.css?v=<?= (int) $_v_comp ?>">
     <?php if (!empty($extra_stylesheets)): ?>
     <?= $extra_stylesheets ?>
     <?php endif; ?>
-    <?php include __DIR__ . '/theme_vars.php'; ?>
     <style>
         <?= isset($extra_css) ? $extra_css : '' ?>
     </style>

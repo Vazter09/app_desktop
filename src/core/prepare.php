@@ -9,6 +9,7 @@ require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';
 require_once __DIR__ . '/PrepareAuthSql.php';
+require_once __DIR__ . '/lib/acceso_sesion.php';
 
 try {
     $pdo = Db::connect();
@@ -75,27 +76,41 @@ try {
     $stmt_del_menu = $pdo->prepare($sql_fun_del_menu);
 
 
-    // --- 5. SECCIÓN DE SESIONES (tab_sesiones V.1.7+: sin token_sesion) ---
+    // --- 5. SECCIÓN DE SESIONES (escritura/validación: funciones PL/pgSQL; listado: SELECT) ---
     $stmt_fun_ingreso_sesion = $pdo->prepare(PrepareAuthSql::INGRESO_SESION);
+    $stmt_fun_salida_sesion = $pdo->prepare(PrepareAuthSql::SALIDA_SESION);
+    $stmt_fun_touch_sesion = $pdo->prepare(PrepareAuthSql::TOUCH_SESION);
+    $stmt_fun_validar_sesion_activa = $pdo->prepare(PrepareAuthSql::VALIDAR_SESION_ACTIVA);
+    $stmt_sesion_ip_activa = $pdo->prepare(PrepareAuthSql::SESION_IP_ACTIVA);
 
-    $sql_fun_salida_sesion = "SELECT fun_salida_sesion(?::TEXT)";
-    $stmt_fun_salida_sesion = $pdo->prepare($sql_fun_salida_sesion);
-
-    $sql_fun_touch_sesion = "SELECT fun_actualizar_sesion_actividad(?::TEXT)";
-    $stmt_fun_touch_sesion = $pdo->prepare($sql_fun_touch_sesion);
-
-    $sql_list_sesiones_activas = "SELECT s.id_usuario, u.nom_usuario, u.mail_usuario, u.ind_usuario,
-                                        s.fec_inicio, s.ult_actividad
+    $sql_list_sesiones_activas = "SELECT s.id_sesion, s.id_usuario, u.nom_usuario, u.mail_usuario,
+                                        u.ind_usuario, s.fec_inicio, s.ult_actividad,
+                                        s.ult_ruta, s.ult_menu_id, s.ip_cliente
                                  FROM tab_sesiones s
                                  INNER JOIN tab_usuarios u ON u.id_usuario = s.id_usuario
-                                 ORDER BY s.fec_inicio DESC";
+                                 WHERE s.fec_fin IS NULL
+                                 ORDER BY s.ult_actividad DESC";
     $stmt_list_sesiones_activas = $pdo->prepare($sql_list_sesiones_activas);
 
     // --- 6. SECCIÓN CSET - ENTRADAS AL CENTRO (tab_entradas_centro V.1.5: id_centro, id_sede) ---
-    $sql_list_entradas = "SELECT id_entrada_centro AS id_entrada, nom_entrada_centro AS nom_entrada
-                          FROM tab_entradas_centro
-                          ORDER BY id_entrada_centro ASC";
+    $sql_list_entradas = "SELECT e.id_entrada_centro AS id_entrada,
+                                 e.nom_entrada_centro AS nom_entrada,
+                                 e.id_centro,
+                                 e.id_sede,
+                                 COALESCE(c.nom_centro, '') AS nom_centro,
+                                 COALESCE(s.nom_sede, '') AS nom_sede
+                          FROM tab_entradas_centro e
+                          INNER JOIN tab_sedes s
+                                  ON s.id_centro = e.id_centro AND s.id_sede = e.id_sede
+                          INNER JOIN tab_centros c ON c.id_centro = e.id_centro
+                          ORDER BY e.id_entrada_centro ASC";
     $stmt_list_entradas = $pdo->prepare($sql_list_entradas);
+
+    $sql_fun_upsert_entrada = 'SELECT fun_upsert_tab_entradas_centro(?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC, ?::TEXT)';
+    $stmt_fun_upsert_entrada = $pdo->prepare($sql_fun_upsert_entrada);
+
+    $sql_fun_delete_entrada = 'SELECT fun_delete_tab_entradas_centro(?::NUMERIC)';
+    $stmt_fun_delete_entrada = $pdo->prepare($sql_fun_delete_entrada);
 
     // --- 6b. REGISTRO DE INGRESOS (portería → tab_log_ingresos) ---
     $stmt_list_tipos_doc = $pdo->prepare(
@@ -167,6 +182,55 @@ try {
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
+    // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
+    $sql_fun_registrar_persona = "SELECT fun_registrar_persona(
+        ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
+        ?::VARCHAR, ?::DATE, ?::NUMERIC,
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN, ?::BOOLEAN, ?::VARCHAR
+    )";
+    $stmt_fun_registrar_persona = $pdo->prepare($sql_fun_registrar_persona);
+
+    $sql_fun_registrar_contratista = "SELECT fun_registrar_contratista(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::DATE, ?::NUMERIC,
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::BOOLEAN, ?::VARCHAR
+    )";
+    $stmt_fun_registrar_contratista = $pdo->prepare($sql_fun_registrar_contratista);
+
+    $sql_fun_registrar_aprendiz = "SELECT fun_registrar_aprendiz(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::DATE, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN,
+        ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC,
+        ?::VARCHAR, ?::NUMERIC, ?::TEXT, ?::NUMERIC
+    )";
+    $stmt_fun_registrar_aprendiz = $pdo->prepare($sql_fun_registrar_aprendiz);
+
+    $sql_fun_registrar_instructor = "SELECT fun_registrar_instructor(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::DATE,
+        ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN, ?::NUMERIC, ?::NUMERIC,
+        ?::BOOLEAN, ?::BOOLEAN, ?::BOOLEAN, ?::NUMERIC, ?::TEXT
+    )";
+    $stmt_fun_registrar_instructor = $pdo->prepare($sql_fun_registrar_instructor);
+
+    $sql_fun_registrar_funcionario = "SELECT fun_registrar_funcionario(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::DATE, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::DATE,
+        ?::NUMERIC, ?::VARCHAR
+    )";
+    $stmt_fun_registrar_funcionario = $pdo->prepare($sql_fun_registrar_funcionario);
+
     // --- 7. SECCIÓN PERFILES (tab_menu_usuarios V.1.3) ---
 // V.1.3: La función ahora solo necesita 2 parámetros (sin nom_programa)
     $sql_ins_perfil = "SELECT fun_insert_menu_usuarios(?::VARCHAR, ?::VARCHAR)";
@@ -181,8 +245,30 @@ try {
     );
     $stmt_list_menus = $pdo->prepare("SELECT id_menu, nom_menu, ind_id_padre, nom_programa FROM tab_menus ORDER BY id_menu ASC");
 
+    if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+        session_start();
+    }
+
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
-        Db::touchSesionSiCorresponde($stmt_fun_touch_sesion, (string) $_SESSION['id_usuario']);
+        require_once __DIR__ . '/helpers.php';
+
+        $estadoSesion = Db::gestionarSesionEnRequest(
+            $stmt_fun_validar_sesion_activa,
+            $stmt_fun_salida_sesion,
+            $stmt_fun_touch_sesion,
+            SESSION_TIMEOUT,
+            $stmt_sesion_ip_activa
+        );
+
+        if ($estadoSesion !== Db::SESION_OK) {
+            $_SESSION = [];
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_destroy();
+            }
+            $sesionQuery = $estadoSesion === Db::SESION_IP_MISMATCH ? 'ip' : 'invalida';
+            header('Location: ' . smartcsetLoginUrl() . '?sesion=' . $sesionQuery);
+            exit();
+        }
     }
 
 } catch (PDOException $e) {

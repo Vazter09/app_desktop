@@ -56,16 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>SistNomina | Cambiar Clave</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <?php
+    $bootstrap_vendor_mode = 'head';
+    $bootstrap_asset_href = '../../';
+    $bootstrap_vendor_icons = false;
+    include __DIR__ . '/../layout/partials/bootstrap_vendor.php';
+    ?>
+    <?php $_v_auth_cc = @filemtime(dirname(__DIR__, 2) . '/css/auth-cambiar-clave.css') ?: time(); ?>
     <link rel="stylesheet" href="../../css/components.css">
-    <style>
-        .logo-derecha { position: fixed; top: 15px; right: 15px; max-width: 120px; z-index: 1050; }
-    </style>
+    <link rel="stylesheet" href="../../css/auth-cambiar-clave.css?v=<?= (int) $_v_auth_cc ?>">
 </head>
-<body class="bg-light">
+<body class="bg-light auth-cambiar-clave-page">
 <img src="<?=PATH_LOGO?>" alt="Logo" class="logo-derecha">
-<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card shadow-sm border-0" style="width: 400px;">
+<div class="container d-flex justify-content-center align-items-center auth-shell">
+    <div class="card shadow-sm border-0 auth-card">
         <div class="card-header bg-dark text-white text-center py-3">
             <h5 class="mb-0 fw-bold">CAMBIAR CONTRASEÑA</h5>
         </div>
@@ -84,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 <div class="row g-2">
                     <div class="col-6"><a href="../menu/menu_principal.php" class="btn btn-secondary w-100">Regresar</a></div>
-                    <div class="col-6"><button type="submit" class="btn btn-primary w-100" style="background-color:#003366;">Guardar</button></div>
+                    <div class="col-6"><button type="submit" class="btn btn-primary w-100 btn-guardar-institucional">Guardar</button></div>
                 </div>
             </form>
         </div>

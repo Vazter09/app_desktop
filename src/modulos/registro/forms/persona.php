@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../init.php';
+require_once __DIR__ . '/../lib/registro_persistencia.php';
 registroRequireAccess();
 
 $success = false;
@@ -18,61 +19,34 @@ try {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $pdo = $pdo;
-
-        $sqlPersona = "
-            INSERT INTO tab_personas (
-                id_persona, id_tipo_docum, id_tipo_persona,
-                nom_persona, ape_persona, mail_persona,
-                fec_nacimiento, ind_genero,
-                fec_ultima_entrada, fec_ultima_salida,
-                id_nivel_estudio, id_profesion,
-                id_dpto_reside, id_ciudad_reside, dir_ciudad_reside,
-                tel_persona_fijo, tel_persona_movil,
-                nom_contacto_emergencias, tel_contacto_emergencias,
-                ind_envio_correo, ind_estado,
-                usr_insert, fec_insert
-            ) VALUES (
-                :id_persona, :id_tipo_docum, :id_tipo_persona,
-                :nom_persona, :ape_persona, :mail_persona,
-                :fec_nacimiento, :ind_genero,
-                NOW(), NOW(),
-                :id_nivel_estudio, :id_profesion,
-                :id_dpto_reside, :id_ciudad_reside, :dir_ciudad_reside,
-                :tel_persona_fijo, :tel_persona_movil,
-                :nom_contacto_emergencias, :tel_contacto_emergencias,
-                :ind_envio_correo, :ind_estado,
-                :usr_insert, NOW()
-            )
-        ";
-
-        $stmtP = $pdo->prepare($sqlPersona);
-        $stmtP->execute([
-            ':id_persona'              => $_POST['id_persona'],
-            ':id_tipo_docum'           => $_POST['id_tipo_docum'],
-            ':id_tipo_persona'         => $_POST['id_tipo_persona'],
-            ':nom_persona'             => $_POST['nom_persona'],
-            ':ape_persona'             => $_POST['ape_persona'],
-            ':mail_persona'            => $_POST['mail_persona'],
-            ':fec_nacimiento'          => $_POST['fec_nacimiento'],
-            ':ind_genero'              => $_POST['ind_genero'],
-            ':id_nivel_estudio'        => $_POST['id_nivel_estudio'],
-            ':id_profesion'            => $_POST['id_profesion'],
-            ':id_dpto_reside'          => $_POST['id_dpto_reside'],
-            ':id_ciudad_reside'        => $_POST['id_ciudad_reside'],
-            ':dir_ciudad_reside'       => $_POST['dir_ciudad_reside'],
-            ':tel_persona_fijo'        => $_POST['tel_persona_fijo'],
-            ':tel_persona_movil'       => $_POST['tel_persona_movil'],
-            ':nom_contacto_emergencias'=> $_POST['nom_contacto_emergencias'],
-            ':tel_contacto_emergencias'=> $_POST['tel_contacto_emergencias'],
-            ':ind_envio_correo'        => isset($_POST['ind_envio_correo']) ? 'true' : 'false',
-            ':ind_estado'              => isset($_POST['ind_estado']) ? 'true' : 'false',
-            ':usr_insert'              => registroDisplayUsername(),
+        $stmt_fun_registrar_persona->execute([
+            $_POST['id_persona'],
+            $_POST['id_tipo_docum'],
+            $_POST['id_tipo_persona'],
+            $_POST['nom_persona'],
+            $_POST['ape_persona'],
+            $_POST['mail_persona'],
+            $_POST['fec_nacimiento'],
+            $_POST['ind_genero'],
+            $_POST['id_nivel_estudio'],
+            $_POST['id_profesion'],
+            $_POST['id_dpto_reside'],
+            $_POST['id_ciudad_reside'],
+            $_POST['dir_ciudad_reside'],
+            $_POST['tel_persona_fijo'],
+            $_POST['tel_persona_movil'],
+            $_POST['nom_contacto_emergencias'],
+            $_POST['tel_contacto_emergencias'],
+            isset($_POST['ind_envio_correo']),
+            isset($_POST['ind_estado']),
+            registroDisplayUsername(),
         ]);
+        $stmt_fun_registrar_persona->fetchColumn();
 
         $success = true;
-    } catch (PDOException $e) {
-        $error = 'Error al guardar la persona: ' . $e->getMessage();
+    } catch (Throwable $e) {
+        $handled = registroHandlePostException($e);
+        $error   = $handled['msg'];
     }
 }
 ?>

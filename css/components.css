@@ -15,9 +15,9 @@ input[type="number"]::-webkit-inner-spin-button {
 /* ── Tarjeta guía (p. ej. ayuda en Menús) ── */
 .guide-card {
     overflow: hidden;
-    border-left: 2px solid #4aa8ff !important;
+    border-left: 2px solid var(--v-oliva) !important;
     background: linear-gradient(180deg, rgba(11, 28, 42, 0.88), rgba(9, 21, 33, 0.92));
-    border: 1px solid rgba(125, 177, 255, 0.24);
+    border: 1px solid color-mix(in srgb, var(--v-oliva) 30%, transparent);
     color: #e7f1ff;
 }
 
@@ -26,15 +26,15 @@ input[type="number"]::-webkit-inner-spin-button {
     align-items: flex-start;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
-    background: linear-gradient(135deg, rgba(61, 163, 255, 0.12) 0%, rgba(143, 140, 255, 0.08) 100%);
-    border-bottom: 1px solid rgba(125, 177, 255, 0.2);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--v-oscuro) 35%, transparent) 0%, color-mix(in srgb, var(--v-oliva) 20%, transparent) 100%);
+    border-bottom: 1px solid color-mix(in srgb, var(--v-oliva) 28%, transparent);
 }
 
 .guide-card-icon {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 10px;
-    background: linear-gradient(135deg, #2d8ff0, #5a75ff);
+    background: linear-gradient(135deg, var(--v-oscuro), var(--v-oliva));
     color: #fff;
     display: flex;
     align-items: center;
@@ -151,7 +151,7 @@ input[type="number"]::-webkit-inner-spin-button {
 body.light-theme .guide-card {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 255, 0.98));
     border: 1px solid rgba(45, 143, 240, 0.22);
-    border-left: 2px solid #2d8ff0 !important;
+    border-left: 2px solid var(--v-oliva) !important;
     color: var(--text-main, #132437);
 }
 
@@ -288,17 +288,17 @@ body.light-theme .guide-card--warning {
 }
 
 /* ── Modal de confirmación ── */
-.smart-confirm-content {
+body:not(.light-theme) .smart-confirm-content {
     border-radius: 12px;
-    background: linear-gradient(180deg, rgba(12, 28, 42, 0.96), rgba(9, 21, 33, 0.98));
-    border: 1px solid rgba(125, 177, 255, 0.24);
-    color: #e7f1ff;
+    background: linear-gradient(180deg, var(--bg-card), var(--bg-deep));
+    border: 1px solid var(--surface-border, var(--border));
+    color: var(--text-main);
 }
 
-.smart-confirm-content .modal-title {
+body:not(.light-theme) .smart-confirm-content .modal-title {
     font-size: 1rem;
     font-weight: 700;
-    color: #f0f7ff;
+    color: var(--text-main);
 }
 
 .smart-confirm-content .modal-body {

@@ -60,21 +60,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>SistNomina | Recuperar Clave</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <?php
+    $bootstrap_vendor_mode = 'head';
+    $bootstrap_asset_href = '../../';
+    include __DIR__ . '/../layout/partials/bootstrap_vendor.php';
+    ?>
+    <?php $_v_auth_rec = @filemtime(dirname(__DIR__, 2) . '/css/auth-recuperar.css') ?: time(); ?>
     <link rel="stylesheet" href="../../css/components.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        :root { --v-oscuro: #1b4d3e; --v-claro: #2d5a27; }
-        body { background: linear-gradient(135deg, var(--v-oscuro) 0%, #000 100%); min-height: 100vh; display: flex; align-items: center; }
-        .card-recuperar { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .btn-verde { background-color: var(--v-claro); color: white; transition: 0.3s; }
-        .btn-verde:hover { background-color: #3d7a35; color: white; }
-        .pass-container { position: relative; }
-        .toggle-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
-        .logo-derecha { position: fixed; top: 15px; right: 15px; max-width: 120px; z-index: 1050; }
-    </style>
+    <link rel="stylesheet" href="../../css/auth-recuperar.css?v=<?= (int) $_v_auth_rec ?>">
 </head>
-<body>
+<body class="auth-recuperar-page">
 <img src="<?=PATH_LOGO?>" alt="Logo" class="logo-derecha">
 <div class="container">
     <div class="row justify-content-center">
