@@ -40,10 +40,6 @@ Filtros por defecto: búsqueda (`q`), estado (`estado`). Paginación: `page`, `p
 
 Partial AJAX: misma URL con `?partial=1` (manejado por `js/personas-listado-admin.js`).
 
-## Compatibilidad
-
-`src/admin/registro/listado.php` y `config.php` redirigen con 301 a esta carpeta.
-
 ## Qué NO tocar sin entender
 
 - No unificar de nuevo todos los tipos en un solo `listado.php` si divergen filtros/columnas.

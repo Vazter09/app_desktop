@@ -23,7 +23,7 @@ Ejecutadas en este orden (según `setup_smartcset.sh`):
 
 **AUSENTES del setup.sh (3 CRÍTICAS):**
 - `update_modulos_rutas_organizadas.sql` — CRÍTICA, sin esto los menús no navegan
-- `update_menu_registro_listado_admin.sql` — actualiza rutas admin
+- `update_menu_registro_listado_admin.sql` — corrige rutas legacy `admin/registro` → `admin/personas`
 - `add_unique_ingreso_persona_dia.sql` — agrega constraint único
 
 También existe:

@@ -33,9 +33,9 @@ Panel de configuración del sistema (solo admin). Permite cambiar:
 - Lee flash messages
 - Escribe flash_msg al procesar
 
-### registro/
+### personas/
 
-Subdirectorio con listado administrativo de personas registradas. Ver `AGENTS.md` de subdirectorio para detalles.
+Listados administrativos por tipo (aprendices, instructores, etc.) y configuración del módulo standalone. Ver `personas/AGENTS.md`.
 
 ---
 
