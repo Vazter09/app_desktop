@@ -76,13 +76,7 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
                         <div class="ing-field">
                             <label for="txt_documento">Documento de identidad</label>
                             <div class="ing-doc-row">
-                                <select name="sel_tipo_doc" id="sel_tipo_doc" class="form-select form-select-sm tipo-doc" required>
-                                    <?php foreach ($tipos_doc as $t): ?>
-                                    <option value="<?= htmlspecialchars($t['id_tipo_docum']) ?>">
-                                        <?= htmlspecialchars($t['id_tipo_docum']) ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <select name="sel_tipo_doc" id="sel_tipo_doc" class="form-select form-select-sm tipo-doc" required><?php foreach ($tipos_doc as $t): ?><option value="<?= htmlspecialchars($t['id_tipo_docum']) ?>"><?= htmlspecialchars($t['id_tipo_docum']) ?></option><?php endforeach; ?></select>
                                 <input type="text" name="txt_documento" id="txt_documento"
                                        class="form-control form-control-sm num-doc"
                                        data-documento-captura="1" required
