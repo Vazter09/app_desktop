@@ -93,3 +93,50 @@
     font-size: 0.78rem;
     padding: 0.3rem 0.55rem;
 }
+
+/* Dark mode — barra modos escáner / foto */
+body:not(.light-theme) .ingresos-page .pt-modo-btn {
+    background: color-mix(in srgb, var(--bg-deep, #0a120e) 75%, var(--v-oscuro));
+    border-color: var(--surface-border, rgba(107, 142, 35, 0.28));
+    color: var(--text-main, #e8f4f0);
+}
+
+body:not(.light-theme) .ingresos-page .pt-modo-btn:hover {
+    background: color-mix(in srgb, var(--v-oliva) 16%, var(--bg-deep));
+    border-color: color-mix(in srgb, var(--v-oliva) 45%, transparent);
+    color: #f0faf4;
+}
+
+body:not(.light-theme) .ingresos-page .pt-modo-btn.is-active {
+    background: linear-gradient(135deg, var(--v-oscuro), var(--v-oliva));
+    border-color: var(--v-oliva);
+    color: #fff;
+}
+
+body:not(.light-theme) .ingresos-page .pt-modo-hint {
+    background: color-mix(in srgb, var(--v-oliva) 10%, var(--bg-deep));
+    border-left-color: var(--v-oliva);
+    color: var(--text-muted, rgba(200, 220, 210, 0.75));
+}
+
+body:not(.light-theme) .ingresos-page .is-modo-escaner .pt-doc-escaner-wrap {
+    background: color-mix(in srgb, var(--v-oliva) 8%, var(--bg-deep));
+    outline-color: var(--v-oliva);
+}
+
+body:not(.light-theme) .ingresos-page .pt-foto-panel {
+    background: color-mix(in srgb, var(--bg-deep) 88%, var(--v-oscuro));
+    border-color: var(--surface-border, rgba(107, 142, 35, 0.28));
+}
+
+body:not(.light-theme) .ingresos-page .pt-foto-actions .btn-outline-secondary {
+    color: var(--text-main, #e8f4f0);
+    border-color: var(--surface-border, rgba(107, 142, 35, 0.35));
+    background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
+}
+
+body:not(.light-theme) .ingresos-page .pt-foto-actions .btn-outline-secondary:hover {
+    background: color-mix(in srgb, var(--v-oliva) 18%, var(--bg-deep));
+    border-color: var(--v-oliva);
+    color: #f0faf4;
+}

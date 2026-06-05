@@ -8,9 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const inputDoc = document.getElementById('txt_documento');
     const selTipo = document.getElementById('sel_tipo_doc');
-    const badge = document.getElementById('badge_salida');
+    const inputNom = document.getElementById('txt_nombres');
+    const inputApe = document.getElementById('txt_apellidos');
+    const inputPuerta = document.getElementById('sel_entrada');
+    const puertaError = document.getElementById('puerta_error');
+    const selTipoPersona = document.getElementById('sel_tipo_persona');
+    const badge = document.getElementById('badge_persona');
     const avisoMsg = document.getElementById('salida_aviso_msg');
-    const bloque = document.getElementById('bloque_ingreso');
     const btnSubmit = document.getElementById('btn_registrar_salida');
     const hidIngreso = document.getElementById('hid_id_ingreso');
     const hidCaptura = document.getElementById('hid_captura_raw');
@@ -30,11 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state === 'hide') return;
         badge.classList.remove('d-none');
         badge.textContent = text;
-        if (state === 'ok') badge.classList.add('sal-badge-ok');
-        if (state === 'known') badge.classList.add('sal-badge-known');
-        if (state === 'warn') badge.classList.add('sal-badge-warn');
-        if (state === 'error') badge.classList.add('sal-badge-error');
-        if (state === 'loading') badge.classList.add('sal-badge-loading');
+        if (state === 'ok') badge.classList.add('ingresos-badge-known');
+        if (state === 'known') badge.classList.add('ingresos-badge-known');
+        if (state === 'warn') badge.classList.add('ingresos-badge-blocked');
+        if (state === 'error') badge.classList.add('ingresos-badge-blocked');
+        if (state === 'loading') badge.classList.add('ingresos-badge-loading');
     }
 
     function setAvisoMsg(visible, html) {
@@ -49,14 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function actualizarSubmit() {
+        const puertaOk = Boolean(inputPuerta?.value);
         const docOk = inputDoc.value.replace(/\D/g, '').length >= 5;
         if (btnSubmit) {
-            btnSubmit.disabled = !docOk || !puedeSalir || consultaEnCurso;
+            btnSubmit.disabled = !puertaOk || !docOk || !puedeSalir || consultaEnCurso;
         }
     }
 
     function limpiarIngreso() {
-        if (bloque) bloque.classList.add('d-none');
         if (hidIngreso) hidIngreso.value = '';
         puedeSalir = false;
         actualizarSubmit();
@@ -64,17 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function mostrarIngreso(row) {
         const nom = `${row.nom_persona || ''} ${row.ape_persona || ''}`.trim();
-        const hora = PorteriaCaptura.formatDbTime(row.fec_ingreso);
 
-        document.getElementById('resumen_nombre').textContent = nom;
-        document.getElementById('resumen_id_ingreso').textContent = row.id_ingreso;
-        document.getElementById('resumen_hora_ingreso').textContent = hora;
-        document.getElementById('resumen_tipo').textContent = row.nom_tipo_persona || '—';
-        document.getElementById('resumen_puerta').textContent =
-            `${row.id_entrada_centro} — ${row.nom_entrada_centro || ''}`;
+        if (inputNom) inputNom.value = row.nom_persona || '';
+        if (inputApe) inputApe.value = row.ape_persona || '';
+        if (selTipoPersona && row.id_tipo_persona) {
+            selTipoPersona.value = String(row.id_tipo_persona);
+        }
 
         if (hidIngreso) hidIngreso.value = row.id_ingreso;
-        if (bloque) bloque.classList.remove('d-none');
         puedeSalir = true;
         setAvisoMsg(false);
         setBadge('ok', `Ingreso activo #${row.id_ingreso}`);
@@ -95,11 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hidMetodo) {
             hidMetodo.value = String(PC.metodoAutDesdeOrigen(parsed.origen));
         }
+        if (parsed.nombres && inputNom) inputNom.value = parsed.nombres;
+        if (parsed.apellidos && inputApe) inputApe.value = parsed.apellidos;
     }
 
     function mostrarSinIngresoActivo(persona) {
         puedeSalir = false;
         limpiarIngreso();
+        if (inputNom) inputNom.value = '';
+        if (inputApe) inputApe.value = '';
         if (persona) {
             const tipoNom = persona.nom_tipo_persona || 'registrada';
             setBadge('warn', `Sin ingreso activo — ${tipoNom}`);
@@ -123,6 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
             limpiarIngreso();
             setBadge('hide');
             setAvisoMsg(false);
+            if (inputNom) inputNom.value = '';
+            if (inputApe) inputApe.value = '';
             actualizarSubmit();
             return;
         }
@@ -174,6 +181,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     PC.enlazarCapturaDocumento(inputDoc, { onCaptura });
 
+    document.querySelectorAll('.ing-puerta').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.ing-puerta').forEach((b) => {
+                b.classList.toggle('is-selected', b === btn);
+            });
+            if (inputPuerta) inputPuerta.value = btn.dataset.puerta;
+            if (puertaError) puertaError.style.display = 'none';
+            actualizarSubmit();
+        });
+    });
+
     inputDoc.addEventListener('input', () => {
         if (!inputDoc.value.includes('@')) {
             if (hidCaptura) hidCaptura.value = '';
@@ -186,6 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
     selTipo?.addEventListener('change', consultarAcceso);
 
     form.addEventListener('submit', (e) => {
+        if (!inputPuerta?.value) {
+            e.preventDefault();
+            if (puertaError) puertaError.style.display = 'block';
+            document.getElementById('puertas_grid')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            return;
+        }
         if (!puedeSalir || !hidIngreso?.value) {
             e.preventDefault();
             setBadge('warn', 'Debe existir un ingreso activo');
@@ -199,8 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
             inputDoc,
             resetEscaner: form.dataset.ptReset === '1',
         });
-    } else {
-        inputDoc.focus();
     }
+
     actualizarSubmit();
+
+    if (inputPuerta?.value) {
+        const btn = document.querySelector(`.ing-puerta[data-puerta="${inputPuerta.value}"]`);
+        if (btn) btn.classList.add('is-selected');
+    }
 });
