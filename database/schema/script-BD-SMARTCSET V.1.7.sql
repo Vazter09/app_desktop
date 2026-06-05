@@ -1701,13 +1701,13 @@ CREATE TABLE IF NOT EXISTS tab_programas
 (
     id_programa             DECIMAL(8,0)                NOT NULL,
     nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
-    num_snies               VARCHAR                     NOT NULL,
-    num_version             DECIMAL(2,0)                NOT NULL,
-    ind_tipo                VARCHAR    		            NOT NULL, -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
-    val_duracion_lect_hrs   DECIMAL(4,0)                NOT NULL,
-    val_duracion_prod_hrs   DECIMAL(4,0)                NOT NULL,
+    num_snies               VARCHAR                     NOT NULL DEFAULT 'SNIES-00000',
+    num_version             DECIMAL(2,0)                NOT NULL DEFAULT 1,
+    ind_tipo                VARCHAR    		            NOT NULL DEFAULT '0', -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
+    val_duracion_lect_hrs   DECIMAL(4,0)                NOT NULL DEFAULT 0,
+    val_duracion_prod_hrs   DECIMAL(4,0)                NOT NULL DEFAULT 0,
     val_duracion_lect_mes   DECIMAL(2,0)                NOT NULL DEFAULT 0,
-    val_duracion_prod_mes   DECIMAL(2,0)                NOT NULL DEFAULT 0,
+    val_duracion_prod_me    DECIMAL(2,0)                NOT NULL DEFAULT 0,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2454,14 +2454,14 @@ CREATE TABLE IF NOT EXISTS tab_fichas
     id_centro               DECIMAL(4,0)                NOT NULL,
     id_programa             DECIMAL(8,0)                NOT NULL,
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche
-    ind_modalidad           DECIMAL(1,0)                NOT NULL, -- 1=PRESENCIAL / 2=VIRTUAL / 3= DISTANCIA
+    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
+    ind_modalidad           DECIMAL(1,0)                NOT NULL, -- 1=PRESENCIAL / 2=VIRTUAL / 3= DISTANCIA.
     fec_inicio              DATE                        NOT NULL,
-    fec_fin_lectiva         DATE                        NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Se asume que la duración lectiva es de 6 meses a partir de la fecha de inicio
+    fec_fin_lectiva         DATE                        NOT NULL DEFAULT CURRENT_DATE, -- Se asume que la duración lectiva es de 6 meses a partir de la fecha de inicio
     fec_fin_productiva      DATE                        NOT NULL, --- fecha fin programa
     val_duracion            DECIMAL(2,0)                NOT NULL DEFAULT 1, -- Valor dado en meses
     id_instructor_lider     DECIMAL(10,0)               NOT NULL DEFAULT 77777777,
-    id_sector               DECIMAL(1,0)                NOT NULL DEFAULT 0,
+    id_sector               DECIMAL(4,0)                NOT NULL DEFAULT 0,
     id_empresa              DECIMAL(10,0)               NOT NULL DEFAULT 999,
     id_ocupacion            DECIMAL(4,0)                NOT NULL DEFAULT 0,
     id_ciudad               VARCHAR                     NOT NULL DEFAULT 68001, -- tenemos nombre / no coincide con la DIAN

@@ -4,208 +4,219 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE SEQUENCE IF NOT EXISTS seq_id_sector START 1;
 
 -- Crear tabla de logging (si no existe)
-CREATE TABLE IF NOT EXISTS log_migracion_pe04 (
-    id_log          SERIAL PRIMARY KEY,
-    fecha_log       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tabla_destino   VARCHAR(50),
-    operacion       VARCHAR(10),
-    id_registro     VARCHAR(100),
-    observacion     TEXT
-);
-
--- Funciones para cargar en las distintas tablas.
-CREATE OR REPLACE FUNCTION fun_migrar_sectores()
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO tab_sectores (id_sector, nom_sector, usr_insert, fec_insert)
-    SELECT nextval('seq_id_sector'), nom_sector_prog, 'MIGRACION_PE04', CURRENT_TIMESTAMP
-    FROM (SELECT DISTINCT nom_sector_prog FROM tab_temp_pe04 WHERE nom_sector_prog IS NOT NULL) src
-    WHERE NOT EXISTS (SELECT 1 FROM tab_sectores t WHERE t.nom_sector = src.nom_sector_prog);
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION fun_migrar_ocupaciones()
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO tab_ocupaciones (id_ocupacion, nom_ocupacion, usr_insert, fec_insert)
-    SELECT DISTINCT id_ocupacion, nom_ocupacion, 'MIGRACION_PE04', CURRENT_TIMESTAMP
-    FROM tab_temp_pe04
-    WHERE id_ocupacion IS NOT NULL
-    ON CONFLICT (id_ocupacion) DO UPDATE
-    SET nom_ocupacion = EXCLUDED.nom_ocupacion,
-        usr_update = 'MIGRACION_PE04',
-        fec_update = CURRENT_TIMESTAMP
-    WHERE tab_ocupaciones.nom_ocupacion IS DISTINCT FROM EXCLUDED.nom_ocupacion;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION fun_migrar_empresas()
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO tab_empresas (id_empresa, id_tipo_docum, nom_empresa, usr_insert, fec_insert)
-    SELECT DISTINCT
-        e.id_empresa,
-        COALESCE(t.id_tipo_docum, 'NIT') AS id_tipo_docum,  -- Cambiado de 'N/A' a 'NIT'
-        COALESCE(e.nom_empresa, 'Sin Empresa'),
-        'MIGRACION_PE04',
-        CURRENT_TIMESTAMP
-    FROM tab_temp_pe04 e
-    LEFT JOIN tab_tipos_docum t ON t.id_tipo_docum = e.id_tipodoc_emp
-    WHERE e.id_empresa IS NOT NULL
-    ON CONFLICT (id_empresa) DO UPDATE
-    SET id_tipo_docum = EXCLUDED.id_tipo_docum,
-        nom_empresa = EXCLUDED.nom_empresa,
-        usr_update = 'MIGRACION_PE04',
-        fec_update = CURRENT_TIMESTAMP;
-
-    -- Log de empresas con tipo documento por defecto (ahora 'NIT')
-    INSERT INTO log_migracion_pe04 (tabla_destino, operacion, id_registro, observacion)
-    SELECT 'tab_empresas', 'WARNING', id_empresa, 'Tipo documento no existe, se asignó NIT'
-    FROM tab_temp_pe04
-    WHERE id_empresa IS NOT NULL
-      AND id_tipodoc_emp IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM tab_tipos_docum WHERE id_tipo_docum = tab_temp_pe04.id_tipodoc_emp);
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION fun_migrar_prog_especiales()
-RETURNS VOID AS $$
-BEGIN
-    -- Insertar o actualizar solo programas especiales con id != 0 (el 0 ya existe por defecto)
-    INSERT INTO tab_prog_especiales (id_prog_especial, nom_prog_especial, usr_insert, fec_insert)
-    SELECT DISTINCT 
-        id_prog_especial, 
-        COALESCE(NULLIF(TRIM(nom_prog_especial), ''), 'Sin programa especial') AS nom_prog_especial,
-        'MIGRACION_PE04', 
-        CURRENT_TIMESTAMP
-    FROM tab_temp_pe04
-    WHERE id_prog_especial IS NOT NULL 
-      AND id_prog_especial != 0   -- Excluir el id por defecto, que ya existe en la tabla
-    ON CONFLICT (id_prog_especial) DO UPDATE
-    SET nom_prog_especial = EXCLUDED.nom_prog_especial,
-        usr_update = 'MIGRACION_PE04',
-        fec_update = CURRENT_TIMESTAMP
-    WHERE tab_prog_especiales.nom_prog_especial IS DISTINCT FROM EXCLUDED.nom_prog_especial;
-
-    -- Registrar advertencias cuando el nombre original era nulo o vacío (excepto para id=0)
-    INSERT INTO log_migracion_pe04 (tabla_destino, operacion, id_registro, observacion)
-    SELECT 'tab_prog_especiales', 'WARNING', id_prog_especial, 
-           'nom_prog_especial era nulo o vacío, se asignó "Sin programa especial"'
-    FROM tab_temp_pe04
-    WHERE id_prog_especial IS NOT NULL 
-      AND id_prog_especial != 0
-      AND (nom_prog_especial IS NULL OR TRIM(nom_prog_especial) = '');
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION fun_migrar_fichas()
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO tab_fichas (
-        id_ficha, id_centro, id_programa, id_nivel_estudio, ind_jornada,
-        ind_modalidad, fec_inicio, fec_fin_productiva, val_duracion,
-        id_instructor_lider, id_sector, id_empresa, id_ocupacion, id_ciudad,
-        cod_convenio, nom_convenio, ind_amp_cobertura, id_prog_especial,
-        ind_abierta, nom_vocero, tel_vocero, mail_vocero, val_cupo,
-        id_ambiente_base, num_inscritos_opcion1, num_inscritos_opcion2, ind_estado,
-        num_cursos, tot_aprendices_masc, tot_aprendices_fem, tot_aprendices_nobin,
-        tot_aprendices_trans, tot_horas_planta, tot_horas_contratista,
-        tot_horas_contrat_ext, tot_horas_monitores, tot_horas_inst_empresa,
-        tot_aprendices_activos, val_duracion_programa, id_nuevo_sector,
-        usr_insert, fec_insert
-    )
-    SELECT
-        t.id_ficha,
-        COALESCE(c.id_centro, 1) AS id_centro,
-        t.id_programa,
-        COALESCE(t.id_nivel_forma, 99) AS id_nivel_estudio,
-        COALESCE(t.id_jornada, 1) AS ind_jornada,
-        CASE UPPER(TRIM(t.val_modalidad))
-            WHEN 'PRESENCIAL' THEN 1
-            WHEN 'VIRTUAL' THEN 2
-            WHEN 'DISTANCIA' THEN 3
-            ELSE 1
-        END AS ind_modalidad,
-        t.fec_inicio_ficha,
-        t.fec_fin_ficha,
-        COALESCE(t.val_duracion_prog, 0) AS val_duracion,
-        77777777 AS id_instructor_lider,
-        COALESCE(sec.id_sector, 0) AS id_sector,
-        COALESCE(t.id_empresa, 999) AS id_empresa,
-        COALESCE(t.id_ocupacion, 0) AS id_ocupacion,
-        COALESCE(ciu.id_ciudad, '68001') AS id_ciudad,
-        COALESCE(t.id_convenio, 0) AS cod_convenio,
-        COALESCE(t.nom_convenio, 'Sin Convenio') AS nom_convenio,
-        (UPPER(TRIM(t.ind_cobertura)) = 'SI') AS ind_amp_cobertura,
-        COALESCE(t.id_prog_especial, 0) AS id_prog_especial,
-        FALSE AS ind_abierta,
-        'Sin Vocero' AS nom_vocero,
-        3000000000 AS tel_vocero,
-        'sin_correo@correo.com' AS mail_vocero,
-        30 AS val_cupo,
-        'Sin Ambiente Base' AS id_ambiente_base,
-        0 AS num_inscritos_opcion1,
-        0 AS num_inscritos_opcion2,
-        CASE UPPER(TRIM(t.ind_estado_curso))
-            WHEN 'TERMINADA' THEN 8
-            WHEN 'EN EJECUCIÓN' THEN 3
-            ELSE 1
-        END AS ind_estado,
-        COALESCE(t.num_cursos, 1) AS num_cursos,
-        COALESCE(t.num_aprend_masc, 0) AS tot_aprendices_masc,
-        COALESCE(t.num_aprend_fem, 0) AS tot_aprendices_fem,
-        COALESCE(t.num_aprend_nobin, 0) AS tot_aprendices_nobin,
-        0 AS tot_aprendices_trans,
-        COALESCE(t.val_hrs_planta, '0'::INTERVAL) AS tot_horas_planta,
-        COALESCE(t.val_hrs_contrat, '0'::INTERVAL) AS tot_horas_contratista,
-        COALESCE(t.val_hrs_context, '0'::INTERVAL) AS tot_horas_contrat_ext,
-        COALESCE(t.val_hrs_monitor, '0'::INTERVAL) AS tot_horas_monitores,
-        COALESCE(t.val_hrs_instemp, '0'::INTERVAL) AS tot_horas_inst_empresa,
-        COALESCE(t.val_total_apr_act, 0) AS tot_aprendices_activos,
-        make_interval(months => COALESCE(t.val_duracion_prog, 0)::INT) AS val_duracion_programa,
-        COALESCE(ns.id_sector, 0) AS id_nuevo_sector,
-        'MIGRACION_PE04' AS usr_insert,
-        COALESCE(t.fecha_reporte, CURRENT_DATE) AS fec_insert
-    FROM tab_temp_pe04 t
-    LEFT JOIN tab_centros c ON c.id_centro = t.cod_centro   -- ← CORREGIDO
-    LEFT JOIN tab_sectores sec ON sec.nom_sector = t.nom_sector_prog
-    LEFT JOIN tab_ciudades ciu ON unaccent(LOWER(ciu.nom_ciudad)) = unaccent(LOWER(t.nom_municipio))
-    LEFT JOIN tab_dptos dpt ON dpt.id_dpto = ciu.id_dpto AND unaccent(LOWER(dpt.nom_dpto)) = unaccent(LOWER(t.nom_depto))
-    LEFT JOIN tab_sectores ns ON ns.nom_sector = t.nom_nuevo_sector
-    ON CONFLICT (id_ficha) DO UPDATE SET
-        fec_fin_productiva = EXCLUDED.fec_fin_productiva,
-        tot_aprendices_activos = EXCLUDED.tot_aprendices_activos,
-        ind_estado = EXCLUDED.ind_estado,
-        tot_horas_planta = EXCLUDED.tot_horas_planta,
-        tot_horas_contratista = EXCLUDED.tot_horas_contratista,
-        tot_horas_contrat_ext = EXCLUDED.tot_horas_contrat_ext,
-        tot_horas_monitores = EXCLUDED.tot_horas_monitores,
-        tot_horas_inst_empresa = EXCLUDED.tot_horas_inst_empresa,
-        tot_aprendices_masc = EXCLUDED.tot_aprendices_masc,
-        tot_aprendices_fem = EXCLUDED.tot_aprendices_fem,
-        tot_aprendices_nobin = EXCLUDED.tot_aprendices_nobin,
-        num_cursos = EXCLUDED.num_cursos,
-        id_ciudad = EXCLUDED.id_ciudad,
-        usr_update = 'MIGRACION_PE04',
-        fec_update = CURRENT_TIMESTAMP;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- Para ejecutar todas las funciones
-
-CREATE OR REPLACE FUNCTION fun_migrar_pe04()
+CREATE OR REPLACE FUNCTION procesar_tab_temp_pe04()
 RETURNS TEXT AS $$
+DECLARE
+    r tab_temp_pe04%ROWTYPE;
+    contador INTEGER := 0;
+    v_diff_months INTEGER;
+    v_id_ciudad tab_fichas.id_ciudad%TYPE;
+    v_id_empresa tab_empresas.id_empresa%TYPE;
+    v_tipo_docum tab_empresas.id_tipo_docum%TYPE;
+    v_nom_empresa tab_empresas.nom_empresa%TYPE;
+    v_id_prog_especial tab_prog_especiales.id_prog_especial%TYPE;
+    v_nom_prog_especial tab_prog_especiales.nom_prog_especial%TYPE;
+    v_num_version tab_programas.num_version%TYPE;
+    v_fec_inicio DATE;
+    v_fec_fin DATE;
 BEGIN
-    PERFORM fun_migrar_sectores();
-    PERFORM fun_migrar_ocupaciones();
-    PERFORM fun_migrar_empresas();
-    PERFORM fun_migrar_prog_especiales();
-    PERFORM fun_migrar_fichas();
-    RETURN 'Migración completada exitosamente. Revise log_migracion_pe04 para advertencias.';
+    -- Asegurar existencia del registro por defecto para programas especiales (id=0)
+    INSERT INTO tab_prog_especiales (id_prog_especial, nom_prog_especial)
+    VALUES (0, 'Sin programa especial')
+    ON CONFLICT (id_prog_especial) DO NOTHING;
+
+    FOR r IN SELECT * FROM tab_temp_pe04 LOOP
+        BEGIN
+            -- 1. UPSERT nivel de estudio
+            INSERT INTO tab_niveles_estudio (id_nivel_estudio, nom_nivel_estudio)
+            VALUES (r.id_nivel_forma, r.nom_nivel_forma)
+            ON CONFLICT (id_nivel_estudio) DO UPDATE SET nom_nivel_estudio = EXCLUDED.nom_nivel_estudio;
+
+            -- 2. UPSERT sector
+            INSERT INTO tab_sectores (id_sector, nom_sector)
+            VALUES (r.id_sector_prog::DECIMAL(4,0), r.nom_sector_prog)
+            ON CONFLICT (id_sector) DO UPDATE SET nom_sector = EXCLUDED.nom_sector;
+
+            -- 3. UPSERT empresa con manejo de NULL
+            IF r.id_empresa IS NULL THEN
+                v_id_empresa := 999;
+                v_tipo_docum := 'N/A';
+                v_nom_empresa := 'Sin Empresa';
+            ELSE
+                v_id_empresa := r.id_empresa;
+                v_tipo_docum := 'NIT';
+                v_nom_empresa := r.nom_empresa;
+            END IF;
+
+            INSERT INTO tab_empresas (id_empresa, id_tipo_docum, nom_empresa)
+            VALUES (v_id_empresa, v_tipo_docum, v_nom_empresa)
+            ON CONFLICT (id_empresa) DO UPDATE SET 
+                id_tipo_docum = EXCLUDED.id_tipo_docum,
+                nom_empresa = EXCLUDED.nom_empresa;
+
+            -- 4. UPSERT programa especial con manejo de NULL o 0
+            IF r.id_prog_especial IS NULL OR r.id_prog_especial = 0 THEN
+                v_id_prog_especial := 0;
+                v_nom_prog_especial := 'Sin programa especial';
+            ELSE
+                v_id_prog_especial := r.id_prog_especial;
+                v_nom_prog_especial := r.nom_prog_especial;
+            END IF;
+
+            INSERT INTO tab_prog_especiales (id_prog_especial, nom_prog_especial)
+            VALUES (v_id_prog_especial, v_nom_prog_especial)
+            ON CONFLICT (id_prog_especial) DO UPDATE SET nom_prog_especial = EXCLUDED.nom_prog_especial;
+
+            -- 5. UPSERT ocupación
+            IF r.id_ocupacion IS NOT NULL THEN
+                INSERT INTO tab_ocupaciones (id_ocupacion, nom_ocupacion)
+                VALUES (r.id_ocupacion, COALESCE(r.nom_ocupacion, 'OCUPACION DESCONOCIDA'))
+                ON CONFLICT (id_ocupacion) DO UPDATE SET nom_ocupacion = EXCLUDED.nom_ocupacion;
+            END IF;
+
+            -- 6. UPSERT programa (tab_programas) con control de versión
+            IF r.id_version IS NULL OR r.id_version > 99 THEN
+                v_num_version := 1;
+            ELSE
+                v_num_version := r.id_version;
+            END IF;
+
+            INSERT INTO tab_programas (id_programa, nom_programa, num_version)
+            VALUES (r.id_programa, r.nom_programa, v_num_version)
+            ON CONFLICT (id_programa) DO UPDATE SET 
+                nom_programa = EXCLUDED.nom_programa,
+                num_version = EXCLUDED.num_version;
+
+            -- 7. Preparar fechas y calcular duración en meses (val_duracion)
+            v_fec_inicio := COALESCE(r.fec_inicio_ficha, CURRENT_DATE);
+            v_fec_fin := COALESCE(r.fec_fin_ficha, CURRENT_DATE + INTERVAL '1 year');
+            
+            v_diff_months := EXTRACT(MONTH FROM age(v_fec_fin, v_fec_inicio)) 
+                           + 12 * EXTRACT(YEAR FROM age(v_fec_fin, v_fec_inicio));
+            v_diff_months := LEAST(v_diff_months, 99);
+
+            -- 8. Obtener id_ciudad por nombre de municipio
+            v_id_ciudad := '68001';
+            IF r.nom_municipio IS NOT NULL AND r.nom_municipio != '' THEN
+                SELECT id_ciudad INTO v_id_ciudad
+                FROM tab_ciudades
+                WHERE unaccent(lower(nom_ciudad)) = unaccent(lower(r.nom_municipio))
+                LIMIT 1;
+                IF NOT FOUND THEN
+                    v_id_ciudad := '68001';
+                END IF;
+            END IF;
+
+            -- 9. UPSERT ficha principal
+            INSERT INTO tab_fichas (
+                id_ficha, id_centro, id_programa, id_nivel_estudio, ind_jornada, ind_modalidad,
+                fec_inicio, fec_fin_productiva, val_duracion, id_instructor_lider, id_sector,
+                id_empresa, id_ocupacion, id_ciudad, cod_convenio, nom_convenio,
+                ind_amp_cobertura, id_prog_especial, ind_abierta, nom_vocero, tel_vocero,
+                mail_vocero, val_cupo, id_ambiente_base, num_inscritos_opcion1, num_inscritos_opcion2,
+                ind_estado, num_cursos, tot_aprendices_masc, tot_aprendices_fem, tot_aprendices_nobin,
+                tot_aprendices_trans, tot_horas_planta, tot_horas_contratista, tot_horas_contrat_ext,
+                tot_horas_monitores, tot_horas_inst_empresa, tot_aprendices_activos, val_duracion_programa,
+                id_nuevo_sector
+            ) VALUES (
+                COALESCE(r.id_ficha, 0)::DECIMAL(10,0),
+                COALESCE(r.cod_centro, 0),
+                r.id_programa,
+                COALESCE(r.id_nivel_forma, 0),
+                CASE WHEN COALESCE(r.id_jornada, 1) BETWEEN 1 AND 4 THEN r.id_jornada ELSE 1 END,
+                CASE UPPER(TRIM(r.val_modalidad))
+                    WHEN 'PRESENCIAL' THEN 1
+                    WHEN 'VIRTUAL' THEN 2
+                    WHEN 'DISTANCIA' THEN 3
+                    ELSE 1
+                END,
+                v_fec_inicio,
+                v_fec_fin,
+                v_diff_months::DECIMAL(2,0),
+                77777777,
+                COALESCE(r.id_sector_prog, 0)::DECIMAL(4,0),
+                v_id_empresa,
+                COALESCE(r.id_ocupacion, 0),
+                v_id_ciudad,
+                COALESCE(r.id_convenio, 0),
+                COALESCE(r.nom_convenio, 'Sin Convenio'),
+                FALSE,
+                v_id_prog_especial,
+                FALSE,
+                'Sin Vocero',
+                '3000000000',
+                'sin_correo@correo.com',
+                COALESCE(r.num_tot_aprend, 30),
+                'Sin Ambiente Base',
+                0, 0,
+                CASE UPPER(TRIM(r.ind_estado_curso))
+                    WHEN 'INSCRIPCION' THEN 1
+                    WHEN 'MATRICULA' THEN 2
+                    WHEN 'EJECUCION' THEN 3
+                    WHEN 'TERMINADA' THEN 7
+                    WHEN 'CERRADA' THEN 8
+                    ELSE 9
+                END,
+                COALESCE(r.num_cursos, 1),
+                GREATEST(COALESCE(r.num_aprend_masc, 0), 0),
+                GREATEST(COALESCE(r.num_aprend_fem, 0), 0),
+                GREATEST(COALESCE(r.num_aprend_nobin, 0), 0),
+                0,
+                COALESCE(r.val_hrs_planta, '00:00:00'::INTERVAL),
+                COALESCE(r.val_hrs_contrat, '00:00:00'::INTERVAL),
+                COALESCE(r.val_hrs_context, '00:00:00'::INTERVAL),
+                COALESCE(r.val_hrs_monitor, '00:00:00'::INTERVAL),
+                COALESCE(r.val_hrs_instemp, '00:00:00'::INTERVAL),
+                GREATEST(COALESCE(r.val_total_apr_act, 0), 0),
+                make_interval(hours => COALESCE(r.val_duracion_prog, 0)::INT),  -- Conversión a integer
+                COALESCE((SELECT id_sector FROM tab_sectores 
+                          WHERE unaccent(lower(nom_sector)) = unaccent(lower(TRIM(r.nom_nuevo_sector))) 
+                          LIMIT 1), 0)
+            )
+            ON CONFLICT (id_ficha) DO UPDATE SET
+                id_centro = EXCLUDED.id_centro,
+                id_programa = EXCLUDED.id_programa,
+                id_nivel_estudio = EXCLUDED.id_nivel_estudio,
+                ind_jornada = EXCLUDED.ind_jornada,
+                ind_modalidad = EXCLUDED.ind_modalidad,
+                fec_inicio = EXCLUDED.fec_inicio,
+                fec_fin_productiva = EXCLUDED.fec_fin_productiva,
+                val_duracion = EXCLUDED.val_duracion,
+                id_sector = EXCLUDED.id_sector,
+                id_empresa = EXCLUDED.id_empresa,
+                id_ocupacion = EXCLUDED.id_ocupacion,
+                id_ciudad = EXCLUDED.id_ciudad,
+                cod_convenio = EXCLUDED.cod_convenio,
+                nom_convenio = EXCLUDED.nom_convenio,
+                ind_amp_cobertura = EXCLUDED.ind_amp_cobertura,
+                id_prog_especial = EXCLUDED.id_prog_especial,
+                ind_estado = EXCLUDED.ind_estado,
+                num_cursos = EXCLUDED.num_cursos,
+                tot_aprendices_masc = EXCLUDED.tot_aprendices_masc,
+                tot_aprendices_fem = EXCLUDED.tot_aprendices_fem,
+                tot_aprendices_nobin = EXCLUDED.tot_aprendices_nobin,
+                tot_aprendices_trans = EXCLUDED.tot_aprendices_trans,
+                tot_horas_planta = EXCLUDED.tot_horas_planta,
+                tot_horas_contratista = EXCLUDED.tot_horas_contratista,
+                tot_horas_contrat_ext = EXCLUDED.tot_horas_contrat_ext,
+                tot_horas_monitores = EXCLUDED.tot_horas_monitores,
+                tot_horas_inst_empresa = EXCLUDED.tot_horas_inst_empresa,
+                tot_aprendices_activos = EXCLUDED.tot_aprendices_activos,
+                val_duracion_programa = EXCLUDED.val_duracion_programa,
+                id_nuevo_sector = EXCLUDED.id_nuevo_sector;
+
+            contador := contador + 1;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING 'Error en ficha %: %', r.id_ficha, SQLERRM;
+        END;
+    END LOOP;
+
+    RETURN format('Procesadas %s filas de tab_temp_pe04', contador);
 END;
 $$ LANGUAGE plpgsql;
 
-BEGIN;
-SELECT fun_migrar_pe04();
-COMMIT;
+
+SELECT procesar_tab_temp_pe04();
+
