@@ -10,15 +10,15 @@ Módulo de gestión de menús del sistema y asignación de permisos por usuario.
 
 ### menu_principal.php
 
-Dashboard de bienvenida: construye la cuadrícula de módulos asignados al usuario (via `obtenerMenusUsuario()`), incluye calculadora flotante opcional. Primera página que ve el usuario tras login exitoso.
+Dashboard operativo post-login: KPIs de portería (ingresos/salidas/personas dentro), actividad reciente, acciones rápidas según menús asignados, y avisos admin (sesiones activas, módulo registro). La navegación completa sigue en el sidebar (`obtenerMenusUsuario()`).
 
 **Espera:**
 - Sesión activa (`$_SESSION['id_usuario']`)
-- Variables `$pdo` y prepared statements de `prepare.php`
+- Variables `$pdo` y statements `$stmt_list_ingresos_hoy`, `$stmt_list_salidas_hoy`, `$stmt_list_sesiones_activas`
 
 **Emite:**
 - Página completa con head/sidebar/topbar/footer
-- Cards Bootstrap para cada módulo disponible
+- Sección `.dashboard-*` en `css/layout.css` (sin duplicar cards de módulos)
 
 ### menus.php
 

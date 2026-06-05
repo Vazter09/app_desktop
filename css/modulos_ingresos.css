@@ -57,7 +57,8 @@
     overflow: visible;
 }
 
-.ing-panel-form #form_ingreso {
+.ing-panel-form #form_ingreso,
+.ing-panel-form #form_salida {
     flex: 0 0 auto;
     min-height: 0;
 }
@@ -103,7 +104,8 @@
 }
 
 /* Formulario */
-.ing-panel-form #form_ingreso {
+.ing-panel-form #form_ingreso,
+.ing-panel-form #form_salida {
     display: flex;
     flex-direction: column;
 }
@@ -345,11 +347,13 @@
     font-size: 0.85rem;
 }
 
-tr.ingreso-reciente td {
+tr.ingreso-reciente td,
+tr.salida-reciente td {
     background: rgba(107, 142, 35, 0.1) !important;
 }
 
-tr.ingreso-reciente td:first-child {
+tr.ingreso-reciente td:first-child,
+tr.salida-reciente td:first-child {
     box-shadow: inset 3px 0 0 var(--v-oliva, #6B8E23);
 }
 
@@ -366,4 +370,151 @@ tr.ingreso-reciente td:first-child {
 .ing-list-scroll {
     scrollbar-width: thin;
     scrollbar-color: #b8c4b8 transparent;
+}
+
+/* =====================================================
+   DARK MODE — ingreso y salida (portería)
+   ===================================================== */
+body:not(.light-theme) .ingresos-page {
+    --ing-surface: var(--bg-card, #0f1a14);
+    --ing-surface-deep: var(--bg-deep, #0a120e);
+    --ing-border: var(--surface-border, rgba(107, 142, 35, 0.22));
+    --ing-text: var(--text-main, #e8f4f0);
+    --ing-text-muted: var(--text-muted, rgba(200, 220, 210, 0.72));
+    --ing-text-subtle: rgba(180, 210, 195, 0.55);
+}
+
+body:not(.light-theme) .ingresos-page .ing-panel {
+    background: linear-gradient(180deg, var(--ing-surface), var(--ing-surface-deep)) !important;
+    border-color: var(--ing-border) !important;
+}
+
+body:not(.light-theme) .ingresos-page .ing-panel-foot {
+    background: var(--ing-surface) !important;
+    border-top-color: var(--ing-border) !important;
+}
+
+body:not(.light-theme) .ingresos-page .ing-field label {
+    color: var(--ing-text-muted);
+}
+
+body:not(.light-theme) .ingresos-page .ing-field .text-muted,
+body:not(.light-theme) .ingresos-page .small.text-muted {
+    color: var(--ing-text-subtle) !important;
+}
+
+body:not(.light-theme) .ingresos-page .form-control::placeholder,
+body:not(.light-theme) .ingresos-page .form-select::placeholder {
+    color: var(--ing-text-subtle);
+    opacity: 1;
+}
+
+body:not(.light-theme) .ingresos-page #badge_persona.ingresos-badge-known {
+    background: rgba(107, 142, 35, 0.22);
+    color: #c8e8b8;
+}
+
+body:not(.light-theme) .ingresos-page #badge_persona.ingresos-badge-new {
+    background: rgba(8, 115, 184, 0.22);
+    color: #8ec8f0;
+}
+
+body:not(.light-theme) .ingresos-page #badge_persona.ingresos-badge-loading {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ing-text-muted);
+}
+
+body:not(.light-theme) .ingresos-page #badge_persona.ingresos-badge-blocked {
+    background: rgba(220, 53, 69, 0.18);
+    color: #f5a8b0;
+}
+
+body:not(.light-theme) .ingresos-page .ing-bloqueo-msg {
+    background: rgba(230, 168, 23, 0.12);
+    border-color: rgba(230, 168, 23, 0.35);
+    color: #f0d080;
+}
+
+body:not(.light-theme) .ingresos-page .ing-puerta {
+    background: color-mix(in srgb, var(--ing-surface-deep) 80%, var(--v-oscuro));
+    border-color: var(--ing-border);
+}
+
+body:not(.light-theme) .ingresos-page .ing-puerta:hover {
+    background: color-mix(in srgb, var(--v-oliva) 14%, var(--ing-surface-deep));
+    border-color: color-mix(in srgb, var(--v-oliva) 50%, transparent);
+}
+
+body:not(.light-theme) .ingresos-page .ing-puerta.is-selected {
+    background: color-mix(in srgb, var(--v-oliva) 18%, var(--ing-surface-deep));
+    border-color: var(--v-oliva);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--v-oliva) 60%, transparent);
+}
+
+body:not(.light-theme) .ingresos-page .ing-puerta .p-nom {
+    color: var(--ing-text-muted);
+}
+
+body:not(.light-theme) .ingresos-page .ing-puerta-error {
+    color: #f5a0a8;
+}
+
+body:not(.light-theme) .ingresos-page .btn-ingreso-submit {
+    color: #f0faf4;
+}
+
+body:not(.light-theme) .ingresos-page .btn-ingreso-submit:disabled {
+    opacity: 0.5;
+    color: rgba(240, 250, 244, 0.85);
+}
+
+body:not(.light-theme) .ingresos-page .ing-list-scroll .v-nom {
+    color: var(--ing-text);
+}
+
+body:not(.light-theme) .ingresos-page .ing-list-scroll .v-doc {
+    color: var(--ing-text-subtle);
+}
+
+body:not(.light-theme) .ingresos-page .ing-tipo-badge {
+    color: var(--ing-text-muted);
+}
+
+body:not(.light-theme) .ingresos-page .ing-puerta-badge {
+    background: rgba(107, 142, 35, 0.22);
+    color: #c8e8b8;
+}
+
+body:not(.light-theme) .ingresos-page .ing-empty {
+    color: var(--ing-text-subtle);
+}
+
+body:not(.light-theme) .ingresos-page .ing-empty p strong {
+    color: var(--ing-text-muted);
+}
+
+body:not(.light-theme) .ingresos-page .ing-list-hint {
+    background: var(--ing-surface) !important;
+    border-top-color: var(--ing-border) !important;
+    color: var(--ing-text-subtle) !important;
+}
+
+body:not(.light-theme) .ingresos-page tr.ingreso-reciente td,
+body:not(.light-theme) .ingresos-page tr.salida-reciente td {
+    background: color-mix(in srgb, var(--v-oliva) 14%, transparent) !important;
+}
+
+body:not(.light-theme) .ingresos-page .ing-list-scroll {
+    scrollbar-color: rgba(107, 142, 35, 0.35) transparent;
+}
+
+body:not(.light-theme) .ingresos-page .table tbody td {
+    color: var(--ing-text) !important;
+}
+
+body:not(.light-theme) .ingresos-page .form-control[readonly],
+body:not(.light-theme) .ingresos-page .form-select[readonly] {
+    background-color: color-mix(in srgb, var(--ing-surface-deep) 92%, var(--v-oscuro));
+    color: var(--ing-text-muted);
+    border-color: var(--ing-border);
 }
