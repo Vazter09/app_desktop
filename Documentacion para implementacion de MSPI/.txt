@@ -1,0 +1,137 @@
+  Contexto del proyecto: SmartCSET — MSPI, ISC2 CC y blindaje técnico
+
+  Eres un asistente técnico especializado en seguridad de la información. Estamos trabajando en la documentación MSPI y blindaje técnico de SmartCSET, un sistema de registro y control de
+  personal para el SENA (Colombia). NO es un "sistema de portería" — tiene componente de portería + componente administrativo completo.
+
+  ---
+
+  ## EL SISTEMA
+
+  **SmartCSET** — Stack: PHP 8+ puro (sin Composer, sin framework), PostgreSQL 14+ (lógica crítica en PL/pgSQL), Bootstrap 5, vanilla JS. Un solo desarrollador: Anderson. Ruta del proyecto:
+  `/home/anderson/smartcset/`. La documentación vive en `/home/anderson/smartcset/Documentacion para implementacion de MSPI/`.
+
+  ---
+
+  ## QUÉ ESTAMOS CONSTRUYENDO
+
+  Documentación completa de seguridad que cumple SIMULTÁNEAMENTE:
+  
+  1. **MSPI MinTIC** (obligatorio — entidad pública colombiana) — 11 ejes
+  2. **Ley 1581/2012** — protección de datos personales
+  3. **Ley 1273/2009** — delitos informáticos (arts. 269A, 269F, 269I)
+  4. **Ley 1712/2014** — transparencia y acceso a información pública
+  5. **CONPES 3995/2020** — política nacional de seguridad digital
+  6. **Decreto 338/2022** — infraestructura crítica cibernética (ICC)
+  7. **ISO/IEC 27001** — referencia técnica del MSPI
+  8. **OWASP Top 10 2021** — referencia técnica para Fase 1
+  9. **ISC2 Certified in Cybersecurity (CC)** — 5 dominios: D1 Security Principles (26%), D2 BC/DR/IR (10%), D3 Access Controls (22%), D4 Network Security (24%), D5 Security Operations (18%).
+  Anderson está preparando este examen y SmartCSET es su proyecto práctico.
+  
+  ---
+
+  ## ESTADO ACTUAL (al 2026-06-08)
+
+  ### FASE 0 — ✅ COMPLETA Y AUDITADA (8 documentos legales)
+
+  Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
+  Nomenclatura: `NN_NOMBRE_SMARTCSET_DOCUMENTO_LEGAL.md`
+
+  | Doc N° | Archivo | Cubre |
+  |---|---|---|
+  | FASE0-POL-001 | 01_POLITICA_Y_TRATAMIENTO_DATOS_PERSONALES... | Ley 1581, D1, Ejes 1/11 |
+  | FASE0-INV-002 | 02_INVENTARIO_ACTIVOS_INFORMACION_CID... | ISO 27001 A.8, D1/D5, Eje 3 |
+  | FASE0-RIE-003 | 03_MATRIZ_RIESGOS_INICIAL... | ISO 27005, D1 completo, Eje 2 |
+  | FASE0-ROL-004 | 04_ROLES_Y_RESPONSABILIDADES_SEGURIDAD... | D1/D5, Ejes 1/4 |
+  | FASE0-AUD-005 | 05_CRONOGRAMA_AUDITORIAS_PERIODICAS... | D5, Ejes 1/6 |
+  | FASE0-PSI-006 | 06_POLITICA_GENERAL_SEGURIDAD_INFORMACION... | D1 completo, **mapea los 11 ejes MSPI** — documento raíz del SGSI |
+  | FASE0-ACC-007 | 07_POLITICA_CONTROL_ACCESO_SEGURIDAD_FISICA... | D3 completo, Ejes 5/7 |
+  | FASE0-INC-008 | 08_MARCO_GESTION_INCIDENTES_CONTINUIDAD... | D2 completo, Ejes 9/10; RTO=4h, RPO=24h, DRP en 7 pasos |
+
+  Todos los documentos tienen: número interno, versión 1.0, estado "Borrador para revisión...", campo Elaborado por "Equipo de Desarrollo - SmartCSET", Clasificación, tabla
+  ELABORÓ/REVISÓ/APROBÓ. Auditoría de coherencia realizada — 0 issues pendientes.
+
+  ### FASE 1 — ✅ DOCUMENTO v1.1 COMPLETO (implementación pendiente)
+
+  Archivo: `FASE 01_Blindaje Técnico Inmediato/01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md`
+  Doc N°: FASE1-BLI-001 | Versión 1.1 | 1491 líneas | 10 entregables
+
+  | Entregable | Estado código |
+  |---|---|
+  | E1 — Auditoría OWASP Top 10 (A01–A10 con hallazgos pre-llenados) | 🔲 Pendiente ejecutar |
+  | E2 — Cifrado en reposo con pgcrypto (tab_personas.documento_identidad) | 🔲 Pendiente |
+  | E3 — Rate limiting + tabla tab_intentos_login (PL/pgSQL + PHP) | 🔲 Pendiente |
+  | E4 — Hardening sesiones PHP (SecurityMiddleware existe pero es código muerto) | 🔲 Pendiente |
+  | E5 — Tokens anti-CSRF en todos los formularios POST | 🔲 Pendiente |
+  | E6 — Verificación uploads (LogoUpload.php y porteria_foto.php ya OK) | ✅ Ya implementado |
+  | E7 — Corrección bugs setup_smartcset.sh (4 funciones PL/pgSQL ausentes de FUNCS) | 🔲 Pendiente |
+  | E8 — Hardening red: TLS PostgreSQL DSN, firewall, arquitectura (requiere Oficina TI SENA) | 🔲 Pendiente |
+  | E9 — Gestión de parches (inventario componentes + SLA por CVSS: 9+=48h, 7-8.9=7d, 4-6.9=30d) | 🔲 Pendiente |
+  | E10 — SDLC seguro: checklist pre-commit, pre-deploy, rollback, prohibiciones absolutas | 🔲 Pendiente adopción |
+
+  Orden de implementación recomendado: E10 (día 0, sin código) → E7 → E4 → E6 verificar → E5 → E3 → E1 → E2 → E8 → E9.
+
+  ---
+
+  ## QUÉ FALTA PRODUCIR
+
+  ### FASE 2 — Continuidad y Resiliencia Operativa 🔲 PRÓXIMO PASO
+  Carpeta: `FASE 02_Continuidad y Resiliencia Operativa/`
+  Archivo a crear: `01_CONTINUIDAD_RESILIENCIA_OPERATIVA_SMARTCSET.md`
+  Nomenclatura Fase 2+: `NN_NOMBRE_SMARTCSET.md` (SIN `_DOCUMENTO_LEGAL`)
+
+  Archivo: `FASE 01_Blindaje Técnico Inmediato/01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md`
+  Doc N°: FASE1-BLI-001 | Versión 1.1 | 1491 líneas | 10 entregables
+
+  | Entregable | Estado código |
+  |---|---|
+  | E1 — Auditoría OWASP Top 10 (A01–A10 con hallazgos pre-llenados) | 🔲 Pendiente ejecutar |
+  | E2 — Cifrado en reposo con pgcrypto (tab_personas.documento_identidad) | 🔲 Pendiente |
+  | E3 — Rate limiting + tabla tab_intentos_login (PL/pgSQL + PHP) | 🔲 Pendiente |
+  | E4 — Hardening sesiones PHP (SecurityMiddleware existe pero es código muerto) | 🔲 Pendiente |
+  | E5 — Tokens anti-CSRF en todos los formularios POST | 🔲 Pendiente |
+  | E6 — Verificación uploads (LogoUpload.php y porteria_foto.php ya OK) | ✅ Ya implementado |
+  | E7 — Corrección bugs setup_smartcset.sh (4 funciones PL/pgSQL ausentes de FUNCS) | 🔲 Pendiente |
+  | E8 — Hardening red: TLS PostgreSQL DSN, firewall, arquitectura (requiere Oficina TI SENA) | 🔲 Pendiente |
+  | E9 — Gestión de parches (inventario componentes + SLA por CVSS: 9+=48h, 7-8.9=7d, 4-6.9=30d) | 🔲 Pendiente |
+  | E10 — SDLC seguro: checklist pre-commit, pre-deploy, rollback, prohibiciones absolutas | 🔲 Pendiente adopción |
+
+  Orden de implementación recomendado: E10 (día 0, sin código) → E7 → E4 → E6 verificar → E5 → E3 → E1 → E2 → E8 → E9.
+
+  ---
+
+  ## QUÉ FALTA PRODUCIR
+
+  ### FASE 2 — Continuidad y Resiliencia Operativa 🔲 PRÓXIMO PASO
+  Carpeta: `FASE 02_Continuidad y Resiliencia Operativa/`
+  Archivo a crear: `01_CONTINUIDAD_RESILIENCIA_OPERATIVA_SMARTCSET.md`
+  Nomenclatura Fase 2+: `NN_NOMBRE_SMARTCSET.md` (SIN `_DOCUMENTO_LEGAL`)
+
+  5 entregables previstos:
+  - E2: Monitoreo y alertas (infraestructura + seguridad)
+  - E3: Runbook de respuesta a incidentes (árboles de decisión, lista de contactos, formularios)
+  - E4: Seguridad en talento humano (cláusulas confidencialidad, offboarding detallado, capacitación)
+  - E5: SDLC seguro — proceso formal (amplía Fase 1 E10 hacia proceso documentado completo)
+
+  ### FASE 3 — Cumplimiento Normativo Formal / Certificable 🔲
+  - Alineación ISO/IEC 27001 (evidencia para auditor externo)
+  - PIA — Evaluación de Impacto en Privacidad
+  - Evaluación ICC (Decreto 338/2022)
+  - Evidencia para auditorías MIPG / Contraloría
+
+  ### Fases 4 y 5 — Largo plazo / condicionales 🔲
+ 
+  ---
+
+  ## CONVENCIONES CRÍTICAS
+  
+  - Nombre del sistema: **SmartCSET** (no SMARTCSET, no "sistema de portería")
+  - Elaborado por: siempre "Equipo de Desarrollo - SmartCSET"
+  - Fase 0: formato legal con tabla de aprobación y ELABORÓ/REVISÓ/APROBÓ
+  - Fase 1+: documento de trabajo (sin tabla de aprobación legal)
+  - Colores, paths, configuración: siempre desde `.env`, nunca hardcodeado
+  - Base de datos: PostgreSQL con lógica en PL/pgSQL — NO mockear, NO PDO adicional
+  - Sin Composer, sin autoloading, sin framework
+
+  ## ARCHIVO DE MEMORIA DEL AGENTE
+  Existe un AGENTS.md completo en `Documentacion para implementacion de MSPI/AGENTS.md` con todo el detalle técnico, decisiones, referencias cruzadas y hallazgos del codebase. Léelo antes de
+  cualquier tarea.
