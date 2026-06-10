@@ -3,8 +3,8 @@
 ## Documento de Planeación Estratégica Institucional
 
 **Clasificación:** INSTITUCIONAL — Uso interno SENA
-**Versión:** 1.1
-**Fecha:** 2026-06-09 (v1.0: Junio 2026 · v1.1: actualización post-Fase 0)
+**Versión:** 1.2
+**Fecha:** 2026-06-10 (v1.0: Junio 2026 · v1.1: actualización post-Fase 0 · v1.2: sincronización con FASE1-BLI-001 v1.1 — estado real de E7, Anexo F con E9/E10, cifras de Fase 1)
 **Preparado por:** Anderson, Desarrollador Principal — SmartCSET
 **Destinatarios:** Dirección del Centro de Formación, Oficina de TI SENA, Oficina Jurídica, Oficina de Control Interno
 
@@ -110,7 +110,7 @@ SmartCSET fue construido con patrones arquitectónicos sólidos que **ya alinean
 | **Sin cifrado en reposo confirmado**                                  | Documentos de identidad y fotos almacenados en `storage/` sin cifrado; vulnerables a acceso físico o copia no autorizada de BD | ISO 27001 / Ley 1581 / Ley 1266     | CRÍTICA  | 🔲**PENDIENTE** — Fase 1 E2                                  |
 | **Sin logging centralizado de intentos fallidos de autenticación**   | Ataques de fuerza bruta contra `index.php` pasan desapercibidos                                                                 | ISO 27001 / OWASP A09               | ALTA      | 🔲**PENDIENTE** — Fase 1 E3                                  |
 | **Sin rate limiting en login**                                        | Un atacante puede intentar 100.000 contraseñas sin límite; credential stuffing posible                                          | OWASP / MSPI                        | ALTA      | 🔲**PENDIENTE** — Fase 1 E3                                  |
-| **Bugs en `setup_smartcset.sh`**                                    | Schema desactualizado (V.1.5→V.1.6); 7 funciones PL/pgSQL ausentes; 3 migraciones críticas no ejecutadas                        | Integridad de despliegue / Ley 1581 | ALTA      | 🔲**PENDIENTE** — Fase 1 E7                                  |
+| **Bugs en `setup_smartcset.sh`**                                    | 4 funciones PL/pgSQL ausentes del array `FUNCS` (schema V.1.7 y migraciones ya corregidos al 2026-06-08)                        | Integridad de despliegue / Ley 1581 | ALTA      | 🔲**PENDIENTE** — Fase 1 E7                                  |
 | **Sin mecanismo de recuperación de contraseña robusto**             | `recuperar.php` sin validación de identidad sólida; posible recuperación no autorizada                                       | ISO 27001 / OWASP A07               | MEDIA     | 🔲**PENDIENTE** — Fase 1 E1 (auditoría)                     |
 | **Sin tokens CSRF en formularios POST**                               | Ataques CSRF posibles en procesar.php y procesar_*.php                                                                            | OWASP A01 / ISO 27001               | MEDIA     | 🔲**PENDIENTE** — Fase 1 E5                                  |
 | **Sin validación robusta de subida de archivos**                     | `LogoUpload.php`, `porteria_foto.php` sin validación de MIME type real                                                       | OWASP A04 / ISO 27001               | MEDIA     | ✅**CERRADA** — Fase 1 E6 ya implementado                    |
@@ -377,20 +377,15 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 
 **7. Corrección de Bugs de `setup_smartcset.sh`** (1-2 semanas, puede ser paralelo)
 
-- Bug 1: Schema V.1.5 en vez de V.1.6 → Actualizar líneas 37, 50, 124 a V.1.6
-- Bug 2: 7 funciones PL/pgSQL faltantes en array FUNCS → Agregar:
-  - `acceso/usuarios/fun_validar_correo.sql`
+> **Estado verificado al 2026-06-08 (ver FASE1-BLI-001, E7):** el Bug 1 (schema desactualizado) y el Bug 3 (migraciones faltantes) ya fueron corregidos — el script apunta al esquema V.1.7 e incluye las migraciones críticas. Persiste el Bug 2 de forma parcial.
+
+- Bug 2 (parcial): 4 funciones PL/pgSQL existen en disco pero NO están en el array `FUNCS` → Agregar:
+  - `acceso/usuarios/fun_validar_correo.sql` — sin ella, la recuperación de contraseña falla en toda instalación limpia
   - `acceso/usuarios/fun_validar_login.sql`
   - `acceso/usuarios/fun_validar_usuario.sql`
-  - `acceso/menus/fun_delete_perfil_usuarios.sql`
   - `acceso/menus/fun_tab_menu_usuarios.sql`
-  - `acceso/menus/fun_trigger_menu.sql`
-  - `acceso/menus/fun_trigger_menu_admin.sql`
-- Bug 3: 3 migraciones faltantes → Agregar al block correspondiente:
-  - `update_modulos_rutas_organizadas.sql` (CRÍTICA)
-  - `update_menu_registro_listado_admin.sql`
-  - `add_unique_ingreso_persona_dia.sql`
-- Auditoría post-fix: Ejecutar `setup_smartcset.sh` en BD de test, verificar que todas las funciones estén presentes: `\df fun_*`
+- Auditoría post-fix: Ejecutar `setup_smartcset.sh` en BD de test, verificar que todas las funciones estén presentes: `\df fun_*` (en particular `\df fun_validar_correo`)
+- Antes de ejecutar contra producción: backup completo con `pg_dump` — el esquema se aplica con DROP implícito
 
 **8. Hardening de Red y Arquitectura de Despliegue** (1-2 semanas, requiere Oficina TI SENA)
 
@@ -995,7 +990,7 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 
 ### Matriz por Fase
 
-| Actividad                                      | Equipo de Desarrollo<br />SMARTCSET | RSSI | Dirección | Jurídica | Auditor | Portería |
+| Actividad                                      | Equipo de Desarrollo<br />SmartCSET | RSSI | Dirección | Jurídica | Auditor | Portería |
 | ---------------------------------------------- | ----------------------------------- | ---- | ---------- | --------- | ------- | --------- |
 | **FASE 0**                               |                                     |      |            |           |         |           |
 | Redactar política de datos                    | R                                   | C    | A          | C         | —      | I         |
@@ -1071,10 +1066,8 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 ### Paso 2 — Corregir los bugs de setup_smartcset.sh (E7) · ~30 horas
 
 - Es el entregable menos riesgoso (no afecta lógica de negocio) y más urgente para instalaciones nuevas
-- Correcciones concretas documentadas en `SETUP_AUDIT.md`:
-  - Línea 37: `SCHEMA` → `V.1.6.sql`
-  - Array `FUNCS`: agregar los 7 archivos de funciones faltantes
-  - Bloque de migraciones: agregar las 3 migraciones críticas
+- Estado actual (verificado 2026-06-08): el schema V.1.7 y las migraciones ya están corregidos en el script; lo único pendiente es el array `FUNCS`
+- Corrección concreta documentada en FASE1-BLI-001 (E7): agregar al array `FUNCS` las 4 funciones ausentes (`fun_validar_correo`, `fun_validar_login`, `fun_validar_usuario`, `fun_tab_menu_usuarios`)
 - Verificar con `psql -d db_smartcset_test -c "\df fun_*"` tras ejecutar el script corregido
 
 ### Paso 3 — Hardening de sesiones PHP (E4) · ~8 horas
@@ -1106,7 +1099,7 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 
 ### 8.1 Resumen Ejecutivo de Riesgos y Oportunidades
 
-SmartCSET es un **activo institucional crítico** del SENA que procesa datos personales sensibles de más de 1.000 personas/día, muchas de ellas menores de edad. Actualmente **cumple solo ~17% de estándares de seguridad obligatorios** (ISO 27001, MSPI, Ley 1581/2012).
+SmartCSET es un **activo institucional crítico** del SENA que procesa datos personales sensibles de más de 1.000 personas/día, muchas de ellas menores de edad. Al inicio del proyecto **cumplía solo ~17% de estándares de seguridad obligatorios** (ISO 27001, MSPI, Ley 1581/2012); tras completar la Fase 0 (2026-06-08) alcanza ~55-60% en gobernanza documental, con los controles técnicos (Fase 1) aún pendientes de implementación.
 
 **Riesgos de no actuar:**
 
@@ -1127,15 +1120,15 @@ SmartCSET es un **activo institucional crítico** del SENA que procesa datos per
 
 **Se recomienda APROBAR E INICIAR INMEDIATAMENTE este plan,** priorizando:
 
-1. **Fase 0 (2-3 semanas):** Documentación y gobernanza base
+1. **Fase 0 (2-3 semanas):** Documentación y gobernanza base — ✅ **COMPLETA (2026-06-08)**
 
-   - Inversión mínima, máxima protección legal inmediata
-   - Aprobación por Dirección, Oficina Jurídica
-2. **Fase 1 (3-5 semanas):** Blindaje técnico crítico
+   - Inversión mínima, máxima protección legal inmediata — 8 documentos producidos y auditados
+   - Pendiente: aprobación formal por Dirección y Oficina Jurídica
+2. **Fase 1 (3-5 semanas):** Blindaje técnico crítico — 🔲 **PRÓXIMO HITO**
 
-   - Cifrado, rate limiting, DRP, logging
-   - Cierre de 17/25 vulnerabilidades identificadas
-   - Lleva cumplimiento de ~17% a ~50%
+   - Cifrado, rate limiting, hardening de sesiones, CSRF, logging de autenticación
+   - Cierre de 19/25 vulnerabilidades identificadas (76%)
+   - Lleva cumplimiento del ~55% (post-Fase 0) al ~70%
 3. **Fases 2-3 (7-10 semanas subsecuentes):** Resiliencia y certificabilidad
 
    - Continuidad operativa garantizada
@@ -1238,26 +1231,26 @@ El examen **ISC2 CC (Certified in Cybersecurity)** organiza el conocimiento en s
 | **2 — Business Continuity (BC), Disaster Recovery (DR) & Incident Response (IR)** | Planes de continuidad de negocio, recuperación ante desastres, RTO/RPO, gestión y respuesta a incidentes                               | **Fase 2** (diseño e implementación) → **Fase 5** (sostenimiento y verificación)                         | DRP con política de backups, RTO/RPO definidos y prueba de restauración; Plan de Respuesta a Incidentes (runbook); ciclo permanente de simulacros y auditorías de continuidad                                 |
 | **3 — Access Control Concepts**                                                   | Modelos de control de acceso (RBAC, mínimo privilegio), autenticación, autorización, segregación de funciones (SoD)                  | **Fase 0** (gobernanza de roles) y **Fase 1** (controles técnicos)                                          | RBAC ya existente (`tab_menu_usuarios`), reforzado con auditoría de mínimo privilegio; Matriz RACI con segregación de funciones; Cronograma de Auditorías (revisión semestral de permisos, FASE0-AUD-005) |
 | **4 — Network Security**                                                          | Arquitectura y segmentación de redes, firewalls, protocolos seguros (TLS/SSL), defensa perimetral, hardening de servidores              | **Fase 1** — entregable 8 "Hardening de Red y Arquitectura de Despliegue" (sección 4.2)                          | Diagrama de arquitectura de red segmentada; matriz de reglas de firewall perimetral y de host; TLS forzado en todos los tramos (cliente↔servidor web↔PostgreSQL); checklist de hardening de servidor           |
-| **5 — Security Operations**                                                       | Logging y monitoreo, gestión de vulnerabilidades, hardening operativo, concientización y capacitación en seguridad                    | **Fase 1** (logging/hardening), **Fase 2** (monitoreo y alertas) y **Fase 5** (capacitación continua) | Tabla `tab_audit_autenticacion` y rate limiting; dashboard de monitoreo de infraestructura y seguridad; programa anual de capacitación (contraseñas, phishing, manejo de datos, respuesta a incidentes)      |
+| **5 — Security Operations**                                                       | Logging y monitoreo, gestión de vulnerabilidades, hardening operativo, concientización y capacitación en seguridad                    | **Fase 1** (E3 logging, E9 parches, E10 SDLC), **Fase 2** (monitoreo y alertas) y **Fase 5** (capacitación continua) | Tabla `tab_audit_autenticacion` y rate limiting (E3); gestión de parches con SLA por criticidad CVSS (E9); checklist SDLC pre-commit/pre-deploy con prohibiciones absolutas (E10); dashboard de monitoreo de infraestructura y seguridad; programa anual de capacitación (contraseñas, phishing, manejo de datos, respuesta a incidentes)      |
 
-#### F.2 Estado de cobertura del temario tras la incorporación del entregable de red
+#### F.2 Estado de cobertura del temario tras la incorporación de los entregables 8, 9 y 10 de la Fase 1
 
-| Dominio                      | Estado antes de este anexo                                         | Estado tras incorporar el entregable 8 de la Fase 1                                                                                 |
+| Dominio                      | Estado antes de este anexo                                         | Estado tras incorporar los entregables 8, 9 y 10 de la Fase 1                                                                       |
 | ---------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | 1 — Security Principles     | ✅ Cubierto                                                        | ✅ Cubierto                                                                                                                         |
 | 2 — BC, DR & IR             | 🟡 Diseñado en Fase 2, pendiente de ejecutar y sostener en Fase 5 | 🟡 Sin cambio — su cierre depende de la ejecución real del DRP/IR y de los simulacros periódicos, no de documentación adicional |
 | 3 — Access Control Concepts | ✅ Cubierto                                                        | ✅ Cubierto                                                                                                                         |
 | 4 — Network Security        | ❌ Sin entregable dedicado                                         | ✅ Cubierto — entregable 8 de la Fase 1 (sección 4.2)                                                                             |
-| 5 — Security Operations     | ✅ Cubierto                                                        | ✅ Cubierto                                                                                                                         |
+| 5 — Security Operations     | ✅ Cubierto                                                        | ✅ Cubierto — reforzado con E9 (gestión de parches con SLA por CVSS) y E10 (SDLC seguro), que además cierran los Ejes 6 y 8 del MSPI |
 
-**Conclusión del anexo:** con la incorporación del entregable de "Hardening de Red y Arquitectura de Despliegue" en la Fase 1, **los 5 dominios del temario ISC2 CC quedan representados en el plan** con entregables concretos y verificables. El único punto que continúa como 🟡 parcial es el Dominio 2, y no por falta de diseño documental, sino porque su naturaleza exige *ejecución y verificación recurrente en el tiempo* (simulacros de recuperación, activaciones reales o simuladas del plan de incidentes) — exactamente el tipo de evidencia que produce el ciclo permanente de la Fase 5 y el Cronograma de Auditorías Periódicas (FASE0-AUD-005). Por tanto, este dominio se considera "cerrado" únicamente cuando se acumule al menos un ciclo anual completo de simulacros documentados.
+**Conclusión del anexo:** con la incorporación del entregable de "Hardening de Red y Arquitectura de Despliegue" (E8) en la Fase 1, **los 5 dominios del temario ISC2 CC quedan representados en el plan** con entregables concretos y verificables. Los entregables E9 (gestión de parches y control de versiones de componentes) y E10 (SDLC seguro), añadidos también a la Fase 1, refuerzan el Dominio 5 — Security Operations en sus conceptos de gestión de vulnerabilidades y hardening operativo, y cierran simultáneamente los Ejes 6 y 8 del MSPI que no estaban cubiertos por ningún documento anterior. El único punto que continúa como 🟡 parcial es el Dominio 2, y no por falta de diseño documental, sino porque su naturaleza exige *ejecución y verificación recurrente en el tiempo* (simulacros de recuperación, activaciones reales o simuladas del plan de incidentes) — exactamente el tipo de evidencia que produce el ciclo permanente de la Fase 5 y el Cronograma de Auditorías Periódicas (FASE0-AUD-005). Por tanto, este dominio se considera "cerrado" únicamente cuando se acumule al menos un ciclo anual completo de simulacros documentados.
 
 ---
 
 ## Documento Cerrado
 
-**Versión:** 1.1
-**Fecha:** 2026-06-09
+**Versión:** 1.2
+**Fecha:** 2026-06-10
 **Autor:** Anderson, Desarrollador Principal — SmartCSET
 **Revisores:** (Por completar tras aprobación)
 

@@ -8,6 +8,7 @@
 | -------------------------------------- | --------------------------------------------------------------------------------------------- |
 | **Documento N°**                | FASE0-INC-008                                                                                 |
 | **Versión**                     | 1.0                                                                                           |
+| **Fecha de elaboración**        | 2026-06-08                                                                                    |
 | **Elaborado por**                | Equipo de Desarrollo - SmartCSET                                                              |
 | **Estado**                       | Borrador para revisión y aprobación por la Dirección del Centro de Formación              |
 | **Próxima revisión**           | Anual, o de forma inmediata tras cualquier incidente significativo o ejercicio de simulación |

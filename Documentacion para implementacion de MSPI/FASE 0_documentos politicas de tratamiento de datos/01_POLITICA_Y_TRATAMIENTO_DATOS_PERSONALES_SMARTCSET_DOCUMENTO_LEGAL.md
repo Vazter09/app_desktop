@@ -8,6 +8,7 @@
 | -------------------------------------- | ----------------------------------------- |
 | **Documento N°**                | FASE0-POL-001                             |
 | **Versión**                     | 1.0                                       |
+| **Fecha de elaboración**        | 2026-06-07                                |
 | **Elaborado por**                | Equipo de Desarrollo - SmartCSET          |
 | **Estado**                       | Borrador para revisión y aprobación por la Dirección del Centro de Formación SENA |
 | **Próxima revisión**           | Anual, o ante cambio normativo            |
@@ -192,6 +193,11 @@ El SENA forma a aprendices que, en programas técnicos y tecnológicos —y espe
 
 El dato sensible identificado en la arquitectura del sistema es la **fotografía capturada al momento del registro/ingreso**, que constituye un dato biométrico según la enumeración del artículo 5 de la Ley 1581/2012 y los lineamientos de la SIC sobre datos sensibles. Las imágenes faciales que permiten identificar a una persona de forma inequívoca, especialmente cuando se procesan o se usan para verificación o comparación de identidad, se consideran datos sensibles sujetos a reglas reforzadas.
 
+Adicionalmente, el esquema de la base de datos (`tab_personas`) contiene dos columnas **reservadas para datos biométricos futuros**: `val_huella_digital` (plantilla de huella dactilar, tipo BYTEA) y `val_patron_facial` (patrón facial, tipo JSONB). A la fecha de esta Política **estas columnas no almacenan información** (el sistema no captura huella ni patrón facial), pero su existencia obliga a dejar constancia de las siguientes reglas:
+
+1. Cualquier activación futura de la captura de huella dactilar o patrón facial constituye tratamiento de datos sensibles biométricos y **requiere, antes de su puesta en operación**: actualización de esta Política, autorización específica reforzada del Titular (Sección 8.2), evaluación de impacto en privacidad (PIA — prevista en la Fase 3 del Plan de Blindaje) y cifrado en reposo de esos campos.
+2. En aplicación del principio de minimización, si el módulo de validación biométrica no se implementa, se recomienda evaluar la eliminación de estas columnas del esquema en una revisión futura de la base de datos.
+
 ### 8.2 Reglas especiales para el tratamiento de datos sensibles (art. 6, Ley 1581/2012)
 
 Por regla general está prohibido el tratamiento de datos sensibles, excepto cuando:
@@ -209,8 +215,10 @@ La causal aplicable en SmartCSET es la **N° 1 — autorización explícita del 
 
 ### 8.3 Reglas operativas aplicables
 
-1. Se informa expresamente al Titular, antes de la captura fotográfica, que se trata de un dato sensible (biométrico), su finalidad exacta (verificación de identidad / control de acceso) y el tiempo de conservación previsto.
-2. Las fotografías almacenadas se protegen mediante cifrado en reposo de campos sensibles.
+> ⚠️ Las reglas 1 y 2 definen el **estado objetivo** del tratamiento del dato sensible. Su implementación técnica está planificada en la Fase 1 del Plan de Blindaje y debe completarse antes de considerar cerrado el cumplimiento de esta sección.
+
+1. Se informa expresamente al Titular, antes de la captura fotográfica, que se trata de un dato sensible (biométrico), su finalidad exacta (verificación de identidad / control de acceso) y el tiempo de conservación previsto. 🔲 *Pendiente: incorporar el aviso en la interfaz de captura de foto del módulo de portería y en los formularios de registro (Fase 1 — junto con el bloque de autorización de la Sección 9.2).*
+2. Las fotografías almacenadas se protegen mediante cifrado en reposo de campos sensibles. 🔲 *Pendiente: implementación del cifrado en reposo (Fase 1 E2, FASE1-BLI-001 — pgcrypto). Riesgo asociado identificado en la Matriz de Riesgos (R-D01, FASE0-RIE-003).*
 3. Se aplica el principio de minimización, evaluando periódicamente si es necesario conservar la fotografía por el plazo establecido (Sección 14) o si procede una retención más corta para este dato específico.
 4. La fotografía no se utiliza para ningún propósito distinto al de verificación de identidad y control de acceso.
 
@@ -228,7 +236,9 @@ Como estándar de esta Política, SmartCSET solicita **siempre** la autorizació
 
 La autorización se obtiene en el primer contacto del Titular con el sistema:
 
-- **Para personas que se registran por primera vez**: el formulario incluye, antes de habilitar el envío de datos, un bloque de autorización claro y separado del resto del formulario, con: (a) texto de autorización general de tratamiento de datos, (b) bloque específico de autorización para datos sensibles/biométricos (fotografía — Sección 8.3), y (c) un mecanismo de aceptación explícita (casilla de verificación que no viene premarcada, firma digital o firma física en registro presencial).
+- **Para personas que se registran por primera vez**: el formulario debe incluir, antes de habilitar el envío de datos, un bloque de autorización claro y separado del resto del formulario, con: (a) texto de autorización general de tratamiento de datos, (b) bloque específico de autorización para datos sensibles/biométricos (fotografía — Sección 8.3), y (c) un mecanismo de aceptación explícita (casilla de verificación que no viene premarcada, firma digital o firma física en registro presencial).
+
+  🔲 *Estado de implementación: los formularios de registro actuales (`src/modulos/registro/forms/`) solo incluyen la casilla de autorización de envío de correos (`ind_envio_correo`). El bloque de autorización de tratamiento de datos descrito en este punto está pendiente de incorporarse al sistema — se implementa en la Fase 1 del Plan de Blindaje, usando el texto modelo de la Sección 18.2 de esta Política y el Aviso de Privacidad de la Sección 18.1. Hasta entonces, la autorización debe recolectarse por medio físico (formato impreso) en el punto de registro.*
 - **Para personas que ya cuentan con un registro previo en otros sistemas institucionales**: se recolecta la autorización de forma retroactiva en su primer contacto con SmartCSET, o mediante una campaña institucional de recolección de autorizaciones cuando el volumen lo amerite.
 
 ### 9.3 Contenido mínimo del texto de autorización
@@ -320,14 +330,16 @@ Conforme al principio de seguridad (Sección 6) y al deber general de implementa
 
 ### 13.1 Medidas técnicas
 
-- Uso de sentencias preparadas y funciones de base de datos que previenen la inyección SQL sobre las tablas que contienen datos personales.
-- Control de acceso basado en roles para limitar la consulta y administración de datos personales al personal autorizado.
-- Cifrado seguro de contraseñas mediante algoritmos de hash robustos — nunca contraseñas en texto plano.
-- Manejo centralizado de errores que evita exponer detalles técnicos al usuario final.
-- Cabeceras HTTP de seguridad y middleware de protección a nivel de aplicación.
-- Cifrado en reposo de campos sensibles (documento, fotografía) en la base de datos.
-- Limitación de intentos de inicio de sesión y registro de intentos fallidos.
-- Validación estricta de archivos subidos al sistema (fotografías, logos, reportes).
+- ✅ Uso de sentencias preparadas y funciones de base de datos que previenen la inyección SQL sobre las tablas que contienen datos personales.
+- ✅ Control de acceso basado en roles para limitar la consulta y administración de datos personales al personal autorizado.
+- ✅ Cifrado seguro de contraseñas mediante algoritmos de hash robustos — nunca contraseñas en texto plano.
+- ✅ Manejo centralizado de errores que evita exponer detalles técnicos al usuario final.
+- ✅ Validación estricta de archivos subidos al sistema (fotografías, logos, reportes).
+- 🔲 Cabeceras HTTP de seguridad y middleware de protección a nivel de aplicación *(el componente existe en el código pero aún no está activo en el flujo — Fase 1 E4 del Plan de Blindaje)*.
+- 🔲 Cifrado en reposo de campos sensibles (documento, fotografía) en la base de datos *(Fase 1 E2)*.
+- 🔲 Limitación de intentos de inicio de sesión y registro de intentos fallidos *(Fase 1 E3)*.
+
+> Las medidas marcadas 🔲 forman parte del estado objetivo definido por esta Política; su implementación está planificada y especificada en la Fase 1 del Plan de Blindaje Institucional (FASE1-BLI-001).
 
 ### 13.2 Medidas humanas
 

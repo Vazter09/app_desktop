@@ -106,7 +106,15 @@ Documentacion para implementacion de MSPI/
 2. Doc 06: tabla de cumplimiento MSPI solo tenía Ejes 1-3 → ampliada a los 11 ejes con responsable de cada uno
 3. Fase 1: versión decía 1.0 → corregida a 1.1
 
-**Resultado: 0 issues pendientes. Fase 0 y Fase 1 cumplen todos los criterios.**
+**Re-auditoría contra código fuente realizada el 2026-06-10 — hallazgos corregidos:**
+1. Eliminados 3 archivos duplicados sin prefijo numérico (borradores viejos de docs 03, 04 y 05) que quedaban en la carpeta de Fase 0.
+2. Doc 07 §5.2, §13.1 y §14.1: describían como implementados controles que son entregables de Fase 1 (tab_intentos_login, fun_registrar_intento_login/fun_verificar_bloqueo_ip, session_regenerate_id, cookies seguras, "rate limiting activo") → reformulados con columna/marcador de Estado (✅ implementado / 🔲 Fase 1 E3-E4). Se acreditó además el control real existente: registro de sesiones con validación de IP en tab_sesiones vía accesoIngresoSesion().
+3. Doc 01 §8.3, §9.2 y §13.1: afirmaban en presente el aviso de consentimiento pre-captura, el cifrado en reposo y el bloque de autorización en formularios (no implementados; los formularios solo tienen toggle de correos) → marcados 🔲 con referencia a Fase 1 E2/E3/E4 y a los textos modelo de §18.1/§18.2; autorización por formato físico como medida transitoria.
+4. Columnas biométricas reservadas del schema (tab_personas.val_huella_digital BYTEA, val_patron_facial JSONB — hoy sin datos, solo se insertan NULL): no estaban reconocidas → doc 01 §8.1 amplía con reglas de activación futura (autorización reforzada + PIA + cifrado, o eliminación por minimización) y doc 02 las inventaría como INF-16 (criticidad potencial Muy Alta).
+5. Encabezados normalizados: doc 07 "SMARTCSET"→"SmartCSET"; campo "Fecha de elaboración" añadido a docs 01, 02 (2026-06-07) y 06, 07, 08 (2026-06-08).
+6. Doc 07 §1.2: eliminado texto accidental pegado en el título de la sección.
+
+**Resultado: Fase 0 coherente con el estado real del código. Los controles técnicos pendientes están marcados 🔲 con referencia explícita a su entregable de Fase 1 — no quedan afirmaciones de controles inexistentes.**
 
 ---
 
@@ -200,11 +208,11 @@ La Fase 0 define políticas de alto nivel para BC/DR/IR. La Fase 2 las convierte
 - E3: Evaluación ICC (Decreto 338/2022 — ¿es SmartCSET infraestructura crítica cibernética?)
 - E4: Compilación de evidencia para auditorías MIPG / Contraloría
 
-### Tarea 4 — Actualizar plan maestro
-`PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md` fue creado antes de la revisión de brechas ISC2. Requiere actualizar:
-- Sección de Fase 1: ahora tiene 10 entregables (no 8)
-- Sección de Fase 2: añadir E4 (talento humano) y E5 (SDLC formal)
-- Anexo F (mapeo ISC2 CC vs. entregables): actualizar con E9 y E10
+### Tarea 4 — Actualizar plan maestro ✅ COMPLETADA (2026-06-10 — plan v1.2)
+`PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md` actualizado a v1.2. Detalle de lo aplicado:
+- Sección Fase 1 con 10 entregables y Fase 2 con E4/E5: ya estaban incorporados desde v1.1 (2026-06-09)
+- v1.2 (2026-06-10): Anexo F actualizado con E9 y E10 (F.1 fila D5, F.2 encabezado/fila D5/conclusión); E7 sincronizado con el estado real verificado (schema V.1.7 y migraciones ya corregidos; solo persisten 4 funciones ausentes de FUNCS) en secciones 2.3, 4.2 y 7; sección 8 corregida (Fase 0 marcada completa, 19/25 vulnerabilidades y ~55%→~70% consistentes con sección 4.2)
+- `RESUMEN_FASES_PLAN_BLINDAJE_SMARTCSET.md` también sincronizado: Fase 0 con 8 entregables y marcada ✅ completa, Fase 1 con 10 entregables, Fase 2 con 5 entregables, nomenclatura SmartCSET corregida
 
 ### Tarea 5 — Fases 4 y 5
 Condicionales y de largo plazo. No tienen fecha de inicio definida.
@@ -293,10 +301,10 @@ Una instalación limpia ejecutada hoy NO desplegará estas funciones → recuper
 MSPI_ANALISIS_SMARTCSET.md
     └─ Fundamenta normativamente todos los documentos de Fase 0
 
-PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md
+PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md (v1.2 — 2026-06-10)
     └─ Documento maestro → todos los demás son hijos de este
-    └─ Anexo F → mapeo ISC2 CC vs. entregables
-    └─ ⚠️ Necesita actualización: Fase 1 tiene 10 entregables (no 8), Fase 2 necesita E4 y E5
+    └─ Anexo F → mapeo ISC2 CC vs. entregables (incluye E8, E9 y E10 de Fase 1)
+    └─ ✅ Sincronizado con FASE1-BLI-001 v1.1 (10 entregables Fase 1, 5 entregables Fase 2, estado real de E7)
 
 FASE0-PSI-006 (Política General — documento raíz del SGSI)
     └─ Mapea los 11 ejes MSPI con el documento responsable de cada uno
@@ -348,4 +356,4 @@ FASE1-BLI-001 (Blindaje Técnico Inmediato)
 
 ---
 
-*Última actualización: 2026-06-08 — Fase 0 completada y auditada (8 docs). Fase 1 v1.1 completada (10 entregables). Todos los criterios MSPI/ISC2/legal confirmados. Siguiente paso: implementación Fase 1 en código, o producción del documento de Fase 2.*
+*Última actualización: 2026-06-10 — Tarea 4 completada (plan maestro v1.2 + resumen sincronizado). Re-auditoría de Fase 0 contra código fuente completada: duplicados eliminados, docs 01/02/07 corregidos para reflejar el estado real (controles pendientes marcados 🔲 → Fase 1), columnas biométricas inventariadas (INF-16). Fase 0 cerrada y congruente. Siguiente paso: implementación Fase 1 en código (Tarea 1 🔴), o producción del documento de Fase 2 (Tarea 2 🟠).*

@@ -8,7 +8,8 @@
 | -------------------------------------- | -------------------------------------------------------------------------------- |
 | **Documento N°**                | FASE0-ACC-007                                                                    |
 | **Versión**                     | 1.0                                                                              |
-| **Elaborado por**                | Equipo de Desarrollo - SMARTCSET                                                 |
+| **Fecha de elaboración**        | 2026-06-08                                                                       |
+| **Elaborado por**                | Equipo de Desarrollo - SmartCSET                                                 |
 | **Estado**                       | Borrador para revisión y aprobación por la Dirección del Centro de Formación |
 | **Próxima revisión**           | Anual, o ante cambio en la estructura de accesos o en la infraestructura física |
 | **Clasificación del documento** | Uso institucional — Difusión controlada                                        |
@@ -27,7 +28,7 @@
 
 Esta Política tiene por objeto establecer los **principios, requisitos y procedimientos** que rigen el control de acceso al sistema SmartCSET —tanto en su dimensión lógica (acceso a la aplicación, a la base de datos y a los servidores) como en su dimensión física (acceso a los espacios donde se aloja la infraestructura del sistema)— con el fin de garantizar que solo las personas debidamente autorizadas accedan a los activos de información del sistema, y que lo hagan únicamente en la medida necesaria para cumplir sus funciones institucionales.
 
-### 1.2 Alcanceel archivo y modificalo o agregale segun sea necesario
+### 1.2 Alcance
 
 Esta Política aplica a:
 
@@ -113,19 +114,22 @@ SmartCSET implementa un modelo **RBAC de dos niveles con granularidad de menús*
 | Nivel                               | Descripción técnica                                                                                                                                             | Usuarios típicos                                                                                           |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | **Usuario operativo**         | `ind_usuario = FALSE` en `tab_usuarios`. Accede solo a los menús asignados en `tab_menu_usuarios` para su cuenta específica                               | Personal de portería, operadores de registro, coordinadores con acceso limitado                            |
-| **Administrador del sistema** | `ind_usuario = TRUE` en `tab_usuarios`. Accede a todos los módulos del sistema, incluyendo gestión de usuarios, configuración, menús y reportes avanzados | Administrador técnico del sistema (Equipo de Desarrollo - SMARTCSET); en producción, máximo 1-4 personas |
+| **Administrador del sistema** | `ind_usuario = TRUE` en `tab_usuarios`. Accede a todos los módulos del sistema, incluyendo gestión de usuarios, configuración, menús y reportes avanzados | Administrador técnico del sistema (Equipo de Desarrollo - SmartCSET); en producción, máximo 1-4 personas |
 
 La asignación de menús es **individual**: cada usuario operativo tiene exactamente los menús que necesita para su función, y ninguno más. El módulo `src/menu/menu_usuarios.php` permite al Administrador asignar, revocar y copiar perfiles de menú entre usuarios.
 
 ### 5.2 Proceso de autenticación
 
-| Paso                                 | Mecanismo                                                                           | Implementación en SmartCSET                                                                                           |
-| ------------------------------------ | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Identificación**            | El usuario ingresa su nombre de usuario                                             | Campo `txt_usuario` en `index.php`                                                                                 |
-| **Autenticación**             | El sistema verifica la contraseña contra el hash almacenado                        | `password_verify()` con bcrypt en `tab_usuarios.pass_usuario`                                                      |
-| **Control de intentos**        | Se registran los intentos fallidos y se bloquea la IP temporalmente tras N intentos | Tabla `tab_intentos_login` — `fun_registrar_intento_login()` / `fun_verificar_bloqueo_ip()`                     |
-| **Establecimiento de sesión** | Se crea una sesión segura con ID regenerado y flags de cookie                      | `session_regenerate_id(true)` tras autenticación exitosa; cookies con `HttpOnly`, `Secure`, `SameSite=Strict` |
-| **Autorización**              | Se determina qué menús y módulos puede ver el usuario autenticado                | Consulta a `tab_menu_usuarios` con el `id_usuario` de la sesión                                                   |
+| Paso                                 | Mecanismo                                                                           | Implementación en SmartCSET                                                                                           | Estado |
+| ------------------------------------ | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------ |
+| **Identificación**            | El usuario ingresa su nombre de usuario                                             | Campo `txt_usuario` en `index.php`                                                                                 | ✅ Implementado |
+| **Autenticación**             | El sistema verifica la contraseña contra el hash almacenado                        | `password_verify()` con bcrypt en `tab_usuarios.pass_usuario`                                                      | ✅ Implementado |
+| **Registro de sesión**        | Cada inicio de sesión se registra con la IP de origen, y la sesión se invalida si la IP de las peticiones deja de coincidir con la del inicio | Registro en `tab_sesiones` vía `accesoIngresoSesion()` en `index.php`; validación de IP por petición | ✅ Implementado |
+| **Control de intentos**        | Se registran los intentos fallidos y se bloquea la IP temporalmente tras N intentos | Tabla `tab_intentos_login` — `fun_registrar_intento_login()` / `fun_verificar_bloqueo_ip()`                     | 🔲 Pendiente — Fase 1 E3 (FASE1-BLI-001) |
+| **Establecimiento de sesión** | Se crea una sesión segura con ID regenerado y flags de cookie                      | `session_regenerate_id(true)` tras autenticación exitosa; cookies con `HttpOnly`, `Secure`, `SameSite=Strict` | 🔲 Pendiente — Fase 1 E4 (el código existe en `SecurityMiddleware.php` pero aún no está activo en el flujo) |
+| **Autorización**              | Se determina qué menús y módulos puede ver el usuario autenticado                | Consulta a `tab_menu_usuarios` con el `id_usuario` de la sesión                                                   | ✅ Implementado |
+
+> ⚠️ Los pasos marcados 🔲 describen el **diseño objetivo** del proceso de autenticación. Su implementación técnica está planificada y especificada en la Fase 1 del Plan de Blindaje (documento FASE1-BLI-001, entregables E3 y E4). Hasta su entrada en operación, el proceso vigente consta únicamente de los pasos marcados ✅.
 
 ### 5.3 Identificadores de usuario
 
@@ -406,15 +410,18 @@ Conforme al Cronograma de Auditorías (FASE0-AUD-005), los accesos al sistema se
 
 ### 13.1 Eventos que se registran obligatoriamente
 
-| Evento                                 | Dónde se registra                                            | Tiempo de retención del registro |
-| -------------------------------------- | ------------------------------------------------------------- | --------------------------------- |
-| Intento de autenticación exitoso      | `tab_intentos_login` (exitoso = TRUE) + columnas de sesión | Mínimo 90 días                  |
-| Intento de autenticación fallido      | `tab_intentos_login` (exitoso = FALSE)                      | Mínimo 90 días                  |
-| Bloqueo de IP por rate limiting        | Log del servidor /`tab_intentos_login`                      | Mínimo 90 días                  |
-| Alta, modificación y baja de usuarios | Bitácora de gestión de accesos (Sección 7.4)               | Mientras dure el sistema          |
-| Acceso directo a la base de datos      | Log del servidor PostgreSQL (`pg_log`)                      | Mínimo 180 días                 |
-| Acceso SSH al servidor                 | `/var/log/auth.log` del sistema operativo                   | Mínimo 180 días                 |
-| Acceso físico al cuarto de servidores | Bitácora física del cuarto                                  | Mínimo 1 año                    |
+> ⚠️ Esta tabla define la **obligación de registro objetivo** del sistema. La columna "Estado" indica qué registros operan hoy y cuáles entran en operación con la Fase 1 del Plan de Blindaje (FASE1-BLI-001) o dependen de configuración de infraestructura a coordinar con la Oficina TI SENA.
+
+| Evento                                 | Dónde se registra                                            | Tiempo de retención del registro | Estado |
+| -------------------------------------- | ------------------------------------------------------------- | --------------------------------- | ------ |
+| Inicio de sesión exitoso              | `tab_sesiones` (con IP de origen, vía `accesoIngresoSesion()`) | Mínimo 90 días                  | ✅ Implementado |
+| Intento de autenticación exitoso      | `tab_intentos_login` (exitoso = TRUE) + columnas de sesión | Mínimo 90 días                  | 🔲 Fase 1 E3 |
+| Intento de autenticación fallido      | `tab_intentos_login` (exitoso = FALSE)                      | Mínimo 90 días                  | 🔲 Fase 1 E3 |
+| Bloqueo de IP por rate limiting        | Log del servidor /`tab_intentos_login`                      | Mínimo 90 días                  | 🔲 Fase 1 E3 |
+| Alta, modificación y baja de usuarios | Bitácora de gestión de accesos (Sección 7.4) + columnas de auditoría `usr_insert`/`usr_update` | Mientras dure el sistema          | ✅ Columnas de auditoría / 🔲 bitácora formal |
+| Acceso directo a la base de datos      | Log del servidor PostgreSQL (`pg_log`)                      | Mínimo 180 días                 | 🔲 Verificar configuración con Oficina TI |
+| Acceso SSH al servidor                 | `/var/log/auth.log` del sistema operativo                   | Mínimo 180 días                 | 🔲 Verificar configuración con Oficina TI |
+| Acceso físico al cuarto de servidores | Bitácora física del cuarto                                  | Mínimo 1 año                    | 🔲 Implantar con Oficina TI |
 
 ### 13.2 Protección de los registros de acceso
 
@@ -428,7 +435,7 @@ La autenticación multifactor (MFA) —que exige al usuario demostrar su identid
 
 ### 14.1 Estado actual
 
-SmartCSET opera con autenticación de **un solo factor** (usuario + contraseña). Esto es aceptable en el contexto actual porque se compensa con: rate limiting activo, contraseñas con bcrypt, logging de intentos fallidos, acceso restringido a red institucional y auditorías trimestrales de accesos.
+SmartCSET opera con autenticación de **un solo factor** (usuario + contraseña). Los controles compensatorios vigentes hoy son: contraseñas hasheadas con bcrypt, registro de sesiones con validación de IP de origen (`tab_sesiones`) y acceso restringido a la red institucional. Los controles compensatorios adicionales planificados —rate limiting y logging de intentos fallidos (🔲 Fase 1 E3, FASE1-BLI-001) y auditorías trimestrales de accesos (🔲 primer ciclo según FASE0-AUD-005)— deben implementarse antes de considerar plenamente compensada la ausencia de MFA. Mientras tanto, el riesgo de fuerza bruta contra el formulario de login permanece abierto y está identificado en la Matriz de Riesgos (R-A01, FASE0-RIE-003).
 
 ### 14.2 Hoja de ruta de implementación de MFA
 
