@@ -63,8 +63,11 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
     <div class="ingresos-layout">
         <div class="ing-col-form">
             <div class="ing-panel ing-panel-form">
-                <div class="ing-panel-head">
-                    <i class="bi bi-person-plus-fill me-1"></i> Nuevo ingreso
+                <div class="ing-panel-head d-flex align-items-center justify-content-between gap-2">
+                    <span><i class="bi bi-person-plus-fill me-1"></i> Nuevo ingreso</span>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btn_abrir_modal_kiosk" title="Abrir teclado numérico">
+                        <i class="bi bi-grid-3x3-gap-fill me-1"></i> Teclado
+                    </button>
                 </div>
 
                 <form method="POST" id="form_ingreso" action="procesar.php" autocomplete="off"
@@ -269,6 +272,11 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     background: rgba(0,0,0,0.45) !important;
+    z-index: 1055 !important;
+}
+
+#documentModal {
+    z-index: 1060 !important;
 }
 
 /* ---- Dialog ---- */
@@ -609,7 +617,7 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
                     </div>
                     <div id="dm-brand-text">
                         <span id="dm-brand-name">Registro Ingreso</span>
-                        <span id="dm-brand-sub" id="dm-step-sub">Paso 1 de 3</span>
+                        <span id="dm-brand-sub">Paso 1 de 3</span>
                     </div>
                 </div>
                 <button id="dm-x" type="button" data-bs-dismiss="modal" aria-label="Cerrar">
@@ -764,7 +772,14 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
 
     /* ---- Refs ---- */
     var modalEl  = document.getElementById("documentModal");
+    if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) {
+        return;
+    }
+    if (modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
+    var isDesktopKiosk = window.matchMedia("(min-width: 768px)").matches;
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
     var btnFinal = document.getElementById("dm-btn-final");
@@ -989,8 +1004,14 @@ $extra_js = '<script src="' . $h . 'js/porteria-captura.js?v=' . (int) $_v_cap .
         if (btnFinal) btnFinal.disabled = true;
     });
 
-    /* ---- Abrir al cargar ---- */
-    modal.show();
+    /* ---- Abrir al cargar (solo desktop; móvil usa APK) ---- */
+    var btnAbrirKiosk = document.getElementById("btn_abrir_modal_kiosk");
+    if (btnAbrirKiosk) {
+        btnAbrirKiosk.addEventListener("click", function () { modal.show(); });
+    }
+    if (isDesktopKiosk) {
+        modal.show();
+    }
 })();
 </script>';
 include modulosLayout('layout/footer.php');

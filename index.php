@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="mb-4">
                     <label class="form-label small fw-bold" for="txt_clave">Contraseña</label>
                     <input type="password" id="txt_clave" name="txt_clave" class="form-control" required
-                        placeholder="••••••••••••" minlength="12">
+                        placeholder="••••••••••••" minlength="8">
                 </div>
                 <button type="submit" class="btn btn-ingresar w-100 py-2" id="loginSubmitBtn">
                     INGRESAR AL SISTEMA
@@ -161,10 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             loginForm.addEventListener('submit', function (e) {
                 const pass = passInput ? passInput.value : '';
 
-                if (pass.length < 12) {
+                if (pass.length < 8) {
                     e.preventDefault();
                     if (clientError) {
-                        clientError.textContent = 'La contraseña debe tener al menos 12 caracteres.';
+                        clientError.textContent = 'La contraseña debe tener al menos 8 caracteres.';
                         clientError.classList.add('is-visible');
                     }
                     return;

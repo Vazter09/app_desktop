@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loginForm.addEventListener('submit', function(e) {
         const pass = document.querySelector('input[name="txt_clave"]').value;
         
-        if (pass.length < 12) {
+        if (pass.length < 8) {
             e.preventDefault();
             if (typeof SmartToast !== 'undefined') {
-                SmartToast.warning('La contraseña debe tener al menos 12 caracteres.', 'Validación');
+                SmartToast.warning('La contraseña debe tener al menos 8 caracteres.', 'Validación');
             } else {
-                alert('La contraseña debe tener al menos 12 caracteres.');
+                alert('La contraseña debe tener al menos 8 caracteres.');
             }
         }
     });
