@@ -1,7 +1,18 @@
 <?php
 require_once(__DIR__ . '/../core/prepare.php');
 require_once(__DIR__ . '/../core/ErrorHandler.php');
+require_once(__DIR__ . '/../core/helpers.php');
 header('Content-Type: application/json');
+
+// A01 (OWASP) — Broken Access Control: asignar permisos de menú exige sesión y privilegio admin del solicitante.
+if (!isset($_SESSION['id_usuario']) || !usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])) {
+    http_response_code(403);
+    echo json_encode(
+        ErrorHandler::createResponse('error', 'Acceso denegado. Esta operación requiere privilegios de administrador.', 'VALIDATION'),
+        JSON_UNESCAPED_UNICODE
+    );
+    exit;
+}
 
 function obtenerAncestros($pdo, $id_menu, &$ancestros = []) {
     $stmt = $pdo->prepare("SELECT ind_id_padre FROM tab_menus WHERE id_menu = ?");

@@ -9,6 +9,16 @@ require_once(__DIR__ . '/../core/helpers.php');
 require_once(__DIR__ . '/../core/ErrorHandler.php');
 header('Content-Type: application/json');
 
+// A01 (OWASP) — Broken Access Control: asignar perfiles de menús exige sesión y privilegio admin del solicitante.
+if (!isset($_SESSION['id_usuario']) || !usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])) {
+    http_response_code(403);
+    echo json_encode(
+        ErrorHandler::createResponse('error', 'Acceso denegado. Esta operación requiere privilegios de administrador.', 'VALIDATION'),
+        JSON_UNESCAPED_UNICODE
+    );
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         $id_u = $_POST['hid_usuario'] ?? null;

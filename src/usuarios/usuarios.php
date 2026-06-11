@@ -8,6 +8,12 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// A01 (OWASP) — Broken Access Control: el CRUD de usuarios es exclusivo de administradores.
+if (!usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])) {
+    http_response_code(403);
+    die('Acceso denegado. Esta sección es exclusiva para administradores.');
+}
+
 $w_mensaje     = "";
 $w_tipo_alerta = "success";
 

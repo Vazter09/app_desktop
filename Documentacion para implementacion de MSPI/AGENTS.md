@@ -39,6 +39,7 @@ Documentacion para implementacion de MSPI/
 ├── AGENTS.md                          ← Este archivo (memoria del agente)
 ├── PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md   ← Documento maestro del plan completo
 ├── RESUMEN_FASES_PLAN_BLINDAJE_SMARTCSET.md   ← Versión condensada (roadmap por fases)
+├── CHECKLIST_MAESTRO_BLINDAJE_SMARTCSET.md    ← Vista panorámica de avance por fase (transversal, enlaza a checklists detallados de cada fase)
 ├── MSPI_ANALISIS_SMARTCSET.md         ← Análisis del marco normativo aplicable
 ├── ESTANDARES_INTERNACIONALES_MSPI.md ← Estándares internacionales referenciados
 │
@@ -67,8 +68,10 @@ Documentacion para implementacion de MSPI/
 │   ├── 07_POLITICA_CONTROL_ACCESO_SEGURIDAD_FISICA_SMARTCSET_DOCUMENTO_LEGAL.md
 │   └── 08_MARCO_GESTION_INCIDENTES_CONTINUIDAD_SMARTCSET_DOCUMENTO_LEGAL.md
 │
-├── FASE 01_Blindaje Técnico Inmediato/    ✅ DOCUMENTO v1.1 COMPLETO — implementación pendiente
-│   └── 01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md
+├── FASE 01_Blindaje Técnico Inmediato/    ✅ DOCUMENTO v1.1 COMPLETO — implementación EN CURSO (E1/A01 hecho)
+│   ├── 01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md
+│   ├── 02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md   ← FASE1-CHK-002: checklist de seguimiento de implementación (fuente de verdad del avance — actualizar en cada sesión)
+│   └── REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md  ← FASE1-REP-A01: reporte de remediación de A01 (2026-06-10)
 │
 ├── FASE 02_Continuidad y Resiliencia Operativa/    🔲 PENDIENTE
 │
@@ -125,7 +128,7 @@ Documento N°: FASE1-BLI-001 | Versión: 1.1 | 1491 líneas | 18 secciones | 10 
 
 | # | Entregable | Estado doc | Estado en código |
 |---|---|---|---|
-| E1 | Auditoría OWASP Top 10 (A01–A10) | ✅ Checklist completo con hallazgos pre-llenados | 🔲 Pendiente ejecutar |
+| E1 | Auditoría OWASP Top 10 (A01–A10) | ✅ Checklist completo con hallazgos pre-llenados | ⚠️ A01 auditado y remediado (2026-06-10); A02-A10 pendientes |
 | E2 | Cifrado en reposo (pgcrypto — tab_personas) | ✅ Procedimiento de migración paso a paso | 🔲 Pendiente |
 | E3 | Rate limiting + logging de autenticación | ✅ Diseño PL/pgSQL + cambios PHP exactos | 🔲 Pendiente |
 | E4 | Hardening de sesiones PHP | ✅ 4 líneas `ini_set` + `session_regenerate_id` identificados | 🔲 SecurityMiddleware existe pero es código muerto |
@@ -284,7 +287,7 @@ Una instalación limpia ejecutada hoy NO desplegará estas funciones → recuper
 ### Numeración de documentos internos
 - FASE0-POL-001, FASE0-INV-002, FASE0-RIE-003, FASE0-ROL-004, FASE0-AUD-005
 - FASE0-PSI-006, FASE0-ACC-007, FASE0-INC-008
-- FASE1-BLI-001
+- FASE1-BLI-001, FASE1-CHK-002 (checklist de implementación — fuente de verdad del avance de Fase 1)
 
 ### Marcadores de estado
 - ✅ Implementado / Correcto / Completo
@@ -356,4 +359,4 @@ FASE1-BLI-001 (Blindaje Técnico Inmediato)
 
 ---
 
-*Última actualización: 2026-06-10 — Tarea 4 completada (plan maestro v1.2 + resumen sincronizado). Re-auditoría de Fase 0 contra código fuente completada: duplicados eliminados, docs 01/02/07 corregidos para reflejar el estado real (controles pendientes marcados 🔲 → Fase 1), columnas biométricas inventariadas (INF-16). Fase 0 cerrada y congruente. Siguiente paso: implementación Fase 1 en código (Tarea 1 🔴), o producción del documento de Fase 2 (Tarea 2 🟠).*
+*Última actualización: 2026-06-10 — Tarea 4 completada (plan maestro v1.2 + resumen sincronizado). Re-auditoría de Fase 0 contra código fuente completada: duplicados eliminados, docs 01/02/07 corregidos para reflejar el estado real (controles pendientes marcados 🔲 → Fase 1), columnas biométricas inventariadas (INF-16). Fase 0 cerrada y congruente. Creado FASE1-CHK-002 (checklist de implementación de Fase 1 — fuente de verdad del avance; marcar tareas ahí en cada sesión) y CHECKLIST_MAESTRO_BLINDAJE_SMARTCSET.md (vista panorámica transversal de las 6 fases). Siguiente paso: implementación Fase 1 en código (Tarea 1 🔴) siguiendo el orden E10 → E7 → E4 → E6 → E5 → E3 → E1 → E2 → E8 → E9 — SOLO bajo autorización explícita de Anderson, por partes.*

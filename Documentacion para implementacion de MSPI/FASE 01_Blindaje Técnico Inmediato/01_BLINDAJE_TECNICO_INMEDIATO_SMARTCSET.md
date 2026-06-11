@@ -165,13 +165,15 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 
 ### 3.2 Checklist OWASP Top 10 2021 — SmartCSET
 
-#### A01 — Broken Access Control 🟠 Parcialmente cubierto
+#### A01 — Broken Access Control ✅ Remediado (auditoría ejecutada 2026-06-10)
+
+> Resultado de la auditoría y remediación en `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md` (esta carpeta).
 
 | Subcontrol | Archivo a inspeccionar | Comando de verificación | Criterio de aprobación | Estado actual |
 |---|---|---|---|---|
-| Validación de `ind_usuario` antes de acciones de admin | `src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/admin/configuracion.php` | `grep -n "ind_usuario" archivo.php` | Cada archivo de admin tiene `if (!$_SESSION['ind_usuario']) { header('Location:...'); exit; }` al inicio | ⚠️ Verificar en cada archivo |
-| IDOR: usuario solo accede a datos de su centro | `src/modulos/porteria/ingreso/consultar.php`, `src/modulos/porteria/salida/consultar.php` | Inspección manual: ¿los resultados del SELECT están filtrados por algún scope de usuario? | Los endpoints AJAX no retornan datos de otros centros | ⚠️ Auditar manualmente |
-| Rutas de módulos requieren sesión válida | Todos los archivos bajo `src/modulos/` | `grep -rL "id_usuario" src/modulos/` | No debe existir ningún archivo de módulo que no verifique sesión activa | 🔲 Ejecutar |
+| Validación de privilegio admin antes de acciones de admin | `src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/menu/menu_usuarios.php`, `src/menu/copiar_menu_usuarios.php`, `src/menu/procesar_perfil.php`, `src/menu/procesar_permiso.php`, `src/menu/procesar_copiar_perfil.php`, `src/menu/obtener_menus_usuario.php` | `grep -n "usuarioEsAdministrador(\$pdo, \$_SESSION\['id_usuario'\])" archivo.php` | Cada archivo admin verifica `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` antes de cualquier lógica sensible | ✅ Corregido — 8 endpoints reforzados (antes solo validaban sesión, no privilegio) |
+| IDOR: usuario solo accede a datos de su centro | `src/modulos/porteria/ingreso/consultar.php`, `src/modulos/porteria/salida/consultar.php` | Inspección manual: ¿los resultados del SELECT están filtrados por algún scope de usuario? | Los endpoints AJAX exigen sesión válida | ✅ Ambos exigen sesión; modelo mono-centro actual no requiere scoping por centro (marcado para revisión en escenario multi-centro) |
+| Rutas de módulos requieren sesión válida | Todos los archivos bajo `src/modulos/` | `grep -rL "id_usuario" src/modulos/` | No debe existir ningún archivo de módulo que no verifique sesión activa | ✅ Verificado: los archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o el módulo `registro` con su propio `registroRequireAccess()`/`registroTieneSesionStandalone()` |
 
 **Procedimiento de auditoría para A01:**
 1. Abrir cada archivo de módulo administrativo (`menus.php`, `usuarios.php`, `configuracion.php`).
@@ -262,7 +264,7 @@ Si el resultado es vacío o solo apunta a archivos locales → ✅ Sin riesgo de
 
 | Control OWASP | Hallazgo | Severidad | Entregable que lo cierra | Fecha de remediación | Verificado por |
 |---|---|---|---|---|---|
-| A01 | | | | | |
+| A01 — Escalada vertical de privilegios | 8 endpoints de menús/usuarios (`menus.php`, `usuarios.php`, `menu_usuarios.php`, `copiar_menu_usuarios.php`, `procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php`, `obtener_menus_usuario.php`) validaban solo sesión, no privilegio admin → cualquier usuario autenticado (y `procesar_perfil`/`procesar_permiso` sin sesión) podía operar funciones de administración | Crítico | Entregable 1 (este) | 2026-06-10 | Equipo de Desarrollo - SmartCSET |
 | A02 — Cifrado en reposo | Datos de `tab_personas` sin cifrar | Crítico | Entregable 2 | | |
 | A02 — TLS BD | DSN sin `sslmode` | Crítico | Entregable 8 | | |
 | A03 | Sin hallazgos — ✅ | — | — | — | — |

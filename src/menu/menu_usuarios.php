@@ -7,6 +7,12 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// A01 (OWASP) — Broken Access Control: la asignación de menús por usuario es exclusiva de administradores.
+if (!usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])) {
+    http_response_code(403);
+    die('Acceso denegado. Esta sección es exclusiva para administradores.');
+}
+
 $lista_usuarios = [];
 $lista_menus    = [];
 $error_carga    = null;
