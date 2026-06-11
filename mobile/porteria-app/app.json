@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "SmartCSET Portería",
+    "slug": "smartcset-porteria",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "smartcset-porteria",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android"],
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#004d40"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "co.edu.sena.smartcset.porteria"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#004d40"
+      },
+      "package": "co.edu.sena.smartcset.porteria",
+      "minSdkVersion": 24,
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permite capturar foto en el registro de portería."
+        }
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "smartcset-porteria-local"
+      }
+    }
+  }
+}

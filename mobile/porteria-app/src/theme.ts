@@ -1,0 +1,50 @@
+export const colors = {
+  primary: '#004d40',
+  secondary: '#808000',
+  danger: '#b71c1c',
+  warning: '#f9a825',
+  bg: '#f5f5f5',
+  card: '#ffffff',
+  text: '#1a1a1a',
+  muted: '#666666',
+  border: '#dddddd',
+  tabBarBg: '#0a5249',
+  tabBarActive: '#00e5b0',
+  tabBarInactive: 'rgba(200, 236, 224, 0.45)',
+};
+
+/** Tokens UI kiosco (modal calculadora web) */
+export const kiosk = {
+  accent: '#00e5b0',
+  screenBg: '#003328',
+  panelBg: '#003328',
+  panelBorder: 'rgba(0, 229, 176, 0.18)',
+  keyBg: 'rgba(0, 50, 40, 0.55)',
+  keyBorder: 'rgba(0, 229, 176, 0.16)',
+  keyText: '#c8ece0',
+  displayBg: 'rgba(0, 30, 24, 0.70)',
+  label: 'rgba(0, 229, 176, 0.65)',
+  muted: 'rgba(200, 236, 224, 0.45)',
+  numColor: '#00e5b0',
+  deleteColor: '#ff7080',
+  warning: '#ffb74d',
+  warningBg: 'rgba(255, 183, 77, 0.14)',
+  warningBorder: 'rgba(255, 183, 77, 0.4)',
+  infoBg: 'rgba(0, 229, 176, 0.08)',
+  dotPending: 'rgba(0, 229, 176, 0.2)',
+  dotActive: '#00e5b0',
+  dotDone: 'rgba(0, 229, 176, 0.5)',
+  keyFontSize: 36,
+  numFontSize: 40,
+  numFontSizeMin: 28,
+  sectionFontSize: 20,
+  screenPadding: 20,
+};
+
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+};

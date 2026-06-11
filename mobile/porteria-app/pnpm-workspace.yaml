@@ -1,0 +1,6 @@
+packages:
+  - .
+allowBuilds:
+  msgpackr-extract: true
+onlyBuiltDependencies:
+  - msgpackr-extract
