@@ -25,7 +25,7 @@ const copy: Record<Mode, { hero: string; hint: string; confirm: string; confirmB
   },
   egreso: {
     hero: 'Seleccione la puerta de egreso',
-    hint: 'Toque una salida para continuar',
+    hint: 'Toque una puerta para continuar',
     confirm: 'Confirmar egreso',
     confirmBusy: 'Registrando…',
   },
@@ -50,9 +50,7 @@ export function PuertaKioskStep({
       {!canConfirm && puertas.length > 0 ? (
         <Text style={styles.hint}>{t.hint}</Text>
       ) : selectedPuerta ? (
-        <Text style={styles.selectedHint}>
-          {mode === 'egreso' ? 'Salida' : 'Puerta'}: {selectedPuerta.nombre}
-        </Text>
+        <Text style={styles.selectedHint}>Puerta: {selectedPuerta.nombre}</Text>
       ) : null}
 
       <PuertaKioskGrid

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { puertasParaModo } from '../lib/puertaLabels';
 import { Alert } from 'react-native';
 import { consultarSalida, registrarSalida } from '../api/client';
@@ -334,10 +334,7 @@ export function useSalidaKiosk({ catalogos, online }: UseSalidaKioskParams) {
   const canConfirmPuerta = puertaTouched && idEntrada > 0 && !busy;
   const canGoBack = step !== 'documento' && !busy && !consultLoading;
 
-  const puertas = useMemo(
-    () => puertasParaModo(catalogos?.entradas ?? [], 'egreso'),
-    [catalogos?.entradas]
-  );
+  const puertas = puertasParaModo(catalogos?.entradas ?? [], 'egreso');
 
   return {
     step,
