@@ -35,14 +35,9 @@ BEGIN
         );
     END IF;
 
-    SELECT l.id_ingreso
-      INTO wid_existente
-      FROM tab_log_ingresos l
-     WHERE l.id_visitante = wid_visitante
-       AND l.fec_salida = l.fec_ingreso
-     LIMIT 1;
+    wid_existente := fun_buscar_ingreso_abierto(wid_visitante);
 
-    IF FOUND THEN
+    IF wid_existente IS NOT NULL THEN
         PERFORM smartcset_raise_negocio(
             format(
                 'Esta persona ya tiene un ingreso activo (ingreso #%s). Registre la salida antes de un nuevo ingreso.',

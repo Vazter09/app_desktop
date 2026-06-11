@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setBadge('blocked', `Ingreso activo #${ingreso.id_ingreso}`);
         setBloqueoMsg(
             true,
-            `Esta persona ya ingresó hoy (${hora}, puerta ${ingreso.id_entrada_centro}). `
+            `Esta persona ya ingresó (${hora}, puerta ${ingreso.id_entrada_centro}). `
             + 'Registre la <strong>salida</strong> antes de un nuevo ingreso.'
         );
         actualizarSubmit();

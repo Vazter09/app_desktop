@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { puertasParaModo } from '../lib/puertaLabels';
 import { Alert } from 'react-native';
 import { consultarSalida, registrarSalida } from '../api/client';
-import { getLocalAccesoAbierto } from '../db/schema';
+import { cerrarLocalAcceso, getLocalAccesoAbierto } from '../db/schema';
 import { parseCapturaDocumento, normalizeDocumento } from '../lib/pdf417';
 import { getEntradaDefault } from '../lib/storage';
 import { queueSalida, runSync } from '../sync/SyncEngine';
@@ -61,18 +61,21 @@ export function useSalidaKiosk({ catalogos, online }: UseSalidaKioskParams) {
   }, []);
 
   const runConsultOnline = useCallback(async (doc: string): Promise<ConsultData | null> => {
-    const res = await consultarSalida(doc, 'CC');
+    const res = await consultarSalida(doc, tipoDoc);
     if (!res.ok) return null;
+    if (!res.data.puede_salir) {
+      await cerrarLocalAcceso(tipoDoc, doc);
+    }
     return {
       persona: (res.data.persona as Persona | null) ?? null,
       puede_salir: res.data.puede_salir,
       ingreso_abierto: (res.data.ingreso_abierto as IngresoAbierto | null) ?? null,
       ingreso_client_id: null,
     };
-  }, []);
+  }, [tipoDoc]);
 
   const runConsultOffline = useCallback(async (doc: string): Promise<ConsultData | null> => {
-    const local = await getLocalAccesoAbierto('CC', doc);
+    const local = await getLocalAccesoAbierto(tipoDoc, doc);
     if (!local) return null;
     return {
       persona: null,
@@ -89,7 +92,7 @@ export function useSalidaKiosk({ catalogos, online }: UseSalidaKioskParams) {
       },
       ingreso_client_id: local.ingreso_client_id,
     };
-  }, []);
+  }, [tipoDoc]);
 
   const runConsult = useCallback(
     async (doc: string): Promise<ConsultData | null> => {
@@ -117,7 +120,7 @@ export function useSalidaKiosk({ catalogos, online }: UseSalidaKioskParams) {
   );
 
   const applyConsult = useCallback((data: ConsultData | null) => {
-    if (!data || !data.puede_salir || (!data.persona && !data.ingreso_abierto)) {
+    if (!data || !data.puede_salir || !data.ingreso_abierto) {
       setPuedeSalir(false);
       setPersona(null);
       setIngresoAbierto(null);

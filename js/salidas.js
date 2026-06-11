@@ -110,10 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setBadge('warn', `Sin ingreso activo — ${tipoNom}`);
             setAvisoMsg(
                 true,
-                'Esta persona no tiene ingreso abierto hoy. Registre primero el <strong>ingreso</strong> en portería.'
+                'Esta persona no tiene ingreso abierto. Registre primero el <strong>ingreso</strong> en portería.'
             );
         } else {
-            setBadge('warn', 'Sin ingreso activo hoy');
+            setBadge('warn', 'Sin ingreso activo');
             setAvisoMsg(
                 true,
                 'No hay ingreso abierto para este documento. Si es visitante nuevo, regístrelo en <strong>Registro de ingreso</strong>.'
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!puedeSalir || !hidIngreso?.value) {
             e.preventDefault();
             setBadge('warn', 'Debe existir un ingreso activo');
-            setAvisoMsg(true, 'Confirme el documento: solo se puede registrar salida con un ingreso abierto hoy.');
+            setAvisoMsg(true, 'Confirme el documento: solo se puede registrar salida con un ingreso abierto.');
         }
     });
 

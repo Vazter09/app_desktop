@@ -37,7 +37,7 @@ function porteriaConsultarAcceso(
     }
 
     $persona = porteriaBuscarPersona($stmtBuscarPersona, $doc, $tipo);
-    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc, $tipo);
+    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc);
 
     return [
         'persona' => $persona,

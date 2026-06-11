@@ -63,7 +63,7 @@ function ingresoRegistrarManual(
         throw new Exception('Indique los apellidos de la persona.');
     }
 
-    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc, $tipo);
+    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc);
     if ($ingresoAbierto !== null) {
         $idIng = (int) ($ingresoAbierto['id_ingreso'] ?? 0);
         throw new Exception(

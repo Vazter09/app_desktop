@@ -5,6 +5,7 @@ import { consultarIngreso, registrarIngreso } from '../api/client';
 import { parseCapturaDocumento, normalizeDocumento } from '../lib/pdf417';
 import { getEntradaDefault } from '../lib/storage';
 import { queueIngreso, runSync } from '../sync/SyncEngine';
+import { cerrarLocalAcceso } from '../db/schema';
 import type { Catalogos, IngresoAbierto, IngresoPayload, Persona } from '../types';
 
 export type KioskStep = 'documento' | 'confirmacion' | 'datos' | 'puerta';
@@ -67,9 +68,12 @@ export function useIngresoKiosk({ catalogos, online }: UseIngresoKioskParams) {
       if (!online || doc.length < MIN_DIGITS) {
         return null;
       }
-      const res = await consultarIngreso(doc, 'CC');
+      const res = await consultarIngreso(doc, tipoDoc);
       if (!res.ok) {
         return null;
+      }
+      if (res.data.puede_ingresar) {
+        await cerrarLocalAcceso(tipoDoc, doc);
       }
       const data: ConsultData = {
         persona: (res.data.persona as Persona | null) ?? null,
@@ -78,7 +82,7 @@ export function useIngresoKiosk({ catalogos, online }: UseIngresoKioskParams) {
       };
       return data;
     },
-    [online]
+    [online, tipoDoc]
   );
 
   const schedulePrefetch = useCallback(
@@ -100,8 +104,8 @@ export function useIngresoKiosk({ catalogos, online }: UseIngresoKioskParams) {
   const applyConsult = useCallback((data: ConsultData | null) => {
     if (!data) {
       setPersona(null);
-      setPuedeIngresar(true);
-      setFlow('new');
+      setPuedeIngresar(false);
+      setFlow(null);
       return;
     }
 
@@ -111,6 +115,9 @@ export function useIngresoKiosk({ catalogos, online }: UseIngresoKioskParams) {
       setNombres(data.persona.nombres);
       setApellidos(data.persona.apellidos);
       if (data.persona.tipo_persona) setTipoPersona(data.persona.tipo_persona);
+      setFlow('known');
+    } else if (data.ingreso_abierto) {
+      setPersona(null);
       setFlow('known');
     } else {
       setPersona(null);

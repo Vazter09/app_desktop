@@ -8,14 +8,10 @@ require_once __DIR__ . '/acceso_parse_captura.php';
 /**
  * @return array<string, mixed>|null
  */
-function salidaBuscarIngresoAbierto(PDOStatement $stmtBuscar, string $documento, string $tipoDoc): ?array
+function salidaBuscarIngresoAbierto(PDOStatement $stmtBuscar, string $documento): ?array
 {
     $doc = accesoNormalizarDocumento($documento);
-    $tipo = trim($tipoDoc);
-    if ($tipo === '') {
-        throw new Exception('Tipo de documento inválido.');
-    }
-    $stmtBuscar->execute([$doc, $tipo]);
+    $stmtBuscar->execute([$doc]);
     $row = $stmtBuscar->fetch(PDO::FETCH_ASSOC);
 
     return $row ?: null;
@@ -59,10 +55,10 @@ function salidaRegistrarManual(
         throw new Exception('Seleccione el tipo de documento.');
     }
 
-    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc, $tipo);
+    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc);
     if ($ingresoAbierto === null) {
         throw new Exception(
-            'No tiene un ingreso activo hoy para registrar salida. Verifique el documento o registre primero el ingreso.'
+            'No tiene un ingreso activo para registrar salida. Verifique el documento o registre primero el ingreso.'
         );
     }
 

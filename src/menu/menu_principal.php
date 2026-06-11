@@ -115,8 +115,7 @@ try {
 
     $stmt_dentro = $pdo->query(
         "SELECT COUNT(*)::int FROM tab_log_ingresos
-         WHERE fec_ingreso::date = CURRENT_DATE
-           AND fec_salida = fec_ingreso"
+         WHERE fec_salida = fec_ingreso"
     );
     $personas_dentro = (int) $stmt_dentro->fetchColumn();
 } catch (PDOException $e) {

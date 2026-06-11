@@ -170,10 +170,8 @@ try {
          INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          INNER JOIN tab_entradas_centro e ON l.id_entrada_centro = e.id_entrada_centro
-         WHERE p.id_persona = ?::NUMERIC
-           AND p.id_tipo_docum = ?::VARCHAR
+         WHERE l.id_visitante = ?::NUMERIC
            AND l.fec_salida = l.fec_ingreso
-           AND l.fec_ingreso::date = CURRENT_DATE
          ORDER BY l.fec_ingreso DESC
          LIMIT 1"
     );

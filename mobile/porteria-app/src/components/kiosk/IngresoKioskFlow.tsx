@@ -160,7 +160,7 @@ export function IngresoKioskFlow({ catalogos, online }: Props) {
               variant="warning"
               icon="alert-circle-outline"
               title="Ingreso no permitido"
-              message="Ya tiene un ingreso activo hoy. Registre primero el egreso para volver a ingresar."
+              message="Ya tiene un ingreso activo. Registre primero el egreso para volver a ingresar."
               actions={[{ label: 'Corregir documento', onPress: state.correct, primary: true }]}
             />
           ) : state.flow === 'known' && state.persona ? (

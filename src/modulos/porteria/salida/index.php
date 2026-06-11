@@ -631,7 +631,7 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
                     <div class="dm-nueva-ico">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     </div>
-                    <p style="margin-bottom:14px"><strong>Sin ingreso activo</strong><br>No hay ingreso abierto hoy para este documento.</p>
+                    <p style="margin-bottom:14px"><strong>Sin ingreso activo</strong><br>No hay ingreso abierto para este documento.</p>
                     <div style="display:grid;grid-template-columns:1fr;gap:8px;margin:0 var(--dm-pad) 16px">
                         <button type="button" class="dm-btn-no" id="dm-btn-no-sin-ingreso" style="width:100%">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>

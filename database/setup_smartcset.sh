@@ -88,6 +88,7 @@ FUNCS=(
   "$ROOT/database/functions/acceso/sesiones/fun_validar_sesion_activa.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_archivar_sesiones_antiguas.sql"
   "$ROOT/database/functions/porteria/fun_upsert_persona_visitante.sql"
+  "$ROOT/database/functions/porteria/fun_buscar_ingreso_abierto.sql"
   "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_registrar_ingreso_manual.sql"

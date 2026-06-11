@@ -22,28 +22,19 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1
           FROM tab_personas
-         WHERE id_persona = wid_persona AND id_tipo_docum = wid_tipo_docum
+         WHERE id_persona = wid_persona
     ) THEN
         PERFORM smartcset_raise_no_encontrado(
-            'No hay visitante registrado con ese documento y tipo.',
-            'id_persona=' || wid_persona::TEXT || ', id_tipo_docum=' || wid_tipo_docum
+            'No hay visitante registrado con ese documento.',
+            'id_persona=' || wid_persona::TEXT
         );
     END IF;
 
-    SELECT l.id_ingreso
-      INTO wid_ingreso
-      FROM tab_log_ingresos l
-      INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
-     WHERE p.id_persona = wid_persona
-       AND p.id_tipo_docum = wid_tipo_docum
-       AND l.fec_salida = l.fec_ingreso
-       AND l.fec_ingreso::date = CURRENT_DATE
-     ORDER BY l.fec_ingreso DESC
-     LIMIT 1;
+    wid_ingreso := fun_buscar_ingreso_abierto(wid_persona);
 
-    IF NOT FOUND THEN
+    IF wid_ingreso IS NULL THEN
         PERFORM smartcset_raise_negocio(
-            'No tiene un ingreso activo hoy para registrar salida.',
+            'No tiene un ingreso activo para registrar salida.',
             'id_persona=' || wid_persona::TEXT,
             'Registre primero el ingreso o verifique documento y tipo.'
         );
