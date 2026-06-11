@@ -23,6 +23,8 @@ composer.lock
 # Bases de datos
 *.sql.bak
 *.sql.gz
+*.backup
+*.dump
 
 # Logs y caché
 logs/
