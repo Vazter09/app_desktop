@@ -181,14 +181,14 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 3. Probar manualmente: con un usuario sin permisos de admin, intentar acceder directamente a `src/modulos/admin/configuracion.php` — debe redirigir, no mostrar contenido.
 4. Documentar el resultado en la tabla de hallazgos (sección 3.3).
 
-#### A02 — Cryptographic Failures 🔴 Incompleto
+#### A02 — Cryptographic Failures ⚠️ Auditado (2026-06-11) — ver `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`
 
 | Subcontrol | Archivo | Verificación | Estado actual |
 |---|---|---|---|
 | Contraseñas hasheadas con algoritmo robusto | `src/core/prepare.php` (stmt_login), `src/usuarios/usuarios.php` | `grep -n "password_hash\|password_verify\|bcrypt" src/` | ✅ Usa `password_verify()` con bcrypt |
-| Datos sensibles cifrados en reposo | `tab_personas` en PostgreSQL, `storage/` | `\d tab_personas` en psql — verificar si existe columna `_enc` | ❌ No cifrados — ver Entregable 2 |
-| TLS en conexión BD | `src/core/Db.php` | Ver DSN en línea 26 | ❌ Sin `sslmode` — ver Entregable 8 |
-| HTTPS forzado en producción | `index.php` líneas 13-17 | Ver bloque comentado | ⚠️ Código existe pero está comentado — activar en producción |
+| Datos sensibles cifrados en reposo | `tab_personas` en PostgreSQL, `storage/` | `\d tab_personas` en psql — verificar si existe columna `_enc` | ❌ No cifrados — ver Entregable 2 (bloqueado por prereq. 1 y 2) |
+| TLS en conexión BD | `src/core/Db.php`, `src/core/config.php` | Ver DSN en `Db::connect()` y constante `DB_SSLMODE` | ⚠️ Infraestructura `DB_SSLMODE` lista (2026-06-11); activación pendiente de Entregable 8 (Oficina TI) |
+| HTTPS forzado en producción | `index.php` líneas 13-17 | Ver bloque comentado | ❌ Código existe pero está comentado — ver Entregable 4 (bloqueado por prereq. 6) |
 
 #### A03 — Injection 🟢 Bien cubierto
 
@@ -265,8 +265,9 @@ Si el resultado es vacío o solo apunta a archivos locales → ✅ Sin riesgo de
 | Control OWASP | Hallazgo | Severidad | Entregable que lo cierra | Fecha de remediación | Verificado por |
 |---|---|---|---|---|---|
 | A01 — Escalada vertical de privilegios | 8 endpoints de menús/usuarios (`menus.php`, `usuarios.php`, `menu_usuarios.php`, `copiar_menu_usuarios.php`, `procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php`, `obtener_menus_usuario.php`) validaban solo sesión, no privilegio admin → cualquier usuario autenticado (y `procesar_perfil`/`procesar_permiso` sin sesión) podía operar funciones de administración | Crítico | Entregable 1 (este) | 2026-06-10 | Equipo de Desarrollo - SmartCSET |
-| A02 — Cifrado en reposo | Datos de `tab_personas` sin cifrar | Crítico | Entregable 2 | | |
-| A02 — TLS BD | DSN sin `sslmode` | Crítico | Entregable 8 | | |
+| A02 — Cifrado en reposo | Datos de `tab_personas.documento_identidad` sin cifrar | Crítico | Entregable 2 (bloqueado: prereq. 1 y 2) | | |
+| A02 — TLS BD | DSN sin `sslmode` — infraestructura `DB_SSLMODE` lista en código (config.php/Db.php), activación pendiente | Crítico | Entregable 8 (bloqueado: Oficina TI) | 2026-06-11 (código) | Equipo de Desarrollo - SmartCSET |
+| A02 — HTTPS forzado | Redirect HTTPS comentado en `index.php`; `SecurityMiddleware` no incluido | Crítico | Entregable 4 (bloqueado: prereq. 6) | | |
 | A03 | Sin hallazgos — ✅ | — | — | — | — |
 | A07 — Rate limiting | No existe throttling en login | Crítico | Entregable 3 | | |
 | A07 — Session fixation | Sin `session_regenerate_id()` tras login | Crítico | Entregable 4 | | |
@@ -1026,21 +1027,28 @@ En `pg_hba.conf`:
 hostssl   db_smartcset    usuario_php    192.168.X.A/32    md5
 ```
 
-#### Cambio en `src/core/Db.php`
+#### Cambio en `src/core/Db.php` — ✅ Aplicado en código (2026-06-11), activación pendiente
+
+En lugar de derivar `sslmode` automáticamente de `APP_ENV` (lo que forzaría `require`/`verify-full` en cualquier entorno y rompería conexiones contra un PostgreSQL sin `ssl=on`), se implementó vía variable de entorno `DB_SSLMODE` — vacía por defecto, sin efecto hasta que se configure explícitamente:
 
 ```php
-// ANTES (línea 26 actual):
+// src/core/config.php:
+define('DB_SSLMODE', EnvLoader::get('DB_SSLMODE', ''));
+
+// src/core/Db.php — connect():
 $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
 
-// DESPUÉS:
-$sslmode = (defined('APP_ENV') && APP_ENV === 'production') ? 'verify-full' : 'require';
-$dsn = 'pgsql:host=' . DB_HOST
-     . ';port='    . DB_PORT
-     . ';dbname='  . DB_NAME
-     . ';sslmode=' . $sslmode;
-// verify-full: valida el CN del certificado (más seguro, requiere certificado válido)
-// require: cifra el canal pero no valida el CN (aceptable si servidor BD y web están en misma red interna)
+$sslmode = defined('DB_SSLMODE') ? trim((string) DB_SSLMODE) : '';
+if ($sslmode !== '') {
+    $dsn .= ';sslmode=' . $sslmode;
+}
 ```
+
+**Activación (cuando Oficina TI complete `ssl=on` + certificados en PostgreSQL):** agregar a `.env` del servidor correspondiente:
+- Desarrollo / misma red interna confiable: `DB_SSLMODE=require` (cifra el canal, no valida CN del certificado)
+- Producción: `DB_SSLMODE=verify-full` (valida el CN del certificado, más seguro)
+
+> Detalle de la auditoría y el cambio: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` §3.2.
 
 #### Verificar que TLS está activo
 

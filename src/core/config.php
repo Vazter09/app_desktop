@@ -15,6 +15,11 @@ define('DB_NAME', EnvLoader::get('DB_NAME', 'db_smartcset'));
 define('DB_USER', EnvLoader::get('DB_USER', 'postgres'));
 define('DB_PASS', EnvLoader::get('DB_PASS', 'postgres123'));
 
+// Modo SSL de la conexión PHP->PostgreSQL (vacío = comportamiento actual, sin forzar TLS).
+// Activar 'require' o 'verify-full' solo cuando el servidor PostgreSQL tenga SSL habilitado
+// (postgresql.conf: ssl=on + certificados) — ver Fase 1 Entregable 8.
+define('DB_SSLMODE', EnvLoader::get('DB_SSLMODE', ''));
+
 // Estilos corporativos y rutas (desde .env)
 define('COLOR_VERDE_OSCURO', EnvLoader::get('COLOR_VERDE_OSCURO', '#004d40'));
 define('COLOR_VERDE_OLIVA', EnvLoader::get('COLOR_VERDE_OLIVA', '#808000'));

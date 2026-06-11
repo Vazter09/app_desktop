@@ -68,10 +68,11 @@ Documentacion para implementacion de MSPI/
 │   ├── 07_POLITICA_CONTROL_ACCESO_SEGURIDAD_FISICA_SMARTCSET_DOCUMENTO_LEGAL.md
 │   └── 08_MARCO_GESTION_INCIDENTES_CONTINUIDAD_SMARTCSET_DOCUMENTO_LEGAL.md
 │
-├── FASE 01_Blindaje Técnico Inmediato/    ✅ DOCUMENTO v1.1 COMPLETO — implementación EN CURSO (E1/A01 hecho)
+├── FASE 01_Blindaje Técnico Inmediato/    ✅ DOCUMENTO v1.1 COMPLETO — implementación EN CURSO (E1/A01 hecho, E1/A02 auditado)
 │   ├── 01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md
 │   ├── 02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md   ← FASE1-CHK-002: checklist de seguimiento de implementación (fuente de verdad del avance — actualizar en cada sesión)
-│   └── REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md  ← FASE1-REP-A01: reporte de remediación de A01 (2026-06-10)
+│   ├── REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md  ← FASE1-REP-A01: reporte de remediación de A01 (2026-06-10, v1.1 con pruebas manuales 2026-06-11)
+│   └── REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md ← FASE1-REP-A02: reporte de auditoría de A02 (2026-06-11) — TLS BD preparado en código, cifrado en reposo y HTTPS bloqueados por prerrequisitos
 │
 ├── FASE 02_Continuidad y Resiliencia Operativa/    🔲 PENDIENTE
 │
@@ -128,7 +129,7 @@ Documento N°: FASE1-BLI-001 | Versión: 1.1 | 1491 líneas | 18 secciones | 10 
 
 | # | Entregable | Estado doc | Estado en código |
 |---|---|---|---|
-| E1 | Auditoría OWASP Top 10 (A01–A10) | ✅ Checklist completo con hallazgos pre-llenados | ⚠️ A01 auditado y remediado (2026-06-10); A02-A10 pendientes |
+| E1 | Auditoría OWASP Top 10 (A01–A10) | ✅ Checklist completo con hallazgos pre-llenados | ⚠️ A01 auditado y remediado (2026-06-10); A02 auditado (2026-06-11, 1/3 hallazgos preparados en código); A03-A10 pendientes |
 | E2 | Cifrado en reposo (pgcrypto — tab_personas) | ✅ Procedimiento de migración paso a paso | 🔲 Pendiente |
 | E3 | Rate limiting + logging de autenticación | ✅ Diseño PL/pgSQL + cambios PHP exactos | 🔲 Pendiente |
 | E4 | Hardening de sesiones PHP | ✅ 4 líneas `ini_set` + `session_regenerate_id` identificados | 🔲 SecurityMiddleware existe pero es código muerto |
@@ -231,7 +232,7 @@ Auditoría realizada el 2026-06-08 sobre el código fuente real de SmartCSET:
 | `index.php` líneas 54-68 | Sin `session_regenerate_id(true)` tras login exitoso — vulnerable a session fixation | 🔴 |
 | `index.php` (todo el archivo) | Sin rate limiting — ilimitados intentos de contraseña posibles | 🔴 |
 | `src/core/SecurityMiddleware.php` | Código de CSRF, headers HTTP y cookie flags bien escritos pero el archivo **nunca se incluye** (`require_once`) en el flujo real — todo es código muerto | 🔴 |
-| `src/core/Db.php` líneas 24-39 | DSN de PostgreSQL sin `sslmode` — conexión PHP↔BD sin cifrar | 🔴 |
+| `src/core/Db.php` líneas 24-39 | DSN de PostgreSQL sin `sslmode` — conexión PHP↔BD sin cifrar. ⚠️ Infraestructura `DB_SSLMODE` agregada en código (2026-06-11, vacía por defecto, sin regresión); activación pendiente de Oficina TI (E8) | 🟠 |
 | `src/core/config.php` | `session.cookie_httponly`, `session.cookie_secure`, `session.cookie_samesite` no configurados | 🔴 |
 | `src/core/LogoUpload.php` | ✅ Bien implementado — finfo, whitelist MIME, límite 5MB, nombre aleatorio | — |
 | `src/modulos/porteria/lib/porteria_foto.php` | ✅ Bien implementado — base64 estricto, recompresión JPEG, JSONB | — |
@@ -360,3 +361,7 @@ FASE1-BLI-001 (Blindaje Técnico Inmediato)
 ---
 
 *Última actualización: 2026-06-10 — Tarea 4 completada (plan maestro v1.2 + resumen sincronizado). Re-auditoría de Fase 0 contra código fuente completada: duplicados eliminados, docs 01/02/07 corregidos para reflejar el estado real (controles pendientes marcados 🔲 → Fase 1), columnas biométricas inventariadas (INF-16). Fase 0 cerrada y congruente. Creado FASE1-CHK-002 (checklist de implementación de Fase 1 — fuente de verdad del avance; marcar tareas ahí en cada sesión) y CHECKLIST_MAESTRO_BLINDAJE_SMARTCSET.md (vista panorámica transversal de las 6 fases). Siguiente paso: implementación Fase 1 en código (Tarea 1 🔴) siguiendo el orden E10 → E7 → E4 → E6 → E5 → E3 → E1 → E2 → E8 → E9 — SOLO bajo autorización explícita de Anderson, por partes.*
+
+---
+
+*Actualización 2026-06-11:* (1) Reporte A01 ampliado con §6.2 (procedimiento detallado de pruebas manuales con `curl`) y §6.3 (criterios de cierre) — pendiente de ejecución por Anderson en entorno con BD. (2) Auditoría E1-A02 (Cryptographic Failures) completada: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`. De sus 3 hallazgos, solo el de TLS BD se preparó en código hoy (constante `DB_SSLMODE` en `config.php`/`Db.php`/`.env.example`, vacía por defecto, sin regresión, activación pendiente de que Oficina TI habilite `ssl=on` en PostgreSQL — E8). Cifrado en reposo (E2) y HTTPS forzado (E4) quedan documentados pero bloqueados por prerrequisitos institucionales (custodio `DB_ENCRYPTION_KEY`, BD de test, certificado TLS). A02 NO se marca ✅ — sigue ⚠️. Siguiente paso sugerido: continuar con E10/E7 (riesgo cero, sin dependencias externas) o seguir con A03-A10 de E1 según indique Anderson.*

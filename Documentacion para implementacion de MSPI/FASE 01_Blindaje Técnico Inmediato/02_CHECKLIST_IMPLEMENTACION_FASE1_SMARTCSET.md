@@ -28,7 +28,7 @@
 | E6 — Verificación de uploads | 🟡 | ⚠️ Código PHP ya correcto; falta verificación de servidor + .htaccess | ~70% |
 | E5 — Tokens anti-CSRF | 🔴 | 🔲 Pendiente | 0% |
 | E3 — Rate limiting + logging de autenticación | 🔴 | 🔲 Pendiente | 0% |
-| E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 auditado y remediado; A02-A10 pendientes) | ~10% |
+| E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 remediado; A02 auditado con 1/3 hallazgos preparados en código; A03-A10 pendientes) | ~20% |
 | E2 — Cifrado en reposo (pgcrypto) | 🔴 | 🔲 Pendiente | 0% |
 | E8 — Hardening de red y TLS | 🔴 | ⛔ Requiere Oficina TI SENA (salvo cambio DSN) | 0% |
 | E9 — Gestión de parches | 🟠 | 🔲 Pendiente | 0% |
@@ -182,11 +182,11 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 - [x] Ejecutar `grep -rL "id_usuario" src/modulos/` — los 4 archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o pertenecen al módulo `registro` (control de acceso propio `registroRequireAccess()`)
 - [ ] Prueba manual con BD: usuario no-admin accediendo directo a páginas/endpoints admin → 403 (pendiente de ejecutar en entorno con BD)
 
-**A02 — Cryptographic Failures:**
+**A02 — Cryptographic Failures:** ⚠️ Auditado (2026-06-11) — ver `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`
 - [x] Contraseñas con bcrypt (`password_verify`) — ya verificado
-- [ ] Cifrado en reposo → se cierra con E2
-- [ ] TLS BD → se cierra con E8
-- [ ] HTTPS forzado en producción → se cierra con E4
+- [ ] Cifrado en reposo → se cierra con E2 (bloqueado: prereq. 1 y 2)
+- [x] TLS BD — infraestructura de código (`DB_SSLMODE` en `config.php`/`Db.php`) lista (2026-06-11); activación → se cierra con E8 (bloqueado: Oficina TI)
+- [ ] HTTPS forzado en producción → se cierra con E4 (bloqueado: prereq. 6)
 
 **A03 — Injection:**
 - [x] Prepared statements reales (`EMULATE_PREPARES=false`) y casting `?::TEXT` — ya verificado
@@ -259,7 +259,7 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 ## E8 — HARDENING DE RED Y ARQUITECTURA (§10) — ⛔ coordinación Oficina TI SENA
 
 **Lo que puede hacer el desarrollador:**
-- [ ] Modificar DSN en `src/core/Db.php`: agregar `;sslmode=` (`verify-full` producción / `require` desarrollo) — 2 líneas (§10.3)
+- [x] Modificar DSN en `src/core/Db.php`: agregar `;sslmode=<DB_SSLMODE>` vía variable de entorno (`config.php` + `.env.example`), vacía por defecto — (§10.3, completado 2026-06-11). Falta: setear `DB_SSLMODE=require`/`verify-full` en `.env` cuando Oficina TI habilite SSL en PostgreSQL
 
 **Lo que requiere Oficina TI:**
 - [ ] Obtener topología real: IPs de servidor web y BD, o confirmar máquina única (prerrequisito 5)
@@ -311,6 +311,8 @@ Si algún paso falla tras los cambios, es una regresión a resolver antes de dar
 |---|---|---|---|
 | 2026-06-10 | — | Creación de este checklist con el estado real verificado (E6 código ✅, E7 parcial) | |
 | 2026-06-10 | E1 (A01) | Auditoría A01 — Broken Access Control: hallazgo crítico de escalada vertical de privilegios en 8 endpoints de menús/usuarios; corregidos con `usuarioEsAdministrador()`. Reporte: `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md` | |
+| 2026-06-11 | E1 (A01) | Agregadas secciones §6.2 (procedimiento detallado de pruebas manuales con curl) y §6.3 (criterios de cierre) al reporte A01, pendientes de ejecutar por Anderson en entorno con BD | |
+| 2026-06-11 | E1 (A02), E8 (parcial) | Auditoría A02 — Cryptographic Failures: 3 hallazgos (cifrado en reposo, TLS BD, HTTPS forzado). Preparada infraestructura de código para TLS BD: constante `DB_SSLMODE` (vacía por defecto, sin regresión) en `config.php`/`Db.php`/`.env.example`; activación pendiente de Oficina TI (E8). Cifrado en reposo (E2) y HTTPS (E4) quedan bloqueados por prerrequisitos institucionales. Reporte: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` | |
 
 ---
 
