@@ -165,13 +165,13 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 
 ### 3.2 Checklist OWASP Top 10 2021 — SmartCSET
 
-#### A01 — Broken Access Control ✅ Remediado (auditoría ejecutada 2026-06-10)
+#### A01 — Broken Access Control ✅ Remediado y validado en producción (auditoría 2026-06-10, despliegue y pruebas 2026-06-11)
 
-> Resultado de la auditoría y remediación en `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md` (esta carpeta).
+> Resultado de la auditoría y remediación en `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md` (esta carpeta). Resultados de las pruebas manuales en producción: §6.4 de ese reporte (11/11 PASS).
 
 | Subcontrol | Archivo a inspeccionar | Comando de verificación | Criterio de aprobación | Estado actual |
 |---|---|---|---|---|
-| Validación de privilegio admin antes de acciones de admin | `src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/menu/menu_usuarios.php`, `src/menu/copiar_menu_usuarios.php`, `src/menu/procesar_perfil.php`, `src/menu/procesar_permiso.php`, `src/menu/procesar_copiar_perfil.php`, `src/menu/obtener_menus_usuario.php` | `grep -n "usuarioEsAdministrador(\$pdo, \$_SESSION\['id_usuario'\])" archivo.php` | Cada archivo admin verifica `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` antes de cualquier lógica sensible | ✅ Corregido — 8 endpoints reforzados (antes solo validaban sesión, no privilegio) |
+| Validación de privilegio admin antes de acciones de admin | `src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/menu/menu_usuarios.php`, `src/menu/copiar_menu_usuarios.php`, `src/menu/procesar_perfil.php`, `src/menu/procesar_permiso.php`, `src/menu/procesar_copiar_perfil.php`, `src/menu/obtener_menus_usuario.php` | `grep -n "usuarioEsAdministrador(\$pdo, \$_SESSION\['id_usuario'\])" archivo.php` | Cada archivo admin verifica `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` antes de cualquier lógica sensible | ✅ Corregido y desplegado en producción — 8 endpoints reforzados (antes solo validaban sesión, no privilegio); validado con 11 pruebas manuales (403/200 según rol) el 2026-06-11 |
 | IDOR: usuario solo accede a datos de su centro | `src/modulos/porteria/ingreso/consultar.php`, `src/modulos/porteria/salida/consultar.php` | Inspección manual: ¿los resultados del SELECT están filtrados por algún scope de usuario? | Los endpoints AJAX exigen sesión válida | ✅ Ambos exigen sesión; modelo mono-centro actual no requiere scoping por centro (marcado para revisión en escenario multi-centro) |
 | Rutas de módulos requieren sesión válida | Todos los archivos bajo `src/modulos/` | `grep -rL "id_usuario" src/modulos/` | No debe existir ningún archivo de módulo que no verifique sesión activa | ✅ Verificado: los archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o el módulo `registro` con su propio `registroRequireAccess()`/`registroTieneSesionStandalone()` |
 
@@ -264,7 +264,7 @@ Si el resultado es vacío o solo apunta a archivos locales → ✅ Sin riesgo de
 
 | Control OWASP | Hallazgo | Severidad | Entregable que lo cierra | Fecha de remediación | Verificado por |
 |---|---|---|---|---|---|
-| A01 — Escalada vertical de privilegios | 8 endpoints de menús/usuarios (`menus.php`, `usuarios.php`, `menu_usuarios.php`, `copiar_menu_usuarios.php`, `procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php`, `obtener_menus_usuario.php`) validaban solo sesión, no privilegio admin → cualquier usuario autenticado (y `procesar_perfil`/`procesar_permiso` sin sesión) podía operar funciones de administración | Crítico | Entregable 1 (este) | 2026-06-10 | Equipo de Desarrollo - SmartCSET |
+| A01 — Escalada vertical de privilegios | 8 endpoints de menús/usuarios (`menus.php`, `usuarios.php`, `menu_usuarios.php`, `copiar_menu_usuarios.php`, `procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php`, `obtener_menus_usuario.php`) validaban solo sesión, no privilegio admin → cualquier usuario autenticado (y `procesar_perfil`/`procesar_permiso` sin sesión) podía operar funciones de administración | Crítico | Entregable 1 (este) | 2026-06-10 (código) / 2026-06-11 (desplegado y validado en producción, 11/11 pruebas PASS) | Equipo de Desarrollo - SmartCSET |
 | A02 — Cifrado en reposo | Datos de `tab_personas.documento_identidad` sin cifrar | Crítico | Entregable 2 (bloqueado: prereq. 1 y 2) | | |
 | A02 — TLS BD | DSN sin `sslmode` — infraestructura `DB_SSLMODE` lista en código (config.php/Db.php), activación pendiente | Crítico | Entregable 8 (bloqueado: Oficina TI) | 2026-06-11 (código) | Equipo de Desarrollo - SmartCSET |
 | A02 — HTTPS forzado | Redirect HTTPS comentado en `index.php`; `SecurityMiddleware` no incluido | Crítico | Entregable 4 (bloqueado: prereq. 6) | | |

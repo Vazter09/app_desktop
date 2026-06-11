@@ -176,11 +176,11 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 ## E1 — AUDITORÍA OWASP TOP 10 (§3) — checklist inicial en semana 2, cierre en semana 4
 
-**A01 — Broken Access Control:** ✅ Auditado y remediado (2026-06-10) — ver `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md`
+**A01 — Broken Access Control:** ✅ Auditado, remediado y validado en producción (2026-06-10 / 2026-06-11) — ver `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md`
 - [x] Verificar guard de `ind_usuario`/admin al inicio de páginas y endpoints de administración — se encontraron 8 endpoints sin verificación de privilegio admin (`menus.php`, `usuarios.php`, `menu_usuarios.php`, `copiar_menu_usuarios.php`, `procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php`, `obtener_menus_usuario.php`) y se corrigieron con `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])`
 - [x] Auditar IDOR en `porteria/ingreso/consultar.php` y `porteria/salida/consultar.php` (scope de datos) — ambos exigen sesión; sin scoping por centro porque el modelo actual es mono-centro (revisar si se vuelve multi-centro)
 - [x] Ejecutar `grep -rL "id_usuario" src/modulos/` — los 4 archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o pertenecen al módulo `registro` (control de acceso propio `registroRequireAccess()`)
-- [ ] Prueba manual con BD: usuario no-admin accediendo directo a páginas/endpoints admin → 403 (pendiente de ejecutar en entorno con BD)
+- [x] Prueba manual con BD: usuario no-admin accediendo directo a páginas/endpoints admin → 403 — ejecutadas las 11 pruebas de §6.2 contra el servidor de producción el 2026-06-11, todas **PASS** (ver §6.4 del reporte A01). Los 8 archivos corregidos quedaron desplegados en producción.
 
 **A02 — Cryptographic Failures:** ⚠️ Auditado (2026-06-11) — ver `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`
 - [x] Contraseñas con bcrypt (`password_verify`) — ya verificado
@@ -313,6 +313,7 @@ Si algún paso falla tras los cambios, es una regresión a resolver antes de dar
 | 2026-06-10 | E1 (A01) | Auditoría A01 — Broken Access Control: hallazgo crítico de escalada vertical de privilegios en 8 endpoints de menús/usuarios; corregidos con `usuarioEsAdministrador()`. Reporte: `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md` | |
 | 2026-06-11 | E1 (A01) | Agregadas secciones §6.2 (procedimiento detallado de pruebas manuales con curl) y §6.3 (criterios de cierre) al reporte A01, pendientes de ejecutar por Anderson en entorno con BD | |
 | 2026-06-11 | E1 (A02), E8 (parcial) | Auditoría A02 — Cryptographic Failures: 3 hallazgos (cifrado en reposo, TLS BD, HTTPS forzado). Preparada infraestructura de código para TLS BD: constante `DB_SSLMODE` (vacía por defecto, sin regresión) en `config.php`/`Db.php`/`.env.example`; activación pendiente de Oficina TI (E8). Cifrado en reposo (E2) y HTTPS (E4) quedan bloqueados por prerrequisitos institucionales. Reporte: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` | |
+| 2026-06-11 | E1 (A01) | Desplegados los 8 archivos corregidos de A01 en el servidor de producción y ejecutado el procedimiento completo de §6.2 del reporte A01 (11 pruebas: acceso no-admin, POST sin sesión/no-admin, regresión admin con escritura real revertida). Resultado: **PASS** en todas — subcontrol 1 de A01 cerrado. Resultados documentados en §6.4 del reporte A01. | |
 
 ---
 
