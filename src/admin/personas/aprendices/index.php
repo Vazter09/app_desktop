@@ -7,6 +7,8 @@ $personasListado = [
     'menu_id' => '0301',
     'titulo' => 'Aprendices',
     'fetch' => 'personasListadoFetchAprendices',
+    'filtros_fields' => 'personasListadoAprendicesFiltrosFields',
+    'tabla_columns' => personasListadoAprendicesColumnas(),
 ];
 
 require dirname(__DIR__) . '/lib/listado_index.php';

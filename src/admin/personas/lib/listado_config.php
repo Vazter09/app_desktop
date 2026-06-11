@@ -63,12 +63,28 @@ function personasListadoTablaColumnas(): array
     ];
 }
 
+/** Resuelve id_ficha desde GET (`id_ficha` o alias `ficha`). */
+function personasListadoResolveIdFicha(array $query): ?int
+{
+    $raw = trim((string) ($query['id_ficha'] ?? $query['ficha'] ?? ''));
+    if ($raw === '' || !ctype_digit($raw)) {
+        return null;
+    }
+
+    $id = (int) $raw;
+
+    return $id > 0 ? $id : null;
+}
+
 /** @return array<string, string> */
 function personasListadoFiltrosValues(array $query): array
 {
+    $idFicha = personasListadoResolveIdFicha($query);
+
     return [
         'q' => trim((string) ($query['q'] ?? '')),
         'estado' => (string) ($query['estado'] ?? ''),
+        'id_ficha' => $idFicha !== null ? (string) $idFicha : '',
     ];
 }
 

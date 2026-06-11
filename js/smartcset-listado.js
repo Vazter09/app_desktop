@@ -115,7 +115,7 @@
         }
     }
 
-    function applyFiltrosForm(form, host) {
+    function buildUrlFromForm(form) {
         const url = new URL(form.action || window.location.href, window.location.href);
         const data = new FormData(form);
         url.search = '';
@@ -124,8 +124,23 @@
                 url.searchParams.set(key, String(value));
             }
         });
+        return url;
+    }
+
+    function applyFiltrosForm(form, host) {
+        const url = buildUrlFromForm(form);
         url.searchParams.set('page', '1');
         loadIntoHost(host, url.toString(), true);
+    }
+
+    function applyPerPageForm(form, host) {
+        const url = buildUrlFromForm(form);
+        url.searchParams.set('page', '1');
+        loadIntoHost(host, url.toString(), true);
+    }
+
+    function isFiltroSelect(el, form) {
+        return el?.tagName === 'SELECT' && form.contains(el);
     }
 
     function bind(host) {
@@ -142,6 +157,16 @@
             e.preventDefault();
             clearSearchDebounce(host);
             applyFiltrosForm(form, host);
+        });
+
+        host.addEventListener('focusin', (e) => {
+            const form = e.target.closest('[data-smart-listado-filtros]');
+            if (!form || !host.contains(form)) {
+                return;
+            }
+            if (isFiltroSelect(e.target, form)) {
+                clearSearchDebounce(host);
+            }
         });
 
         host.addEventListener('input', (e) => {
@@ -165,7 +190,8 @@
             if (perPage && host.contains(perPage)) {
                 const form = perPage.closest('form');
                 if (form) {
-                    form.requestSubmit();
+                    clearSearchDebounce(host);
+                    applyPerPageForm(form, host);
                 }
                 return;
             }
@@ -174,8 +200,7 @@
             if (!form || !host.contains(form)) {
                 return;
             }
-            const select = e.target.closest('select');
-            if (select && form.contains(select)) {
+            if (isFiltroSelect(e.target, form)) {
                 clearSearchDebounce(host);
                 applyFiltrosForm(form, host);
             }
@@ -192,6 +217,7 @@
             const reset = e.target.closest('[data-smart-listado-reset]');
             if (reset && host.contains(reset)) {
                 e.preventDefault();
+                clearSearchDebounce(host);
                 loadIntoHost(host, reset.href, true);
             }
         });
@@ -211,11 +237,4 @@
     };
 
     document.addEventListener('DOMContentLoaded', bindDocument);
-    document.addEventListener('smartcset:listado:mounted', (e) => {
-        const host = e.target;
-        if (host && host.id === 'personas-listado-host') {
-            host.dataset.smartListadoBound = '';
-            bind(host);
-        }
-    });
 })();

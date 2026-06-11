@@ -21,7 +21,7 @@ $formClass = 'smart-listado-filtros ' . (string) ($listadoFiltros['extra_class']
       id="<?= htmlspecialchars($formId, ENT_QUOTES, 'UTF-8') ?>"
       class="<?= htmlspecialchars(trim($formClass), ENT_QUOTES, 'UTF-8') ?>"
       data-smart-listado-filtros="1">
-    <div class="row g-2 align-items-end">
+    <div class="row g-3 align-items-end smart-listado-filtros-grid">
         <?php foreach ($fields as $field): ?>
             <?php
             if (!is_array($field)) {
@@ -34,9 +34,18 @@ $formClass = 'smart-listado-filtros ' . (string) ($listadoFiltros['extra_class']
             $type = (string) ($field['type'] ?? 'text');
             $label = (string) ($field['label'] ?? $name);
             $col = (string) ($field['col'] ?? 'col-md-3');
+            $wrapperClass = trim((string) ($field['wrapper_class'] ?? ''));
+            if ($wrapperClass === '' && $name === 'q') {
+                $wrapperClass = 'smart-listado-filtro-buscar';
+            } elseif ($wrapperClass === '' && ($name === 'ficha' || $name === 'id_ficha')) {
+                $wrapperClass = 'smart-listado-filtro-ficha';
+            } elseif ($wrapperClass === '' && $name === 'estado') {
+                $wrapperClass = 'smart-listado-filtro-estado';
+            }
             $value = $values[$name] ?? ($field['default'] ?? '');
+            $dataFiltro = ($name === 'ficha' || $name === 'id_ficha') ? ' data-filtro-ficha="1"' : ($name === 'estado' ? ' data-filtro-estado="1"' : '');
             ?>
-            <div class="<?= htmlspecialchars($col, ENT_QUOTES, 'UTF-8') ?>">
+            <div class="<?= htmlspecialchars(trim($col . ' ' . $wrapperClass), ENT_QUOTES, 'UTF-8') ?>"<?= $dataFiltro ?>>
                 <label class="form-label small fw-bold mb-1" for="<?= htmlspecialchars($formId . '_' . $name, ENT_QUOTES, 'UTF-8') ?>">
                     <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
                 </label>
@@ -62,17 +71,14 @@ $formClass = 'smart-listado-filtros ' . (string) ($listadoFiltros['extra_class']
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
-        <div class="col-auto ms-auto d-flex flex-wrap gap-2 pb-1">
-            <button type="submit" class="btn btn-sm fw-bold text-white" style="background:var(--v-oscuro);">
-                <i class="bi bi-funnel-fill me-1"></i>Filtrar
-            </button>
-            <?php if ($resetUrl !== ''): ?>
+        <?php if ($resetUrl !== ''): ?>
+        <div class="col-auto ms-auto d-flex flex-wrap gap-2 smart-listado-filtros-actions">
             <a href="<?= htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8') ?>"
                class="btn btn-sm btn-outline-secondary"
                data-smart-listado-reset="1">
                 Limpiar
             </a>
-            <?php endif; ?>
         </div>
+        <?php endif; ?>
     </div>
 </form>

@@ -12,7 +12,8 @@ if (!isset($listadoTabla) || !is_array($listadoTabla)) {
 $columns = $listadoTabla['columns'] ?? [];
 $rows = $listadoTabla['rows'] ?? [];
 $tableId = (string) ($listadoTabla['id'] ?? 'smart-listado-tabla');
-$tableClass = 'table table-hover align-middle mb-0 table-sm ' . (string) ($listadoTabla['table_class'] ?? '');
+$tableClass = 'table table-hover table-striped align-middle mb-0 table-sm smart-listado-tabla '
+    . (string) ($listadoTabla['table_class'] ?? '');
 $emptyMessage = (string) ($listadoTabla['empty_message'] ?? 'No hay registros.');
 $ariaLabel = (string) ($listadoTabla['aria_label'] ?? 'Listado de datos');
 $colspan = count($columns) > 0 ? count($columns) : 1;
@@ -22,7 +23,7 @@ $colspan = count($columns) > 0 ? count($columns) : 1;
            id="<?= htmlspecialchars($tableId, ENT_QUOTES, 'UTF-8') ?>"
            aria-label="<?= htmlspecialchars($ariaLabel, ENT_QUOTES, 'UTF-8') ?>">
         <thead class="thead-oliva sticky-top">
-            <tr style="font-size:0.85rem;">
+            <tr>
                 <?php foreach ($columns as $col): ?>
                     <?php
                     if (!is_array($col)) {
@@ -48,7 +49,7 @@ $colspan = count($columns) > 0 ? count($columns) : 1;
                 <?php if (!is_array($row)) {
                     continue;
                 } ?>
-            <tr style="font-size:0.875rem;">
+            <tr>
                 <?php foreach ($columns as $col): ?>
                     <?php
                     if (!is_array($col)) {
@@ -60,7 +61,11 @@ $colspan = count($columns) > 0 ? count($columns) : 1;
                     $cell = $row[$key] ?? '';
                     $title = (string) ($col['title_from'] ?? '') !== '' ? (string) ($row[$col['title_from']] ?? $cell) : (string) $cell;
                     ?>
-                    <td class="<?= htmlspecialchars($tdClass, ENT_QUOTES, 'UTF-8') ?>"
+                    <?php
+                    $truncateClass = !empty($col['truncate']) ? ' smart-listado-cell-truncate' : '';
+                    $docClass = $key === 'id_persona' ? ' smart-listado-col-doc' : '';
+                    ?>
+                    <td class="<?= htmlspecialchars(trim($tdClass . $truncateClass . $docClass), ENT_QUOTES, 'UTF-8') ?>"
                         <?php if (!empty($col['truncate'])): ?>
                         style="max-width:<?= (int) ($col['truncate'] ?? 220) ?>px;"
                         title="<?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?>"
@@ -68,9 +73,9 @@ $colspan = count($columns) > 0 ? count($columns) : 1;
                         <?php if ($render === 'badge'): ?>
                             <?php
                             $active = !empty($row[$col['badge_key'] ?? 'activo']);
-                            $badgeClass = $active ? 'text-bg-success' : 'text-bg-secondary';
+                            $badgeClass = $active ? 'smart-listado-badge--activo' : 'smart-listado-badge--inactivo';
                             ?>
-                            <span class="badge <?= $badgeClass ?>">
+                            <span class="smart-listado-badge <?= $badgeClass ?>">
                                 <?= htmlspecialchars((string) $cell, ENT_QUOTES, 'UTF-8') ?>
                             </span>
                         <?php else: ?>

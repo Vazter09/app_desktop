@@ -6,7 +6,13 @@ if (!class_exists('AppConfig', false)) {
 }
 
 $dark = AppConfig::themeTokensDark();
-$light = AppConfig::themeTokensLight();
+$light = array_merge(AppConfig::themeTokensLight(), [
+    // Superficies de listados/tablas: en :root vienen del tema oscuro y no deben filtrarse al modo claro.
+    '--table-surface-bg' => 'var(--bg-card, #ffffff)',
+    '--surface-border'   => AppConfig::hexToRgba(AppConfig::colorPrimario(), 0.16),
+    '--surface-hover'    => AppConfig::hexToRgba(AppConfig::colorSecundario(), 0.1),
+    '--grid-line'        => AppConfig::hexToRgba(AppConfig::colorPrimario(), 0.06),
+]);
 $fontDisplay = htmlspecialchars(AppConfig::fontDisplay(), ENT_QUOTES, 'UTF-8');
 $fontBody = htmlspecialchars(AppConfig::fontBody(), ENT_QUOTES, 'UTF-8');
 

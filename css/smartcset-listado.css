@@ -1,10 +1,120 @@
 /* Componentes reutilizables de listado (filtros, tabla, paginación) */
+
+/* ── Filtros ── */
 .smart-listado-filtros-wrap {
-    background: var(--bs-body-bg, #fff);
+    background: var(--table-surface-bg, var(--bg-card, var(--bs-body-bg, #fff)));
+    border-bottom: 1px solid var(--surface-border, color-mix(in srgb, var(--v-oscuro) 12%, transparent));
+}
+
+body.light-theme .smart-listado-filtros-wrap {
+    background: var(--bg-card, #ffffff);
+    border-bottom-color: var(--surface-border, color-mix(in srgb, var(--v-oscuro) 14%, transparent));
+}
+
+body.light-theme .smart-listado-filtros .form-label {
+    color: var(--text-muted, rgba(55, 65, 81, 0.8));
+}
+
+.smart-listado-filtros .smart-listado-filtros-grid {
+    --smart-listado-filtro-gap: 0.75rem;
 }
 
 .smart-listado-filtros .form-label {
-    color: var(--bs-secondary-color, #6c757d);
+    margin-bottom: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, var(--bs-secondary-color, #6c757d));
+}
+
+.smart-listado-filtros .form-control-sm,
+.smart-listado-filtros .form-select-sm {
+    min-height: calc(1.5em + 0.65rem + 2px);
+    border-radius: 8px;
+}
+
+/* Campo búsqueda: más ancho en desktop */
+.smart-listado-filtros .smart-listado-filtro-buscar {
+    flex: 1 1 14rem;
+}
+
+/* Select de ficha (cuando se agregue al markup) */
+.smart-listado-filtros .smart-listado-filtro-ficha,
+.smart-listado-filtros [data-filtro-ficha="1"] {
+    flex: 0 1 11rem;
+}
+
+.smart-listado-filtros .smart-listado-filtro-estado,
+.smart-listado-filtros [data-filtro-estado="1"] {
+    flex: 0 1 9rem;
+}
+
+.smart-listado-filtros-actions {
+    flex: 0 0 auto;
+    align-self: flex-end;
+    padding-bottom: 0.125rem;
+}
+
+.smart-listado-filtros-actions .btn-corporativo,
+.smart-listado-filtros-actions .btn-smart-listado-filtrar {
+    min-width: 6.5rem;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+}
+
+.smart-listado-filtros-actions .btn-outline-secondary {
+    border-radius: 8px;
+    font-size: 0.8125rem;
+}
+
+body.light-theme .smart-listado-filtros-actions .btn-outline-secondary {
+    color: var(--v-oscuro, #004d40);
+    background-color: #ffffff;
+    border-color: color-mix(in srgb, var(--v-oscuro) 24%, transparent);
+}
+
+body.light-theme .smart-listado-filtros-actions .btn-outline-secondary:hover,
+body.light-theme .smart-listado-filtros-actions .btn-outline-secondary:focus {
+    color: #ffffff;
+    background-color: var(--v-oliva, #6b8e23);
+    border-color: var(--v-oliva, #6b8e23);
+}
+
+@media (max-width: 767.98px) {
+    .smart-listado-filtros .smart-listado-filtros-grid > [class*="col-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .smart-listado-filtros-actions {
+        width: 100%;
+        justify-content: stretch;
+        margin-left: 0 !important;
+        padding-top: 0.25rem;
+    }
+
+    .smart-listado-filtros-actions .btn {
+        flex: 1 1 auto;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .smart-listado-filtros .smart-listado-filtro-buscar {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+}
+
+/* ── Paginación ── */
+.smart-listado-paginacion-wrap {
+    background: var(--table-surface-bg, var(--bg-card, var(--bs-body-bg, #fff)));
+    border-top: 1px solid var(--surface-border, color-mix(in srgb, var(--v-oscuro) 10%, transparent)) !important;
+}
+
+body.light-theme .smart-listado-paginacion-wrap {
+    background: var(--bg-card, #ffffff) !important;
+    border-top-color: var(--surface-border, color-mix(in srgb, var(--v-oscuro) 12%, transparent)) !important;
 }
 
 .smart-listado-paginacion-wrap .pagination {
@@ -13,6 +123,8 @@
 
 .smart-listado-paginacion .page-link {
     color: var(--v-oscuro, #004d40);
+    border-radius: 6px;
+    margin: 0 1px;
 }
 
 .smart-listado-paginacion .page-item.active .page-link {
@@ -21,14 +133,32 @@
     color: #fff;
 }
 
+.smart-listado-paginacion .page-link:hover {
+    color: var(--v-oliva, #808000);
+    background-color: color-mix(in srgb, var(--v-oliva) 12%, transparent);
+    border-color: color-mix(in srgb, var(--v-oliva) 35%, transparent);
+}
+
+.smart-listado-paginacion .small.text-muted strong {
+    color: var(--text-main, inherit);
+    font-weight: 700;
+}
+
+.smart-listado-per-page .form-select-sm {
+    border-radius: 8px;
+    min-width: 4.25rem;
+}
+
 /* Sin scroll interno: solo desplazamiento de la página principal */
 .smart-listado .scroll-lista {
     max-height: none;
     overflow-y: visible;
+    border-radius: 0;
 }
 
 #personas-listado-host.is-loading,
 [data-smart-listado-host].is-loading {
     opacity: 0.55;
     pointer-events: none;
+    transition: opacity 0.2s ease;
 }

@@ -51,7 +51,6 @@
             return;
         }
 
-        host.dataset.smartListadoBound = '';
         await window.SmartcsetListado.loadIntoHost(host, url, push);
 
         const resolvedMenu = menuId || menuIdFromUrl(url) || host.dataset.activeMenu || '';
@@ -82,10 +81,6 @@
     });
 
     host.addEventListener('smartcset:listado:mounted', () => {
-        host.dataset.smartListadoBound = '';
-        if (window.SmartcsetListado?.bind) {
-            window.SmartcsetListado.bind(host);
-        }
         syncBreadcrumbFromHost();
     });
 

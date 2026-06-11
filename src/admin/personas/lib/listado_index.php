@@ -53,12 +53,19 @@ try {
     $w_tipo_alerta = 'danger';
 }
 
+$filtrosFields = $personasListado['filtros_fields'] ?? null;
+if (is_string($filtrosFields) && $filtrosFields !== '' && function_exists($filtrosFields)) {
+    $filtrosFields = $filtrosFields($pdo);
+} elseif (!is_array($filtrosFields)) {
+    $filtrosFields = null;
+}
+
 $listadoShellConfig = personasListadoBuildShellConfig(
     $listadoResult,
     [
         'titulo' => $tituloTipo,
         'base_path' => $basePath,
-        'filtros_fields' => $personasListado['filtros_fields'] ?? null,
+        'filtros_fields' => $filtrosFields,
         'tabla_columns' => $personasListado['tabla_columns'] ?? null,
         'empty_message' => $personasListado['empty_message'] ?? null,
     ],

@@ -106,3 +106,17 @@ function registroGetFichas(PDO $pdo): array
     );
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+/** Fichas con al menos un aprendiz vinculado (filtro admin listado aprendices). */
+function registroGetFichasParaListadoAdmin(PDO $pdo): array
+{
+    $stmt = $pdo->query(
+        'SELECT DISTINCT f.id_ficha,
+                p.nom_programa
+           FROM tab_aprendices_fichas af
+           INNER JOIN tab_fichas f ON f.id_ficha = af.id_ficha
+           LEFT JOIN tab_programas p ON p.id_programa = f.id_programa
+          ORDER BY f.id_ficha'
+    );
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
