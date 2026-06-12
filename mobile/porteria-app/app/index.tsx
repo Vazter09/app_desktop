@@ -1,15 +1,28 @@
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { isConfigured } from '../src/lib/storage';
+import { checkHealthDetailed } from '../src/api/client';
+import { clearCredentials, getServerUrl, isConfigured } from '../src/lib/storage';
 
 export default function IndexScreen() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     void (async () => {
-      const ok = await isConfigured();
-      router.replace(ok ? '/(tabs)/ingreso' : '/setup');
+      const configured = await isConfigured();
+      if (!configured) {
+        router.replace('/setup');
+        setChecking(false);
+        return;
+      }
+      const url = await getServerUrl();
+      const health = url ? await checkHealthDetailed(url) : { ok: false };
+      if (!health.ok) {
+        await clearCredentials();
+        router.replace('/setup');
+      } else {
+        router.replace('/(tabs)/ingreso');
+      }
       setChecking(false);
     })();
   }, []);

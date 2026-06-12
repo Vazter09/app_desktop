@@ -2,8 +2,8 @@ import type { ApiResult, Catalogos } from '../types';
 import { API_PREFIX } from '../types';
 import { getDeviceToken, getServerUrl } from '../lib/storage';
 
-async function buildHeaders(): Promise<HeadersInit> {
-  const token = await getDeviceToken();
+async function buildHeaders(tokenOverride?: string): Promise<HeadersInit> {
+  const token = tokenOverride ?? (await getDeviceToken());
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -14,11 +14,11 @@ async function buildHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-export async function apiUrl(path: string): Promise<string | null> {
-  const base = await getServerUrl();
+export async function apiUrl(path: string, baseOverride?: string | null): Promise<string | null> {
+  const base = baseOverride ?? (await getServerUrl());
   if (!base) return null;
   const clean = path.startsWith('/') ? path : `/${path}`;
-  return `${base}${API_PREFIX}${clean}`;
+  return `${base.replace(/\/+$/, '')}${API_PREFIX}${clean}`;
 }
 
 async function parseResponse<T>(res: Response): Promise<ApiResult<T>> {
@@ -34,32 +34,56 @@ async function parseResponse<T>(res: Response): Promise<ApiResult<T>> {
   return { ok: true, data: body.data as T };
 }
 
-export async function checkHealth(): Promise<boolean> {
-  const url = await apiUrl('/health.php');
-  if (!url) return false;
+export type HealthCheckResult = {
+  ok: boolean;
+  url: string | null;
+  error?: string;
+};
+
+export async function checkHealthDetailed(baseOverride?: string): Promise<HealthCheckResult> {
+  const url = await apiUrl('/health.php', baseOverride ?? undefined);
+  if (!url) {
+    return { ok: false, url: null, error: 'URL del servidor no configurada.' };
+  }
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
-    if (!res.ok) return false;
-    const json = await res.json();
-    return json.ok === true;
-  } catch {
-    return false;
+    if (!res.ok) {
+      return { ok: false, url, error: `HTTP ${res.status}` };
+    }
+    const json = (await res.json()) as { ok?: boolean };
+    if (json.ok !== true) {
+      return { ok: false, url, error: 'La API respondió pero no está disponible (ok=false).' };
+    }
+    return { ok: true, url };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Error de red';
+    return { ok: false, url, error: msg };
   }
 }
 
-export async function validateDevice(): Promise<
+export async function checkHealth(): Promise<boolean> {
+  return (await checkHealthDetailed()).ok;
+}
+
+export async function validateDevice(
+  baseOverride?: string,
+  tokenOverride?: string
+): Promise<
   ApiResult<{
     id_dispositivo: number;
     nom_dispositivo: string;
     id_entrada_default: number | null;
   }>
 > {
-  const url = await apiUrl('/device/validate.php');
+  const url = await apiUrl('/device/validate.php', baseOverride);
   if (!url) return { ok: false, error: 'Servidor no configurado.' };
-  const res = await fetch(url, { method: 'POST', headers: await buildHeaders() });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: await buildHeaders(tokenOverride),
+  });
   return parseResponse(res);
 }
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "SmartCSET Portería",
     "slug": "smartcset-porteria",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "smartcset-porteria",
@@ -35,6 +35,14 @@
       ]
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
       "expo-router",
       [
         "expo-camera",
