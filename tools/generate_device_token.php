@@ -7,7 +7,8 @@
  *   php tools/generate_device_token.php "Tablet Portería 1" porteria
  *   php tools/generate_device_token.php "Tablet Portería 1" porteria 1
  *
- * El token mostrado solo se imprime una vez; guarde en la tablet al configurar la app.
+ * El token mostrado solo se imprime una vez (6 caracteres alfanuméricos).
+ * Guárdelo en la tablet al configurar la app.
  */
 declare(strict_types=1);
 
@@ -55,7 +56,8 @@ if ($idEntradaDefault !== null && $idEntradaDefault > 0) {
     }
 }
 
-$secret = bin2hex(random_bytes(24));
+require_once dirname(__DIR__) . '/src/api/porteria/lib/DeviceToken.php';
+
 $stmtIns = $pdo->prepare(
     'INSERT INTO tab_dispositivos_porteria
         (nom_dispositivo, token_hash, id_usuario_audit, id_entrada_default, ind_activo, usr_insert)
@@ -72,8 +74,13 @@ $stmtIns->execute([
 ]);
 $idDispositivo = (int) $stmtIns->fetchColumn();
 
-$token = $idDispositivo . '.' . $secret;
-$tokenHash = password_hash($token, PASSWORD_BCRYPT);
+try {
+    $token = DeviceToken::generateUnique($pdo);
+} catch (RuntimeException $e) {
+    fwrite(STDERR, $e->getMessage() . "\n");
+    exit(1);
+}
+$tokenHash = DeviceToken::hash($token);
 
 $stmtUpd = $pdo->prepare(
     'UPDATE tab_dispositivos_porteria

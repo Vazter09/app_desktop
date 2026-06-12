@@ -47,24 +47,9 @@ class ApiAuth
             ApiResponse::unauthorized('Falta token de dispositivo.');
         }
 
-        $parts = explode('.', $token, 2);
-        if (count($parts) !== 2 || !ctype_digit($parts[0])) {
-            ApiResponse::unauthorized();
-        }
-
-        $idDispositivo = (int) $parts[0];
-        $stmt = $pdo->prepare(
-            'SELECT id_dispositivo, nom_dispositivo, token_hash, id_usuario_audit,
-                    id_entrada_default, ind_activo
-               FROM tab_dispositivos_porteria
-              WHERE id_dispositivo = ?::INTEGER'
-        );
-        $stmt->execute([$idDispositivo]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row || !(bool) $row['ind_activo']) {
-            ApiResponse::unauthorized();
-        }
-        if (!password_verify($token, (string) $row['token_hash'])) {
+        require_once __DIR__ . '/DeviceToken.php';
+        $row = DeviceToken::findDeviceByToken($pdo, $token);
+        if ($row === null) {
             ApiResponse::unauthorized();
         }
 
@@ -73,7 +58,7 @@ class ApiAuth
                 SET fec_ultimo_uso = CURRENT_TIMESTAMP
               WHERE id_dispositivo = ?::INTEGER'
         );
-        $upd->execute([$idDispositivo]);
+        $upd->execute([(int) $row['id_dispositivo']]);
 
         return $row;
     }

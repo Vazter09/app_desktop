@@ -17,7 +17,7 @@ export async function getDeviceToken(): Promise<string | null> {
 }
 
 export async function setDeviceToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(KEY_TOKEN, token.trim());
+  await SecureStore.setItemAsync(KEY_TOKEN, token.trim().toUpperCase());
 }
 
 export async function getEntradaDefault(): Promise<number | null> {

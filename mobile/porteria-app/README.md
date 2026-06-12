@@ -35,7 +35,7 @@ psql -h HOST -U postgres -d db_smartcset -f database/migrations/add_tab_disposit
 npm start
 ```
 
-5. En la tablet (primera vez): URL del servidor, ej. `http://192.168.1.50:8080` y pegar el token.
+5. En la tablet (primera vez): URL del servidor, ej. `http://192.168.1.50:8080` y el código de 6 caracteres del token.
 
 ## Build APK
 

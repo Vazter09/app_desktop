@@ -29,14 +29,18 @@ export default function SetupScreen() {
       Alert.alert('URL inválida', 'Use http://IP:puerto del servidor SmartCSET.');
       return;
     }
-    if (!token.trim()) {
-      Alert.alert('Token requerido', 'Genere el token con tools/generate_device_token.php');
+    const tokenNorm = token.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(tokenNorm)) {
+      Alert.alert(
+        'Token inválido',
+        'Use el código de 6 caracteres alfanuméricos generado en el servidor.'
+      );
       return;
     }
     setLoading(true);
     try {
       await setServerUrl(url);
-      await setDeviceToken(token.trim());
+      await setDeviceToken(tokenNorm);
       const health = await checkHealth();
       if (!health) {
         Alert.alert('Sin conexión', 'No se pudo contactar el servidor en esa URL.');
@@ -78,11 +82,11 @@ export default function SetupScreen() {
       <TextInput
         style={styles.input}
         value={token}
-        onChangeText={setToken}
-        autoCapitalize="none"
+        onChangeText={(v) => setToken(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+        autoCapitalize="characters"
         autoCorrect={false}
-        placeholder="1.xxxxxxxxx..."
-        secureTextEntry
+        maxLength={6}
+        placeholder="ABC123"
       />
 
       <TouchableOpacity style={styles.btn} onPress={() => void guardar()} disabled={loading}>
