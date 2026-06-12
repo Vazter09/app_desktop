@@ -81,3 +81,30 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   ind_traslado      DECIMAL(2,0),
   ind_otros         DECIMAL(2,0)
 );
+
+CREATE TABLE IF NOT EXISTS tab_temp_df49
+(
+  fecha_reporte     DATE,
+  cod_regional      DECIMAL(2,0),
+  nom_regional      VARCHAR,
+  cod_centro        DECIMAL(4,0),
+  nom_centro        VARCHAR,
+  id_ficha          DECIMAL(7,0),
+  fec_inicial       VARCHAR,
+  fec_final         VARCHAR,
+  ind_estado        VARCHAR,
+  id_programa       DECIMAL(8,0),
+  id_version        DECIMAL(4,0),
+  nom_programa      VARCHAR,
+  ind_nivel         VARCHAR,
+  num_aprend_matric DECIMAL(3,0),
+  num_aprend_certif DECIMAL(3,0),
+  num_aprend_sincer DECIMAL(3,0),
+  num_aprend_sinjui DECIMAL(3,0),
+  num_aprend_noapro DECIMAL(3,0),
+  id_convenio       DECIMAL(1,0),
+  nom_convenio      VARCHAR,
+  ind_cobertura     VARCHAR,
+  id_prog_especial  DECIMAL(6,0),
+  nom_prog_especial VARCHAR 
+);

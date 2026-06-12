@@ -2,59 +2,69 @@ CREATE OR REPLACE FUNCTION fun_crear_usuarios_instructores()
 RETURNS TABLE (insertados INTEGER, actualizados INTEGER, errores INTEGER) AS
 $$
 DECLARE
-    v_total       INTEGER;
-    v_insertados  INTEGER := 0;
+    v_insertados   INTEGER := 0;
     v_actualizados INTEGER := 0;
-    v_errores     INTEGER := 0;
+    v_errores      INTEGER := 0;
 BEGIN
-    -- Contar instructores válidos (id_tipo_persona = 3 con nombre y apellido no vacíos)
-    SELECT COUNT(p.id_persona)
-    INTO v_total
-    FROM tab_personas p
-    WHERE p.id_tipo_persona = 3
-      AND p.nom_persona IS NOT NULL
-      AND TRIM(p.nom_persona) != ''
-      AND p.ape_persona IS NOT NULL
-      AND TRIM(p.ape_persona) != '';
-
-    -- Insertar en bloque solo los que no existan (los duplicados se ignoran)
-    INSERT INTO tab_usuarios (
-        id_usuario,
-        nom_usuario,
-        pass_usuario,
-        mail_usuario,
-        ind_usuario,
-        ind_estado,
-        usr_insert,
-        fec_insert
+    -- 1. Insertar instructores que aún no son usuarios
+    WITH nuevos AS (
+        INSERT INTO tab_usuarios (id_usuario, nom_usuario, pass_usuario, mail_usuario,
+                                  ind_usuario, ind_estado, usr_insert, fec_insert)
+        SELECT p.id_persona::VARCHAR,
+               SPLIT_PART(TRIM(p.nom_persona), ' ', 1) || ' ' || SPLIT_PART(TRIM(p.ape_persona), ' ', 1),
+               crypt(p.id_persona::TEXT, gen_salt('bf')),
+               COALESCE(p.mail_persona, 'sin_correo@correo.com'),
+               FALSE,
+               TRUE,
+               'carga_automatica',
+               CURRENT_TIMESTAMP
+        FROM tab_personas p
+        WHERE p.id_tipo_persona = 3
+          AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
+          AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
+        ON CONFLICT (id_usuario) DO NOTHING
+        RETURNING id_usuario
     )
-    SELECT
-        p.id_persona::VARCHAR,
-        SPLIT_PART(TRIM(p.nom_persona), ' ', 1) || ' ' || SPLIT_PART(TRIM(p.ape_persona), ' ', 1),
-        crypt(p.id_persona::TEXT, gen_salt('bf')),
-        COALESCE(p.mail_persona, 'sin_correo@correo.com'),
-        TRUE,
-        TRUE,
-        'carga_automatica',
-        CURRENT_TIMESTAMP
+    SELECT COUNT(id_usuario) INTO v_insertados FROM nuevos;
+
+    -- 2. Actualizar ind_usuario = FALSE para instructores YA existentes que aún tengan TRUE
+    UPDATE tab_usuarios u
+    SET ind_usuario = FALSE,
+        usr_update = 'carga_automatica',
+        fec_update = CURRENT_TIMESTAMP
     FROM tab_personas p
     WHERE p.id_tipo_persona = 3
-      AND p.nom_persona IS NOT NULL
-      AND TRIM(p.nom_persona) != ''
-      AND p.ape_persona IS NOT NULL
-      AND TRIM(p.ape_persona) != ''
-    ON CONFLICT (id_usuario) DO NOTHING;
+      AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
+      AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
+      AND u.id_usuario = p.id_persona::VARCHAR
+      AND u.ind_usuario = TRUE;   -- Solo si es necesario cambiarlo
 
-    -- Obtener cuántos se insertaron realmente
-    GET DIAGNOSTICS v_insertados = ROW_COUNT;
+    GET DIAGNOSTICS v_actualizados = ROW_COUNT;  -- Cuenta los actualizados
 
-    -- No hay actualizaciones (solo insert u omisión)
-    v_actualizados := 0;
-    v_errores := v_total - v_insertados;  -- Duplicados o errores
+    -- 3. Asegurar menús '03' y '0301' para todos los instructores válidos que tengan usuario
+    INSERT INTO tab_menu_usuarios (id_usuario, id_menu, usr_insert, fec_insert)
+    SELECT u.id_usuario, m.id_menu, 'carga_automatica', CURRENT_TIMESTAMP
+    FROM tab_personas p
+    JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
+    CROSS JOIN (VALUES ('03'), ('0301')) AS m(id_menu)
+    WHERE p.id_tipo_persona = 3
+      AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
+      AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
+    ON CONFLICT (id_usuario, id_menu) DO NOTHING;
 
+    -- 4. Contar instructores elegibles que no tienen usuario
+    SELECT COUNT(p.id_persona)
+    INTO v_errores
+    FROM tab_personas p
+    LEFT JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
+    WHERE p.id_tipo_persona = 3
+      AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
+      AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
+      AND u.id_usuario IS NULL;
+
+    -- 5. Retornar resultados
     RETURN QUERY SELECT v_insertados, v_actualizados, v_errores;
 END;
-$$
-LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 SELECT fun_crear_usuarios_instructores();
