@@ -17,6 +17,7 @@ import {
   setDeviceToken,
   setEntradaDefault,
   setServerUrl,
+  setSetupComplete,
 } from '../src/lib/storage';
 import { colors, spacing } from '../src/theme';
 
@@ -104,6 +105,7 @@ export default function SetupScreen() {
 
       await setServerUrl(url);
       await setDeviceToken(tokenNorm);
+      await setSetupComplete(true);
       if (valid.data.id_entrada_default) {
         await setEntradaDefault(valid.data.id_entrada_default);
       }
@@ -122,7 +124,7 @@ export default function SetupScreen() {
         onPress: () => {
           void clearCredentials().then(() => {
             setToken('');
-            Alert.alert('Listo', 'Configuración borrada.');
+            Alert.alert('Listo', 'Configuración borrada. Vuelva a ingresar URL y código.');
           });
         },
       },

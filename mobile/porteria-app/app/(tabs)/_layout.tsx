@@ -1,7 +1,9 @@
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
+import { verifyStoredSession } from '../../src/lib/session';
 import { colors } from '../../src/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -13,6 +15,16 @@ function tabIcon(name: IoniconName) {
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    void verifyStoredSession().then((status) => {
+      if (status === 'setup') {
+        router.replace('/setup');
+      }
+    });
+  }, [router]);
+
   return (
     <Tabs
       screenOptions={{

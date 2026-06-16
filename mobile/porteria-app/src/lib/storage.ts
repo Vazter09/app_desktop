@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 const KEY_SERVER = 'smartcset_server_url';
 const KEY_TOKEN = 'smartcset_device_token';
 const KEY_ENTRADA = 'smartcset_entrada_default';
+const KEY_SETUP_COMPLETE = 'smartcset_setup_complete';
 
 export async function getServerUrl(): Promise<string | null> {
   return SecureStore.getItemAsync(KEY_SERVER);
@@ -33,14 +34,29 @@ export async function setEntradaDefault(id: number | null): Promise<void> {
   await SecureStore.setItemAsync(KEY_ENTRADA, String(id));
 }
 
+export async function setSetupComplete(complete: boolean): Promise<void> {
+  if (complete) {
+    await SecureStore.setItemAsync(KEY_SETUP_COMPLETE, '1');
+    return;
+  }
+  await SecureStore.deleteItemAsync(KEY_SETUP_COMPLETE);
+}
+
+export async function isSetupComplete(): Promise<boolean> {
+  const v = await SecureStore.getItemAsync(KEY_SETUP_COMPLETE);
+  return v === '1';
+}
+
 export async function clearCredentials(): Promise<void> {
   await SecureStore.deleteItemAsync(KEY_SERVER);
   await SecureStore.deleteItemAsync(KEY_TOKEN);
   await SecureStore.deleteItemAsync(KEY_ENTRADA);
+  await SecureStore.deleteItemAsync(KEY_SETUP_COMPLETE);
 }
 
 export async function isConfigured(): Promise<boolean> {
   const url = await getServerUrl();
   const token = await getDeviceToken();
-  return Boolean(url && token);
+  const complete = await isSetupComplete();
+  return Boolean(url && token && complete);
 }
