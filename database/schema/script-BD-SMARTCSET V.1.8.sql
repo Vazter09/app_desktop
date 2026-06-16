@@ -88,6 +88,7 @@ DROP TABLE IF EXISTS tab_temp_df51;
 DROP TABLE IF EXISTS tab_temp_df03;
 DROP TABLE IF EXISTS tab_temp_df14;
 DROP TABLE IF EXISTS tab_temp_juicios;
+DROP TABLE IF EXISTS tab_temp_fichas_creadas;
 
 --**********************************************************
 -- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
@@ -126,8 +127,8 @@ CREATE TABLE IF NOT EXISTS tab_temp_df49
   cod_centro        DECIMAL(4,0),
   nom_centro        VARCHAR,
   id_ficha          DECIMAL(7,0),
-  fec_inicial       DATE,
-  fec_final         DATE,
+  fec_inicial       VARCHAR,
+  fec_final         VARCHAR,
   ind_estado        VARCHAR,
   id_programa       DECIMAL(8,0),
   id_version        DECIMAL(4,0),
@@ -213,7 +214,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   cod_ver_programa  DECIMAL(3,0),
   nom_programa      VARCHAR,
   niv_formacion     VARCHAR,
-  dur_maxima        DECIMAL(2,0),
+  dur_maxima        DECIMAL,
   dur_eta_lectiva   VARCHAR,
   dur_eta_productiv VARCHAR,
   id_ficha          DECIMAL(8,0),
@@ -307,6 +308,23 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
     nom_movil               VARCHAR,
     val_correo              VARCHAR,
     ind_estado_aprendiz     VARCHAR
+ );
+
+ CREATE TABLE IF NOT EXISTS tab_temp_fichas_creadas
+ (
+    cod_ficha                DECIMAL,
+    nom_programa             VARCHAR,
+    horas_programa           VARCHAR,
+    fec_inicio               DATE,
+    fec_fin                  DATE,
+    fec_ejecucion            VARCHAR,
+    estado_ficha             VARCHAR,
+    cantidad_aprendices      DECIMAL,
+    cant_aprendices_transito DECIMAL,
+    tipo_documento           VARCHAR,
+    num_documento            DECIMAL,
+    nombre_instructor        VARCHAR,
+    apellido_instructor      VARCHAR
  );
 
 --***********************************************************************
@@ -1405,16 +1423,13 @@ CREATE TYPE datos_personales_aprendiz AS
 -- | fec_update            | TIMESTAMP         |                                                           | Fecha/hora de actualización del registro.                       |
 -- +-----------------------+-------------------+-----------------------------------------------------------+-----------------------------------------------------------------+
 
-CREATE TABLE IF NOT EXISTS tab_instructores
+ CREATE TABLE IF NOT EXISTS tab_instructores
 (
-    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
+    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 10000000),
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
-    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
-    id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
-    id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
+    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9) DEFAULT 0,--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_red                  DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_disponibilidad      BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Disponible / FALSE=No Disponible (Ocupado con tiempo completo)
     ind_estado              DECIMAL(1,0)                NOT NULL CHECK(ind_estado >= 0 AND ind_estado <= 9) DEFAULT 0, -- 0=Activo,2=Suspendido,3=Bloqueado,9=Inactivo;
@@ -1423,9 +1438,8 @@ CREATE TABLE IF NOT EXISTS tab_instructores
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_instructor),
+    FOREIGN KEY(id_instructor)    REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_centro)        REFERENCES tab_centros(id_centro),
-    FOREIGN KEY(id_nivel_estudio) REFERENCES tab_niveles_estudio(id_nivel_estudio),
-    FOREIGN KEY(id_profesion)     REFERENCES tab_profesiones(id_profesion),
     FOREIGN KEY(id_red)           REFERENCES tab_redes(id_red)
 );
 
@@ -2379,7 +2393,7 @@ CREATE TABLE IF NOT EXISTS tab_prog_especiales
 -- Tabla de caracterización de fichas. Se le asociará un CRUD específico y trato especial
 
 -- TABLA DE JORNADAS
-CREATE TABLE IF EXISTS tab_jornadas
+CREATE TABLE IF NOT EXISTS tab_jornadas
 (
     id_jornada              DECIMAL(1,0)                NOT NULL,
     nom_jornada             VARCHAR                     NOT NULL,
@@ -2389,25 +2403,26 @@ CREATE TABLE IF EXISTS tab_jornadas
     hora_llegada_sabado     TIME WITHOUT TIME ZONE      GENERATED ALWAYS AS
     (
         CASE
-            WHEN ind_noche IS TRUE THEN '12:00'
-            WHEN ind_noche IS FALSE THEN '00:00'
+            WHEN ind_noche IS TRUE THEN '12:00'::TIME
+            WHEN ind_noche IS FALSE THEN '00:00'::TIME
             ELSE '00:00'
         END
-    ),
+    )STORED,
     hora_salida_sabado      TIME WITHOUT TIME ZONE      GENERATED ALWAYS AS
     (
         CASE
-            WHEN ind_noche IS TRUE THEN '18:00'
-            WHEN ind_noche IS FALSE THEN '00:00'
+            WHEN ind_noche IS TRUE THEN '18:00'::TIME
+            WHEN ind_noche IS FALSE THEN '00:00'::TIME
             ELSE '00:00'
         END
-    ),
+    )STORED,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_jornada)
 );
+
 INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00');
 INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00');
 INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00');
@@ -2568,7 +2583,7 @@ CREATE TABLE IF NOT EXISTS tab_fichas
     FOREIGN KEY(id_ambiente_base)       REFERENCES tab_ambientes(id_ambiente),
     FOREIGN KEY(id_prog_especial)       REFERENCES tab_prog_especiales(id_prog_especial),
     FOREIGN KEY(id_nuevo_sector)        REFERENCES tab_sectores(id_sector),
-    FOREIGN KEY(id_jornada)             REFERENCES tab_fichas(id_jornada)
+    FOREIGN KEY(id_jornada)             REFERENCES tab_jornadas(id_jornada)
 );
 -- Se debe tener en cuenta la validaciòn acerca de:
 -- Un ambiente no puede ser asignado a dos fichas al mismo tiempo en la misma jornada
@@ -2654,7 +2669,7 @@ CREATE TABLE IF NOT EXISTS tab_permisos_aprendices
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
-    PRIMARY KEY(id_aprediz,fec_inicio_permiso),
+    PRIMARY KEY(id_aprendiz,fec_inicio_permiso),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_aprendices
 );
 
@@ -2691,7 +2706,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
     FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
 );
 
-CREATE TYPE TIPO_ETADO_ASISTENCIA AS ENUM('Presente', 'Tarde', 'Ausente', 'Desconocido');
+CREATE TYPE TIPO_ESTADO_ASISTENCIA AS ENUM('Presente', 'Tarde', 'Ausente', 'Desconocido');
 -- TABLA DE ASISTENCIA DE APRENDICES A FORMACIÓN
 CREATE TABLE tab_asistencia_aprendiz
 (

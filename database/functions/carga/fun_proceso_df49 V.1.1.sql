@@ -1,64 +1,104 @@
---SELECT fun_genera_files();
---SELECT * FROM tab_temp_df49;
---SELECT * FROM centro;
---SELECT * FROM programa;
---SELECT * FROM ficha;
-CREATE OR REPLACE FUNCTION fun_proceso_df49() RETURNS BOOLEAN AS
-$$
-    DECLARE wcur_df49 REFCURSOR;
-    DECLARE wreg_df49 RECORD;
-    BEGIN
-        OPEN wcur_df49 FOR SELECT a.cod_regional,a.nom_regional,a.cod_centro,a.nom_centro,a.id_ficha,
-                                  a.fec_inicial,a.fec_final,a.ind_estado,a.id_programa,a.id_version,
-							      a.nom_programa,a.ind_nivel,a.ind_cobertura,a.num_aprend_certif,
-                                  a.num_aprend_sincer,a.num_aprend_sinjui,a.num_aprend_noapro,
-                                  a.num_aprend_matric,a.id_prog_especial
-                           FROM tab_temp_df49 a;
-            FETCH wcur_df49 INTO wreg_df49;
-            WHILE FOUND LOOP
-                RAISE NOTICE 'Mire mijo, Estoy Procesando la Ficha %', wreg_df49.id_ficha;
--- VALIDAR LAS ENTRADAS QUE VIENEN DEL FRONT, POR SI LAS DUDAS (NULIDAD, VALOR NEGATIVOS, ETC.)
-	            PERFORM 1 FROM centro
-	            WHERE cen_id =  wreg_df49.cod_centro;
-	            IF NOT FOUND THEN
-                    INSERT INTO centro VALUES(wreg_df49.cod_centro,wreg_df49.nom_centro,wreg_df49.id_programa,wreg_df49.id_version,
-                                              wreg_df49.nom_programa);
-                    IF NOT FOUND THEN
-		                RAISE NOTICE 'Salió mal la cosa al insertar Centro %..', wreg_df49.cod_centro;
-                        RETURN FALSE;
-                    END IF;
-	            END IF;
-	            PERFORM 1 FROM programa
-	            WHERE pro_id =  wreg_df49.id_programa;
-	            IF NOT FOUND THEN
-                    INSERT INTO programa VALUES(wreg_df49.id_programa,wreg_df49.nom_programa,wreg_df49.id_version,'NA','NA','NA');
-                    IF NOT FOUND THEN
-		                RAISE NOTICE 'Salió mal la cosa al insertar Programa %', wreg_df49.id_programa;
-                        RETURN FALSE;
-                    END IF;
-                END IF;
-	            PERFORM 1 FROM ficha
-	            WHERE fic_id =  wreg_df49.id_ficha;
-	            IF NOT FOUND THEN
--- Jornada: 0:NA/1:Mañana/2:Tarde/3:Mixta/4:Noche
-                    INSERT INTO ficha VALUES(wreg_df49.id_ficha,wreg_df49.ind_estado,wreg_df49.ind_nivel,'JORNADA','TIPO FORM.',wreg_df49.fec_inicial,
-                                             wreg_df49.fec_final,'ETAPA','MODALIDAD','RESPONSABLE',wreg_df49.id_programa,wreg_df49.ind_cobertura,
-                                             0,0,0,'TIP_RTA',0,0,wreg_df49.num_aprend_matric,0,0,wreg_df49.num_aprend_sincer,wreg_df49.num_aprend_certif,
-                                             wreg_df49.num_aprend_certif,0,0,0,0,'0',wreg_df49.num_aprend_sinjui,wreg_df49.num_aprend_noapro,0,0,0,0,
-                                             wreg_df49.num_aprend_matric,0,wreg_df49.cod_centro,wreg_df49.id_prog_especial,0,0,0,'0');
-                    IF FOUND THEN
-                        RAISE NOTICE 'La Ficha % se insertó bien.. No es tab bruto como pensé',wreg_df49.id_ficha;
-                    ELSE
-                        RAISE NOTICE 'problemas insertando la  Ficha %.. parece que Usted es muuuuy bruto',wreg_df49.id_ficha;
-                        RETURN FALSE;
-                    END IF;
--- ACTUALIZAR SI EXISTE EL PROGRAMA
-	            END IF;
---                RAISE NOTICE '% % % %',wreg_df49.cod_regional,wreg_df49.nom_regional,wreg_df49.cod_centro,wreg_df49.nom_centro;
-                FETCH wcur_df49 INTO wreg_df49;
-            END LOOP;
-        CLOSE wcur_df49;
-        RETURN TRUE;
-    END;
-$$
-LANGUAGE PLPGSQL;
+CREATE OR REPLACE FUNCTION fun_procesar_df49()
+RETURNS TABLE(
+    insertados   BIGINT,
+    actualizados BIGINT,
+    codigo_error BIGINT
+) AS $$
+DECLARE
+    v_id_ficha           tab_temp_df49.id_ficha%TYPE;
+    v_id_programa        tab_temp_df49.id_programa%TYPE;
+    v_nom_programa       tab_temp_df49.nom_programa%TYPE;
+    v_id_version         tab_temp_df49.id_version%TYPE;
+    v_ind_estado         tab_temp_df49.ind_estado%TYPE;
+    v_id_prog_especial   tab_temp_df49.id_prog_especial%TYPE;
+    v_nom_prog_especial  tab_temp_df49.nom_prog_especial%TYPE;
+    v_num_version        tab_programas.num_version%TYPE;
+    v_total_insertados   BIGINT := 0;
+    v_total_actualizados BIGINT := 0;
+    v_total_errores      BIGINT := 0;
+    v_filas              BIGINT;
+BEGIN
+    -- Procesar cada ficha DISTINTA, tomando el estado más reciente
+    FOR v_id_ficha, v_id_programa, v_nom_programa, v_id_version, v_ind_estado, v_id_prog_especial, v_nom_prog_especial IN
+        SELECT DISTINCT ON (id_ficha) 
+            id_ficha,
+            id_programa,
+            nom_programa,
+            id_version,
+            ind_estado,
+            id_prog_especial,
+            nom_prog_especial
+        FROM tab_temp_df49
+        ORDER BY id_ficha, fecha_reporte DESC
+    LOOP
+        BEGIN
+            -- 1. Calcular versión del programa
+            v_num_version := CASE WHEN v_id_version > 99 THEN 1 ELSE v_id_version END;
+
+            -- 2. UPSERT de tab_programas
+            INSERT INTO tab_programas (id_programa, nom_programa, num_version)
+            VALUES (v_id_programa, v_nom_programa, v_num_version)
+            ON CONFLICT (id_programa) DO NOTHING;
+            GET DIAGNOSTICS v_filas = ROW_COUNT;
+            v_total_insertados := v_total_insertados + v_filas;
+
+            UPDATE tab_programas
+            SET nom_programa = v_nom_programa,
+                num_version  = v_num_version
+            WHERE id_programa = v_id_programa
+              AND (nom_programa IS DISTINCT FROM v_nom_programa
+                   OR num_version IS DISTINCT FROM v_num_version);
+            GET DIAGNOSTICS v_filas = ROW_COUNT;
+            v_total_actualizados := v_total_actualizados + v_filas;
+
+            -- 3. UPSERT de tab_prog_especiales (solo si id válido)
+            IF v_id_prog_especial IS NOT NULL AND v_id_prog_especial > 0 THEN
+                INSERT INTO tab_prog_especiales (id_prog_especial, nom_prog_especial)
+                VALUES (v_id_prog_especial, v_nom_prog_especial)
+                ON CONFLICT (id_prog_especial) DO NOTHING;
+                GET DIAGNOSTICS v_filas = ROW_COUNT;
+                v_total_insertados := v_total_insertados + v_filas;
+
+                UPDATE tab_prog_especiales
+                SET nom_prog_especial = v_nom_prog_especial
+                WHERE id_prog_especial = v_id_prog_especial
+                  AND nom_prog_especial IS DISTINCT FROM v_nom_prog_especial;
+                GET DIAGNOSTICS v_filas = ROW_COUNT;
+                v_total_actualizados := v_total_actualizados + v_filas;
+            END IF;
+
+            -- 4. Actualizar SOLO ind_estado en tab_fichas
+            UPDATE tab_fichas
+            SET ind_estado = 
+                CASE UPPER(TRIM(v_ind_estado))
+                    WHEN 'INSCRIPCION' THEN 1
+                    WHEN 'MATRICULA'   THEN 2
+                    WHEN 'EJECUCION'   THEN 3
+                    WHEN 'TERMINADA'   THEN 7
+                    WHEN 'CERRADA'     THEN 8
+                    ELSE 9
+                END
+            WHERE id_ficha = v_id_ficha;
+
+            GET DIAGNOSTICS v_filas = ROW_COUNT;
+            v_total_actualizados := v_total_actualizados + v_filas;
+
+            IF v_filas = 0 THEN
+                v_total_errores := v_total_errores + 1;
+            END IF;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_total_errores := v_total_errores + 1;
+                -- Opcional: registrar el error en un log o con RAISE WARNING
+                -- RAISE WARNING 'Error al procesar ficha %: %', v_id_ficha, SQLERRM;
+        END;
+    END LOOP;
+
+    -- 5. Retornar totales
+    RETURN QUERY SELECT v_total_insertados, v_total_actualizados, v_total_errores;
+END;
+$$ LANGUAGE plpgsql;
+
+
+SELECT * from fun_procesar_df49();
