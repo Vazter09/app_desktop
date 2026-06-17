@@ -8,6 +8,13 @@ require_once __DIR__ . '/src/core/prepare_login.php';
 require_once __DIR__ . '/src/core/ErrorHandler.php';
 require_once __DIR__ . '/src/core/helpers.php';
 
+// Forzar HTTPS en producción
+if (defined('APP_ENV') && APP_ENV === 'production' && empty($_SERVER['HTTPS'])) {
+    header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], true, 301);
+    exit;
+}
+
+
 $w_error = '';
 $w_user_value = '';
 

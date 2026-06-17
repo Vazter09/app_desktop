@@ -1,13 +1,13 @@
 ================================================================================
  HANDOFF GENERAL — SMARTCSET (visión completa del proyecto)
  Generado: 2026-06-12
- Última actualización: 2026-06-13 — E10 ADOPTADO (SDLC seguro, checklist
- pre-commit/pre-deploy, rollback, 6 prohibiciones absolutas) + E6 COMPLETADO:
- .htaccess creados para bloquear ejecución PHP en directorios de uploads +
- reporte FASE1-REP-E06 v1.0 generado + E7 COMPLETADO: 3/4 funciones agregadas
- a FUNCS (alineadas a smartcset_handle_sql_error), 4ª excluida por riesgo de
- regresión (fun_tab_menu_usuarios.sql), reporte FASE1-REP-E07 v1.0 generado.
- E2 PAUSADO con hallazgo crítico (ver 5.3.1 y sección 10 opción C2).
+ Última actualización: 2026-06-17 (sesión 2) — E1-A02 COMPLETADO: Certificado
+ TLS autofirmado ECDSA P-256, VirtualHost HTTPS, enforceHTTPS() activo, cookie
+ flags verificados (Secure ✅, HttpOnly ✅, SameSite=Strict ✅). Pruebas
+ manuales en navegador exitosas (certificado aceptado, login funciona, dashboard
+ accesible). Reporte v3.0 generado. Prerequisito 1 resuelto (custodio
+ DB_ENCRYPTION_KEY designado). E2 PAUSADO con hallazgo crítico (ver 5.3.1 y
+ sección 10 opción C2).
 
  *** CONSIGNA PRIORITARIA VIGENTE DESDE 2026-06-13: SEGURIDAD TOTAL ***
  De los 5 Pilares Obligatorios (Coherencia, Congruencia, Funcionalidad,
@@ -307,13 +307,15 @@ OWASP Top 10 2021, ISC2 CC (5 dominios).
        Tabla de avance por entregable:
        | E#  | Entregable                              | Estado código          |
        |-----|------------------------------------------|------------------------|
-       | E1  | Auditoría OWASP Top 10 (A01-A10)          | ⚠️ ~20% — A01 ✅ remediado
+       | E1  | Auditoría OWASP Top 10 (A01-A10)          | ⚠️ ~40% — A01 ✅ remediado
        |     |                                            |   y validado en
        |     |                                            |   producción
        |     |                                            |   (2026-06-10/11);
        |     |                                            |   A02 ⚠️ auditado
-       |     |                                            |   (2026-06-11, TLS BD
-       |     |                                            |   listo en código);
+       |     |                                            |   (bcrypt ✅, HTTPS ✅
+       |     |                                            |   completado 2026-06-17,
+       |     |                                            |   TLS BD pendiente E8);
+       |     |                                            |   A07 ✅ via E4;
        |     |                                            |   A03-A10 🔲 pendientes |
        | E2  | Cifrado en reposo pgcrypto                | ⛔ PAUSADO 2026-06-12 —
        |     | (tab_personas.documento_identidad)        |   columna asumida por
@@ -978,5 +980,16 @@ OWASP Top 10 2021, ISC2 CC (5 dominios).
   (regla del CHECKLIST_MAESTRO).
 
 ================================================================================
- Fin del handoff general — SmartCSET — 2026-06-12
+ ACTUALIZACIÓN 2026-06-17 (SESIÓN 2) — E1-A02 HTTPS COMPLETADO
+ - Certificado TLS autofirmado ECDSA P-256 generado e instalado
+ - VirtualHost HTTPS configurado en Apache (puerto 443)
+ - enforceHTTPS() activado en index.php
+ - APP_ENV=production para activar flag Secure en cookies
+ - Pruebas manuales exitosas: certificado aceptado, login funciona, cookies
+   verificadas (Secure ✅, HttpOnly ✅, SameSite=Strict ✅)
+ - Reporte E1-A02 v3.0 generado
+ - Próximo: E3 (Rate limiting) según orden de implementación recomendado
+
+================================================================================
+ Fin del handoff general — SmartCSET — 2026-06-17
 ================================================================================
