@@ -190,18 +190,8 @@ include __DIR__ . '/../../layout/topbar.php';
 </form>
 
 <?php include __DIR__ . '/../../layout/footer.php'; ?>
-<script>
-(function () {
-    const chkModulo = document.getElementById('chk_modulo');
-    const wrapCreds = document.getElementById('registro-credenciales-wrap');
-    if (!chkModulo) return;
-
-    const sync = () => {
-        const on = chkModulo.checked;
-        if (wrapCreds) wrapCreds.hidden = !on;
-    };
-    chkModulo.addEventListener('change', sync);
-    sync();
-})();
-</script>
+<?php
+$vAdminPersonas = @filemtime(dirname(__DIR__, 3) . '/js/admin-personas-config.js') ?: time();
+?>
+<script src="<?= htmlspecialchars($smartcset_asset_href) ?>js/admin-personas-config.js?v=<?= (int) $vAdminPersonas ?>"></script>
 

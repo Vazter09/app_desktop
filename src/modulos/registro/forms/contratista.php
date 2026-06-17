@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div class="field-group">
                         <label>Departamento <span class="required">*</span></label>
-                        <select name="id_dpto_reside" required onchange="cargarCiudades(this.value)">
+                        <select id="id_dpto_reside" name="id_dpto_reside" required>
                             <option value="">— Seleccione —</option>
                             <?php foreach ($dptos as $d): ?>
                             <option value="<?= htmlspecialchars($d['id_dpto']) ?>"><?= htmlspecialchars($d['nom_dpto']) ?></option>
@@ -235,20 +235,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script>
-    function cargarCiudades(idDpto) {
-        const sel = document.getElementById('id_ciudad_reside');
-        sel.innerHTML = '<option value="">Cargando...</option>';
-        if (!idDpto) { sel.innerHTML = '<option value="">— Seleccione departamento —</option>'; return; }
-        fetch('../ajax_ciudades.php?id_dpto=' + encodeURIComponent(idDpto))
-            .then(r => r.json())
-            .then(data => {
-                sel.innerHTML = '<option value="">— Seleccione ciudad —</option>';
-                data.forEach(c => { sel.innerHTML += `<option value="${c.id_ciudad}">${c.nom_ciudad}</option>`; });
-            })
-            .catch(() => { sel.innerHTML = '<option value="">Error al cargar</option>'; });
-    }
-    </script>
+    <?php
+    $regHref = registroAssetHref();
+    $vCiudades = @filemtime(dirname(__DIR__, 4) . '/js/registro-cargar-ciudades.js') ?: time();
+    ?>
+    <script src="<?= htmlspecialchars($regHref) ?>js/registro-cargar-ciudades.js?v=<?= (int) $vCiudades ?>"></script>
     <?php registroIncludeFooterScripts(); ?>
 </body>
 </html>

@@ -13,11 +13,11 @@
 3. `fun_delete_tab_menus` — eliminar menú (valida que no tenga hijos ni usuarios)
 4. `fun_insert_menu_usuarios` — asignar menú a usuario (idempotente)
 5. `fun_delete_perfil_usuario` — borrar TODOS los menús de UN usuario
-6. `fun_delete_perfil_usuarios` — borrar UN menú de TODOS los usuarios (ausente del instalador)
+6. `fun_delete_perfil_usuarios` — borrar UN menú de TODOS los usuarios (ausente del instalador, pendiente — ver nota E7)
 7. `fun_trigger_desasignar_menu` — trigger automático: al eliminar menú, desasigna de usuarios
 8. `fun_trigger_menu` — trigger: asigna menú '9' a nuevos usuarios
 9. `fun_trigger_menu_admin` — trigger: asigna todos los menús a administradores
-10. `fun_tab_menu_usuarios` — query: retorna menús asignados a un usuario (ausente del instalador)
+10. `fun_tab_menu_usuarios` — archivo legacy, NO desplegable (ver nota E7)
 
 ---
 
@@ -30,12 +30,21 @@
 - fun_insert_menu_usuarios
 - fun_delete_perfil_usuario
 - fun_trigger_desasignar_menu
-
-**AUSENTES del setup.sh (BUG):**
-- fun_delete_perfil_usuarios
-- fun_tab_menu_usuarios
 - fun_trigger_menu
 - fun_trigger_menu_admin
+
+**AUSENTE del setup.sh (pendiente):**
+- fun_delete_perfil_usuarios — su descripción no coincide claramente con su implementación real;
+  requiere análisis propio antes de decidir si se agrega a `FUNCS` (fuera del alcance de E7)
+
+> **Nota (E7, 2026-06-13):** `fun_tab_menu_usuarios.sql` **NO debe agregarse a `FUNCS`**. Contiene
+> versiones legacy de `fun_insert_menu_usuarios` y `fun_delete_perfil_usuario` (parámetros `wid_usuario`/
+> `wid_menu`, sin validación de existencia, `RAISE EXCEPTION` con texto plano en vez del patrón estándar).
+> Si se incluyera, su `CREATE OR REPLACE FUNCTION` sobreescribiría silenciosamente las versiones seguras
+> ya desplegadas (regresión de seguridad). El archivo permanece en el repo como referencia histórica.
+> `fun_trigger_menu` y `fun_trigger_menu_admin` **ya estaban presentes** en `FUNCS` — la mención previa de
+> "AUSENTES" para estos dos era una inexactitud de documentación preexistente, no relacionada con E7.
+> Ver `Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`.
 
 ---
 

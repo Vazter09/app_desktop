@@ -172,12 +172,11 @@ smartcset/
 │           └── init.php    ← Bootstrap del módulo entradas
 │
 ├── database/
-│   ├── setup_smartcset.sh  ← Instalador completo (TIENE BUGS - ver SETUP_AUDIT.md)
+│   ├── setup_smartcset.sh  ← Instalador completo (ver "Bugs conocidos" más abajo para pendientes)
 │   ├── bootstrap_modulo_acceso.sql ← Script de bootstrap del módulo acceso
 │   ├── schema/             ← Scripts de schema por versión
-│   │   ├── script-BD-SMARTCSET V.1.6.sql   ← ACTIVO (usar este)
-│   │   ├── script_BD_SMARTCSET V.1.5.sql   ← DESACTUALIZADO
-│   │   └── script_BD_SMARTCSET V.1.4.sql   ← Histórico
+│   │   ├── script-BD-SMARTCSET V.1.7.sql   ← ACTIVO (usar este)
+│   │   └── history/        ← Versiones históricas (V.1.0 a V.1.3)
 │   ├── functions/          ← Funciones PL/pgSQL organizadas por dominio
 │   │   ├── _helpers/       ← Helpers de excepciones (desplegar PRIMERO)
 │   │   ├── acceso/         ← Menús, usuarios, sesiones
@@ -418,33 +417,34 @@ Un ingreso está "abierto" cuando `fec_salida = fec_ingreso` en `tab_log_ingreso
 
 ## Bugs conocidos / deuda técnica
 
-Ver `SETUP_AUDIT.md` para análisis completo. Resumen:
+Ver `SETUP_AUDIT.md` para el análisis histórico original (V.1.5/V.1.6). Estado actualizado al 2026-06-13:
 
-### Bug 1: setup_smartcset.sh usa schema V.1.5 (debe ser V.1.6)
-- Línea 37: `SCHEMA="...V.1.5.sql"` debe ser `SCHEMA="...V.1.6.sql"`
-- Línea 50: mensaje `"Esquema V.1.5"` debe decir `"Esquema V.1.6"`
-- Línea 124: mensaje final también dice V.1.5
+### Bug 1: schema desactualizado en setup.sh — ✅ RESUELTO
+El instalador usa `script-BD-SMARTCSET V.1.7.sql` (esquema activo actual).
 
-**Impacto:** Toda instalación nueva arranca con schema atrasado de una versión.
+### Bug 2: funciones PL/pgSQL ausentes del instalador — ✅ Resuelto en su mayoría (E7)
+- ✅ `acceso/usuarios/fun_validar_login.sql` — agregada a `FUNCS` (E7)
+- ✅ `acceso/usuarios/fun_validar_correo.sql` — agregada a `FUNCS` (E7)
+- ✅ `acceso/usuarios/fun_validar_usuario.sql` — agregada a `FUNCS` (E7)
+- ✅ `acceso/menus/fun_trigger_menu.sql` — ya estaba presente en `FUNCS` (la marca de "ausente" era una
+  inexactitud de documentación previa, no un bug real)
+- ✅ `acceso/menus/fun_trigger_menu_admin.sql` — idem, ya estaba presente en `FUNCS`
+- ❌ `acceso/menus/fun_tab_menu_usuarios.sql` — **NO se agrega**: contiene versiones legacy que
+  sobreescribirían `fun_insert_menu_usuarios`/`fun_delete_perfil_usuario` ya desplegadas con
+  validaciones de seguridad. Permanece en el repo solo como referencia histórica.
+- 🔲 `acceso/menus/fun_delete_perfil_usuarios.sql` (plural) — pendiente; su descripción no coincide con
+  su implementación real, requiere análisis propio (fuera del alcance de E7)
 
-### Bug 2: 7 funciones PL/pgSQL no incluidas en el instalador
-Faltan en el array `FUNCS`:
-- `acceso/usuarios/fun_validar_correo.sql` — recuperación de contraseña falla sin esta
-- `acceso/usuarios/fun_validar_login.sql`
-- `acceso/usuarios/fun_validar_usuario.sql`
-- `acceso/menus/fun_delete_perfil_usuarios.sql`
-- `acceso/menus/fun_tab_menu_usuarios.sql`
-- `acceso/menus/fun_trigger_menu.sql`
-- `acceso/menus/fun_trigger_menu_admin.sql`
+**Nota sobre el impacto real:** `fun_validar_correo`, `fun_validar_login` y `fun_validar_usuario` **no
+son llamadas desde PHP actualmente** — el login (`prepare.php`) y la recuperación de contraseña
+(`recuperar.php`) usan SQL directo. Su ausencia previa era una brecha documental, no una falla
+funcional. Ver
+`Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`.
 
-**Impacto crítico:** Sin `fun_validar_correo`, la recuperación de contraseña falla inmediatamente.
-
-### Bug 3: 3 migraciones críticas no ejecutadas
-- `update_modulos_rutas_organizadas.sql` — CRÍTICA: sin ella los links de portería apuntan a rutas inexistentes
-- `update_menu_registro_listado_admin.sql`
-- `add_unique_ingreso_persona_dia.sql`
-
-**Impacto crítico:** Sin la primera, los menús de portería no navegan.
+### Bug 3: migraciones no ejecutadas — parcialmente resuelto
+- ✅ `update_modulos_rutas_organizadas.sql` — ya incluida en `setup.sh`
+- ✅ `update_menu_registro_listado_admin.sql` — ya incluida en `setup.sh`
+- 🔲 `add_unique_ingreso_persona_dia.sql` — aún no incluida en `setup.sh`
 
 ### Bug 4: Funciones de carga Excel SENA no incluidas
 `fun_proceso_df49.sql`, `fun_proceso_pe04.sql`, `fun_proceso_juicios.sql` — probablemente omisión intencional; desplegar manualmente si el módulo de carga está activo.

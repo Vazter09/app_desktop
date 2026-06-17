@@ -5,6 +5,7 @@
  * Lógica delegada al motor PostgreSQL mediante funciones con casting explícito.
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/SecurityMiddleware.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';

@@ -1,0 +1,982 @@
+================================================================================
+ HANDOFF GENERAL — SMARTCSET (visión completa del proyecto)
+ Generado: 2026-06-12
+ Última actualización: 2026-06-13 — E10 ADOPTADO (SDLC seguro, checklist
+ pre-commit/pre-deploy, rollback, 6 prohibiciones absolutas) + E6 COMPLETADO:
+ .htaccess creados para bloquear ejecución PHP en directorios de uploads +
+ reporte FASE1-REP-E06 v1.0 generado + E7 COMPLETADO: 3/4 funciones agregadas
+ a FUNCS (alineadas a smartcset_handle_sql_error), 4ª excluida por riesgo de
+ regresión (fun_tab_menu_usuarios.sql), reporte FASE1-REP-E07 v1.0 generado.
+ E2 PAUSADO con hallazgo crítico (ver 5.3.1 y sección 10 opción C2).
+
+ *** CONSIGNA PRIORITARIA VIGENTE DESDE 2026-06-13: SEGURIDAD TOTAL ***
+ De los 5 Pilares Obligatorios (Coherencia, Congruencia, Funcionalidad,
+ Estabilidad, Seguridad Total), "Seguridad Total" es ahora la directriz
+ prioritaria para todo trabajo en SmartCSET: ante ambigüedad entre avanzar
+ rápido y cerrar una brecha de seguridad, se prioriza cerrar la brecha. Cada
+ entregable se revisa también por "¿deja superficie de ataque nueva?" antes
+ de marcarse ✅. Ver detalle en handoff.txt sección "CONSIGNA PRIORITARIA".
+
+ *** CONSIGNA PRINCIPAL VIGENTE DESDE 2026-06-13: ESTÁNDAR PEP8 ***
+ Todo código Python nuevo (scripts en tools/, database/, diagnóstico) debe
+ cumplir PEP8 + pasar ruff check. SmartCSET es PHP puro, por lo que el
+ estándar equivalente para src/ es PSR-12 (ya seguido en las convenciones de
+ CLAUDE.md: nombrado, require_once relativo, prepared statements). Ver
+ detalle en handoff.txt sección "CONSIGNA PRINCIPAL: ESTÁNDAR DE CÓDIGO PEP8".
+
+ Propósito: que cualquier agente IA (o Anderson) pueda retomar el proyecto
+ completo —código + documentación MSPI/ISC2 CC/ciberseguridad— sin perder
+ contexto, sin tener que releer todo desde cero.
+================================================================================
+
+------------------------------------------------------------------------------
+1. QUÉ ES SMARTCSET
+------------------------------------------------------------------------------
+
+SmartCSET es un sistema de REGISTRO Y CONTROL DE PERSONAL para el SENA
+(Servicio Nacional de Aprendizaje, Colombia). NO es "un sistema de portería":
+tiene un componente de portería (control de acceso físico, ahora también vía
+app móvil) MÁS un componente administrativo completo (usuarios, menús,
+permisos, configuración visual, módulo standalone de registro de personas,
+carga de reportes SENA DF-49/PE-04/juicios).
+
+Stack: PHP 8+ puro (sin Composer, sin framework, sin autoloading PSR-4) +
+PostgreSQL 14+ (lógica crítica de negocio en PL/pgSQL) + Bootstrap 5 +
+vanilla JS. Desde 2026-06 también incluye una app móvil (Expo/React Native)
+para tablets de portería + una API REST PHP que la sirve.
+
+Desarrollador principal: Anderson (Anderson-029 en GitHub). Repo también
+tiene colaborador KevinBermudezC (commits recientes de fixes/refactors en
+porteria y login). Anderson está preparando el examen ISC2 Certified in
+Cybersecurity (CC) y usa SmartCSET como proyecto práctico para cubrir el
+temario (5 dominios: D1 Security Principles 26%, D2 BC/DR/IR 10%,
+D3 Access Controls 22%, D4 Network Security 24%, D5 Security Operations 18%).
+
+Ruta del proyecto: /home/ander/smartcset/ (este repo).
+Repo remoto: github.com/KevinBermudezC/smartcset (rama main, al día con
+origin/main según git status).
+
+------------------------------------------------------------------------------
+2. MAPA DE ARCHIVOS AGENTS.md / CLAUDE.md (leer ANTES de tocar cada zona)
+------------------------------------------------------------------------------
+
+El proyecto usa un sistema de "memoria de agente" distribuido: cada carpeta
+importante tiene su propio AGENTS.md con contexto específico. Reglas y
+patrones generales de código viven en CLAUDE.md (raíz). Orden de lectura
+recomendado al trabajar en una subcarpeta: AGENTS.md de esa carpeta -> AGENTS.md
+de la carpeta padre -> ... -> AGENTS.md raíz -> CLAUDE.md.
+
+  /AGENTS.md (raíz)
+      Define zonas de responsabilidad por "agente especializado" (Core/
+      Bootstrap, BD/Schema, Portería, Registro, Admin/Menú, Setup/Deploy),
+      contratos entre subsistemas (prepare.php -> $stmt_*, AppConfig,
+      ErrorHandler), reglas de colaboración multi-agente, comandos de
+      verificación de estado de BD, prevención de errores comunes.
+
+  /CLAUDE.md (raíz, ~26K)
+      Documento maestro de patrones y convenciones: estructura completa del
+      proyecto, nombrado de archivos/funciones/clases, sesión, flash
+      messages, prepared statements, convenciones SQL/PL-pgSQL, CSS/JS,
+      guía de BD, "qué NO hacer", cómo levantar el proyecto. OJO: tiene
+      referencias desactualizadas (ver sección 7 — desactualizaciones
+      conocidas).
+
+  /SETUP_AUDIT.md (raíz, 2026-05-27)
+      Auditoría ORIGINAL de bugs en setup_smartcset.sh. PARCIALMENTE
+      DESACTUALIZADA: los bugs de schema (V.1.5->V.1.6) y las 3 migraciones
+      críticas YA ESTÁN CORREGIDOS (ahora el script apunta a V.1.7). Sigue
+      vigente el bug de las 4 funciones PL/pgSQL ausentes del array FUNCS
+      (ver sección 6).
+
+  /src/AGENTS.md
+      Mapa de src/: core, layout, auth, menu, usuarios, admin, modulos
+      (porteria, registro, entradas) + api (nuevo, porteria REST). Patrón de
+      inicialización de cada script PHP.
+
+  /database/AGENTS.md
+      Mapa de database/: setup_smartcset.sh, schema/ (V.1.7 activo +
+      history/ con V.1.0-V.1.3), functions/ por dominio (_helpers primero),
+      migrations/ (15+), seeds/.
+
+  /css/AGENTS.md, /js/AGENTS.md, /tools/AGENTS.md
+      Mapas de assets estáticos (CSS sin preprocesador, JS vanilla 20
+      archivos) y de scripts operacionales (deploy, diagnóstico, generación
+      de tokens de dispositivo móvil, etc.)
+
+  "Documentacion para implementacion de MSPI/AGENTS.md" (27K, el más
+  importante para trabajo de seguridad/MSPI)
+      Memoria de trabajo completa del proyecto de blindaje/MSPI/ISC2 CC.
+      Contiene: qué se construye y por qué, estructura de carpetas, estado
+      detallado de Fase 0 (completa) y Fase 1 (en curso, tabla E1-E10),
+      cobertura por marco (ISC2 CC, MSPI 11 ejes, leyes colombianas),
+      hallazgos técnicos del codebase, decisiones tomadas y por qué,
+      convenciones de nomenclatura y marcadores de estado, referencias
+      cruzadas entre documentos, contexto de infraestructura/restricciones.
+      ÚLTIMA ACTUALIZACIÓN: 2026-06-11. NO REFLEJA TODAVÍA la auditoría móvil
+      de hoy 2026-06-12 (ver sección 5.5 — pendiente de integrar).
+
+  "Documentacion para implementacion de MSPI/handoff.txt"
+      Handoff específico de la documentación MSPI (más corto que este,
+      enfocado solo en esa carpeta). Este archivo (HANDOFF_GENERAL) es el
+      handoff de TODO el proyecto (código + MSPI + móvil).
+
+------------------------------------------------------------------------------
+3. ESTADO DEL REPOSITORIO GIT (al 2026-06-12)
+------------------------------------------------------------------------------
+
+Rama: main, sincronizada con origin/main (sin commits propios pendientes de
+push).
+
+Últimos commits (más reciente primero):
+  b9b9a84 fix: update password length requirements in login forms
+  a28f1af refactor: simplify puerta handling in kiosk components
+  9f22c56 fix(porteria): unificar lógica de ingreso abierto entre ingreso y salida
+  ae04538 docs: document E1-A01 manual test execution and production deployment
+  8a1fef3 Enhance personas listing and filtering functionality
+  87b6452 chore: ignore DB dump/backup files to prevent committing PII
+  c173f89 fix: replace ingreso/dia unique index with ingreso/abierto index
+  4a92896 feat: incorporate porteria mobile app and API from main   <- app móvil llegó aquí
+  531a3c4 feat: add DB_SSLMODE infrastructure ... + phase 1 security docs
+  55f1bc3 actualizacion de documentacion e implementacion de la solucion a E1-A01
+  8e72455 refactor: re-audit Phase 0 documentation, remove redundant files...
+  c132027 feat: add MSPI implementation documentation, policy templates...
+
+CAMBIOS SIN COMMITEAR (working tree, pendientes de revisión por Anderson):
+
+  Borrados (D) — parecen una limpieza/reorganización ya completada en disco
+  pero NO commiteada:
+    - "Documentacion para implementacion de MSPI/.txt"
+        (placeholder vacío, reemplazado por handoff.txt — ya existe
+        "Documentacion para implementacion de MSPI/handoff.txt" como
+        untracked, así que es un rename de facto)
+    - "database/schema/script-BD-SMARTCSET V.1.6.sql"
+    - "database/schema/script_BD_SMARTCSET V.1.4.sql"
+    - "database/schema/script_BD_SMARTCSET V.1.5.sql"
+        (el schema activo ahora es "database/schema/script-BD-SMARTCSET
+        V.1.7.sql", y V.1.0-V.1.3 viven en database/schema/history/. Esto es
+        consistente con lo que dice el AGENTS.md de MSPI: "schema V.1.7 y
+        migraciones ya corregidos". Es decir, V.1.4/1.5/1.6 quedaron
+        obsoletos y deben moverse a history/ o eliminarse — están borrados
+        del working tree pero el commit que lo formaliza no se ha hecho)
+    - files/README.md, files/forms/{aprendiz,contratista,funcionario,
+      instructor,persona}.php, files/fun_insert_aprendiz.sql,
+      files/includes/{ajax_ciudades.php,ciudades.php}, files/index.php,
+      files/login.php
+        (directorio files/ completo — era código LEGACY duplicado del
+        módulo de registro. La versión activa y mantenida es
+        src/modulos/registro/ — forms/{aprendiz,contratista,funcionario,
+        instructor,persona}.php, ajax_ciudades.php, etc. YA EXISTEN ahí.
+        Borrar files/ es consistente con la deuda técnica documentada en
+        CLAUDE.md sobre el módulo registro)
+
+  Sin seguimiento (??) — nuevos, no commiteados:
+    - "Documentacion para implementacion de MSPI/handoff.txt" (11.7K)
+        Handoff específico de la carpeta MSPI (mencionado arriba)
+    - "mobile/AUDITORIA_SEGURIDAD_APP_PORTERIA_SMARTCSET.md"
+        Auditoría de seguridad COMPLETA de la app móvil + API porteria,
+        producida HOY 2026-06-12 (ver sección 5.5 — es el trabajo más
+        reciente y AÚN NO está integrado en la documentación MSPI principal)
+
+  ACCIÓN SUGERIDA PARA LA PRÓXIMA SESIÓN: revisar con Anderson si estos
+  borrados (reorganización de schema + eliminación de files/ legacy) están
+  listos para commitear, y commitear junto con los 2 archivos nuevos. Hasta
+  entonces, "git status" seguirá mostrando este estado.
+
+------------------------------------------------------------------------------
+4. ARQUITECTURA DEL CÓDIGO — RESUMEN (detalle completo en /CLAUDE.md)
+------------------------------------------------------------------------------
+
+  /index.php                 Login principal, único punto de entrada público
+  /.env, /.env.example        Config (BD, colores corporativos, paths)
+  /css/, /js/, /img/          Assets estáticos (sin build step)
+  /public/uploads/logos/      Logos subidos vía configuración
+  /storage/                   Almacenamiento general (incl. fotos portería)
+  /src/core/                  prepare.php (PDO + $stmt_* globales), config.php,
+                               EnvLoader, AppConfig (singleton config visual),
+                               ErrorHandler (traduce P0001 -> mensaje usuario),
+                               SecurityMiddleware (headers seguridad — OJO:
+                               código MUERTO, nunca incluido — ver sección 6),
+                               LogoUpload, ConfigSistemaDefaults, helpers.php
+  /src/layout/                 head, sidebar, topbar, footer, theme_vars,
+                               ui_kit, partials/
+  /src/auth/                   logout, recuperar, cambiar_clave
+  /src/menu/                   CRUD menús, asignación permisos por usuario
+  /src/usuarios/               CRUD usuarios del sistema (solo admin)
+  /src/admin/                  configuracion.php (panel sistema) +
+                               personas/ (listados admin por tipo de persona)
+  /src/modulos/porteria/        ingreso/, salida/, lib/ (lógica compartida:
+                               ingresos_registro.php, salidas_registro.php,
+                               porteria_consulta.php, porteria_foto.php,
+                               acceso_documento.php, acceso_parse_captura.php)
+  /src/modulos/registro/        Módulo standalone de registro de personas
+                               (login propio, forms/ por tipo de persona,
+                               lib/access.php, catalogos.php, personas_list.php)
+  /src/modulos/entradas/         CRUD de puertas/entradas del centro
+                               (tab_entradas_centro)
+  /src/api/porteria/             *** NUEVO (commit 4a92896) *** API REST para
+                               la app móvil — bootstrap.php, lib/ (ApiAuth,
+                               ApiPayload, ApiResponse, ApiSync), v1/
+                               (catalogos, health, ingreso/{hoy,registrar,
+                               consultar}, salida/{hoy,registrar,consultar},
+                               device/validate, sync/batch). Autenticación por
+                               token de dispositivo (Bearer), reutiliza las
+                               mismas funciones PL/pgSQL ya auditadas del
+                               módulo porteria web.
+
+  /database/setup_smartcset.sh  Instalador (BORRA y RECREA todo). Apunta a
+                               schema V.1.7 (ya corregido). FUNCS le faltan 4
+                               funciones (ver sección 6).
+  /database/schema/              script-BD-SMARTCSET V.1.7.sql (ACTIVO) +
+                               history/ (V.1.0-V.1.3)
+  /database/functions/           _helpers/, acceso/{usuarios,menus,sesiones},
+                               porteria/, config/, carga/
+  /database/migrations/          15+ migraciones, incluye
+                               add_tab_dispositivos_porteria.sql (soporta la
+                               app móvil — tabla tab_dispositivos_porteria)
+  /database/seeds/
+
+  /tools/                        start_dev.sh/.ps1, setup_db.sh,
+                               deploy_funciones_acceso.ps1,
+                               deploy_funciones_ingresos.ps1, diagnose_bd.php,
+                               generate_device_token.php (*** NUEVO ***,
+                               genera token bcrypt para tablets de portería),
+                               sync_menus_personas.sh
+
+  /docs/                         ~35 documentos históricos de desarrollo
+                               (changelog, auditorías previas, guías de
+                               implementación de menús, manejo de errores,
+                               reportes SENA DF-49/PE-04/PE-51/PE-53, etc.)
+                               — contexto histórico, no requieren acción
+
+  /mobile/porteria-app/          *** NUEVO *** App Expo/React Native para
+                               tablets de portería (ver sección 5.5 para
+                               detalle de seguridad)
+
+------------------------------------------------------------------------------
+5. DOCUMENTACIÓN MSPI / ISC2 CC / CIBERSEGURIDAD — ESTADO COMPLETO
+------------------------------------------------------------------------------
+
+Carpeta: "Documentacion para implementacion de MSPI/"
+(AGENTS.md de esta carpeta = memoria de trabajo completa, leer antes de
+cualquier tarea de seguridad)
+
+Marcos cubiertos simultáneamente: MSPI MinTIC (11 ejes), Ley 1581/2012
+(datos personales), Ley 1273/2009 (delitos informáticos), Ley 1712/2014
+(transparencia), CONPES 3995/2020, Decreto 338/2022 (ICC), ISO/IEC 27001,
+OWASP Top 10 2021, ISC2 CC (5 dominios).
+
+  5.1. FASE 0 — Diagnóstico y Gobernanza Base: ✅ COMPLETA, AUDITADA Y
+       RE-AUDITADA (2026-06-08 / 2026-06-10)
+       Carpeta: "FASE 0_documentos politicas de tratamiento de datos/"
+       8 documentos legales (nomenclatura NN_NOMBRE_SMARTCSET_DOCUMENTO_LEGAL.md):
+         01 POLITICA_Y_TRATAMIENTO_DATOS_PERSONALES  (Ley 1581, D1, Eje 1/11)
+         02 INVENTARIO_ACTIVOS_INFORMACION_CID       (ISO27001 A.8, D1/D5, Eje 3
+                                                        — 16 activos INF + ICC §12)
+         03 MATRIZ_RIESGOS_INICIAL                    (ISO27005, D1, Eje 2 —
+                                                        31 riesgos R-A01..R-G04)
+         04 ROLES_Y_RESPONSABILIDADES_SEGURIDAD       (D1/D5, Eje 1/4)
+         05 CRONOGRAMA_AUDITORIAS_PERIODICAS          (D5, Eje 1/6)
+         06 POLITICA_GENERAL_SEGURIDAD_INFORMACION    (D1 completo, mapea los
+                                                        11 ejes — doc raíz SGSI)
+         07 POLITICA_CONTROL_ACCESO_SEGURIDAD_FISICA  (D3 completo, Eje 5/7,
+                                                        MFA roadmap §14)
+         08 MARCO_GESTION_INCIDENTES_CONTINUIDAD      (D2 completo, Eje 9/10,
+                                                        RTO=4h RPO=24h, DRP 7 pasos)
+       Todos versión 1.0, con tabla ELABORÓ/REVISÓ/APROBÓ, "Elaborado por:
+       Equipo de Desarrollo - SmartCSET", honestidad temporal aplicada
+       (controles no implementados marcados 🔲 con su entregable de Fase 1,
+       nunca redactados como existentes).
+
+  5.2. PLAN MAESTRO: ✅ v1.2 sincronizado (2026-06-10)
+       - PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md (v1.2, ~120K) — documento
+         maestro, todos los demás son hijos de este. Anexo F = mapeo ISC2 CC
+         vs entregables (incluye E8/E9/E10 de Fase 1).
+       - RESUMEN_FASES_PLAN_BLINDAJE_SMARTCSET.md — versión condensada
+         (roadmap de 6 fases, 16-22 semanas para el núcleo Fases 0-3)
+       - CHECKLIST_MAESTRO_BLINDAJE_SMARTCSET.md — vista panorámica
+         transversal del avance por fase (NO duplica detalle, solo agrega)
+
+  5.3. FASE 1 — Blindaje Técnico Inmediato: ✅ DOCUMENTO v1.1 COMPLETO
+       (1491 líneas, 18 secciones, 10 entregables) — 🔴 IMPLEMENTACIÓN EN
+       CÓDIGO EN CURSO (~20% global)
+       Carpeta: "FASE 01_Blindaje Técnico Inmediato/"
+       Documento: 01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md (FASE1-BLI-001 v1.1)
+       Checklist (FUENTE DE VERDAD del avance):
+         02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md (FASE1-CHK-002 v1.0)
+
+       Tabla de avance por entregable:
+       | E#  | Entregable                              | Estado código          |
+       |-----|------------------------------------------|------------------------|
+       | E1  | Auditoría OWASP Top 10 (A01-A10)          | ⚠️ ~20% — A01 ✅ remediado
+       |     |                                            |   y validado en
+       |     |                                            |   producción
+       |     |                                            |   (2026-06-10/11);
+       |     |                                            |   A02 ⚠️ auditado
+       |     |                                            |   (2026-06-11, TLS BD
+       |     |                                            |   listo en código);
+       |     |                                            |   A03-A10 🔲 pendientes |
+       | E2  | Cifrado en reposo pgcrypto                | ⛔ PAUSADO 2026-06-12 —
+       |     | (tab_personas.documento_identidad)        |   columna asumida por
+       |     |                                            |   el plan NO EXISTE;
+       |     |                                            |   el documento es la
+       |     |                                            |   PK id_persona (FK
+       |     |                                            |   desde 5+ tablas).
+       |     |                                            |   Plan requiere
+       |     |                                            |   replanteo/diseño
+       |     |                                            |   antes de continuar
+       |     |                                            |   (ver 5.3.1) |
+       | E3  | Rate limiting + tab_intentos_login         | 🔲 Pendiente            |
+       | E4  | Hardening sesiones PHP (SecurityMiddleware| ✅ 100% 2026-06-14 —
+       |     | activado en prepare.php/prepare_login.php)|   SecurityMiddleware
+       |     |                                            |   activo (headers,
+       |     |                                            |   cookies HttpOnly/
+       |     |                                            |   SameSite=Strict,
+       |     |                                            |   cookie_secure por
+       |     |                                            |   APP_ENV),
+       |     |                                            |   session_regenerate_id
+       |     |                                            |   tras login, 11 scripts
+       |     |                                            |   inline externalizados
+       |     |                                            |   (9 sesión1 + 2 wizards
+       |     |                                            |   porteria sesión2),
+       |     |                                            |   cambiar_clave.php
+       |     |                                            |   corregido (session_
+       |     |                                            |   start prematuro), CSP
+       |     |                                            |   activo y verificado
+       |     |                                            |   end-to-end. Reporte
+       |     |                                            |   E4 v2.0 generado. |
+       | E5  | Tokens anti-CSRF en formularios POST      | 🔲 Pendiente            |
+       | E6  | Verificación uploads                       | ✅ 100% — COMPLETADO
+       |     | (LogoUpload.php, porteria_foto.php)       |   2026-06-13: .htaccess
+       |     |                                            |   creados en Apache para
+       |     |                                            |   ambos directorios
+       |     |                                            |   (bloquean PHP, fuerzan
+       |     |                                            |   Content-Type imagen).
+       |     |                                            |   Reporte E6 generado. |
+       | E7  | Corrección setup_smartcset.sh (4 funciones| ✅ 100% 2026-06-13 —
+       |     | ausentes de FUNCS)                         |   3/4 agregadas y
+       |     |                                            |   alineadas al patrón
+       |     |                                            |   smartcset_handle_sql_
+       |     |                                            |   error; fun_tab_menu_
+       |     |                                            |   usuarios.sql EXCLUIDA
+       |     |                                            |   (legacy, regresión).
+       |     |                                            |   Reporte E7 generado. |
+       | E8  | Hardening red (TLS PG, firewall,           | ⚠️ Parcial — DB_SSLMODE
+       |     | arquitectura — requiere Oficina TI SENA)  |   listo en código
+       |     |                                            |   (config.php/Db.php/
+       |     |                                            |   .env.example),
+       |     |                                            |   activación pend. TI |
+       | E9  | Gestión de parches (inventario + SLA por  | 🔲 Pendiente            |
+       |     | CVSS: 9+=48h, 7-8.9=7d, 4-6.9=30d)         |                        |
+       | E10 | SDLC seguro (checklist pre-commit/deploy, | ✅ Adoptado 2026-06-13  |
+       |     | rollback, prohibiciones absolutas)        |   checklist pre-commit/
+       |     |                                            |   pre-deploy, rollback y
+       |     |                                            |   6 prohibiciones
+       |     |                                            |   absolutas vigentes.
+       |     |                                            |   Reporte E10 generado. |
+
+       Orden de implementación recomendado (§13):
+         E10 -> E7 -> E4 -> E6 -> E5 -> E3 -> E1(inicial) -> E2 -> E8 -> E9
+         -> E1(cierre)
+         (E10, E6, E7 y E4 ya completados al 100%. Próximo entregable: E5
+         — Tokens anti-CSRF en formularios POST)
+
+       Reportes de auditoría producidos hasta ahora:
+       - REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md (v1.1):
+           Hallazgo crítico de escalada vertical de privilegios — 8
+           endpoints de menús/usuarios sin verificación admin (menus.php,
+           usuarios.php, menu_usuarios.php, copiar_menu_usuarios.php,
+           procesar_perfil.php, procesar_permiso.php,
+           procesar_copiar_perfil.php, obtener_menus_usuario.php).
+           CORREGIDO con usuarioEsAdministrador($pdo, $_SESSION['id_usuario']).
+           §6.2 agregó procedimiento de pruebas manuales con curl; §6.3
+           criterios "Aprobado si / Falla si". Las 11 pruebas se ejecutaron
+           en producción el 2026-06-11 -> TODAS PASS (ver §6.4). A01 CERRADO.
+       - REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md:
+           3 hallazgos: (1) cifrado en reposo de documento_identidad -> plan
+           en E2, bloqueado; (2) TLS BD (DSN sin sslmode) -> infraestructura
+           DB_SSLMODE lista en config.php/Db.php/.env.example (vacía por
+           defecto = sin regresión), activación pendiente de que Oficina TI
+           habilite ssl=on en PostgreSQL (E8); (3) HTTPS forzado -> plan en
+           E4, bloqueado por prerrequisito 6 (certificado TLS). A02 queda ⚠️
+           (NO ✅, honestidad temporal).
+       - REPORTE_E1-E04_HARDENING_SESIONES_SMARTCSET.md (v2.0, 2026-06-14):
+           SecurityMiddleware activado en prepare.php/prepare_login.php
+           (antes código muerto). cookie_secure condicionado a APP_ENV
+           (antes '1' incondicional, rompía login sin HTTPS).
+           session_regenerate_id(true) tras login (cierra A07 session
+           fixation). index.php: eliminados 4 headers duplicados +
+           session_start() prematuro. Sesión 1: 9 scripts inline
+           externalizados a js/ (login, registro x5, recuperar,
+           admin/personas/config, theme-init). Sesión 2 (mismo día):
+           refactor de porteria/ingreso/index.php (1017->764 líneas) y
+           porteria/salida/index.php (914->683 líneas), wizards
+           externalizados a js/porteria-ingreso-modal.js y
+           js/porteria-salida-modal.js; bug adicional corregido en
+           cambiar_clave.php (session_start() prematuro, mismo patrón que
+           index.php) + script externalizado a js/auth-cambiar-clave.js;
+           CSP activado en SecurityMiddleware.php y verificado end-to-end
+           (login->dashboard->porteria ingreso/salida->cambiar_clave, CSP
+           presente, 0 scripts inline). E4 queda ✅ 100% COMPLETADO.
+
+  5.3.1 E2 — AVANCE Y HALLAZGO CRÍTICO 2026-06-12 (BD LOCAL, plan §4.3 de
+        01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md, 7 pasos)
+        Backup previo: backup_db_smartcset_2026-06-12.dump (raíz del
+        proyecto, formato custom de pg_dump, 2.4MB, 407 objetos,
+        gitignored por *.dump — verificado con pg_restore -l).
+
+        *** HALLAZGO CRÍTICO — EL PLAN DE E2 ES INVIABLE TAL COMO ESTÁ
+        ESCRITO ***
+        El plan (§4.1) asume una columna `tab_personas.documento_identidad`
+        independiente que se podría cifrar dejando intacta la PK. ESA
+        COLUMNA NO EXISTE. Verificado con \d tab_personas: el número de
+        documento (cédula, ej. 769993, 821763...) ES el propio
+        `id_persona NUMERIC(10,0)`, que es:
+          - La PRIMARY KEY de tab_personas
+          - FOREIGN KEY referenciada por tab_aprendices, tab_instructores,
+            tab_funcionarios, tab_log_ingresos, tab_vehiculos (al menos 5
+            tablas)
+        Cifrar id_persona con pgcrypto (BYTEA no determinístico) rompería
+        TODOS los JOIN/FK/índices/búsquedas del sistema — no es "cifrar una
+        columna", es un rediseño del modelo de datos (requeriría una PK
+        surrogate + id_persona como atributo cifrado, migración de todas
+        las FK, reescritura de fun_upsert_persona_visitante y de toda
+        consulta que busque por documento). Esto excede claramente el
+        alcance de "Fase 1 - Blindaje Técnico Inmediato" y debería tratarse
+        como un entregable de diseño propio (Fase 2 o posterior),
+        coordinado con Anderson antes de cualquier ejecución.
+
+        [x] Paso 1 — CREATE EXTENSION pgcrypto: ya estaba habilitada
+            (v1.4) de antes, probablemente usada por
+            fun_actualizar_password/fun_crear_usuarios_instructores
+            (crypt/encrypt, no relacionado con E2).
+        [x] Paso 2 — Migración add_cifrado_datos_sensibles.sql aplicada en
+            local: agrega tab_personas.documento_identidad_enc BYTEA e
+            ind_cifrado BOOLEAN NOT NULL DEFAULT FALSE. *** AHORA HUÉRFANAS
+            *** — apuntan a una columna fuente (documento_identidad) que
+            no existe. Pendiente decidir: dejarlas (no rompen nada, BD
+            local solamente) o revertir la migración. NO aplicado a
+            producción.
+        [x] Paso 3 — DB_ENCRYPTION_KEY (clave de PRUEBA LOCAL, generada
+            con openssl rand -base64 32):
+              - Agregada a .env local (NO commiteado, .env en
+                .gitignore) y documentada (vacía) en .env.example con
+                comentario sobre custodia en producción (prereq. 1).
+              - ALTER DATABASE db_smartcset SET app.encryption_key =
+                '<clave>' ejecutado y verificado con SHOW
+                app.encryption_key en sesión nueva.
+              - src/core/config.php: agregada constante
+                DB_ENCRYPTION_KEY = EnvLoader::get('DB_ENCRYPTION_KEY',
+                '') con error_log de advertencia si está vacía.
+              - IMPORTANTE: esta clave es SOLO para pruebas locales. En
+                producción se requiere una clave distinta gestionada
+                por el custodio formal (prereq. 1) — NO reutilizar esta
+                clave de prueba.
+        [x] Paso 4 — database/functions/config/fun_cifrar_documento.sql y
+            fun_descifrar_documento.sql CREADAS y DESPLEGADAS en local
+            (pgp_sym_encrypt/decrypt, SECURITY DEFINER,
+            current_setting('app.encryption_key', true), manejo
+            smartcset_raise_negocio/smartcset_handle_sql_error). El
+            mecanismo de cifrado en sí FUNCIONA (genérico, no depende de
+            qué columna se cifre) — al intentar probarlo con un
+            round-trip contra tab_personas.documento_identidad fue cuando
+            se descubrió que esa columna no existe (ver hallazgo crítico
+            arriba). Las funciones quedan desplegadas en local pero SIN
+            USO hasta que se decida qué texto cifrar.
+        [ ] Paso 5 — migrate_cifrado_documentos.sql — BLOQUEADO por el
+            hallazgo crítico (no hay columna documento_identidad que
+            migrar).
+        [ ] Paso 6 — Actualizar prepare.php — BLOQUEADO, depende del
+            replanteo.
+        [ ] Paso 7 — Cifrado de fotos en storage/porteria/ — diferido a
+            Fase 2 / depende de E8 (no afectado por el hallazgo crítico,
+            sigue siendo viable independientemente).
+
+        Archivos modificados/creados hoy (ninguno commiteado todavía):
+          - database/migrations/add_cifrado_datos_sensibles.sql (NUEVO,
+            aplicado en local — columnas huérfanas, ver Paso 2)
+          - database/functions/config/fun_cifrar_documento.sql (NUEVO,
+            desplegado en local, sin uso todavía)
+          - database/functions/config/fun_descifrar_documento.sql (NUEVO,
+            desplegado en local, sin uso todavía)
+          - .env (modificado, gitignored — DB_ENCRYPTION_KEY de prueba)
+          - .env.example (modificado — documenta DB_ENCRYPTION_KEY)
+          - src/core/config.php (modificado — constante
+            DB_ENCRYPTION_KEY)
+          - backup_db_smartcset_2026-06-12.dump (NUEVO, gitignored)
+
+        OPCIONES PARA RETOMAR (a decidir con Anderson, ver sección 10 C2):
+          1. Pausar E2 definitivamente para Fase 1; documentar en el
+             reporte A02 que el cifrado de identidad requiere diseño
+             propio fuera de alcance; revertir o dejar las columnas
+             huérfanas (bajo riesgo, son aditivas y NULL/false).
+          2. Replantear el alcance de E2 a otro dato sensible que SÍ sea
+             una columna independiente cifrable sin tocar PKs/FKs (ej.
+             mail_persona, val_huella_digital, val_patron_facial — estos
+             últimos ya son BYTEA/JSONB y no son claves de nada).
+          3. Documentar el rediseño completo (PK surrogate) como un nuevo
+             entregable de Fase 2, fuera del alcance de "Blindaje Técnico
+             Inmediato".
+
+  5.4. PRERREQUISITOS INSTITUCIONALES PENDIENTES (§18 del checklist FASE1-CHK-002)
+       No bloquean E10/E7/E4/E6/E5/E3, pero SÍ bloquean E2 y E8:
+         [ ] 1. Designar custodio formal de DB_ENCRYPTION_KEY (bloquea
+                despliegue a PRODUCCIÓN de E2 — no bloquea diseño/pruebas
+                locales, ver prerrequisito 2)
+         [x] 2. *** VERIFICADO 2026-06-12 *** BD de test/local disponible.
+                Anderson tiene en local una copia COMPLETA de la BD de
+                producción: PostgreSQL 18.4 (Ubuntu), BD `db_smartcset`,
+                65 tablas (incl. tab_dispositivos_porteria de la app móvil),
+                33 funciones PL/pgSQL desplegadas, y datos reales (7381
+                tab_personas, 7369 tab_aprendices, 16 tab_usuarios, 11
+                tab_instructores, 4 tab_log_ingresos). Se usa para probar
+                cambios localmente ANTES de aplicarlos al servidor.
+                NOTA: la BD local se llama `db_smartcset` (igual que
+                producción), NO `db_smartcset_test` — es una copia de
+                trabajo, no una BD aislada con nombre distinto. Para
+                migraciones destructivas/irreversibles (ej. E2 cifrado en
+                reposo) sigue siendo recomendable un backup adicional o una
+                copia con otro nombre antes de ejecutar, para no perder esta
+                copia de referencia. Con esto, el DISEÑO y las PRUEBAS de E2
+                y la verificación de E7 ya pueden avanzar localmente; solo
+                el DESPLIEGUE a producción de E2 sigue esperando al
+                prerrequisito 1 (custodio de la clave).
+         [ ] 3. Confirmar tipo de servidor web: Apache vs Nginx (afecta E6)
+         [ ] 4. Coordinar con Oficina TI SENA: firewall, postgresql.conf,
+                pg_hba.conf (bloquea E8)
+         [ ] 5. Obtener IPs reales servidor web/BD o confirmar máquina única (E8)
+         [ ] 6. Certificado TLS para HTTPS en producción (E4/E8, también
+                bloquea H-MOB-01 de la auditoría móvil)
+         [ ] 7. Designar custodio del Registro de Parches (E9)
+         [ ] 8. Confirmar que no hay edición directa/FTP en servidor producción (E10)
+
+  5.5. *** TRABAJO MÁS RECIENTE (2026-06-12, HOY) — AÚN SIN INTEGRAR ***
+       "mobile/AUDITORIA_SEGURIDAD_APP_PORTERIA_SMARTCSET.md"
+       Documento N°: FASE1-REP-MOB01, v2.0 (auditoría completa: OWASP + MSPI
+       11 ejes + ISC2 CC 5 dominios + marco legal colombiano colombiano)
+       Estado: ⚠️ Auditado en su totalidad — SIN remediación aplicada todavía,
+       y NO se modificó ningún archivo de código/planificación en esta sesión
+       (es insumo para decidir con Anderson).
+
+       Alcance: mobile/porteria-app/ (Expo/RN) + src/api/porteria/ (8
+       endpoints REST) + funciones PL/pgSQL reutilizadas + tab_dispositivos_porteria.
+
+       12 hallazgos (H-MOB-01 a H-MOB-12):
+         🔴 Crítico (2): H-MOB-01 (tráfico API sin TLS/cleartext — bloqueado
+              por cert. TLS, mismo bloqueador que E4/E8), H-MOB-04 (datos
+              personales y fotos sin cifrar en almacenamiento local de la
+              tablet — candidato a nuevo entregable E11)
+         🟠 Alto (3): H-MOB-02 (token de dispositivo sin expiración/rotación),
+              H-MOB-03 (sin rate limiting/logging de auth en API — ligar a E3),
+              H-MOB-10 (fun_upsert_persona_visitante permite sobrescribir
+              identidad de cualquier persona ya registrada en tab_personas —
+              riesgo de falsificación de log de acceso, art. 269I Ley 1273;
+              requiere ajuste de la función PL/pgSQL + pruebas de regresión,
+              afecta también al módulo web — recomendado ANTES de ampliar
+              despliegue de tablets)
+         🟡 Medio (4): H-MOB-05 (doble header auth Bearer/X-Device-Token),
+              H-MOB-06 (API sin cabeceras de seguridad HTTP — ligar a E4),
+              H-MOB-08 (auditoría por dispositivo, no por operador —
+              decisión operativa), H-MOB-12 (sin RPO/RTO para cola offline
+              — apéndice a FASE0-INC-008)
+         🔵 Bajo (3): H-MOB-07 (distribución APK sin canal/integridad
+              documentada), H-MOB-09 (PORTERIA_API_ENABLED no documentado en
+              .env.example — agrupar con E7), H-MOB-11 (sin auditoría de
+              dependencias npm/Expo — a FASE0-AUD-005/E9)
+
+       Controles YA implementados correctamente (sin acción): auth
+       obligatoria en los 8 endpoints, token con random_bytes(24)+bcrypt,
+       expo-secure-store, reutiliza funciones PL/pgSQL ya auditadas, sin SQL
+       nuevo, validación estricta de fotos, idempotencia UUID en sync,
+       límite de lote (20 ops), sin secretos en el repo, borrado de foto
+       local tras sync, sin inyección SQL, sin SSRF.
+
+       Plan de acción priorizado (Parte H del documento):
+         1. Quick wins (sin dependencias externas): H-MOB-02, H-MOB-05,
+            H-MOB-09, H-MOB-07 -> agrupar con E7
+         2. Diseño de seguridad de negocio (prioridad alta): H-MOB-10
+         3. Ligados a entregables ya planeados: H-MOB-03->E3, H-MOB-06->E4,
+            H-MOB-01->E4/E8 (bloqueado TLS)
+         4. Documental: H-MOB-12->apéndice FASE0-INC-008, H-MOB-11->FASE0-AUD-005/E9
+         5. Requiere diseño + decisión: H-MOB-04 y H-MOB-08 -> candidatos a
+            nuevo entregable "E11 — Hardening de la app móvil de portería"
+         6. Actualizaciones de gobierno/activos/riesgos (Ejes 1,2,3):
+            incorporar mobile/ + src/api/porteria/ a:
+              - FASE1-BLI-001 (alcance/scope)
+              - FASE0-RIE-003 (riesgos nuevos, ej. "R-MOB-01: robo de tablet
+                con token activo")
+              - FASE0-INV-002 (activos nuevos INF-17 tablets de portería,
+                INF-18 API porteria/v1)
+
+       *** PENDIENTE PARA LA PRÓXIMA SESIÓN ***: este documento (FASE1-REP-MOB01
+       v2.0) existe pero TODAVÍA NO está referenciado en:
+         - "Documentacion para implementacion de MSPI/AGENTS.md" (última
+           actualización 2026-06-11, no menciona mobile/)
+         - CHECKLIST_MAESTRO_BLINDAJE_SMARTCSET.md
+         - FASE1-BLI-001 / FASE1-CHK-002 (alcance no incluye mobile/ aún)
+         - FASE0-RIE-003 / FASE0-INV-002 (riesgos y activos nuevos no
+           agregados aún)
+       Decisión pendiente con Anderson: ¿crear E11 (Hardening app móvil) en
+       Fase 1, o tratarlo en Fase 2? ¿Actualizar alcance de FASE1-BLI-001
+       ahora o esperar a cerrar A03-A10 primero?
+
+  5.6. FASE 2 — Continuidad y Resiliencia Operativa: 🟠 POR PRODUCIR
+       Carpeta a crear: "FASE 02_Continuidad y Resiliencia Operativa/"
+       Archivo a crear: 01_CONTINUIDAD_RESILIENCIA_OPERATIVA_SMARTCSET.md
+       Nomenclatura Fase 2+: NN_NOMBRE_SMARTCSET.md (SIN _DOCUMENTO_LEGAL)
+       5 entregables previstos:
+         E1: DRP detallado + runbook de backup (amplía FASE0-INC-008)
+         E2: Monitoreo y alertas (infraestructura + seguridad)
+         E3: Runbook de respuesta a incidentes (árboles de decisión,
+             contactos, formularios) — debería incluir los apéndices de
+             H-MOB-02/09/12 de la auditoría móvil
+         E4: Seguridad en talento humano (confidencialidad, offboarding
+             ≤2h hábiles, capacitación)
+         E5: SDLC seguro — proceso formal (amplía Fase 1 E10)
+
+  5.7. FASE 3 — Cumplimiento Normativo Formal / Certificable: 🔲 PENDIENTE
+         - Alineación ISO/IEC 27001 (14 dominios de control, evidencia
+           para auditor externo)
+         - PIA — Evaluación de Impacto en Privacidad (menores de edad +
+           columnas biométricas reservadas INF-16: tab_personas.
+           val_huella_digital BYTEA, val_patron_facial JSONB — hoy sin
+           datos, solo NULL)
+         - Evaluación ICC Decreto 338/2022 (doc 02 §12 ya concluyó: NO
+           califica a nivel de centro — confirmado también para mobile/ en
+           la auditoría de hoy)
+         - Evidencia para auditorías MIPG / Contraloría
+
+  5.8. FASES 4 y 5: 🔲 condicionales / largo plazo, sin fecha de inicio.
+       Fase 4 (IA) solo aplica si el sistema incorpora reconocimiento
+       facial/OCR/scoring/chatbot — hoy NO aplica (CRUD/búsqueda/reportes).
+
+  5.9. COBERTURA POR MARCO (estado al 2026-06-11, antes de integrar mobile)
+       ISC2 CC:
+         D1 Security Principles (26%)  -> ✅ completo (Fase 0 docs 01-06)
+         D2 BC/DR/IR (10%)              -> ✅ completo (Fase 0 doc 08)
+         D3 Access Controls (22%)       -> ✅ completo (Fase 0 doc 07 + Fase1 E3/E4/E5)
+         D4 Network Security (24%)      -> ✅ completo en doc (Fase 1 E8,
+                                            implementación requiere Oficina TI)
+         D5 Security Operations (18%)   -> ✅ completo (Fase 0 docs 02/04/05/08
+                                            + Fase 1 E1/E9/E10)
+       MSPI 11 ejes: todos ✅ cubiertos por al menos un documento (ver tabla
+       completa en AGENTS.md de MSPI, sección 4).
+       Leyes colombianas (1581, 1266, 1273, 1712, Decreto 338/2022, CONPES
+       3995): todas ✅ referenciadas.
+       NOTA: la auditoría móvil de hoy (5.5) identifica que mobile/ AÚN NO
+       estaba contemplado en esta cobertura — varios ejes/dominios necesitan
+       actualización para incluir la superficie móvil.
+
+------------------------------------------------------------------------------
+6. BUGS CONOCIDOS / DEUDA TÉCNICA (consolidado)
+------------------------------------------------------------------------------
+
+  - SETUP_AUDIT.md (raíz, 2026-05-27) está PARCIALMENTE DESACTUALIZADO:
+      * Bug "schema V.1.5 en vez de V.1.6": YA CORREGIDO — el script ahora
+        usa "database/schema/script-BD-SMARTCSET V.1.7.sql" (verificado con
+        grep en setup_smartcset.sh línea 37).
+      * Bug "3 migraciones críticas no ejecutadas": YA CORREGIDO según
+        AGENTS.md de MSPI (verificado 2026-06-08/10).
+      * Bug de las 7 funciones ausentes: PARCIALMENTE corregido. 3 ya están
+        en FUNCS (fun_trigger_menu, fun_trigger_menu_admin,
+        fun_delete_perfil_usuarios). Siguen ausentes 4:
+          - database/functions/acceso/usuarios/fun_validar_correo.sql
+            (CRÍTICO — sin ella, recuperación de contraseña falla en
+            instalación limpia)
+          - database/functions/acceso/usuarios/fun_validar_login.sql
+          - database/functions/acceso/usuarios/fun_validar_usuario.sql
+          - database/functions/acceso/menus/fun_tab_menu_usuarios.sql
+        Esto es exactamente Fase 1 E7 (~60% hecho, falta agregar estas 4 al
+        array FUNCS).
+
+  - SecurityMiddleware.php (src/core/): código de CSRF/headers/cookies bien
+    escrito pero NUNCA incluido (require_once) — código muerto. Cierra con E4.
+
+  - index.php: sin session_regenerate_id(true) tras login (session
+    fixation) y sin rate limiting — cierra con E3/E4.
+
+  - src/core/Db.php: DSN sin sslmode activo. Infraestructura DB_SSLMODE ya
+    lista en config.php/.env.example (vacía por defecto, sin regresión).
+    Activación pendiente de Oficina TI (E8).
+
+  - src/core/config.php: session.cookie_httponly / cookie_secure /
+    cookie_samesite no configurados — cierra con E4.
+
+  - src/modulos/registro/forms/ hace INSERTs SQL directos en lugar de
+    llamar funciones PL/pgSQL — inconsistente con el patrón del resto del
+    sistema (deuda técnica histórica, no es parte del plan de blindaje
+    actual pero documentada en CLAUDE.md).
+
+  - database/functions/porteria/fun_upsert_persona_visitante.sql: permite
+    sobrescribir nom_persona/ape_persona/id_tipo_docum/id_tipo_persona de
+    personas ya registradas sin verificación -> H-MOB-10 (sección 5.5),
+    severidad alta, afecta también al módulo web.
+
+------------------------------------------------------------------------------
+7. DESACTUALIZACIONES CONOCIDAS EN /CLAUDE.md (raíz)
+------------------------------------------------------------------------------
+
+  - CLAUDE.md todavía dice "script-BD-SMARTCSET V.1.6.sql ← ACTIVO (usar
+    este)" y "script_BD_SMARTCSET V.1.5.sql ← DESACTUALIZADO". El esquema
+    real activo es V.1.7 (database/schema/script-BD-SMARTCSET V.1.7.sql);
+    V.1.4/1.5/1.6 fueron retirados (ver sección 3, cambios sin commitear).
+  - CLAUDE.md no menciona src/api/porteria/ (API REST móvil), ni
+    mobile/porteria-app/, ni tools/generate_device_token.php, ni
+    tab_dispositivos_porteria — todos agregados por el commit 4a92896.
+  - CLAUDE.md "Bugs conocidos" (Bug 1 y Bug 3) ya están resueltos; solo el
+    Bug 2 (parcial, 4 funciones) sigue vigente.
+  ACCIÓN SUGERIDA: cuando se trabaje en E7/documentación de código, también
+  actualizar CLAUDE.md para reflejar V.1.7, la API móvil y el estado real de
+  los bugs — no es parte del plan MSPI pero evita confusión a futuros agentes.
+
+------------------------------------------------------------------------------
+8. CONVENCIONES CRÍTICAS DE LA DOCUMENTACIÓN MSPI
+------------------------------------------------------------------------------
+
+  - Nombre del sistema: siempre "SmartCSET" (no SMARTCSET, no "sistema de
+    portería").
+  - "Elaborado por": siempre "Equipo de Desarrollo - SmartCSET".
+  - Fase 0: formato legal, con tabla ELABORÓ/REVISÓ/APROBÓ, nomenclatura
+    NN_NOMBRE_SMARTCSET_DOCUMENTO_LEGAL.md.
+  - Fase 1+: documento de trabajo (sin tabla de aprobación legal),
+    nomenclatura NN_NOMBRE_SMARTCSET.md.
+  - Honestidad temporal (regla de oro): controles NO implementados SIEMPRE
+    marcados 🔲 con referencia a su entregable de fase — NUNCA redactados en
+    presente como si existieran.
+  - Marcadores de estado: ✅ implementado/correcto/completo · ⚠️ existe pero
+    incompleto/requiere revisión · ❌ no existe/vulnerabilidad activa ·
+    🔲 pendiente · ⛔ bloqueado por dependencia externa · 🔴 urgencia crítica
+    · 🟠 alta · 🟡 media · 🔵 baja.
+  - Numeración interna: FASE0-POL-001..FASE0-INC-008, FASE1-BLI-001,
+    FASE1-CHK-002, FASE1-REP-A01, FASE1-REP-A02, FASE1-REP-MOB01 (nuevo, hoy).
+  - Colores/paths/config: siempre desde .env, nunca hardcodeado.
+  - BD: PostgreSQL con lógica en PL/pgSQL — NO mockear, NO PDO adicional.
+  - Sin Composer, sin autoloading, sin framework — ni en backend ni se
+    introduce en mobile/ (mobile/ es su propio proyecto Expo/pnpm, aislado).
+
+------------------------------------------------------------------------------
+9. CÓMO LEVANTAR EL PROYECTO LOCALMENTE (resumen — detalle en CLAUDE.md)
+------------------------------------------------------------------------------
+
+  1. cp .env.example .env  (ajustar credenciales PostgreSQL)
+  2. bash database/setup_smartcset.sh   (⚠️ BORRA y RECREA todas las tablas —
+     solo instalación nueva; recordar que faltan 4 funciones en FUNCS — Bug 2/E7)
+  3. Linux/macOS: php -S localhost:8080 -t /ruta/al/proyecto
+     (o tools/start_dev.sh)
+     Windows: tools\start_dev.ps1
+  4. http://localhost:8080/  — admin.smart / AdminSmart2026! (admin),
+     porteria / Porteria2026! (usuario portería)
+  5. App móvil (mobile/porteria-app/): requiere Node 18+, Expo/EAS CLI.
+     Generar token de dispositivo con tools/generate_device_token.php, aplicar
+     database/migrations/add_tab_dispositivos_porteria.sql, npm install + npm start.
+
+------------------------------------------------------------------------------
+10. PRÓXIMOS PASOS — OPCIONES PARA LA PRÓXIMA SESIÓN (a decidir con Anderson)
+------------------------------------------------------------------------------
+
+## ✅ COMPLETADO EN SESIÓN 2026-06-13 — E7: CORRECCIÓN setup_smartcset.sh
+
+  **E7 — Corrección setup_smartcset.sh: ✅ COMPLETADO (parcial respecto al plan original)**
+
+  El plan original (FASE1-BLI-001 §9) pedía agregar 4 funciones ausentes al array FUNCS:
+  fun_validar_correo, fun_validar_login, fun_validar_usuario, fun_tab_menu_usuarios.
+
+  1. **3 funciones agregadas** (acceso/usuarios/): previa revisión, se alineó su bloque
+     EXCEPTION al patrón estándar del proyecto:
+     ```sql
+     EXCEPTION
+         WHEN SQLSTATE 'P0001' THEN
+             RAISE;
+         WHEN OTHERS THEN
+             PERFORM smartcset_handle_sql_error();
+     END;
+     ```
+     - fun_validar_correo.sql: no tenía EXCEPTION, se agregó
+     - fun_validar_login.sql: tenía GET STACKED DIAGNOSTICS + RAISE EXCEPTION crudo, reemplazado
+     - fun_validar_usuario.sql: tenía RAISE EXCEPTION genérico, reemplazado
+     Las 3 compilaron sin error (CREATE FUNCTION OK) en BD local.
+
+  2. **1 función EXCLUIDA por hallazgo de riesgo:** fun_tab_menu_usuarios.sql (acceso/menus/)
+     contiene versiones LEGACY de fun_insert_menu_usuarios y fun_delete_perfil_usuario —
+     funciones que YA están en FUNCS con mejor implementación (validación de existencia con
+     smartcset_raise_no_encontrado, ON CONFLICT DO NOTHING, smartcset_handle_sql_error). De
+     haberse agregado, CREATE OR REPLACE habría sobreescrito las versiones buenas con las
+     legacy (sin validación, RAISE EXCEPTION plano, params wid_usuario/wid_menu vs
+     p_id_usuario/p_id_menu) en cada instalación nueva. NO se agrega a FUNCS.
+
+  3. **Verificación previa con el usuario:** se presentó este hallazgo antes de modificar el
+     instalador (consigna Seguridad Total) — Anderson aprobó agregar solo las 3 seguras y
+     revisar la lógica de las demás funciones para mantener coherencia con el patrón del
+     desarrollador.
+
+  4. **Pendiente derivado:** fun_delete_perfil_usuarios.sql (plural, acceso/menus/) — AGENTS.md
+     la marca como "ya en FUNCS" pero NO está en el array; su descripción no coincide con su
+     implementación real. Bug 2c re-abierto, fuera del alcance de E7.
+
+  5. **Verificación de impacto de la exclusión (confirmado 2026-06-13):** excluir
+     fun_tab_menu_usuarios.sql NO afecta funcionalidad. Ningún .php/.sh la referencia
+     directamente; las 2 funciones que define (fun_insert_menu_usuarios,
+     fun_delete_perfil_usuario) ya se crean en FUNCS vía sus propios archivos (versiones
+     mejoradas, con smartcset_raise_no_encontrado + ON CONFLICT DO NOTHING +
+     smartcset_handle_sql_error). Una instalación nueva sigue creando ambas funciones igual
+     que antes; el único efecto es el riesgo de regresión evitado. El archivo queda en el
+     repo como código muerto/histórico.
+
+  **Reporte formal creado:** REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md (FASE1-REP-E07 v1.0)
+  **Checklist actualizado:** E7 marcado como ✅ Completado (100%) en 02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md
+
+---
+
+## ✅ COMPLETADO EN SESIÓN 2026-06-13 — E10: SDLC SEGURO (ADOPCIÓN)
+
+  **E10 — SDLC seguro: ✅ ADOPTADO (100%)**
+
+  E10 es un PROCESO, no código — no se modificó ningún archivo PHP/SQL. Desde
+  hoy quedan vigentes:
+
+  1. **Checklist pre-commit** — 5 ítems de seguridad con bloqueo total
+     (secretos hardcodeados, input sin validar, SQL concatenado, salida sin
+     htmlspecialchars, rutas sin guardia de sesión) + 4 ítems de calidad.
+  2. **Checklist pre-deploy** — incluye backup obligatorio con `pg_dump`
+     antes de cada despliegue, verificación post-despliegue (login, ingreso,
+     salida, logs sin errores nuevos).
+  3. **Procedimiento de rollback de emergencia** — `git checkout` a commit
+     previo + `pg_restore` del backup pre-despliegue.
+  4. **6 prohibiciones absolutas** — editar PHP directo en producción,
+     hardcodear secretos, concatenar SQL con input de usuario, `var_dump`/
+     `print_r` en producción, `PDO::ATTR_EMULATE_PREPARES=true`,
+     `git push --force` a main sin revisión.
+
+  **Reporte formal creado:** REPORTE_E1-E10_SDLC_SEGURO_SMARTCSET.md (FASE1-REP-E10 v1.0)
+  **Checklist actualizado:** E10 marcado como ✅ Adoptado (100%) en 02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md
+
+---
+
+## ✅ COMPLETADO EN SESIÓN 2026-06-13 — E6: VERIFICACIÓN DE UPLOADS
+
+  **E6 — Verificación de subida de archivos: ✅ COMPLETADO (100%)**
+
+  Se implementó protección a nivel servidor web para los directorios de uploads:
+
+  1. **Archivos creados:**
+     - `public/uploads/logos/.htaccess` (20 líneas)
+     - `storage/porteria/.htaccess` (20 líneas)
+
+  2. **Contenido de cada .htaccess — 4 capas de defensa:**
+     a) Bloqueo de ejecución PHP (.php, .phtml, .asp, .jsp, .cgi, .sh, .pl, .py, .phar)
+     b) Content-Type forzado a image/jpeg (previene interpretación como HTML/JS)
+     c) Header X-Content-Type-Options: nosniff (previene MIME sniffing)
+     d) Cache-Control: 1 año + desactivar listado de directorios
+
+  3. **Reporte formal creado:**
+     - REPORTE_E1-E06_VERIFICACION_SUBIDA_ARCHIVOS_SMARTCSET.md (FASE1-REP-E06 v1.0)
+     - Incluye: hallazgo, peligro, solución, validación, trazabilidad normativa
+
+  4. **Checklist actualizado:**
+     - E6 marcado como ✅ 100% en 02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md
+     - handoff.txt (MSPI) actualizado
+     - HANDOFF_GENERAL_SMARTCSET.txt actualizado
+
+  **Nota importante:** Los .htaccess creados funcionan en CUALQUIER servidor Apache
+  sin cambios. Si la Oficina TI SENA usa Nginx, se requieren reglas equivalentes en el
+  virtual host (documentado en REPORTE_E1-E06 §8.2).
+
+---
+
+## OPCIONES PARA LA PRÓXIMA SESIÓN
+
+  A) Higiene de repo: revisar y commitear los cambios sin commitear de la
+     sección 3 (limpieza de schema legacy + eliminación de files/ + nuevos
+     handoff.txt y auditoría móvil).
+
+  B) Integrar la auditoría móvil de hoy (FASE1-REP-MOB01) en la
+     documentación MSPI principal: actualizar AGENTS.md de MSPI, alcance de
+     FASE1-BLI-001/CHK-002, FASE0-RIE-003 (riesgos R-MOB-*), FASE0-INV-002
+     (activos INF-17/INF-18), y decidir si nace "E11 — Hardening app móvil
+     de portería".
+
+  C) Continuar implementación de Fase 1 en código, siguiendo el orden
+     recomendado: E10, E6, E7 y E4 ya completados al 100% (E4 cerrado
+     2026-06-14, ver C1). Próximo entregable: E5 (Tokens anti-CSRF en
+     formularios POST) -> E3. Pendiente opcional: verificar E7 end-to-end
+     (ejecutar setup_smartcset.sh contra una copia de BD, confirmar
+     recuperar.php) sin tocar producción.
+
+  C1) *** E4 — ✅ 100% COMPLETADO 2026-06-14 ***
+     Implementado (ver REPORTE_E1-E04_HARDENING_SESIONES_SMARTCSET.md v2.0):
+       1. cookie_secure corregido -> solo '1' si APP_ENV === 'production'.
+       2. SecurityMiddleware integrado en prepare.php y prepare_login.php
+          (require_once tras config.php); index.php sin session_start()
+          directo ni los 4 headers duplicados.
+       3. session_regenerate_id(true) tras login exitoso en index.php
+          (verificado: SID cambia post-login, cierra A07).
+       4. enforceHTTPS() sigue sin activar (requiere TLS de Oficina TI,
+          E8) — documentado como pendiente, no se fuerza. FUERA del
+          alcance de E4.
+       5. Sesión 1: 9 scripts inline de riesgo bajo/medio externalizados a
+          js/ (login, registro x5, recuperar, admin/personas/config,
+          theme-init).
+       6. Sesión 2: refactor de porteria/ingreso/index.php (1017->764
+          líneas) y porteria/salida/index.php (914->683 líneas), wizards
+          de ~250 líneas de JS inline cada uno externalizados a
+          js/porteria-ingreso-modal.js y js/porteria-salida-modal.js.
+       7. Sesión 2: bug adicional corregido en cambiar_clave.php
+          (session_start() prematuro, mismo patrón del bug de index.php
+          en sesión 1) + script inline externalizado a
+          js/auth-cambiar-clave.js.
+       8. Sesión 2: header Content-Security-Policy activado en
+          SecurityMiddleware.php (ya no comentado).
+
+     Verificado contra `php -S localhost:8080`: login -> dashboard ->
+     porteria/ingreso -> porteria/salida -> cambiar_clave, todos
+     200/302 esperados, header CSP presente en todas, 0 <script> inline
+     restantes, cookie HttpOnly+SameSite=Strict. `php -l` sin errores en
+     los 16 archivos PHP modificados entre ambas sesiones.
+
+     Pendiente fuera de alcance de E4 (no bloqueante):
+       a. enforceHTTPS() — depende de E8/TLS (Oficina TI SENA).
+       b. Verificar php.ini de producción (session.gc_maxlifetime=1800,
+          display_errors=Off, log_errors=On, expose_php=Off).
+       c. (Recomendado) Verificación de CSP en DevTools de navegador real
+          contra módulos no tocados directamente, como parte de
+          regresión de E5.
+
+  C2) *** PAUSADO 2026-06-12 — HALLAZGO CRÍTICO *** E2 (cifrado en reposo,
+     pgcrypto). Se ejecutaron Pasos 1-4/7 en BD local (backup
+     backup_db_smartcset_2026-06-12.dump, pgcrypto habilitado,
+     DB_ENCRYPTION_KEY de prueba configurada, funciones
+     fun_cifrar_documento/fun_descifrar_documento desplegadas — ver
+     5.3.1). Al ir a probar el round-trip se descubrió que
+     tab_personas.documento_identidad (la columna que el plan §4.1 asume
+     cifrar) NO EXISTE: el documento de identidad ES tab_personas.id_persona
+     (PK, FK desde tab_aprendices/tab_instructores/tab_funcionarios/
+     tab_log_ingresos/tab_vehiculos). Cifrar una PK con pgcrypto rompería
+     todo el modelo relacional — esto es un rediseño (PK surrogate), no un
+     cambio de columna, y excede el alcance de Fase 1.
+     SIGUIENTE (decidir con Anderson, 3 opciones en 5.3.1): (1) pausar E2
+     en Fase 1 y documentar en A02 que requiere diseño propio fuera de
+     alcance; (2) replantear el alcance de E2 a otro dato cifrable sin
+     tocar PKs/FKs (ej. mail_persona, val_huella_digital,
+     val_patron_facial); (3) documentar el rediseño con PK surrogate como
+     entregable nuevo de Fase 2. Las columnas documento_identidad_enc/
+     ind_cifrado agregadas en Paso 2 quedan huérfanas en local (aditivas,
+     bajo riesgo) hasta decidir. El DESPLIEGUE a producción de cualquier
+     parte de E2 sigue esperando además al prerrequisito 1 (custodio de
+     DB_ENCRYPTION_KEY).
+
+  D) Continuar auditoría E1 con A03-A10 (Injection, Insecure Design,
+     Security Misconfiguration, Vulnerable Components, Auth Failures,
+     Data Integrity, Logging, SSRF) sobre el código web — varios ítems ya
+     tienen checklist parcial en FASE1-CHK-002.
+
+  E) H-MOB-10 (sobrescritura de identidad en tab_personas vía
+     fun_upsert_persona_visitante) es candidato a abordarse pronto por su
+     severidad alta y porque afecta tanto al módulo web como al móvil —
+     requiere diseño + BD de test antes de tocar la función PL/pgSQL.
+
+  Recordatorio de gobernanza: 🔲 No iniciar implementación de código de
+  Fase 1 sin autorización explícita de Anderson, por partes, una a la vez
+  (regla del CHECKLIST_MAESTRO).
+
+================================================================================
+ Fin del handoff general — SmartCSET — 2026-06-12
+================================================================================

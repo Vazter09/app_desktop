@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div class="field-group">
                         <label>Departamento <span class="required">*</span></label>
-                        <select name="id_dpto_reside" required onchange="cargarCiudades(this.value)">
+                        <select id="id_dpto_reside" name="id_dpto_reside" required>
                             <option value="">— Seleccione —</option>
                             <?php foreach ($dptos as $d): ?>
                             <option value="<?= htmlspecialchars($d['id_dpto']) ?>"><?= htmlspecialchars($d['nom_dpto']) ?></option>
@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div class="field-group">
                         <label>Centro de Adscripción</label>
-                        <select id="id_centro" name="id_centro" onchange="filtrarAreasPorCentro()">
+                        <select id="id_centro" name="id_centro">
                             <option value="">— Todos los centros —</option>
                             <?php foreach ($centros as $c): ?>
                             <option value="<?= htmlspecialchars((string) $c['id_centro']) ?>"><?= htmlspecialchars($c['nom_centro']) ?></option>
@@ -257,39 +257,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script>
-    function cargarCiudades(idDpto) {
-        const sel = document.getElementById('id_ciudad_reside');
-        sel.innerHTML = '<option value="">Cargando...</option>';
-        if (!idDpto) { sel.innerHTML = '<option value="">— Seleccione departamento —</option>'; return; }
-        fetch('../ajax_ciudades.php?id_dpto=' + encodeURIComponent(idDpto))
-            .then(r => r.json())  
-            .then(data => {
-                sel.innerHTML = '<option value="">— Seleccione ciudad —</option>';
-                data.forEach(c => { sel.innerHTML += `<option value="${c.id_ciudad}">${c.nom_ciudad}</option>`; });
-            })
-            .catch(() => { sel.innerHTML = '<option value="">Error al cargar</option>'; });
-    }
-
-    function filtrarAreasPorCentro() {
-        const centro = document.getElementById('id_centro').value;
-        const sel = document.getElementById('id_area');
-        const prev = sel.value;
-        Array.from(sel.options).forEach((opt, idx) => {
-            if (idx === 0) {
-                opt.hidden = false;
-                return;
-            }
-            const optCentro = opt.getAttribute('data-centro') || '';
-            opt.hidden = centro !== '' && optCentro !== centro;
-        });
-        if (prev && sel.querySelector(`option[value="${prev}"]:not([hidden])`)) {
-            sel.value = prev;
-        } else {
-            sel.value = '';
-        }
-    }
-    </script>
+    <?php
+    $regHref = registroAssetHref();
+    $vCiudades = @filemtime(dirname(__DIR__, 4) . '/js/registro-cargar-ciudades.js') ?: time();
+    $vFuncionario = @filemtime(dirname(__DIR__, 4) . '/js/registro-form-funcionario.js') ?: time();
+    ?>
+    <script src="<?= htmlspecialchars($regHref) ?>js/registro-cargar-ciudades.js?v=<?= (int) $vCiudades ?>"></script>
+    <script src="<?= htmlspecialchars($regHref) ?>js/registro-form-funcionario.js?v=<?= (int) $vFuncionario ?>"></script>
     <?php registroIncludeFooterScripts(); ?>
 </body>
 </html>

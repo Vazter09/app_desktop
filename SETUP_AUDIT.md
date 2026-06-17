@@ -4,6 +4,17 @@
 
 Análisis completo del script `database/setup_smartcset.sh` comparado contra todos los archivos SQL del proyecto.
 
+> **Estado actualizado al 2026-06-13:** Este documento es un registro histórico (auditoría original del
+> 27/05/2026). El Bug 1 (schema desactualizado) y el Bug 3 (migraciones faltantes, salvo
+> `add_unique_ingreso_persona_dia.sql`) ya fueron corregidos. El Bug 2 se cerró en su mayoría en la
+> Fase 1 — Entregable 7: `fun_validar_correo`, `fun_validar_login` y `fun_validar_usuario` se agregaron
+> al array `FUNCS`; `fun_tab_menu_usuarios.sql` se excluyó deliberadamente por ser legacy/peligrosa
+> (sobreescribiría funciones seguras ya desplegadas). Además, se verificó que la afirmación de que
+> "sin `fun_validar_correo` la recuperación de contraseña falla" es **incorrecta**: `recuperar.php` usa
+> SQL directo, no esta función. Ver `CLAUDE.md` ("Bugs conocidos") y
+> `Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`
+> para el estado vigente. El resto de este documento se conserva sin modificar como registro histórico.
+
 ---
 
 ## Qué hace el script

@@ -12,9 +12,6 @@ CREATE OR REPLACE FUNCTION fun_validar_login(
 -- se almacenan como hashes PHP (bcrypt / password_hash).
 -- El parámetro wpass se ignora. La comparación se hace en PHP con password_verify().
 -- Se mantiene la firma original para no romper llamadas existentes.
-DECLARE
-    v_state TEXT;
-    v_msg   TEXT;
 BEGIN
     RETURN QUERY
     SELECT 'OK'::TEXT, 'Usuario encontrado'::TEXT, u.id_usuario, u.nom_usuario
@@ -22,9 +19,9 @@ BEGIN
     WHERE u.id_usuario = wuser
       AND u.ind_estado = TRUE;
 EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
     WHEN OTHERS THEN
-        GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE,
-                                v_msg   = MESSAGE_TEXT;
-        RAISE EXCEPTION 'ERROR_LOG: SQLSTATE: %, MSG: %', v_state, v_msg;
+        PERFORM smartcset_handle_sql_error();
 END;
 $$ LANGUAGE plpgsql;

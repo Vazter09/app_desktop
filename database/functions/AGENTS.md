@@ -78,8 +78,8 @@ Funciones de acceso del sistema (usuarios, menús, sesiones).
 - `fun_update_tab_usuarios` — actualizar usuario
 - `fun_actualizar_password` — cambiar contraseña
 - `fun_validar_login` — validar login
-- `fun_validar_correo` — validar correo (AUSENTE del instalador)
-- `fun_validar_usuario` — validar usuario (AUSENTE del instalador)
+- `fun_validar_correo` — validar correo
+- `fun_validar_usuario` — validar usuario
 
 ### acceso/menus/
 - `fun_insert_tab_menus` — crear menú
@@ -87,11 +87,12 @@ Funciones de acceso del sistema (usuarios, menús, sesiones).
 - `fun_delete_tab_menus` — eliminar menú
 - `fun_insert_menu_usuarios` — asignar menú a usuario
 - `fun_delete_perfil_usuario` — borrar todos los menús de un usuario
-- `fun_delete_perfil_usuarios` — borrar un menú de todos los usuarios (AUSENTE del instalador)
+- `fun_delete_perfil_usuarios` — borrar un menú de todos los usuarios (AUSENTE del instalador, pendiente)
 - `fun_trigger_desasignar_menu` — trigger al eliminar menú
-- `fun_trigger_menu` — trigger al crear usuario (AUSENTE del instalador)
-- `fun_trigger_menu_admin` — trigger admin (AUSENTE del instalador)
-- `fun_tab_menu_usuarios` — query de menús por usuario (AUSENTE del instalador)
+- `fun_trigger_menu` — trigger al crear usuario
+- `fun_trigger_menu_admin` — trigger admin
+- `fun_tab_menu_usuarios` — archivo legacy, NO desplegable (sobreescribiría versiones seguras ya
+  desplegadas; ver `database/functions/acceso/menus/AGENTS.md`)
 
 ### acceso/sesiones/
 - `fun_ingreso_sesion` — registrar sesión activa (bloquea si ya existe)

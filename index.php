@@ -4,20 +4,6 @@
  * Validación de ind_estado, Estética Corporativa y Seguridad
  */
 
-// Agregar headers de seguridad
-header("X-Content-Type-Options: nosniff");
-header("X-Frame-Options: SAMEORIGIN");
-header("X-XSS-Protection: 1; mode=block");
-header("Referrer-Policy: strict-origin-when-cross-origin");
-
-// Forzar HTTPS en producción (comentar en desarrollo)
-// if (APP_ENV === 'production' && empty($_SERVER['HTTPS'])) {
-//     header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-//     exit();
-// }
-
-session_start();
-
 require_once __DIR__ . '/src/core/prepare_login.php';
 require_once __DIR__ . '/src/core/ErrorHandler.php';
 require_once __DIR__ . '/src/core/helpers.php';
@@ -57,6 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         (string) $w_reg['id_usuario'],
                         $w_ip
                     );
+
+                    session_regenerate_id(true);
 
                     $_SESSION['id_usuario']   = $w_reg['id_usuario'];
                     $_SESSION['nom_usuario'] = $w_reg['nom_usuario'];
@@ -147,43 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
     </div>
 
-    <script>
-        (function () {
-            const loginForm = document.getElementById('loginForm');
-            const submitBtn = document.getElementById('loginSubmitBtn');
-            const clientError = document.getElementById('loginClientError');
-            const passInput = document.getElementById('txt_clave');
-
-            if (!loginForm || !submitBtn) {
-                return;
-            }
-
-            loginForm.addEventListener('submit', function (e) {
-                const pass = passInput ? passInput.value : '';
-
-                if (pass.length < 8) {
-                    e.preventDefault();
-                    if (clientError) {
-                        clientError.textContent = 'La contraseña debe tener al menos 8 caracteres.';
-                        clientError.classList.add('is-visible');
-                    }
-                    return;
-                }
-
-                if (clientError) {
-                    clientError.classList.remove('is-visible');
-                }
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Verificando…';
-            });
-
-            history.pushState(null, null, location.href);
-            window.onpopstate = function () {
-                history.go(1);
-            };
-        })();
-    </script>
+    <?php $_v_login_js = @filemtime(__DIR__ . '/js/login-page.js') ?: time(); ?>
+    <script src="js/login-page.js?v=<?= (int) $_v_login_js ?>"></script>
 </body>
 
 </html>

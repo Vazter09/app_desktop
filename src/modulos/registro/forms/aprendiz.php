@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid cols-2">
                     <div class="field-group">
                         <label for="id_dpto_reside">Departamento <span class="required">*</span></label>
-                        <select id="id_dpto_reside" name="id_dpto_reside" required onchange="cargarCiudades(this.value)">
+                        <select id="id_dpto_reside" name="id_dpto_reside" required>
                             <option value="">— Seleccione —</option>
                             <?php foreach ($dptos as $d): ?>
                             <option value="<?= htmlspecialchars($d['id_dpto']) ?>">

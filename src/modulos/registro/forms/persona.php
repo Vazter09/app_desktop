@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div class="field-group">
                         <label for="id_dpto_reside">Departamento <span class="required">*</span></label>
-                        <select id="id_dpto_reside" name="id_dpto_reside" required onchange="cargarCiudades(this.value)">
+                        <select id="id_dpto_reside" name="id_dpto_reside" required>
                             <option value="">— Seleccione —</option>
                             <?php foreach ($dptos as $d): ?>
                             <option value="<?= htmlspecialchars($d['id_dpto']) ?>"><?= htmlspecialchars($d['nom_dpto']) ?></option>
@@ -218,31 +218,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script>
-        async function cargarCiudades(idDpto) {
-            const ciudadSelect = document.getElementById('id_ciudad_reside');
-            ciudadSelect.innerHTML = '<option value="">Cargando ciudades...</option>';
-
-            if (!idDpto) {
-                ciudadSelect.innerHTML = '<option value="">— Seleccione departamento —</option>';
-                return;
-            }
-
-            try {
-                const response = await fetch('../ajax_ciudades.php?id_dpto=' + encodeURIComponent(idDpto));
-                const data = await response.json();
-                ciudadSelect.innerHTML = '<option value="">— Seleccione —</option>';
-                data.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id_ciudad;
-                    option.textContent = item.nom_ciudad;
-                    ciudadSelect.appendChild(option);
-                });
-            } catch (err) {
-                ciudadSelect.innerHTML = '<option value="">Error al cargar ciudades</option>';
-            }
-        }
-    </script>
+    <?php
+    $regHref = registroAssetHref();
+    $vCiudades = @filemtime(dirname(__DIR__, 4) . '/js/registro-cargar-ciudades.js') ?: time();
+    ?>
+    <script src="<?= htmlspecialchars($regHref) ?>js/registro-cargar-ciudades.js?v=<?= (int) $vCiudades ?>"></script>
     <?php registroIncludeFooterScripts(); ?>
 </body>
 </html>

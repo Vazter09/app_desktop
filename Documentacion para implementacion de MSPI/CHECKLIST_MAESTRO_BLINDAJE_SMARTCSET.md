@@ -55,7 +55,7 @@
 - [ ] E4 — Hardening de sesiones PHP
 - [ ] E5 — Tokens anti-CSRF en formularios
 - [ ] E6 — Verificación de subida de archivos *(código ya correcto; falta verificación de servidor)*
-- [ ] E7 — Corrección de bugs en `setup_smartcset.sh` *(parcial — schema y migraciones ya corregidos)*
+- [x] E7 — Corrección de bugs en `setup_smartcset.sh` ✅ *(completado 2026-06-13: 3/4 funciones agregadas a FUNCS; ver REPORTE_E1-E07)*
 - [ ] E8 — Hardening de red y TLS *(⛔ requiere Oficina TI SENA)*
 - [ ] E9 — Gestión de parches y actualización de componentes
 - [ ] E10 — SDLC seguro: checklist de código y despliegue

@@ -33,18 +33,10 @@ function registroFormsAssetHref(): string
 
 function registroThemeInitScript(): void
 {
+    $href = registroAssetHref();
+    $v = @filemtime(dirname(__DIR__, 3) . '/js/theme-init.js') ?: time();
     ?>
-<script>
-    (function () {
-        try {
-            if (localStorage.getItem('smartcset_theme') === 'light') {
-                document.body.classList.add('light-theme');
-            }
-        } catch (err) {
-            /* noop: fallback a tema oscuro por defecto */
-        }
-    })();
-</script>
+<script src="<?= htmlspecialchars($href) ?>js/theme-init.js?v=<?= (int) $v ?>"></script>
     <?php
 }
 
@@ -96,20 +88,9 @@ function registroIncludeHeader(string $currentLabel = ''): void
 function registroIncludeFooterScripts(): void
 {
     $href = registroAssetHref();
+    $vClock = @filemtime(dirname(__DIR__, 3) . '/js/registro-session-clock.js') ?: time();
     ?>
     <script src="<?= htmlspecialchars($href) ?>js/registro-theme-toggle.js"></script>
-    <script>
-        (function() {
-            const clock = document.getElementById('session-clock');
-            if (!clock) return;
-            const formatter = new Intl.DateTimeFormat('es-CO', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-                timeZone: 'America/Bogota'
-            });
-            function updateClock() { clock.textContent = formatter.format(new Date()); }
-            updateClock();
-            setInterval(updateClock, 1000);
-        })();
-    </script>
+    <script src="<?= htmlspecialchars($href) ?>js/registro-session-clock.js?v=<?= (int) $vClock ?>"></script>
     <?php
 }

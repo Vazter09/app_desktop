@@ -238,6 +238,13 @@
             showHint('');
             cargarCiudades('', '');
         });
+
+        var dptoSelect = document.getElementById('id_dpto_reside');
+        if (dptoSelect) {
+            dptoSelect.addEventListener('change', function () {
+                cargarCiudades(this.value, '');
+            });
+        }
     }
 
     if (document.readyState === 'loading') {
