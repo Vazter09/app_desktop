@@ -6,7 +6,7 @@
 | Campo | Valor |
 |---|---|
 | **Documento N°** | FASE1-CHK-002 |
-| **Versión** | 1.1 — Actualización 2026-06-16: E5 descartado; tests 23/23 PASS en servidor; head.php fix |
+| **Versión** | 1.3 — Actualización 2026-06-17 sesión 2: E1-A02 (HTTPS) ✅ COMPLETADO — Certificado TLS autofirmado, VirtualHost HTTPS, enforceHTTPS() activo, cookie flags verificados. Corrección DocumentRoot Apache. APP_ENV=production activo. |
 | **Fecha de elaboración** | 2026-06-10 |
 | **Elaborado por** | Equipo de Desarrollo - SmartCSET |
 | **Tipo** | Documento de trabajo — guía de seguimiento de implementación |
@@ -28,7 +28,7 @@
 | E6 — Verificación de uploads | 🟡 | ✅ Código PHP validado (23/23 tests PASS 2026-06-16). ⚠️ Protección Apache runtime PENDIENTE — AllowOverride None en servidor impide .htaccess; requiere acción IT (VirtualHost) | 90% |
 | E5 — Tokens anti-CSRF | 🔴 | ⛔ DESCARTADO — decisión del equipo (2026-06-16): tokens CSRF fuera del alcance de Fase 1 | N/A |
 | E3 — Rate limiting + logging de autenticación | 🔴 | 🔲 Pendiente | 0% |
-| E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 ✅ remediado + validado 23/23 tests; A02 ⚠️ auditado — bcrypt ✅, TLS/HTTPS pendiente IT; A07 session fixation ✅ via E4; resto pendiente) | ~35% |
+| E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 ✅ remediado + validado 23/23 tests; A02 ⚠️ auditado — bcrypt ✅, HTTPS ✅ completado 2026-06-17, TLS BD pendiente E8; A07 session fixation ✅ via E4; A03-A10 pendiente) | ~40% |
 | E2 — Cifrado en reposo (pgcrypto) | 🔴 | ⛔ Bloqueado — replanteo de alcance requerido (hallazgo crítico 2026-06-12, ver §E2 abajo) | ~15% (infra pgcrypto + clave + funciones listas en local; alcance original inviable) |
 | E8 — Hardening de red y TLS | 🔴 | ⛔ Requiere Oficina TI SENA (salvo cambio DSN) | 0% |
 | E9 — Gestión de parches | 🟠 | 🔲 Pendiente | 0% |
@@ -41,7 +41,7 @@
 
 No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2 y E8:
 
-- [ ] 1. Designar custodio formal de `DB_ENCRYPTION_KEY` (bloquea E2)
+- [x] 1. Designar custodio formal de `DB_ENCRYPTION_KEY` — **RESUELTO 2026-06-17:** el custodio es el rol "Administrador del Sistema" ya definido en `FASE0-ROL-004` §5.1, ejercido actualmente por el equipo de desarrollo de SmartCSET dentro del SENA. Detalle en `04_ROLES_Y_RESPONSABILIDADES_SEGURIDAD_SMARTCSET_DOCUMENTO_LEGAL.md` §5.1. Nota: esto NO levanta el bloqueo de fondo de E2 (rediseño de PK pendiente, ver hallazgo crítico 2026-06-12 más abajo) — solo resuelve la designación de custodio en sí
 - [ ] 2. Disponer de BD de test independiente — `db_smartcset_test` puede crearse en local (bloquea E2 y la verificación de E7)
 - [ ] 3. Confirmar tipo de servidor web: Apache vs. Nginx (afecta E6)
 - [ ] 4. Coordinar con Oficina TI SENA: firewall, `postgresql.conf`, `pg_hba.conf` (bloquea E8)
@@ -264,7 +264,7 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 ## E2 — CIFRADO EN REPOSO CON pgcrypto (§4) — el más riesgoso; SIEMPRE en BD de test primero
 
-**Prerrequisitos:** custodio de `DB_ENCRYPTION_KEY` designado (prerrequisito 1) + BD de test (prerrequisito 2) + backup completo verificado.
+**Prerrequisitos:** custodio de `DB_ENCRYPTION_KEY` designado (prerrequisito 1 — ✅ resuelto 2026-06-17, ver arriba) + BD de test (prerrequisito 2) + backup completo verificado. **Bloqueador de fondo aún vigente:** el alcance original de E2 (cifrar `tab_personas.documento_identidad`) es inviable porque esa columna no existe — el documento de identidad ES la PK `id_persona`, referenciada por 5+ tablas (ver hallazgo crítico 2026-06-12). Resolver la designación de custodio no implica que E2 pueda avanzar; sigue pendiente el replanteo de alcance con Anderson (opciones en handoff.txt §5.3.1).
 
 - [ ] Paso 1 — `CREATE EXTENSION IF NOT EXISTS pgcrypto;` (test, luego producción)
 - [ ] Paso 2 — Migración `database/migrations/add_cifrado_datos_sensibles.sql`: columnas `documento_identidad_enc BYTEA` + `ind_cifrado BOOLEAN` (NO eliminar la columna original)
@@ -346,6 +346,8 @@ Si algún paso falla tras los cambios, es una regresión a resolver antes de dar
 | 2026-06-11 | E1 (A01) | Desplegados los 8 archivos corregidos de A01 en el servidor de producción y ejecutado el procedimiento completo de §6.2 del reporte A01 (11 pruebas: acceso no-admin, POST sin sesión/no-admin, regresión admin con escritura real revertida). Resultado: **PASS** en todas — subcontrol 1 de A01 cerrado. Resultados documentados en §6.4 del reporte A01. | |
 | 2026-06-14 | E1 (A01), E1 (A02), E4, E6, E7 | Creada suite de tests automatizados en `test_seguridad/` (Python `unittest` + `requests`, un archivo por informe, PEP8 + docstrings) que verifica las premisas principales de los 5 entregables ya cerrados/con infraestructura lista. Resultado: **23/23 PASS**. Fixes de entorno de desarrollo necesarios (no afectan producto): helper `close_stale_session()` para la sesión activa única de `tab_sesiones`, y regeneración del hash bcrypt de `porteria` para que coincida con la credencial documentada en `CLAUDE.md`. Detalle en `handoff.txt`. | |
 | 2026-06-16 | E4, E5, E6, validación servidor | **Suite `test_seguridad/` ejecutada contra servidor real `10.5.213.103`: 23/23 PASS.** Correcciones de entorno: (1) contraseña del usuario `porteria` reseteada a `Porteria2026!` en BD del servidor (había sido cambiada manualmente); (2) `src/layout/head.php` con `<script>` inline de theme-init detectado y corregido — reemplazado por `<script src="js/theme-init.js">` + `js/theme-init.js` desplegado al servidor. Hallazgo de infraestructura E6: Apache tiene `AllowOverride None` globalmente → `.htaccess` de uploads completamente ignorados en servidor; requiere acción de IT en VirtualHost. **E5 (tokens CSRF) descartado** por decisión del equipo: `SameSite=Strict` (activo via E4) mitiga el escenario principal; esfuerzo redirigido a E3. | feat/implementacion-MSPI-SEGURIDAD |
+| 2026-06-17 | Prerrequisito 1 (custodio `DB_ENCRYPTION_KEY`) | **Custodio formal designado.** Decisión de Anderson: el custodio de `DB_ENCRYPTION_KEY` es el rol "Administrador del Sistema" (`FASE0-ROL-004` §5.1), ejercido actualmente por el equipo de desarrollo de SmartCSET dentro del SENA. Se actualizó `04_ROLES_Y_RESPONSABILIDADES_SEGURIDAD_SMARTCSET_DOCUMENTO_LEGAL.md` §5.1 (Asignación + Responsabilidades + nota de Formalización) y el prerrequisito 1 de este checklist. **No levanta** el bloqueador de fondo de E2 (rediseño de PK pendiente, hallazgo 2026-06-12) — solo resuelve la designación de custodio. | |
+| 2026-06-17 (sesión 2) | E1-A02 (HTTPS), E4 (cierre) | **E1-A02 (HTTPS) COMPLETADO ✅** — Generado certificado TLS autofirmado ECDSA P-256 en `/etc/apache2/certs/`, configurado VirtualHost HTTPS en `/etc/apache2/sites-available/smartcset-ssl.conf`, agregado `enforceHTTPS()` en `index.php` líneas 11-15, corregido DocumentRoot Apache para servir desde `/var/www/html`. APP_ENV cambiado a `production` en `.env` para activar flag Secure en cookies automáticamente. Pruebas manuales en navegador exitosas: (1) certificado autofirmado mostrado y aceptado; (2) página de login cargó en HTTPS; (3) login exitoso con usuario admin.smart; (4) dashboard accesible; (5) cookie PHPSESSID verificada con flags Secure ✅, HttpOnly ✅, SameSite=Strict ✅, Max-Age=1800 ✅. Verificación con curl confirma TLS 1.3 y cipher suite TLS_AES_256_GCM_SHA384. Reporte actualizado: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` v3.0. | |
 
 ---
 

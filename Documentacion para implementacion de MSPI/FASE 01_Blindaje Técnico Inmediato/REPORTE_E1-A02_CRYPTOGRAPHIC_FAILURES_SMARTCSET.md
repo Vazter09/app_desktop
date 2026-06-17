@@ -1,11 +1,12 @@
 # Reporte de auditoría — E1-A02: Cryptographic Failures
 
 **Documento N°:** FASE1-REP-A02
-**Versión:** 2.0 (abreviada — supersede v1.0)
+**Versión:** 3.0 (Actualización 2026-06-17: HTTPS + certificado autofirmado completados)
 **Fecha de elaboración:** 2026-06-11
+**Última actualización:** 2026-06-17
 **Entregable padre:** FASE1-BLI-001 — Entregable 1 (Auditoría OWASP Top 10)
 **Control OWASP:** A02:2021 — Cryptographic Failures
-**Estado:** ⚠️ Auditado — 1/3 hallazgos con infraestructura de código lista (activación pendiente de E8); 2/3 bloqueados por prerrequisitos institucionales de E2 y E4
+**Estado:** ⚠️ Parcial — H1 (cifrado en reposo) bloqueado E2; H3 (TLS BD) pendiente E8; H4 (HTTPS) ✅ COMPLETADO 2026-06-17
 **Elaborado por:** Equipo de Desarrollo - SmartCSET
 **Clasificación:** Interno — Seguridad de la Información
 
@@ -21,8 +22,8 @@ E8 (TLS PHP↔PostgreSQL, mayormente responsabilidad de Oficina TI SENA).
 | - | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1 | Contraseñas hasheadas con algoritmo robusto              | ✅ Cumple —`password_verify()` bcrypt, sin acción                                                                                              |
 | 2 | Cifrado en reposo de `tab_personas.documento_identidad` | ❌ No implementado — bloqueado por E2 (custodio `DB_ENCRYPTION_KEY` + BD de test)                                                               |
-| 3 | TLS en conexión PHP↔PostgreSQL (DSN)                    | ⚠️ Sin `sslmode`; infraestructura de código lista hoy, activación depende de E8                                                              |
-| 4 | HTTPS forzado en producción                              | ❌ Redirect comentado,`SecurityMiddleware` no incluido (en el momento de esta auditoría); plan en E4, bloqueado por certificado TLS (prereq. 6) |
+| 3 | TLS en conexión PHP↔PostgreSQL (DSN)                    | ⚠️ Sin `sslmode` activo; infraestructura de código lista, activación depende de E8 (Oficina TI habilitar ssl=on en PostgreSQL)                                                              |
+| 4 | HTTPS forzado en producción                              | ✅ COMPLETADO 2026-06-17 — Certificado TLS autofirmado ECDSA P-256, VirtualHost HTTPS, enforceHTTPS() activo, cookie flags verificados (Secure, HttpOnly, SameSite=Strict) |
 
 ## Hallazgo 2 — TLS BD: cambio aplicado en esta sesión
 
@@ -48,10 +49,7 @@ Con `DB_SSLMODE` vacío (estado actual), el comportamiento es idéntico al previ
 - **H1 (cifrado en reposo):** dato clasificado Confidencialidad Muy Alta (FASE0-INV-002 INF-01). Plan completo
   de 7 pasos con pgcrypto en E2. Bloqueado por prerrequisitos institucionales 1 (custodio de clave) y 2 (BD de
   test) — ver handoff E2 para estado de avance posterior (pausado por hallazgo de diseño de PK).
-- **H4 (HTTPS forzado):** `enforceHTTPS()` existía sin llamarse y `SecurityMiddleware.php` no se incluía
-  (código muerto en el momento de esta auditoría — **resuelto posteriormente en E4**, ver
-  REPORTE_E1-E04). Bloqueador residual: certificado TLS (prereq. 6) para activar el redirect HTTPS en
-  producción.
+- **H4 (HTTPS forzado):** ✅ **COMPLETADO 2026-06-17** — Certificado TLS autofirmado ECDSA P-256 generado en `/etc/apache2/certs/`, VirtualHost HTTPS configurado en `/etc/apache2/sites-available/smartcset-ssl.conf`, `enforceHTTPS()` agregado a `index.php` (línea 11-15), y cookie flags verificados (Secure ✅, HttpOnly ✅, SameSite=Strict ✅). Cambio `APP_ENV=production` en `.env` para activar flag Secure automáticamente en HTTPS. Pruebas manuales exitosas en navegador: certificado autofirmado aceptado, login funciona, dashboard cargó correctamente.
 
 ## Trazabilidad normativa
 
@@ -68,8 +66,8 @@ Con `DB_SSLMODE` vacío (estado actual), el comportamiento es idéntico al previ
 
 - `database/migrations/password_migrator.php` construye DSN propio sin `sslmode` — script marcado
   "BORRAR DESPUÉS DE USAR", queda para E10.
-- A02 no puede marcarse ✅ hasta completar E2, E4 (✅ ya cerrado para H4 vía E04) y la activación de
-  `DB_SSLMODE` en E8.
+- **H4 (HTTPS) está completado ✅** — Certificado, VirtualHost, enforceHTTPS(), y cookie flags verificados.
+- A02 no puede marcarse completamente ✅ (como hallazgo total) hasta completar H1 (E2) y H3 (E8), pero H4 está 100% cerrado.
 
 ---
 
