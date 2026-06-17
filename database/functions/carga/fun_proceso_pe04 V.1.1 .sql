@@ -4,11 +4,14 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE SEQUENCE IF NOT EXISTS seq_id_sector START 1;
 
 -- Crear tabla de logging (si no existe)
-CREATE OR REPLACE FUNCTION procesar_tab_temp_pe04()
+CREATE OR REPLACE FUNCTION fun_procesar_pe04()
 RETURNS TEXT AS $$
 DECLARE
     r tab_temp_pe04%ROWTYPE;
-    contador INTEGER := 0;
+    contador INTEGER := 0;   -- total procesados (insert+update)
+    v_insert_count INTEGER := 0;
+    v_update_count INTEGER := 0;
+    v_error_count INTEGER := 0;
     v_diff_months INTEGER;
     v_id_ciudad tab_fichas.id_ciudad%TYPE;
     v_id_empresa tab_empresas.id_empresa%TYPE;
@@ -19,6 +22,8 @@ DECLARE
     v_num_version tab_programas.num_version%TYPE;
     v_fec_inicio DATE;
     v_fec_fin DATE;
+    v_exists BOOLEAN;
+    v_row_count INTEGER;
 BEGIN
     -- Asegurar existencia del registro por defecto para programas especiales (id=0)
     INSERT INTO tab_prog_especiales (id_prog_especial, nom_prog_especial)
@@ -40,7 +45,7 @@ BEGIN
             -- 3. UPSERT empresa con manejo de NULL
             IF r.id_empresa IS NULL THEN
                 v_id_empresa := 999;
-                v_tipo_docum := 'N/A';
+                v_tipo_docum := 'SN';
                 v_nom_empresa := 'Sin Empresa';
             ELSE
                 v_id_empresa := r.id_empresa;
@@ -107,116 +112,144 @@ BEGIN
                 END IF;
             END IF;
 
-            -- 9. UPSERT ficha principal
-            INSERT INTO tab_fichas (
-                id_ficha, id_centro, id_programa, id_nivel_estudio, ind_jornada, ind_modalidad,
-                fec_inicio, fec_fin_productiva, val_duracion, id_instructor_lider, id_sector,
-                id_empresa, id_ocupacion, id_ciudad, cod_convenio, nom_convenio,
-                ind_amp_cobertura, id_prog_especial, ind_abierta, nom_vocero, tel_vocero,
-                mail_vocero, val_cupo, id_ambiente_base, num_inscritos_opcion1, num_inscritos_opcion2,
-                ind_estado, num_cursos, tot_aprendices_masc, tot_aprendices_fem, tot_aprendices_nobin,
-                tot_aprendices_trans, tot_horas_planta, tot_horas_contratista, tot_horas_contrat_ext,
-                tot_horas_monitores, tot_horas_inst_empresa, tot_aprendices_activos, val_duracion_programa,
-                id_nuevo_sector
-            ) VALUES (
-                COALESCE(r.id_ficha, 0)::DECIMAL(10,0),
-                COALESCE(r.cod_centro, 0),
-                r.id_programa,
-                COALESCE(r.id_nivel_forma, 0),
-                CASE WHEN COALESCE(r.id_jornada, 1) BETWEEN 1 AND 4 THEN r.id_jornada ELSE 1 END,
-                CASE UPPER(TRIM(r.val_modalidad))
-                    WHEN 'PRESENCIAL' THEN 1
-                    WHEN 'VIRTUAL' THEN 2
-                    WHEN 'DISTANCIA' THEN 3
-                    ELSE 1
-                END,
-                v_fec_inicio,
-                v_fec_fin,
-                v_diff_months::DECIMAL(2,0),
-                77777777,
-                COALESCE(r.id_sector_prog, 0)::DECIMAL(4,0),
-                v_id_empresa,
-                COALESCE(r.id_ocupacion, 0),
-                v_id_ciudad,
-                COALESCE(r.id_convenio, 0),
-                COALESCE(r.nom_convenio, 'Sin Convenio'),
-                FALSE,
-                v_id_prog_especial,
-                FALSE,
-                'Sin Vocero',
-                '3000000000',
-                'sin_correo@correo.com',
-                COALESCE(r.num_tot_aprend, 30),
-                'Sin Ambiente Base',
-                0, 0,
-                CASE UPPER(TRIM(r.ind_estado_curso))
-                    WHEN 'INSCRIPCION' THEN 1
-                    WHEN 'MATRICULA' THEN 2
-                    WHEN 'EJECUCION' THEN 3
-                    WHEN 'TERMINADA' THEN 7
-                    WHEN 'CERRADA' THEN 8
-                    ELSE 9
-                END,
-                COALESCE(r.num_cursos, 1),
-                GREATEST(COALESCE(r.num_aprend_masc, 0), 0),
-                GREATEST(COALESCE(r.num_aprend_fem, 0), 0),
-                GREATEST(COALESCE(r.num_aprend_nobin, 0), 0),
-                0,
-                COALESCE(r.val_hrs_planta, '00:00:00'::INTERVAL),
-                COALESCE(r.val_hrs_contrat, '00:00:00'::INTERVAL),
-                COALESCE(r.val_hrs_context, '00:00:00'::INTERVAL),
-                COALESCE(r.val_hrs_monitor, '00:00:00'::INTERVAL),
-                COALESCE(r.val_hrs_instemp, '00:00:00'::INTERVAL),
-                GREATEST(COALESCE(r.val_total_apr_act, 0), 0),
-                make_interval(hours => COALESCE(r.val_duracion_prog, 0)::INT),  -- Conversión a integer
-                COALESCE((SELECT id_sector FROM tab_sectores 
-                          WHERE unaccent(lower(nom_sector)) = unaccent(lower(TRIM(r.nom_nuevo_sector))) 
-                          LIMIT 1), 0)
-            )
-            ON CONFLICT (id_ficha) DO UPDATE SET
-                id_centro = EXCLUDED.id_centro,
-                id_programa = EXCLUDED.id_programa,
-                id_nivel_estudio = EXCLUDED.id_nivel_estudio,
-                ind_jornada = EXCLUDED.ind_jornada,
-                ind_modalidad = EXCLUDED.ind_modalidad,
-                fec_inicio = EXCLUDED.fec_inicio,
-                fec_fin_productiva = EXCLUDED.fec_fin_productiva,
-                val_duracion = EXCLUDED.val_duracion,
-                id_sector = EXCLUDED.id_sector,
-                id_empresa = EXCLUDED.id_empresa,
-                id_ocupacion = EXCLUDED.id_ocupacion,
-                id_ciudad = EXCLUDED.id_ciudad,
-                cod_convenio = EXCLUDED.cod_convenio,
-                nom_convenio = EXCLUDED.nom_convenio,
-                ind_amp_cobertura = EXCLUDED.ind_amp_cobertura,
-                id_prog_especial = EXCLUDED.id_prog_especial,
-                ind_estado = EXCLUDED.ind_estado,
-                num_cursos = EXCLUDED.num_cursos,
-                tot_aprendices_masc = EXCLUDED.tot_aprendices_masc,
-                tot_aprendices_fem = EXCLUDED.tot_aprendices_fem,
-                tot_aprendices_nobin = EXCLUDED.tot_aprendices_nobin,
-                tot_aprendices_trans = EXCLUDED.tot_aprendices_trans,
-                tot_horas_planta = EXCLUDED.tot_horas_planta,
-                tot_horas_contratista = EXCLUDED.tot_horas_contratista,
-                tot_horas_contrat_ext = EXCLUDED.tot_horas_contrat_ext,
-                tot_horas_monitores = EXCLUDED.tot_horas_monitores,
-                tot_horas_inst_empresa = EXCLUDED.tot_horas_inst_empresa,
-                tot_aprendices_activos = EXCLUDED.tot_aprendices_activos,
-                val_duracion_programa = EXCLUDED.val_duracion_programa,
-                id_nuevo_sector = EXCLUDED.id_nuevo_sector;
+            -- 9. Insertar o actualizar ficha principal
+            -- Verificar existencia
+            SELECT 1 INTO v_exists FROM tab_fichas WHERE id_ficha = COALESCE(r.id_ficha, 0)::DECIMAL(10,0);
+            IF v_exists THEN
+                -- Actualizar
+                UPDATE tab_fichas SET
+                    id_centro = COALESCE(r.cod_centro, 0),
+                    id_programa = r.id_programa,
+                    id_nivel_estudio = COALESCE(r.id_nivel_forma, 0),
+                    id_jornada = CASE WHEN COALESCE(r.id_jornada, 1) BETWEEN 1 AND 4 THEN r.id_jornada ELSE 1 END,
+                    ind_modalidad = CASE UPPER(TRIM(r.val_modalidad))
+                                        WHEN 'PRESENCIAL' THEN 1
+                                        WHEN 'VIRTUAL' THEN 2
+                                        WHEN 'DISTANCIA' THEN 3
+                                        ELSE 1
+                                    END,
+                    fec_inicio = v_fec_inicio,
+                    fec_fin_productiva = v_fec_fin,
+                    val_duracion = v_diff_months::DECIMAL(2,0),
+                    id_sector = COALESCE(r.id_sector_prog, 0)::DECIMAL(4,0),
+                    id_empresa = v_id_empresa,
+                    id_ocupacion = COALESCE(r.id_ocupacion, 0),
+                    id_ciudad = v_id_ciudad,
+                    cod_convenio = COALESCE(r.id_convenio, 0),
+                    nom_convenio = COALESCE(r.nom_convenio, 'Sin Convenio'),
+                    ind_amp_cobertura = FALSE,
+                    id_prog_especial = v_id_prog_especial,
+                    ind_estado = CASE UPPER(TRIM(r.ind_estado_curso))
+                                    WHEN 'INSCRIPCION' THEN 1
+                                    WHEN 'MATRICULA' THEN 2
+                                    WHEN 'EJECUCION' THEN 3
+                                    WHEN 'TERMINADA' THEN 7
+                                    WHEN 'CERRADA' THEN 8
+                                    ELSE 9
+                                 END,
+                    num_cursos = COALESCE(r.num_cursos, 1),
+                    tot_aprendices_masc = GREATEST(COALESCE(r.num_aprend_masc, 0), 0),
+                    tot_aprendices_fem = GREATEST(COALESCE(r.num_aprend_fem, 0), 0),
+                    tot_aprendices_nobin = GREATEST(COALESCE(r.num_aprend_nobin, 0), 0),
+                    tot_aprendices_trans = 0,
+                    tot_horas_planta = COALESCE(r.val_hrs_planta, '00:00:00'::INTERVAL),
+                    tot_horas_contratista = COALESCE(r.val_hrs_contrat, '00:00:00'::INTERVAL),
+                    tot_horas_contrat_ext = COALESCE(r.val_hrs_context, '00:00:00'::INTERVAL),
+                    tot_horas_monitores = COALESCE(r.val_hrs_monitor, '00:00:00'::INTERVAL),
+                    tot_horas_inst_empresa = COALESCE(r.val_hrs_instemp, '00:00:00'::INTERVAL),
+                    tot_aprendices_activos = GREATEST(COALESCE(r.val_total_apr_act, 0), 0),
+                    val_duracion_programa = make_interval(hours => COALESCE(r.val_duracion_prog, 0)::INT),
+                    id_nuevo_sector = COALESCE((SELECT id_sector FROM tab_sectores 
+                                                WHERE unaccent(lower(nom_sector)) = unaccent(lower(TRIM(r.nom_nuevo_sector))) 
+                                                LIMIT 1), 0)
+                WHERE id_ficha = COALESCE(r.id_ficha, 0)::DECIMAL(10,0);
+                GET DIAGNOSTICS v_row_count = ROW_COUNT;
+                IF v_row_count > 0 THEN
+                    v_update_count := v_update_count + 1;
+                END IF;
+            ELSE
+                -- Insertar
+                INSERT INTO tab_fichas (
+                    id_ficha, id_centro, id_programa, id_nivel_estudio, id_jornada, ind_modalidad,
+                    fec_inicio, fec_fin_productiva, val_duracion, id_instructor_lider, id_sector,
+                    id_empresa, id_ocupacion, id_ciudad, cod_convenio, nom_convenio,
+                    ind_amp_cobertura, id_prog_especial, ind_abierta, nom_vocero, tel_vocero,
+                    mail_vocero, val_cupo, id_ambiente_base, num_inscritos_opcion1, num_inscritos_opcion2,
+                    ind_estado, num_cursos, tot_aprendices_masc, tot_aprendices_fem, tot_aprendices_nobin,
+                    tot_aprendices_trans, tot_horas_planta, tot_horas_contratista, tot_horas_contrat_ext,
+                    tot_horas_monitores, tot_horas_inst_empresa, tot_aprendices_activos, val_duracion_programa,
+                    id_nuevo_sector
+                ) VALUES (
+                    COALESCE(r.id_ficha, 0)::DECIMAL(10,0),
+                    COALESCE(r.cod_centro, 0),
+                    r.id_programa,
+                    COALESCE(r.id_nivel_forma, 0),
+                    CASE WHEN COALESCE(r.id_jornada, 1) BETWEEN 1 AND 4 THEN r.id_jornada ELSE 1 END,
+                    CASE UPPER(TRIM(r.val_modalidad))
+                        WHEN 'PRESENCIAL' THEN 1
+                        WHEN 'VIRTUAL' THEN 2
+                        WHEN 'DISTANCIA' THEN 3
+                        ELSE 1
+                    END,
+                    v_fec_inicio,
+                    v_fec_fin,
+                    v_diff_months::DECIMAL(2,0),
+                    77777777,
+                    COALESCE(r.id_sector_prog, 0)::DECIMAL(4,0),
+                    v_id_empresa,
+                    COALESCE(r.id_ocupacion, 0),
+                    v_id_ciudad,
+                    COALESCE(r.id_convenio, 0),
+                    COALESCE(r.nom_convenio, 'Sin Convenio'),
+                    FALSE,
+                    v_id_prog_especial,
+                    FALSE,
+                    'Sin Vocero',
+                    '3000000000',
+                    'sin_correo@correo.com',
+                    COALESCE(r.num_tot_aprend, 30),
+                    'Sin Ambiente Base',
+                    0, 0,
+                    CASE UPPER(TRIM(r.ind_estado_curso))
+                        WHEN 'INSCRIPCION' THEN 1
+                        WHEN 'MATRICULA' THEN 2
+                        WHEN 'EJECUCION' THEN 3
+                        WHEN 'TERMINADA' THEN 7
+                        WHEN 'CERRADA' THEN 8
+                        ELSE 9
+                    END,
+                    COALESCE(r.num_cursos, 1),
+                    GREATEST(COALESCE(r.num_aprend_masc, 0), 0),
+                    GREATEST(COALESCE(r.num_aprend_fem, 0), 0),
+                    GREATEST(COALESCE(r.num_aprend_nobin, 0), 0),
+                    0,
+                    COALESCE(r.val_hrs_planta, '00:00:00'::INTERVAL),
+                    COALESCE(r.val_hrs_contrat, '00:00:00'::INTERVAL),
+                    COALESCE(r.val_hrs_context, '00:00:00'::INTERVAL),
+                    COALESCE(r.val_hrs_monitor, '00:00:00'::INTERVAL),
+                    COALESCE(r.val_hrs_instemp, '00:00:00'::INTERVAL),
+                    GREATEST(COALESCE(r.val_total_apr_act, 0), 0),
+                    make_interval(hours => COALESCE(r.val_duracion_prog, 0)::INT),
+                    COALESCE((SELECT id_sector FROM tab_sectores 
+                              WHERE unaccent(lower(nom_sector)) = unaccent(lower(TRIM(r.nom_nuevo_sector))) 
+                              LIMIT 1), 0)
+                );
+                v_insert_count := v_insert_count + 1;
+            END IF;
 
             contador := contador + 1;
 
         EXCEPTION
             WHEN OTHERS THEN
+                v_error_count := v_error_count + 1;
                 RAISE WARNING 'Error en ficha %: %', r.id_ficha, SQLERRM;
         END;
     END LOOP;
 
-    RETURN format('Procesadas %s filas de tab_temp_pe04', contador);
+    RETURN format('Procesados total: %s | Insertados: %s | Actualizados: %s | Errores: %s',
+                  contador, v_insert_count, v_update_count, v_error_count);
 END;
 $$ LANGUAGE plpgsql;
 
 
-SELECT procesar_tab_temp_pe04();
-
+select fun_procesar_pe04();

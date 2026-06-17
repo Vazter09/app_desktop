@@ -19,6 +19,7 @@ INSERT INTO tab_tipos_docum (id_tipo_docum, nom_tipo_docum, usr_insert, fec_inse
     ('CE', 'Cédula de extranjería', 'seed', NOW()),
     ('TI', 'Tarjeta de identidad', 'seed', NOW()),
     ('PA', 'Pasaporte', 'seed', NOW()),
+    ('NIT', 'Número de identificación tributaria', 'seed', NOW()),
     ('SN', 'Sin tipo', 'seed', NOW())
 ON CONFLICT (id_tipo_docum) DO NOTHING;
 
@@ -259,7 +260,7 @@ BEGIN
 
     INSERT INTO tab_fichas (
         id_ficha, id_centro, id_programa, id_nivel_estudio,
-        ind_jornada, ind_modalidad, fec_inicio, fec_fin_lectiva, fec_fin_productiva,
+        id_jornada, ind_modalidad, fec_inicio, fec_fin_lectiva, fec_fin_productiva,
         val_duracion, id_instructor_lider, id_sector, id_empresa, id_ocupacion, id_ciudad,
         cod_convenio, nom_convenio, ind_amp_cobertura, id_prog_especial, ind_abierta,
         nom_vocero, tel_vocero, mail_vocero, val_cupo, id_ambiente_base,

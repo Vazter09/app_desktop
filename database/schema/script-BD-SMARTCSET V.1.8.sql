@@ -21,11 +21,12 @@ DROP TABLE IF EXISTS tab_ofertas;
 DROP TABLE IF EXISTS tab_llamados_atencion;
 DROP TABLE IF EXISTS tab_ausencias_aprendiz;
 DROP TABLE IF EXISTS tab_asistencia_aprendiz;
+DROP TABLE IF EXISTS tab_aprendices_fichas;
 DROP TABLE IF EXISTS tab_permisos_aprendiz;
 DROP TABLE IF EXISTS tab_tipos_permiso;
-DROP TABLE IF EXISTS tab_aprendices_fichas;
 DROP TABLE IF EXISTS tab_aprendices;
 DROP TABLE IF EXISTS tab_fichas;
+DROP TABLE IF EXISTS tab_jornadas;
 DROP TABLE IF EXISTS tab_prog_especiales;
 DROP TABLE IF EXISTS tab_ocupaciones;
 DROP TABLE IF EXISTS tab_sectores;
@@ -88,7 +89,12 @@ DROP TABLE IF EXISTS tab_temp_df51;
 DROP TABLE IF EXISTS tab_temp_df03;
 DROP TABLE IF EXISTS tab_temp_df14;
 DROP TABLE IF EXISTS tab_temp_juicios;
-DROP TABLE IF EXISTS tab_temp_fichas_creadas;
+
+DROP DOMAIN IF EXISTS mail_institucional;
+DROP DOMAIN IF EXISTS nombre_geografico;
+DROP DOMAIN IF EXISTS telefono_fijo;
+DROP DOMAIN IF EXISTS telefono_movil;
+DROP DOMAIN IF EXISTS extension;
 
 --**********************************************************
 -- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
@@ -127,8 +133,8 @@ CREATE TABLE IF NOT EXISTS tab_temp_df49
   cod_centro        DECIMAL(4,0),
   nom_centro        VARCHAR,
   id_ficha          DECIMAL(7,0),
-  fec_inicial       VARCHAR,
-  fec_final         VARCHAR,
+  fec_inicial       DATE,
+  fec_final         DATE,
   ind_estado        VARCHAR,
   id_programa       DECIMAL(8,0),
   id_version        DECIMAL(4,0),
@@ -214,7 +220,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   cod_ver_programa  DECIMAL(3,0),
   nom_programa      VARCHAR,
   niv_formacion     VARCHAR,
-  dur_maxima        DECIMAL,
+  dur_maxima        DECIMAL(2,0),
   dur_eta_lectiva   VARCHAR,
   dur_eta_productiv VARCHAR,
   id_ficha          DECIMAL(8,0),
@@ -1018,14 +1024,6 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3, -- Máximo # de llamados de at. a un aprendiz para enviar a comité
     nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),
     tel_administrador           DECIMAL(10,0)               NOT NULL,
-    hora_entrada_jornada_m      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '06:00:00',
-    hora_salida_jornada_m       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '11:45:00',
-    hora_entrada_jornada_t      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '12:00:00',
-    hora_salida_jornada_t       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
-    hora_entrada_jornada_n      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
-    hora_salida_jornada_n       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '21:30:00',
-    hora_entrada_jornada_n_sab  TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '13:00:00',
-    hora_salida_jornada_n_sab   TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1423,13 +1421,16 @@ CREATE TYPE datos_personales_aprendiz AS
 -- | fec_update            | TIMESTAMP         |                                                           | Fecha/hora de actualización del registro.                       |
 -- +-----------------------+-------------------+-----------------------------------------------------------+-----------------------------------------------------------------+
 
- CREATE TABLE IF NOT EXISTS tab_instructores
+CREATE TABLE IF NOT EXISTS tab_instructores
 (
-    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 10000000),
+    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9) DEFAULT 0,--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
+    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
+    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
+    id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
+    id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
     id_red                  DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_disponibilidad      BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Disponible / FALSE=No Disponible (Ocupado con tiempo completo)
     ind_estado              DECIMAL(1,0)                NOT NULL CHECK(ind_estado >= 0 AND ind_estado <= 9) DEFAULT 0, -- 0=Activo,2=Suspendido,3=Bloqueado,9=Inactivo;
@@ -1438,8 +1439,9 @@ CREATE TYPE datos_personales_aprendiz AS
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_instructor),
-    FOREIGN KEY(id_instructor)    REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_centro)        REFERENCES tab_centros(id_centro),
+    FOREIGN KEY(id_nivel_estudio) REFERENCES tab_niveles_estudio(id_nivel_estudio),
+    FOREIGN KEY(id_profesion)     REFERENCES tab_profesiones(id_profesion),
     FOREIGN KEY(id_red)           REFERENCES tab_redes(id_red)
 );
 
@@ -2390,8 +2392,6 @@ CREATE TABLE IF NOT EXISTS tab_prog_especiales
     PRIMARY KEY(id_prog_especial)
 );
 
--- Tabla de caracterización de fichas. Se le asociará un CRUD específico y trato especial
-
 -- TABLA DE JORNADAS
 CREATE TABLE IF NOT EXISTS tab_jornadas
 (
@@ -2400,22 +2400,8 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
     hora_entrada            TIME WITHOUT TIME ZONE      NOT NULL,
     hora_salida             TIME WITHOUT TIME ZONE      NOT NULL,
     ind_noche               BOOLEAN                     NOT NULL, -- Indicador de si es jornada nocturna
-    hora_llegada_sabado     TIME WITHOUT TIME ZONE      GENERATED ALWAYS AS
-    (
-        CASE
-            WHEN ind_noche IS TRUE THEN '12:00'::TIME
-            WHEN ind_noche IS FALSE THEN '00:00'::TIME
-            ELSE '00:00'
-        END
-    )STORED,
-    hora_salida_sabado      TIME WITHOUT TIME ZONE      GENERATED ALWAYS AS
-    (
-        CASE
-            WHEN ind_noche IS TRUE THEN '18:00'::TIME
-            WHEN ind_noche IS FALSE THEN '00:00'::TIME
-            ELSE '00:00'
-        END
-    )STORED,
+    hora_llegada_sabado     TIME WITHOUT TIME ZONE      NOT NULL,
+    hora_salida_sabado      TIME WITHOUT TIME ZONE      NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2423,11 +2409,7 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
     PRIMARY KEY(id_jornada)
 );
 
-INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00');
-INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00');
-INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00');
-INSERT INTO tab_jornadas VALUES(4,'Mañana','00:00:00','24:00:00');
-
+-- Tabla de caracterización de fichas. Se le asociará un CRUD específico y trato especial
 -- TABLA DE TAB_FICHAS
 -- __________________________________________________________________________________________________________________________
 -- | Columna        | Tipo             | Restricción                            | Descripción                                   |
@@ -2515,7 +2497,7 @@ CREATE TABLE IF NOT EXISTS tab_fichas
     id_centro               DECIMAL(4,0)                NOT NULL,
     id_programa             DECIMAL(8,0)                NOT NULL,
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL,
-    id_jornada              DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
+    id_jornada              DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
     ind_modalidad           DECIMAL(1,0)                NOT NULL, -- 1=PRESENCIAL / 2=VIRTUAL / 3= DISTANCIA.
     fec_inicio              DATE                        NOT NULL,
     fec_fin_lectiva         DATE                        NOT NULL DEFAULT CURRENT_DATE, -- Se asume que la duración lectiva es de 6 meses a partir de la fecha de inicio
@@ -2631,7 +2613,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
 
 -- Tabla de tipos de permiso que se puede otorgar a las personas (aprendices)
 -- Puede identificar la presencia, o no, de una persona dentro del Centro
-CREATE TAVLE tab_tipos_permiso
+CREATE TABLE tab_tipos_permiso
 (
     id_tipo_permiso         SMALLINT                    NOT NULL,
     nom_tipo_permiso        VARCHAR                     NOT NULL,
@@ -2643,23 +2625,10 @@ CREATE TAVLE tab_tipos_permiso
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_tipo_permiso)
 );
-INSERT INTO tab_tipos_permiso VALUES(1,'Consulta médica',0,3);
-INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
-INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
-INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
-INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
-INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
-INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
-INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
-INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
-INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
-INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
-INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
-INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
 
 -- Tabla de permisos de aprendiz para que no apliquen retardos ni llamados de atención.
 -- Se concertan con anterioridad entre el aprendiz y el instructor
-CREATE TABLE IF NOT EXISTS tab_permisos_aprendices
+CREATE TABLE IF NOT EXISTS tab_permisos_aprendiz
 (
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     id_tipo_permiso         SMALLINT                    NOT NULL,
@@ -2706,7 +2675,8 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
     FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
 );
 
-CREATE TYPE TIPO_ESTADO_ASISTENCIA AS ENUM('Presente', 'Tarde', 'Ausente', 'Desconocido');
+--CREATE TYPE TIPO_ESTADO_ASISTENCIA AS ENUM('Presente', 'Tarde', 'Ausente', 'Desconocido');
+
 -- TABLA DE ASISTENCIA DE APRENDICES A FORMACIÓN
 CREATE TABLE tab_asistencia_aprendiz
 (
@@ -2714,14 +2684,8 @@ CREATE TABLE tab_asistencia_aprendiz
     fec_asistencia          DATE                        NOT NULL,
     hora_asistencia         TIME                        NOT NULL,
     minutos_retraso         INT                         NOT NULL DEFAULT 0,
-    ind_estado              TIPO_ESTADO_ASISTENCIA GENERATED ALWAYS AS
-    (
-        (CASE
-            WHEN minutos_retraso <= 5 THEN 'Presente'
-            WHEN minutos_retraso > 5 AND minutos_retraso <= 15 THEN 'Tarde'
-            ELSE 'Ausente' 
-        END)::TIPO_ESTADO_ASISTENCIA
-    ) STORED,
+    ind_estado              VARCHAR                     NOT NULL
+        CHECK(ind_estado = 'Presente' OR ind_estado = 'Tarde' OR ind_estado = 'Ausente' OR ind_estado = 'Desconocido'),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     -- Optimización: Dejar que la base de datos ponga la fecha de creación automáticamente
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -3125,7 +3089,7 @@ CREATE TABLE IF NOT EXISTS tab_borrados
 CREATE TABLE IF NOT EXISTS tab_bitacora
 (
     id_consecutivo          BIGSERIAL                   NOT NULL,
-    fec_bitacora            DATETIME                    NOT NULL,
+    fec_bitacora            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     texto_evento            TEXT                        NOT NULL,
     nom_encargado           VARCHAR                     NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
@@ -3206,8 +3170,10 @@ CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ambientes
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sectores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ocupaciones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_especiales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_jornadas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_permiso FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ausencias_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_llamados_atencion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
@@ -3217,3 +3183,24 @@ CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_rutas FOR
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programacion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_competencia FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_bitacora FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+
+-- INSERCIÓN EN TABLA DE JORNADAS
+INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
+INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
+INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
+INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
+
+-- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
+INSERT INTO tab_tipos_permiso VALUES(1,'Consulta médica',0,3);
+INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
+INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
+INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
+INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
+INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
+INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
+INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
+INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
+INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
+INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
+INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
+INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);

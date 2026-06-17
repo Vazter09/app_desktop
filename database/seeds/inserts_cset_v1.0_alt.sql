@@ -1,6 +1,28 @@
 -- *************************************************
 -- * INSERCIONES EN LA INSTALACIÓN TABLAS MAESTRAS *
 -- *************************************************
+
+-- INSERCIÓN EN TABLA DE JORNADAS
+INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
+INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
+INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
+INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
+
+-- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
+INSERT INTO tab_tipos_permiso VALUES(1,'Consulta médica',0,3);
+INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
+INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
+INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
+INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
+INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
+INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
+INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
+INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
+INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
+INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
+INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
+INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
+
 INSERT INTO tab_pmtros VALUES(9309,2023,2,71,160,6076800600);
 
 INSERT INTO tab_dptos VALUES('91','Amazonas');
@@ -1156,8 +1178,6 @@ INSERT INTO tab_ciudades (id_dpto, id_ciudad, nom_ciudad, ind_capital) VALUES('9
 INSERT INTO tab_ciudades (id_dpto, id_ciudad, nom_ciudad, ind_capital) VALUES('99','99524','LA PRIMAVERA', FALSE);
 INSERT INTO tab_ciudades (id_dpto, id_ciudad, nom_ciudad, ind_capital) VALUES('99','99001','PUERTO CARREÑO', FALSE);
 INSERT INTO tab_ciudades (id_dpto, id_ciudad, nom_ciudad, ind_capital) VALUES('99','99624','SANTA ROSALÍA', FALSE);
-
-INSERT INTO tab_users VALUES('admin@sena.edu.co','Admin123*','admin@sena.edu.co');
 
 INSERT INTO tab_regionales (id_regional, nom_regional, dir_regional, id_dpto, num_extension_tel, nom_director) VALUES(91,'Regional Amazonas','Calle 12 No. 10 – 60 Centro','91', 85811,'Sin Datos');
 INSERT INTO tab_regionales (id_regional, nom_regional, dir_regional, id_dpto, num_extension_tel, nom_director) VALUES(05,'Regional Antioquia','Calle 51 No. 57 - 70', '05', 42007,'Sin Datos');
@@ -16222,14 +16242,14 @@ INSERT INTO tab_sedes VALUES(9309,1,'CSET Sede Principal Cra. 27','Calle 15 # 27
 INSERT INTO tab_sedes VALUES(9309,2,'CSET Sede Salud Calle 45','Calle 45 # 10-30','Alguien allá',6076800600);
 INSERT INTO tab_sedes VALUES(9309,3,'CSET Sede Norte','Barrio Norte','Alguien allá',6076800600);
 
-INSERT INTO tab_ambientes VALUES('B1-201','Sala de Contabilidad',68,9309,1,FALSE,FALSE,FALSE,ROW(TRUE,33,TRUE,TRUE,TRUE,TRUE,33),
+INSERT INTO tab_ambientes VALUES('B1-201','Sala de Contabilidad',9309,1,FALSE,FALSE,FALSE,ROW(TRUE,33,TRUE,TRUE,TRUE,TRUE,33),
                                  '{
                                     "desktop": 2,
                                     "portatil": 30,
                                     "impresora":0
                                   }'
                                 );
-INSERT INTO tab_ambientes VALUES('B1-306','Sala de Informática ADSO',68,9309,1,FALSE,FALSE,FALSE,ROW(TRUE,33,TRUE,TRUE,TRUE,TRUE,33),
+INSERT INTO tab_ambientes VALUES('B1-306','Sala de Informática ADSO',9309,1,FALSE,FALSE,FALSE,ROW(TRUE,33,TRUE,TRUE,TRUE,TRUE,33),
                                  '{
                                     "desktop": 35,
                                     "portatil": 0,
@@ -16237,7 +16257,7 @@ INSERT INTO tab_ambientes VALUES('B1-306','Sala de Informática ADSO',68,9309,1,
                                     "sonido":2
                                   }'
                                 );
-INSERT INTO tab_ambientes VALUES('B1-308','Sala de Informática ADSO',68,9309,1,FALSE,FALSE,FALSE,ROW(TRUE,33,TRUE,TRUE,TRUE,TRUE,33),
+INSERT INTO tab_ambientes VALUES('B1-308','Sala de Informática ADSO',9309,1,FALSE,FALSE,FALSE,ROW(TRUE,33,TRUE,TRUE,TRUE,TRUE,33),
                                  '{
                                     "desktop": 35,
                                     "portatil": 0,
@@ -16246,7 +16266,7 @@ INSERT INTO tab_ambientes VALUES('B1-308','Sala de Informática ADSO',68,9309,1,
                                     "sonido":2
                                     }'
                                 );
-INSERT INTO tab_ambientes VALUES('B1-202','Sala de Gestión Humana',68,9309,1,FALSE,FALSE,FALSE,ROW(TRUE,30,TRUE,TRUE,TRUE,TRUE,33),
+INSERT INTO tab_ambientes VALUES('B1-202','Sala de Gestión Humana',9309,1,FALSE,FALSE,FALSE,ROW(TRUE,30,TRUE,TRUE,TRUE,TRUE,33),
                                  '{
                                     "desktop": 1,
                                     "portatil": 25,
@@ -16254,3 +16274,10 @@ INSERT INTO tab_ambientes VALUES('B1-202','Sala de Gestión Humana',68,9309,1,FA
                                     "sonido":2
                                     }'
                                 );
+
+INSERT INTO tab_personas (id_persona, id_tipo_docum, id_tipo_persona, nom_persona, ape_persona, mail_persona) VALUES (77777777, 'CC', 3, 'Sin', 'Instructor', 'sin_correo@correo.com');
+
+INSERT INTO tab_redes VALUES (99, 'Sin red', 'Sin instructor lider');
+
+INSERT INTO tab_instructores (id_instructor, ind_genero, ind_est_civil) VALUES (77777777, 4, 0);
+
