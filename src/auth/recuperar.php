@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <p class="small fw-bold text-muted mb-2">SU NUEVA CLAVE TEMPORAL:</p>
                             <div class="pass-container mb-3">
                                 <input type="password" id="w_input_pass" class="form-control form-control-lg text-center font-monospace" value="<?= $w_pass_temp ?>" readonly>
-                                <i class="bi bi-eye toggle-btn" id="toggleIcon" onclick="togglePass()"></i>
+                                <i class="bi bi-eye toggle-btn" id="toggleIcon"></i>
                             </div>
                             <p class="small text-warning mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i>Copie su clave antes de salir.</p>
                             <a href="../../index.php" class="btn btn-verde w-100 mt-2">Volver al Login</a>
@@ -100,11 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <div class="mb-3">
                                 <label class="small fw-bold d-block mb-2">Método de entrega</label>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="rdo_metodo" value="correo" checked onclick="toggleMail(true)">
+                                    <input class="form-check-input" type="radio" name="rdo_metodo" value="correo" checked>
                                     <label class="form-check-label small">Correo</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="rdo_metodo" value="pantalla" onclick="toggleMail(false)">
+                                    <input class="form-check-input" type="radio" name="rdo_metodo" value="pantalla">
                                     <label class="form-check-label small">Pantalla</label>
                                 </div>
                             </div>
@@ -122,48 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 </div>
 
-<script>
-    // Bloquear navegación hacia atrás
-    history.pushState(null, null, location.href);
-    window.onpopstate = function () {
-        history.go(1);
-    };
-    
-    // Confirmación solo si hay cambios sin guardar
-    let hasChanges = false;
-    document.addEventListener('input', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-            hasChanges = true;
-        }
-    });
-    window.addEventListener('beforeunload', function (e) {
-        if (hasChanges) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-    document.addEventListener('submit', function() {
-        hasChanges = false;
-    });
-</script>
-<script>
-function toggleMail(ver) {
-    document.getElementById('w_div_correo').style.display = ver ? 'block' : 'none';
-    document.getElementById('w_txt_correo').required = ver;
-}
-
-function togglePass() {
-    const passInput = document.getElementById("w_input_pass");
-    const icon = document.getElementById("toggleIcon");
-    if (passInput.type === "password") {
-        passInput.type = "text";
-        icon.classList.replace("bi-eye", "bi-eye-slash");
-    } else {
-        passInput.type = "password";
-        icon.classList.replace("bi-eye-slash", "bi-eye");
-    }
-}
-</script>
+<?php $_v_recuperar = @filemtime(dirname(__DIR__, 2) . '/js/recuperar.js') ?: time(); ?>
+<script src="../../js/recuperar.js?v=<?= (int) $_v_recuperar ?>"></script>
 <?php $ui_assets_prefix = '../../'; include __DIR__ . '/../layout/ui_kit.php'; ?>
 </body>
 </html>

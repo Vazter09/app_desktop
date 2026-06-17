@@ -11,7 +11,7 @@ $personTypes = [
     [
         'label' => 'Módulo 01',
         'title' => 'Aprendiz',
-        'desc'  => 'Registro de aprendices vinculados a fichas de formación del SENA.',
+        'desc'  => 'Actualización de aprendices vinculados a fichas de formación del SENA.',
         'icon'  => '🎓',
         'color' => 'var(--cyan)',
         'dim'   => 'var(--cyan-dim)',
@@ -29,7 +29,7 @@ $personTypes = [
     [
         'label' => 'Módulo 03',
         'title' => 'Funcionario',
-        'desc'  => 'Registro de funcionarios administrativos y de apoyo institucional.',
+        'desc'  => 'Gestión de funcionarios administrativos y de apoyo del centro de formación.',
         'icon'  => '🏛️',
         'color' => 'var(--purple)',
         'dim'   => 'color-mix(in srgb, var(--purple) 14%, transparent)',
@@ -46,14 +46,14 @@ $personTypes = [
     ],
 ];
 
-registroIncludeHead('Panel de registro');
+registroIncludeHead('Panel de Actualización');
 registroIncludeHeader();
 ?>
     <main class="main-wrapper">
         <div class="welcome-block animate-in">
             <div>
                 <p class="section-title">Panel de Control</p>
-                <h1 class="section-heading">Módulos de <em>Registro</em></h1>
+                <h1 class="section-heading">Módulos de <em>Actualización</em></h1>
                 <p class="section-sub">
                     Seleccione el tipo de persona para acceder al formulario de registro correspondiente.
                 </p>

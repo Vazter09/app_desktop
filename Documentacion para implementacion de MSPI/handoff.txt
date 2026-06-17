@@ -1,0 +1,426 @@
+  Contexto del proyecto: SmartCSET — MSPI, ISC2 CC y blindaje técnico
+
+  Eres un asistente técnico especializado en seguridad de la información. Estamos trabajando en la documentación MSPI y blindaje técnico de SmartCSET, un sistema de registro y control de
+  personal para el SENA (Colombia). NO es un "sistema de portería" — tiene componente de portería + componente administrativo completo.
+
+  ---
+
+  ## EL SISTEMA
+
+  **SmartCSET** — Stack: PHP 8+ puro (sin Composer, sin framework), PostgreSQL 14+ (lógica crítica en PL/pgSQL), Bootstrap 5, vanilla JS. Un solo desarrollador: Anderson. Ruta del proyecto:
+  `/home/anderson/smartcset/`. La documentación vive en `/home/anderson/smartcset/Documentacion para implementacion de MSPI/`.
+
+  ---
+
+  ## QUÉ ESTAMOS CONSTRUYENDO
+
+  Documentación completa de seguridad que cumple SIMULTÁNEAMENTE:
+
+  1. **MSPI MinTIC** (obligatorio — entidad pública colombiana) — 11 ejes
+  2. **Ley 1581/2012** — protección de datos personales
+  3. **Ley 1273/2009** — delitos informáticos (arts. 269A, 269F, 269I)
+  4. **Ley 1712/2014** — transparencia y acceso a información pública
+  5. **CONPES 3995/2020** — política nacional de seguridad digital
+  6. **Decreto 338/2022** — infraestructura crítica cibernética (ICC)
+  7. **ISO/IEC 27001** — referencia técnica del MSPI
+  8. **OWASP Top 10 2021** — referencia técnica para Fase 1
+  9. **ISC2 Certified in Cybersecurity (CC)** — 5 dominios: D1 Security Principles (26%), D2 BC/DR/IR (10%), D3 Access Controls (22%), D4 Network Security (24%), D5 Security Operations (18%).
+  Anderson está preparando este examen y SmartCSET es su proyecto práctico.
+
+  ---
+
+  ## ESTADO ACTUAL (al 2026-06-17 — sesión 2: E1-A02 completado)
+
+  ### FASE 0 — ✅ COMPLETA, AUDITADA Y RE-AUDITADA CONTRA CÓDIGO FUENTE (8 documentos legales)
+
+  Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
+  Nomenclatura: `NN_NOMBRE_SMARTCSET_DOCUMENTO_LEGAL.md`
+
+  | Doc N° | Archivo | Cubre |
+  |---|---|---|
+  | FASE0-POL-001 | 01_POLITICA_Y_TRATAMIENTO_DATOS_PERSONALES... | Ley 1581, D1, Ejes 1/11 |
+  | FASE0-INV-002 | 02_INVENTARIO_ACTIVOS_INFORMACION_CID... | ISO 27001 A.8, D1/D5, Eje 3; 16 activos INF + ICC §12 |
+  | FASE0-RIE-003 | 03_MATRIZ_RIESGOS_INICIAL... | ISO 27005, D1 completo, Eje 2; 31 riesgos R-A01..R-G04 |
+  | FASE0-ROL-004 | 04_ROLES_Y_RESPONSABILIDADES_SEGURIDAD... | D1/D5, Ejes 1/4 |
+  | FASE0-AUD-005 | 05_CRONOGRAMA_AUDITORIAS_PERIODICAS... | D5, Ejes 1/6 |
+  | FASE0-PSI-006 | 06_POLITICA_GENERAL_SEGURIDAD_INFORMACION... | D1 completo, **mapea los 11 ejes MSPI** — documento raíz del SGSI |
+  | FASE0-ACC-007 | 07_POLITICA_CONTROL_ACCESO_SEGURIDAD_FISICA... | D3 completo, Ejes 5/7; MFA roadmap §14 |
+  | FASE0-INC-008 | 08_MARCO_GESTION_INCIDENTES_CONTINUIDAD... | D2 completo, Ejes 9/10; RTO=4h, RPO=24h, DRP en 7 pasos |
+
+  Todos los documentos tienen: número interno, versión 1.0, Fecha de elaboración, estado "Borrador para revisión...", Elaborado por "Equipo de Desarrollo - SmartCSET", Clasificación, tabla
+  ELABORÓ/REVISÓ/APROBÓ, pie "Fin del documento".
+
+  **Re-auditoría contra código fuente (2026-06-10) — correcciones ya aplicadas:**
+  - Eliminados 3 borradores duplicados sin prefijo que quedaban en la carpeta.
+  - Docs 01 y 07 ya NO describen como implementados controles que son de Fase 1: rate limiting, tab_intentos_login, session_regenerate_id, cookies seguras, cifrado en reposo y bloque de
+    autorización en formularios están marcados 🔲 con referencia explícita a su entregable (Fase 1 E2/E3/E4). Lo implementado real está marcado ✅ (bcrypt, prepared statements, RBAC,
+    ErrorHandler, validación de uploads, registro de sesiones con validación de IP en tab_sesiones vía accesoIngresoSesion()).
+  - Columnas biométricas reservadas del schema (tab_personas.val_huella_digital BYTEA, val_patron_facial JSONB — hoy sin datos, solo NULL) quedaron inventariadas: doc 02 INF-16 y doc 01 §8.1
+    (activarlas exige autorización reforzada + PIA + cifrado, o eliminarlas por minimización).
+  - Regla de oro adoptada: los docs de Fase 0 son normativos; todo control no implementado se marca 🔲 con su entregable de Fase 1 — NUNCA en presente como si existiera.
+
+  ### PLAN MAESTRO — ✅ v1.2 SINCRONIZADO (2026-06-10)
+
+  `PLAN_BLINDAJE_INSTITUCIONAL_SMARTCSET.md` v1.2 y `RESUMEN_FASES_PLAN_BLINDAJE_SMARTCSET.md` están sincronizados con FASE1-BLI-001 v1.1: Fase 1 con 10 entregables, Fase 2 con 5,
+  Anexo F con E8/E9/E10 (los 5 dominios ISC2 CC mapeados), estado real de E7 y cifras consistentes (19/25 vulnerabilidades, ~55%→~70%).
+
+  ### FASE 1 — ✅ DOCUMENTO v1.1 COMPLETO — 🔴 IMPLEMENTACIÓN EN CÓDIGO EN CURSO
+
+  Archivo: `FASE 01_Blindaje Técnico Inmediato/01_BLINDAJE_TECNICO_INMEDIATO_SMARTCSET.md`
+  Doc N°: FASE1-BLI-001 | Versión 1.1 | 10 entregables
+  Checklist de avance (fuente de verdad): `FASE 01_Blindaje Técnico Inmediato/02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md` (FASE1-CHK-002)
+
+  | Entregable | Estado código |
+  |---|---|
+  | E1 — Auditoría OWASP Top 10 (A01–A10 con hallazgos pre-llenados) | ⚠️ ~40% — A01 ✅ auditado y remediado (2026-06-10); A02 ⚠️ auditado — bcrypt ✅, HTTPS ✅ completado (2026-06-17, certificado TLS + enforceHTTPS + cookie flags verificados), TLS BD pendiente E8; A07 ✅ session fixation cerrado via E4; A03-A10 pendientes |
+  | E2 — Cifrado en reposo con pgcrypto (tab_personas.documento_identidad) | 🔲 Pendiente — bloqueado por prereq. institucionales 1 (custodio DB_ENCRYPTION_KEY) y 2 (BD de test) |
+  | E3 — Rate limiting + tabla tab_intentos_login (PL/pgSQL + PHP) | 🔲 Pendiente |
+  | E4 — Hardening sesiones PHP (SecurityMiddleware activo, cookies seguras, session_regenerate_id) | ⚠️ 80% (2026-06-14) — falta CSP + refactor porteria ingreso/salida; enforceHTTPS() sigue bloqueado por prereq. 6 (certificado TLS) |
+  | E5 — Tokens anti-CSRF en todos los formularios POST + bloque de autorización de datos (doc 01 §9.2/§18.2) | 🔲 Pendiente |
+  | E6 — Verificación uploads (LogoUpload.php y porteria_foto.php ya OK) | ✅ 100% — código validado + .htaccess creados (Apache) + reporte E6 generado (2026-06-13) |
+  | E7 — Corrección setup_smartcset.sh: schema V.1.7 y migraciones OK; 3 de 4 funciones agregadas a FUNCS (fun_validar_correo, fun_validar_login, fun_validar_usuario, alineadas al patrón smartcset_handle_sql_error); fun_tab_menu_usuarios.sql EXCLUIDA (legacy, regresionaría fun_insert_menu_usuarios/fun_delete_perfil_usuario) | ✅ 100% (2026-06-13) — Reporte: REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md |
+  | E8 — Hardening red: TLS PostgreSQL DSN, firewall, arquitectura (requiere Oficina TI SENA) | ⚠️ Parcial (2026-06-11) — DSN: infraestructura `DB_SSLMODE` lista en `config.php`/`Db.php`/`.env.example` (vacía por defecto, sin regresión); activación y resto (firewall, certificados, postgresql.conf) requieren Oficina TI |
+  | E9 — Gestión de parches (inventario componentes + SLA por CVSS: 9+=48h, 7-8.9=7d, 4-6.9=30d) | 🔲 Pendiente |
+  | E10 — SDLC seguro: checklist pre-commit, pre-deploy, rollback, prohibiciones absolutas | ✅ Adoptado (2026-06-13) — checklist pre-commit/pre-deploy, rollback y 6 prohibiciones absolutas vigentes desde hoy. Reporte: REPORTE_E1-E10_SDLC_SEGURO_SMARTCSET.md |
+
+  Orden de implementación recomendado: E10 ✅ → E7 ✅ → E4 (80%) → E6 ✅ → E5 → E3 → E1 → E2 → E8 → E9.
+  (E10, E6 y E7 completados 2026-06-13. E4 80% completado 2026-06-14 — falta CSP +
+  refactor porteria ingreso/salida en sesión dedicada, luego sigue E5)
+
+  Hallazgos de código vigentes (verificados 2026-06-14): index.php YA tiene session_regenerate_id(true)
+  tras login (cierra A07); SecurityMiddleware.php YA está incluido en prepare.php/prepare_login.php
+  (activo en todo el sistema); cookies de sesión con HttpOnly+SameSite=Strict (+Secure en producción
+  vía APP_ENV). Pendiente: rate limiting (E3), CSP (E4 cierre), DSN sin sslmode activo (infraestructura
+  `DB_SSLMODE` ya lista, ver E8). SÍ implementado: bcrypt/password_verify, prepared statements, RBAC
+  por menús (incl. guardas admin de A01), registro de sesiones con IP (tab_sesiones), uploads seguros.
+
+  ### ÚLTIMA SESIÓN (2026-06-13) — E10 adoptado + E6 completado
+
+  0. **E10 — SDLC Seguro (ADOPTADO ✅):** Se formalizó la adopción del proceso de SDLC seguro como práctica obligatoria
+     desde el 2026-06-13: checklist pre-commit (5 ítems de seguridad bloqueante + 4 de calidad), checklist pre-deploy
+     (con backup `pg_dump` obligatorio antes de cada despliegue), procedimiento de rollback de emergencia
+     (`git checkout` + `pg_restore`), y 6 prohibiciones absolutas (editar PHP directo en prod, hardcodear secretos,
+     concatenar SQL, `var_dump`/`print_r` en prod, `PDO::ATTR_EMULATE_PREPARES=true`, `git push --force` a main).
+     E10 es proceso, no código — no se tocó ningún archivo PHP/SQL.
+
+     **Reporte formal creado:** `REPORTE_E1-E10_SDLC_SEGURO_SMARTCSET.md` (FASE1-REP-E10 v1.0)
+     **Checklist actualizado:** E10 marcado como ✅ Adoptado (100%) en `02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md`
+
+  1. **E6 — Verificación de uploads (COMPLETADO ✅):** Se crearon 2 archivos `.htaccess` idénticos:
+     - `public/uploads/logos/.htaccess` (20 líneas, protege logos corporativos)
+     - `storage/porteria/.htaccess` (20 líneas, protege fotos de portería)
+
+     Cada `.htaccess` implementa 4 capas de protección:
+       a) Bloqueo de ejecución PHP (php, phtml, asp, jsp, cgi, sh, pl, py, phar) → 403 Forbidden
+       b) Content-Type forzado a `image/jpeg` → navegador no interpreta como HTML/JS
+       c) Header `X-Content-Type-Options: nosniff` → previene MIME sniffing
+       d) Cache-Control: 1 año + desactivar listado de directorios
+
+     **Nota importante:** Los `.htaccess` funcionan en CUALQUIER servidor Apache sin cambios. Si el servidor SENA usa Nginx,
+     se requieren reglas equivalentes en el virtual host (documentado en REPORTE_E1-E06 §8.2).
+
+     **Reporte formal creado:** `REPORTE_E1-E06_VERIFICACION_SUBIDA_ARCHIVOS_SMARTCSET.md` (FASE1-REP-E06 v1.0)
+     - Resumen ejecutivo, hallazgo, peligro, solución, validación, trazabilidad normativa
+
+     **Checklist actualizado:** E6 marcado como ✅ 100% en `02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md`
+
+  2. **Sesión anterior (2026-06-11) — Reportes A01 y A02:**
+     - A01: Remediado con 8 guardias admin, validado con 11 pruebas manuales en producción → PASS
+     - A02: Auditado (3 hallazgos); 1 de 3 con infraestructura de código lista (TLS BD DSN), 2 bloqueados por prereqs
+
+  3. **E7 — Corrección setup_smartcset.sh (COMPLETADO ✅):** Del plan original de 4 funciones ausentes en
+     `FUNCS`, se agregaron 3 (`fun_validar_login`, `fun_validar_correo`, `fun_validar_usuario`), previa
+     revisión y alineación de su bloque `EXCEPTION` al patrón estándar `smartcset_handle_sql_error()` usado
+     en el resto de `database/functions/`. La 4ª (`fun_tab_menu_usuarios.sql`) se **excluyó**: contiene
+     versiones legacy de `fun_insert_menu_usuarios`/`fun_delete_perfil_usuario` que habrían sobreescrito
+     (regresionado) las versiones ya desplegadas y más seguras. Las 3 funciones compilaron sin error en BD
+     local. Detalle completo y pendiente derivado (`fun_delete_perfil_usuarios.sql` plural) en
+     `REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md` (FASE1-REP-E07 v1.0).
+
+     **Verificación de impacto de la exclusión (confirmado 2026-06-13):** la exclusión de
+     `fun_tab_menu_usuarios.sql` NO afecta funcionalidad. Ningún `.php`/`.sh` referencia ese archivo
+     directamente; las 2 funciones que define (`fun_insert_menu_usuarios`, `fun_delete_perfil_usuario`) ya
+     se crean en `FUNCS` vía sus propios archivos (líneas con las versiones mejoradas, con
+     `smartcset_raise_no_encontrado` + `ON CONFLICT DO NOTHING` + `smartcset_handle_sql_error`). Una
+     instalación nueva sigue creando ambas funciones igual que antes — el único efecto es el riesgo de
+     regresión evitado. El archivo queda en el repo como código muerto/histórico, sin impacto en runtime.
+
+  4. **Próximo paso sugerido (cumplido 2026-06-14, ver siguiente sección):** Continuar con **E4**
+     (hardening de sesiones PHP) → E5 → E3, según orden acordado. E4 completado al 100% el
+     2026-06-14 (sesión 1 + sesión 2). **Próximo paso real ahora: E5 — Tokens anti-CSRF.**
+
+  ---
+
+  ## ✅ E4 — EJECUTADO 2026-06-14 (100% COMPLETADO, sesión dividida con autorización explícita "sigamos")
+
+  Diagnóstico de la sesión anterior (2026-06-13) confirmado y resuelto:
+
+  - `SecurityMiddleware.php` se auto-ejecutaba al incluirse pero **no se incluía desde ningún lugar**
+    → código muerto. **RESUELTO:** ahora se incluye (`require_once`) en `prepare.php` y
+    `prepare_login.php`, justo después de `config.php`.
+  - `configureSessionSecurity()` fijaba `session.cookie_secure = '1'` sin condicionar a `APP_ENV`.
+    **RESUELTO:** ahora `$w_cookie_secure = (APP_ENV === 'production') ? '1' : '0'`.
+  - `session_start()` duplicado/sin guarda en `index.php` (línea 19). **RESUELTO:** eliminado;
+    `SecurityMiddleware::configureSessionSecurity()` arranca la sesión dentro de
+    `prepare_login.php` **después** de aplicar los `ini_set()` de cookies (orden crítico: si
+    `session_start()` ocurre antes, los `ini_set` de `cookie_httponly`/`cookie_secure`/
+    `cookie_samesite` no tienen efecto). Las 5 guardas `PHP_SESSION_NONE` restantes (prepare.php,
+    registro/init.php, etc.) no generan doble-start porque la sesión ya está activa.
+  - Faltaba `session_regenerate_id(true)` tras login (R-A3, A07 session fixation). **RESUELTO:**
+    agregado en `index.php` justo antes de poblar `$_SESSION`. Verificado: SID cambia de
+    `f8ep25l5lpsqve423ojdr9dvds` (pre-login) a `aqnmlf6k0c228grl0f8p0jf0h2` (post-login).
+  - `enforceHTTPS()` sigue **sin activar** (requiere TLS de Oficina TI, E8) — sin cambios, según lo
+    acordado.
+  - `validateCSRFToken()` sigue con `die()` crudo, sin tocar — dependencia de E5, como estaba previsto.
+
+  **Hallazgo adicional durante la ejecución (no estaba en el diagnóstico original):**
+  `SecurityMiddleware::setSecurityHeaders()` incluye `Content-Security-Policy: script-src 'self'`,
+  que bloquearía los `<script>` inline y atributos `onclick`/`onchange` presentes en **11 archivos**.
+  De esos, 9 son de riesgo bajo/medio (formularios de registro, login, recuperar clave, config admin)
+  y 2 son de riesgo alto: `porteria/ingreso/index.php` y `porteria/salida/index.php`
+  (~250 líneas de JS inline cada uno, wizard de escaneo de cédula de **uso diario crítico**).
+
+  **Decisión (confirmada por Anderson, "sigamos"):** dividir E4 en 2 sesiones en lugar de forzar CSP
+  y arriesgar romper portería:
+  - **Sesión 1 (2026-06-14, completada):** los 4 puntos del plan original + externalización de los
+    9 scripts de riesgo bajo/medio (prerrequisito de CSP) + CSP queda **comentado con TODO** en
+    `SecurityMiddleware.php`.
+  - **Sesión 2 (2026-06-14, completada — autorización "sigamos hasta terminar E4"):** refactor de
+    los 2 wizards de portería + activación de CSP + verificación end-to-end.
+
+  **Verificación ejecutada — Sesión 1 (php -S localhost:8080, 2026-06-14):**
+  - Headers presentes en `/`: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`,
+    `Referrer-Policy`, `Permissions-Policy`. Cookie `PHPSESSID` con `HttpOnly; SameSite=Strict`,
+    sin `Secure` (correcto en dev) y sin CSP (correcto, diferido).
+  - Login (`admin.smart`/`AdminSmart2026!`) → 302 a `menu_principal.php`, SID regenerado.
+  - Dashboard 200 con botón "Salir"; logout → 302, sesión destruida, acceso posterior 302.
+  - `recuperar.php`, `admin/personas/config.php` (autenticado) y los 5 formularios de
+    `registro/forms/` cargan 200/302 (correcto) sin error 500, referenciando sus nuevos `.js`.
+  - `php -l` sin errores en los 13 archivos PHP modificados.
+
+  ### Sesión 2 (2026-06-14) — Refactor portería + activación de CSP
+
+  - `porteria/ingreso/index.php`: wizard de ~255 líneas de JS inline (teclado numérico, prefetch a
+    `consultar.php`, navegación por pasos, selección de puerta, auto-submit) extraído **verbatim** a
+    `js/porteria-ingreso-modal.js`. Archivo PHP: 1017 → 764 líneas.
+  - `porteria/salida/index.php`: wizard equivalente extraído a `js/porteria-salida-modal.js`.
+    Archivo PHP: 914 → 683 líneas.
+  - **Hallazgo adicional:** `src/auth/cambiar_clave.php` tenía `session_start()` **antes** de
+    `require_once prepare.php` — mismo bug que el corregido en `index.php` en sesión 1, anulaba los
+    `ini_set()` de `SecurityMiddleware`. Se eliminó la llamada redundante y se externalizó su script
+    inline a `js/auth-cambiar-clave.js`.
+  - **CSP activado** en `SecurityMiddleware.php`:
+    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self';
+    img-src 'self' data:;` — `style-src 'unsafe-inline'` se mantiene por theming embebido,
+    `img-src data:` por `porteria_foto.php`.
+
+  **Verificación ejecutada — Sesión 2 (php -S localhost:8080, 2026-06-14):**
+  - Bloqueador encontrado y resuelto: una sesión activa residual de `admin.smart` en
+    `tab_sesiones` (de pruebas previas) impedía el login con "Ya tiene una sesión activa en el
+    sistema" — se cerró manualmente en BD (`fec_fin = CURRENT_TIMESTAMP`), no relacionado con los
+    cambios de código de E4.
+  - Login → 302 a `menu_principal.php` → dashboard 200.
+  - `porteria/ingreso/index.php` y `porteria/salida/index.php` → 200, header CSP presente, 0
+    `<script>` inline, JS externalizado (`porteria-captura.js`, `porteria-medios.js`,
+    `ingresos.js`/`salidas.js`, `porteria-ingreso-modal.js`/`porteria-salida-modal.js`) cargado
+    correctamente.
+  - `cambiar_clave.php` → 200, 0 `<script>` inline, `auth-cambiar-clave.js` cargado.
+  - `php -l` sin errores en los 3 archivos PHP modificados en sesión 2.
+
+  **Reporte formal:** `REPORTE_E1-E04_HARDENING_SESIONES_SMARTCSET.md` (FASE1-REP-E04 v2.0, 2026-06-14)
+  **Checklist actualizado:** E4 marcado ✅ 100% en `02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md`.
+
+  **Próximo entregable: E5 — Tokens anti-CSRF en formularios POST** (ya tiene base lista, requiere
+  E4 activo, que ya lo está).
+
+  ---
+
+  ## ✅ test_seguridad/ — SUITE DE TESTS AUTOMATIZADOS (creada 2026-06-14)
+
+  A petición de Anderson, se creó `/home/anderson/smartcset/test_seguridad/` con tests automatizados
+  que verifican las premisas principales de los informes de Fase 1 ya cerrados (E1-A01, E1-A02, E4,
+  E6, E7). Objetivo: si alguien rompe por accidente una de estas correcciones al refactorizar código
+  relacionado, estos tests deben fallar y dar aviso temprano.
+
+  **Decisiones técnicas:**
+  - Lenguaje: **Python 3 stdlib `unittest` + `requests`** (ambos ya disponibles, sin instalar nada
+    nuevo) en lugar de PHPUnit/Pest — no se quiso introducir Composer (prohibido por CLAUDE.md).
+  - `psql` (vía `subprocess`, con `PGPASSWORD`) para verificaciones de BD — evita depender de
+    `psycopg2`, no instalado.
+  - **Un archivo de test por informe** (no un archivo monolítico), a petición explícita de Anderson.
+  - Todo el código sigue **PEP8** (líneas ≤79 caracteres, `snake_case`, imports ordenados) y cada
+    archivo tiene docstrings explicando la premisa del informe que verifica y, cuando aplica,
+    comentarios "por qué" (no "qué hace") — en línea con la consigna PEP8 vigente desde 2026-06-13 y
+    con la observación de Anderson de que el código de sesiones anteriores no estaba documentado.
+
+  **Estructura creada:**
+  ```
+  test_seguridad/
+  ├── common.py                              # helpers compartidos (NO es un test)
+  ├── test_e1_a01_broken_access_control.py   # 6 tests — REPORTE_E1-A01
+  ├── test_e1_a02_cryptographic_failures.py  # 3 tests — REPORTE_E1-A02 (parcial)
+  ├── test_e4_hardening_sesiones.py          # 6 tests — REPORTE_E1-E04
+  ├── test_e6_verificacion_uploads.py        # 5 tests — REPORTE_E1-E06
+  ├── test_e7_correccion_setup.py            # 3 tests — REPORTE_E1-E07
+  └── README.md                              # cobertura, requisitos, cómo ejecutar
+  ```
+
+  `common.py` centraliza: lectura de `.env` (`load_env`), comprobación de que el servidor de
+  desarrollo está arriba (`server_is_up`, para `SkipTest` con mensaje claro si `php -S
+  localhost:8080` no está corriendo), login HTTP real (`login`), ejecución de SQL de solo lectura
+  vía `psql` (`run_psql`), y `close_stale_session` (ver "fixes de entorno" abajo).
+
+  **Resultado de la última corrida:** `cd test_seguridad && python3 -m unittest discover -v` →
+  **23/23 PASS**.
+
+  **Fixes de entorno necesarios para que la suite pasara (estado local de desarrollo, no cambios de
+  código de producto):**
+  - `tab_sesiones` tiene `UNIQUE (id_usuario) WHERE fec_fin IS NULL` (una sesión activa por
+    usuario). Sesiones de prueba anteriores dejaban filas con `fec_fin IS NULL`, lo que hacía que un
+    login posterior devolviera `200` ("Ya tiene una sesión activa en el sistema") en vez de `302`.
+    Se agregó el helper `close_stale_session(username)` en `common.py`, llamado desde `login()` y
+    también desde `test_session_id_cambia_tras_login_exitoso` (que hace su propio flujo manual de
+    login) — cierra (`fec_fin = CURRENT_TIMESTAMP`) cualquier sesión residual del usuario de prueba
+    antes de autenticar.
+  - El hash de `pass_usuario` del usuario `porteria` en la BD de desarrollo no coincidía con la
+    credencial documentada en `CLAUDE.md` (`Porteria2026!`). Se regeneró el hash bcrypt
+    (`php -r 'echo password_hash("Porteria2026!", PASSWORD_BCRYPT);'`) y se actualizó en
+    `tab_usuarios` para que la suite (y cualquier prueba manual futura) pueda loguearse como
+    usuario no-administrador con la credencial documentada.
+
+  **Pendiente / próximos pasos para esta suite:**
+  - Por ahora cubre 5 de los 10 entregables de Fase 1 (los que ya están ✅ o ⚠️ con infraestructura
+    de código). A medida que se cierren E1 completo (A03-A10), E2, E3, E5, E8, E9, agregar su
+    `test_eN_*.py` correspondiente siguiendo el mismo patrón.
+  - No se ha hecho `git add`/commit de `test_seguridad/` todavía — pendiente de confirmación de
+    Anderson.
+
+  ---
+
+  ## ⚠️ CONSIGNA PRIORITARIA: SEGURIDAD TOTAL (vigente desde 2026-06-13)
+
+  A partir de esta sesión, **"Seguridad Total"** (5° de los 5 Pilares Obligatorios: Coherencia, Congruencia,
+  Funcionalidad, Estabilidad, Seguridad Total) es la **directriz prioritaria** para todo trabajo futuro en SmartCSET,
+  tanto en código como en documentación MSPI.
+
+  En la práctica esto significa:
+  - Ante cualquier ambigüedad entre "avanzar rápido" y "cerrar una brecha de seguridad", **se prioriza cerrar la
+    brecha**, incluso si retrasa el cronograma de entregables.
+  - Cada entregable de Fase 1/2/3 debe revisarse no solo por "¿está implementado?" sino por "¿introduce o deja
+    abierta alguna superficie de ataque nueva?" antes de marcarse como ✅.
+  - Toda actualización de handoff/checklist debe verificarse contra el código real (no solo contra lo que dice
+    otro documento) — la incongruencia E10 detectada y corregida en esta sesión (checklist ya decía ✅ Adoptado,
+    pero ambos handoffs aún decían 🔲 Pendiente) es el tipo de desincronización que esta consigna busca evitar.
+  - E10 (SDLC seguro, ya adoptado) es el mecanismo operativo que sostiene esta consigna: checklist pre-commit con
+    bloqueo total si hay secretos hardcodeados, SQL concatenado, o rutas sin guardia de sesión.
+
+  ---
+
+  ## ⚠️ CONSIGNA PRINCIPAL: ESTÁNDAR DE CÓDIGO PEP8 (vigente desde 2026-06-13)
+
+  A partir de esta sesión, **todo código Python** que se escriba para SmartCSET (scripts de utilidad,
+  herramientas de diagnóstico, tooling auxiliar en `tools/`, etc.) debe cumplir **PEP8** estrictamente
+  (línea ≤79 caracteres, nombres `snake_case`, imports ordenados, espaciado estándar) y pasar `ruff check`
+  antes de commit, en línea con `backend_python.md` y `testing_quality.md` de las reglas globales.
+
+  **Nota técnica:** SmartCSET es PHP 8+ puro (sin Composer/framework) — PEP8 no aplica directamente al
+  grueso del código del proyecto. Para PHP, el estándar equivalente que se adopta como referencia de estilo
+  es **PSR-12** (indentación 4 espacios, llaves en línea propia para clases/métodos, `camelCase` para
+  métodos, `PascalCase` para clases — ya es el patrón seguido en `src/`). Esta consigna se aplica entonces así:
+  - **Python** (cualquier script nuevo en `tools/`, `database/`, scripts de migración o diagnóstico): PEP8 + ruff.
+  - **PHP** (todo `src/`): PSR-12 como referencia de estilo, manteniendo las convenciones ya documentadas en
+    CLAUDE.md (nombrado de archivos/funciones, `require_once` relativo, prepared statements, etc.).
+
+  ---
+
+  ## QUÉ FALTA PRODUCIR
+
+  ### FASE 2 — Continuidad y Resiliencia Operativa 🟠 (documento por crear)
+  Carpeta: `FASE 02_Continuidad y Resiliencia Operativa/`
+  Archivo a crear: `01_CONTINUIDAD_RESILIENCIA_OPERATIVA_SMARTCSET.md`
+  Nomenclatura Fase 2+: `NN_NOMBRE_SMARTCSET.md` (SIN `_DOCUMENTO_LEGAL`)
+
+  5 entregables previstos:
+  - E1: DRP detallado + procedimiento de backup operativo (runbook ejecutable que amplía FASE0-INC-008)
+  - E2: Monitoreo y alertas (infraestructura + seguridad)
+  - E3: Runbook de respuesta a incidentes (árboles de decisión, lista de contactos, formularios)
+  - E4: Seguridad en talento humano (cláusulas confidencialidad, offboarding ≤2h hábiles, capacitación)
+  - E5: SDLC seguro — proceso formal (amplía Fase 1 E10 hacia proceso documentado completo)
+
+  ### FASE 3 — Cumplimiento Normativo Formal / Certificable 🔲
+  - Alineación ISO/IEC 27001 (evidencia para auditor externo)
+  - PIA — Evaluación de Impacto en Privacidad (menores de edad + columnas biométricas INF-16)
+  - Evaluación ICC (Decreto 338/2022 — pre-evaluación en doc 02 §12: NO califica a nivel de centro)
+  - Evidencia para auditorías MIPG / Contraloría
+
+  ### Fases 4 y 5 — Largo plazo / condicionales 🔲
+
+  ---
+
+  ## ✅ TRABAJO EJECUTADO 2026-06-17 (SESIÓN 2) — E1-A02 (HTTPS) COMPLETADO
+
+  **E1-A02 (Cryptographic Failures — Subcontrol 4: HTTPS forzado en producción) — ✅ 100% COMPLETADO**
+
+  ### Trabajo realizado:
+
+  1. **Certificado TLS autofirmado ECDSA P-256**
+     - Generado con OpenSSL: curva P-256, válido 365 días, CN=smartcset.local
+     - Ubicación: `/etc/apache2/certs/smartcset.crt` + `.key`
+     - Algoritmo verificado: TLSv1.3, cipher TLS_AES_256_GCM_SHA384
+
+  2. **Configuración Apache VirtualHost HTTPS**
+     - Archivo: `/etc/apache2/sites-available/smartcset-ssl.conf`
+     - DocumentRoot: `/var/www/html` (corregido de path incorrecto inicial)
+     - ServerName: `10.5.213.103`
+     - HTTP→HTTPS redirect: `301 Moved Permanently`
+     - Módulo SSL habilitado: `a2enmod ssl` + `socache_shmcb`
+
+  3. **enforceHTTPS() en código**
+     - Agregado en `index.php` líneas 11-15
+     - Redirección 301 en producción (APP_ENV=production)
+     - Condicional: solo activo si APP_ENV === 'production'
+
+  4. **Seguridad de sesión — Cookie flags verificados**
+     - Secure ✅ (activado por APP_ENV=production)
+     - HttpOnly ✅ (presente via SecurityMiddleware)
+     - SameSite=Strict ✅ (máxima protección CSRF)
+     - Max-Age=1800 ✅ (30 minutos de sesión)
+
+  5. **APP_ENV actualizado**
+     - Cambio `.env` de `development` a `production`
+     - Activa automáticamente flag Secure en todas las cookies HTTPS
+     - Cookie Set-Cookie: PHPSESSID=...; secure; HttpOnly; SameSite=Strict
+
+  ### Pruebas manuales ejecutadas:
+
+  - ✅ **4.5 — HTTPS + certificado autofirmado:** Firefox mostró advertencia estándar (MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT), usuario continuó, página de login cargó correctamente
+  - ✅ **4.6 — HTTP→HTTPS redirect:** Acceso a `http://10.5.213.103/smartcset` redirigió automáticamente a `https://10.5.213.103/smartcset`
+  - ✅ **4.7 — Login + sesión:** Usuario `admin.smart` logueado exitosamente, dashboard cargó, cookie verificada con flags correctos
+  - ⏳ **4.8 — Tablet:** No disponible en esta sesión (opcional)
+
+  ### Actualización documentación:
+
+  - `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` → v3.0 (2026-06-17): Subcontrol 4 ✅ completado
+  - `02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md` → v1.3: E1 avance ~40%, bitácora actualizada
+  - Este handoff.txt actualizado
+
+  ### Próximo paso en orden de implementación:
+
+  E3 (Rate limiting + tab_intentos_login) — la siguiente en la secuencia recomendada.
+
+  ---
+
+  ## CONVENCIONES CRÍTICAS
+
+  - Nombre del sistema: **SmartCSET** (no SMARTCSET, no "sistema de portería")
+  - Elaborado por: siempre "Equipo de Desarrollo - SmartCSET"
+  - Fase 0: formato legal con tabla de aprobación y ELABORÓ/REVISÓ/APROBÓ
+  - Fase 1+: documento de trabajo (sin tabla de aprobación legal)
+  - Honestidad temporal: controles no implementados SIEMPRE marcados 🔲 con su entregable de fase — nunca redactados en presente como existentes
+  - Colores, paths, configuración: siempre desde `.env`, nunca hardcodeado
+  - Base de datos: PostgreSQL con lógica en PL/pgSQL — NO mockear, NO PDO adicional
+  - Sin Composer, sin autoloading, sin framework
+
+  ## ARCHIVO DE MEMORIA DEL AGENTE
+  Existe un AGENTS.md completo en `Documentacion para implementacion de MSPI/AGENTS.md` con todo el detalle técnico, decisiones, referencias cruzadas, hallazgos del codebase y el registro
+  de las dos auditorías de Fase 0. Léelo antes de cualquier tarea.

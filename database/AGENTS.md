@@ -82,18 +82,20 @@ Script SQL standalone para inicializar solo el módulo de acceso (usuarios, men�
 
 ## Estado actual de instalación (bugs conocidos)
 
-Función PL/pgSQL ausentes del array FUNCS en setup.sh:
-- `fun_validar_correo.sql` — crítica para recuperación de contraseña
-- `fun_validar_login.sql`
-- `fun_validar_usuario.sql`
-- `fun_delete_perfil_usuarios.sql` (plural)
-- `fun_tab_menu_usuarios.sql`
-- `fun_trigger_menu.sql`
-- `fun_trigger_menu_admin.sql`
+> **Actualizado (E7, 2026-06-13):** `fun_validar_login.sql`, `fun_validar_correo.sql` y
+> `fun_validar_usuario.sql` ya fueron agregadas a `FUNCS` (alineadas al patrón estándar de manejo de
+> errores). `fun_trigger_menu.sql` y `fun_trigger_menu_admin.sql` ya estaban presentes en `FUNCS`
+> (la mención previa como "ausentes" era una inexactitud de documentación, no relacionada con E7).
+> Ver `Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`.
+
+Función PL/pgSQL pendientes del array FUNCS en setup.sh:
+- `fun_delete_perfil_usuarios.sql` (plural) — descripción no coincide con su implementación real,
+  requiere análisis propio antes de decidir su inclusión (fuera del alcance de E7)
+- `fun_tab_menu_usuarios.sql` — **NO debe agregarse**: contiene versiones legacy que sobreescribirían
+  funciones ya mejoradas y desplegadas (`fun_insert_menu_usuarios`, `fun_delete_perfil_usuario`).
+  Permanece en el repo solo como referencia histórica.
 
 Migraciones ausentes:
-- `update_modulos_rutas_organizadas.sql` — CRÍTICA
-- `update_menu_registro_listado_admin.sql`
 - `add_unique_ingreso_persona_dia.sql`
 
 Consultar `SETUP_AUDIT.md` en la raíz para detalles completos.

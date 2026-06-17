@@ -30,8 +30,10 @@ Genera clave aleatoria de 12 caracteres, la hashea con bcrypt y actualiza `tab_u
 - Escribe flash_msg al procesar
 
 **Depende de:**
-- Función PL/pgSQL `fun_validar_correo()` (en modo correo) — ausente del instalador actual (BUG)
-- Función PL/pgSQL `fun_actualizar_password()`
+- SQL directo en `prepare.php`: `$stmt_valida_mail` (valida ID_usuario + correo) y `$stmt_upd_pass`
+  (actualiza el hash). **No llama** a `fun_validar_correo()` ni a `fun_actualizar_password()` — esas
+  funciones PL/pgSQL existen y están incluidas en `setup.sh` (desde E7), pero el flujo de recuperación
+  actual usa consultas directas, no estas funciones.
 
 ### cambiar_clave.php
 
@@ -64,7 +66,8 @@ Formulario de cambio de contraseña para el usuario logueado. Requiere sesión a
 ## Dependencias
 
 - `logout.php` depende de: sesión PHP (puede destruir incluso si está vacía)
-- `recuperar.php` depende de: `fun_validar_correo()` y `fun_actualizar_password()` en PostgreSQL
+- `recuperar.php` depende de: `$stmt_valida_mail` y `$stmt_upd_pass` (SQL directo en `prepare.php`),
+  no de las funciones PL/pgSQL `fun_validar_correo()`/`fun_actualizar_password()`
 - `cambiar_clave.php` depende de: `validarLongitudPassword()`, `fun_actualizar_password()`, sesión activa
 
 ---

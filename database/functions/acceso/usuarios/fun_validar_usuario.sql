@@ -11,7 +11,9 @@ BEGIN
     WHERE u.id_usuario = _usuario
       AND u.ind_estado = TRUE;
 EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'ERROR: Fallo en consulta de seguridad';
+        PERFORM smartcset_handle_sql_error();
 END;
 $$ LANGUAGE plpgsql;

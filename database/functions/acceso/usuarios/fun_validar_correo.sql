@@ -14,5 +14,10 @@ BEGIN
     ELSE
         RETURN 'ERROR: Los datos no coinciden con nuestros registros.';
     END IF;
+EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
+    WHEN OTHERS THEN
+        PERFORM smartcset_handle_sql_error();
 END;
 $$ LANGUAGE plpgsql;

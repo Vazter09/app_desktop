@@ -135,7 +135,7 @@ Documento N°: FASE1-BLI-001 | Versión: 1.1 | 1491 líneas | 18 secciones | 10 
 | E4 | Hardening de sesiones PHP | ✅ 4 líneas `ini_set` + `session_regenerate_id` identificados | 🔲 SecurityMiddleware existe pero es código muerto |
 | E5 | Tokens anti-CSRF | ✅ Lista de formularios + helper `validarCSRFoAbortar()` | 🔲 Pendiente |
 | E6 | Verificación subida de archivos | ✅ Checklist de verificación | ✅ Ya implementado correctamente en LogoUpload.php y porteria_foto.php |
-| E7 | Corrección bugs setup_smartcset.sh | ✅ 4 funciones SQL faltantes + diff exacto | 🔲 Pendiente |
+| E7 | Corrección bugs setup_smartcset.sh | ✅ 4 funciones SQL faltantes + diff exacto | ✅ Completado (3/4; ver REPORTE_E1-E07) |
 | E8 | Hardening de red y arquitectura de despliegue | ✅ Diagrama ASCII, reglas firewall, TLS DSN | 🔲 Requiere coordinación Oficina TI SENA |
 | E9 | Gestión de parches y actualización de componentes | ✅ Inventario de componentes + SLA por CVSS + proceso 5 pasos | 🔲 Pendiente — crear `database/REGISTRO_PARCHES.md` |
 | E10 | SDLC seguro: checklist de código y despliegue | ✅ Pre-commit, pre-deploy, rollback, prohibiciones absolutas | 🔲 Pendiente adopción formal |
@@ -236,17 +236,23 @@ Auditoría realizada el 2026-06-08 sobre el código fuente real de SmartCSET:
 | `src/core/config.php` | `session.cookie_httponly`, `session.cookie_secure`, `session.cookie_samesite` no configurados | 🔴 |
 | `src/core/LogoUpload.php` | ✅ Bien implementado — finfo, whitelist MIME, límite 5MB, nombre aleatorio | — |
 | `src/modulos/porteria/lib/porteria_foto.php` | ✅ Bien implementado — base64 estricto, recompresión JPEG, JSONB | — |
-| `database/setup_smartcset.sh` | Bugs 1 y 3 del SETUP_AUDIT.md ya corregidos (schema V.1.7, migraciones presentes). Persiste Bug 2 parcial: 4 funciones existen en disco pero NO están en el array FUNCS | 🟠 |
+| `database/setup_smartcset.sh` | Bugs 1 y 3 del SETUP_AUDIT.md ya corregidos (schema V.1.7, migraciones presentes). Bug 2 resuelto en su mayoría (E7, 2026-06-13): 3/4 funciones agregadas a FUNCS; la 4ª se excluye deliberadamente (riesgo de regresión) | ✅ |
 
-### Funciones PL/pgSQL en disco pero ausentes de setup_smartcset.sh FUNCS
+### Funciones PL/pgSQL — estado tras E7 (2026-06-13)
 
 ```
-database/functions/acceso/usuarios/fun_validar_correo.sql     ← ausente de FUNCS
-database/functions/acceso/usuarios/fun_validar_login.sql      ← ausente de FUNCS
-database/functions/acceso/usuarios/fun_validar_usuario.sql    ← ausente de FUNCS
-database/functions/acceso/menus/fun_tab_menu_usuarios.sql     ← ausente de FUNCS
+database/functions/acceso/usuarios/fun_validar_correo.sql     ← ✅ agregada a FUNCS (E7)
+database/functions/acceso/usuarios/fun_validar_login.sql      ← ✅ agregada a FUNCS (E7)
+database/functions/acceso/usuarios/fun_validar_usuario.sql    ← ✅ agregada a FUNCS (E7)
+database/functions/acceso/menus/fun_tab_menu_usuarios.sql     ← ❌ excluida deliberadamente (contiene
+                                                                  versiones legacy que sobreescribirían
+                                                                  funciones seguras ya desplegadas)
 ```
-Una instalación limpia ejecutada hoy NO desplegará estas funciones → recuperación de contraseña falla en servidor nuevo. Este es el Bug 2 de SETUP_AUDIT.md — se cierra en Fase 1 E7.
+Verificado en E7: estas 3 funciones `validar_*` NO eran llamadas desde PHP (login y recuperación usan
+SQL directo en `prepare.php`/`recuperar.php`), por lo que su ausencia era una brecha documental, no la
+causa de una falla de recuperación de contraseña como se afirmaba anteriormente. Bug 2 de
+SETUP_AUDIT.md cerrado en Fase 1 E7 — ver
+`Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`.
 
 ---
 
@@ -365,3 +371,18 @@ FASE1-BLI-001 (Blindaje Técnico Inmediato)
 ---
 
 *Actualización 2026-06-11:* (1) Reporte A01 ampliado con §6.2 (procedimiento detallado de pruebas manuales con `curl`) y §6.3 (criterios de cierre) — pendiente de ejecución por Anderson en entorno con BD. (2) Auditoría E1-A02 (Cryptographic Failures) completada: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`. De sus 3 hallazgos, solo el de TLS BD se preparó en código hoy (constante `DB_SSLMODE` en `config.php`/`Db.php`/`.env.example`, vacía por defecto, sin regresión, activación pendiente de que Oficina TI habilite `ssl=on` en PostgreSQL — E8). Cifrado en reposo (E2) y HTTPS forzado (E4) quedan documentados pero bloqueados por prerrequisitos institucionales (custodio `DB_ENCRYPTION_KEY`, BD de test, certificado TLS). A02 NO se marca ✅ — sigue ⚠️. Siguiente paso sugerido: continuar con E10/E7 (riesgo cero, sin dependencias externas) o seguir con A03-A10 de E1 según indique Anderson.*
+
+---
+
+*Actualización 2026-06-13:* E10 y E6 completados. E7 (Corrección de bugs en `setup_smartcset.sh`) completado:
+3 de las 4 funciones PL/pgSQL ausentes (`fun_validar_login`, `fun_validar_correo`, `fun_validar_usuario`)
+se agregaron a `FUNCS` tras alinear su manejo de errores al patrón estándar
+(`smartcset_handle_sql_error()`); la 4ª (`fun_tab_menu_usuarios.sql`) se excluye deliberadamente —
+contiene versiones legacy que sobreescribirían `fun_insert_menu_usuarios`/`fun_delete_perfil_usuario`
+ya desplegadas con validaciones de seguridad. Se verificó que las 3 funciones agregadas no eran llamadas
+desde PHP (login/recuperación usan SQL directo), por lo que su ausencia era una brecha documental, no
+una falla funcional activa — se corrige la afirmación previa de que "la recuperación de contraseña
+falla sin `fun_validar_correo`" en `AGENTS.md` de `database/`, `database/functions/`,
+`database/functions/acceso/usuarios/`, `database/functions/acceso/menus/`, `src/auth/` y en
+`CLAUDE.md` (sección "Bugs conocidos"). Ver `REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`. Siguiente
+paso: E4 (Hardening de sesiones PHP).

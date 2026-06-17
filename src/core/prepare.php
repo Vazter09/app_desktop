@@ -5,6 +5,7 @@
  * Lógica delegada al motor PostgreSQL mediante funciones con casting explícito.
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/SecurityMiddleware.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';
@@ -207,6 +208,18 @@ try {
         ?::VARCHAR, ?::NUMERIC, ?::TEXT, ?::NUMERIC
     )";
     $stmt_fun_registrar_aprendiz = $pdo->prepare($sql_fun_registrar_aprendiz);
+
+    $sql_fun_actualizar_aprendiz = "SELECT fun_actualizar_aprendiz(
+        ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::DATE, ?::NUMERIC, ?::NUMERIC, ?::VARCHAR,
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
+        ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
+        ?::BOOLEAN,
+        ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC,
+        ?::VARCHAR, ?::NUMERIC, ?::TEXT, ?::NUMERIC
+    )";
+    $stmt_fun_actualizar_aprendiz = $pdo->prepare($sql_fun_actualizar_aprendiz);
+
 
     $sql_fun_registrar_instructor = "SELECT fun_registrar_instructor(
         ?::NUMERIC, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::DATE,

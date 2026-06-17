@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../init.php';
-require_once __DIR__ . '/../lib/registro_persistencia.php';
 registroRequireAccess();
 
 $success = false;
@@ -25,36 +24,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return $v === '' ? null : $v;
         };
 
-        $stmt_fun_registrar_aprendiz->execute([
-            $_POST['id_persona'],
-            $_POST['id_tipo_docum'],
-            $_POST['nom_persona'],
-            $_POST['ape_persona'],
-            $_POST['mail_persona'],
-            $_POST['fec_nacimiento'],
-            $_POST['ind_genero'],
-            $_POST['id_nivel_estudio'],
-            $_POST['id_profesion'],
-            $_POST['id_dpto_reside'],
-            $_POST['id_ciudad_reside'],
-            $_POST['dir_ciudad_reside'],
-            $_POST['tel_persona_fijo'],
-            $_POST['tel_persona_movil'],
-            $_POST['nom_contacto_emergencias'],
-            $_POST['tel_contacto_emergencias'],
-            isset($_POST['ind_envio_correo']) ? 'true' : 'false',
-            $postOrNull('tel_alterno'),
-            $postOrNull('tel_sede'),
-            $postOrNull('ext_sede'),
-            $postOrNull('tel_padre_fijo'),
-            $postOrNull('tel_padre_movil'),
-            $postOrNull('val_mail_institucional'),
-            $_POST['ind_etdo_formacion'],
-            registroDisplayUsername(),
-            $_POST['id_ficha'],
-        ]);
+        $params = [
+            $_POST['id_persona'],                                    
+            $_POST['id_tipo_docum'],                                 
+            $_POST['nom_persona'],                                  
+            $_POST['ape_persona'],                                  
+            $_POST['mail_persona'],                                 
+            $_POST['fec_nacimiento'],                               
+            (int)$_POST['ind_genero'],                              
+            $_POST['id_nivel_estudio'],                             
+            $_POST['id_profesion'],                                 
+            $_POST['id_dpto_reside'],                               
+            $_POST['id_ciudad_reside'],                             
+            $_POST['dir_ciudad_reside'],                            
+            (int)$_POST['tel_persona_fijo'],                        
+            (int)$_POST['tel_persona_movil'],                       
+            $_POST['nom_contacto_emergencias'],                     
+            (int)$_POST['tel_contacto_emergencias'],                
+            isset($_POST['ind_envio_correo']) ? 'true' : 'false',       
+            $postOrNull('tel_alterno') !== null ? (int)$postOrNull('tel_alterno') : null,     
+            $postOrNull('tel_sede') !== null ? (int)$postOrNull('tel_sede') : null,           
+            $postOrNull('ext_sede') !== null ? (int)$postOrNull('ext_sede') : null,           
+            $postOrNull('tel_padre_fijo') !== null ? (int)$postOrNull('tel_padre_fijo') : null,   
+            $postOrNull('tel_padre_movil') !== null ? (int)$postOrNull('tel_padre_movil') : null, 
+            $postOrNull('val_mail_institucional'),                   
+            (int)$_POST['ind_etdo_formacion'],                       
+            registroDisplayUsername(),                               // 25: varchar
+            $_POST['id_ficha'],                                      // 26: numeric
+        ];
 
-        $idRegistrado = $stmt_fun_registrar_aprendiz->fetchColumn();
+        $stmt_fun_actualizar_aprendiz->execute($params);
+
+        $idRegistrado = $stmt_fun_actualizar_aprendiz->fetchColumn();
         if ($idRegistrado === false || trim((string) $idRegistrado) === '') {
             throw new RuntimeException('No se pudo actualizar los datos del aprendiz.');
         }
@@ -76,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="form-container">
             <p class="section-title">Módulo 01</p>
-            <h1 class="section-heading" style="margin-bottom:0.3rem">Actualización de datos del <em>Aprendiz</em></h1>
+            <h1 class="section-heading" style="margin-bottom:0.3rem">Actualización datos del <em>Aprendiz</em></h1>
             <p class="section-sub">Busque al aprendiz por documento, revise la información cargada y actualice los campos obligatorios en persona, aprendiz y ficha de formación.</p>
 
             <?php if ($success): ?>
@@ -139,35 +140,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="4">Trans</option>
                         </select>
                     </div>
-                    <div class="field-group span-2">
-                        <label for="mail_persona">Correo Personal <span class="required">*</span></label>
-                        <input type="email" id="mail_persona" name="mail_persona" placeholder="correo@ejemplo.com" required>
-                    </div>
                 </div>
-                    </div>
+            </div>
+        </div>
+        
+        <div class="registro-accordion-item" id="acc-persona-tel">
+            <button type="button" class="registro-accordion-trigger form-section-title"
+            id="trigger-persona-tel" aria-expanded="false" aria-controls="panel-persona-tel">
+            Contactos Personales
+        </button>
+        <div class="registro-accordion-panel" id="panel-persona-tel" role="region" aria-labelledby="trigger-persona-tel">
+            <div class="form-grid cols-2">
+                <div class="field-group">
+                    <label for="tel_persona_fijo">Teléfono Fijo <span class="required">*</span></label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                    id="tel_persona_fijo" name="tel_persona_fijo" placeholder="6011234567" required>
                 </div>
-
-                <div class="registro-accordion-item" id="acc-persona-tel">
-                    <button type="button" class="registro-accordion-trigger form-section-title"
-                            id="trigger-persona-tel" aria-expanded="false" aria-controls="panel-persona-tel">
-                        Teléfonos
-                    </button>
-                    <div class="registro-accordion-panel" id="panel-persona-tel" role="region" aria-labelledby="trigger-persona-tel">
-                <div class="form-grid cols-2">
-                    <div class="field-group">
-                        <label for="tel_persona_fijo">Teléfono Fijo <span class="required">*</span></label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
-                               id="tel_persona_fijo" name="tel_persona_fijo" placeholder="6011234567" required>
-                    </div>
-                    <div class="field-group">
-                        <label for="tel_persona_movil">Teléfono Móvil <span class="required">*</span></label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
-                               id="tel_persona_movil" name="tel_persona_movil" placeholder="3001234567" required>
-                    </div>
+                <div class="field-group">
+                    <label for="tel_persona_movil">Teléfono Móvil <span class="required">*</span></label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                    id="tel_persona_movil" name="tel_persona_movil" placeholder="3001234567" required>
                 </div>
-                    </div>
+                <div class="field-group span-2">
+                    <label for="mail_persona">Correo Personal <span class="required">*</span></label>
+                    <input type="email" id="mail_persona" name="mail_persona" placeholder="correo@ejemplo.com" required>
                 </div>
-
+            </div>
+        </div>
+    </div>
+    
                 <div class="registro-accordion-item" id="acc-persona-ubic">
                     <button type="button" class="registro-accordion-trigger form-section-title"
                             id="trigger-persona-ubic" aria-expanded="false" aria-controls="panel-persona-ubic">
@@ -377,9 +378,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="btn-row">
                     <button type="submit" class="btn-primary">
-                        Actualizar Datos
+                       ✔ Actualizar Datos
                     </button>
-                    <a href="../index.php" class="btn-secondary">← Volver</a>
                     <button type="reset" class="btn-secondary">↺ Limpiar</button>
                 </div>
             </form>
@@ -394,5 +394,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="<?= htmlspecialchars($regHref) ?>js/registro-form-accordion.js?v=<?= (int) $vAccordion ?>"></script>
     <script src="<?= htmlspecialchars($regHref) ?>js/registro-aprendiz-buscar.js?v=<?= (int) $vBuscar ?>"></script>
     <?php registroIncludeFooterScripts(); ?>
+    <script>
+    document.addEventListener('invalid', function(e){
+        var target = e.target;
+        var panel = target.closest('.registro-accordion-panel');
+        if(panel) {
+            var btnId = panel.getAttribute('aria-labelledby');
+            if(btnId) {
+                var btn = document.getElementById(btnId);
+                if(btn && btn.getAttribute('aria-expanded') !== 'true') {
+                    btn.click();
+                }
+            }
+        }
+    }, true);
+    </script>
 </body>
 </html>

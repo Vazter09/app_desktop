@@ -110,7 +110,7 @@ SmartCSET fue construido con patrones arquitectónicos sólidos que **ya alinean
 | **Sin cifrado en reposo confirmado**                                  | Documentos de identidad y fotos almacenados en `storage/` sin cifrado; vulnerables a acceso físico o copia no autorizada de BD | ISO 27001 / Ley 1581 / Ley 1266     | CRÍTICA  | 🔲**PENDIENTE** — Fase 1 E2                                  |
 | **Sin logging centralizado de intentos fallidos de autenticación**   | Ataques de fuerza bruta contra `index.php` pasan desapercibidos                                                                 | ISO 27001 / OWASP A09               | ALTA      | 🔲**PENDIENTE** — Fase 1 E3                                  |
 | **Sin rate limiting en login**                                        | Un atacante puede intentar 100.000 contraseñas sin límite; credential stuffing posible                                          | OWASP / MSPI                        | ALTA      | 🔲**PENDIENTE** — Fase 1 E3                                  |
-| **Bugs en `setup_smartcset.sh`**                                    | 4 funciones PL/pgSQL ausentes del array `FUNCS` (schema V.1.7 y migraciones ya corregidos al 2026-06-08)                        | Integridad de despliegue / Ley 1581 | ALTA      | 🔲**PENDIENTE** — Fase 1 E7                                  |
+| **Bugs en `setup_smartcset.sh`**                                    | 3/4 funciones PL/pgSQL agregadas al array `FUNCS`; 1 excluida deliberadamente (riesgo de regresión); schema V.1.7 y migraciones ya corregidos | Integridad de despliegue / Ley 1581 | ALTA      | ✅**COMPLETADO** — Fase 1 E7 (2026-06-13)                     |
 | **Sin mecanismo de recuperación de contraseña robusto**             | `recuperar.php` sin validación de identidad sólida; posible recuperación no autorizada                                       | ISO 27001 / OWASP A07               | MEDIA     | 🔲**PENDIENTE** — Fase 1 E1 (auditoría)                     |
 | **Sin tokens CSRF en formularios POST**                               | Ataques CSRF posibles en procesar.php y procesar_*.php                                                                            | OWASP A01 / ISO 27001               | MEDIA     | 🔲**PENDIENTE** — Fase 1 E5                                  |
 | **Sin validación robusta de subida de archivos**                     | `LogoUpload.php`, `porteria_foto.php` sin validación de MIME type real                                                       | OWASP A04 / ISO 27001               | MEDIA     | ✅**CERRADA** — Fase 1 E6 ya implementado                    |
@@ -377,14 +377,23 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 
 **7. Corrección de Bugs de `setup_smartcset.sh`** (1-2 semanas, puede ser paralelo)
 
-> **Estado verificado al 2026-06-08 (ver FASE1-BLI-001, E7):** el Bug 1 (schema desactualizado) y el Bug 3 (migraciones faltantes) ya fueron corregidos — el script apunta al esquema V.1.7 e incluye las migraciones críticas. Persiste el Bug 2 de forma parcial.
+> **✅ Completado (2026-06-13, ver REPORTE_E1-E07):** el Bug 1 (schema desactualizado) y el Bug 3
+> (migraciones faltantes) ya fueron corregidos — el script apunta al esquema V.1.7 e incluye las
+> migraciones críticas. El Bug 2 se resolvió en su mayoría: 3 de las 4 funciones se agregaron a
+> `FUNCS`, alineadas al patrón estándar de manejo de errores (`smartcset_handle_sql_error()`); la 4ª
+> queda excluida deliberadamente (ver abajo). Se verificó que estas funciones `validar_*` no eran
+> llamadas desde PHP — su ausencia previa era una brecha documental, no la causa de fallas en login o
+> recuperación de contraseña.
 
-- Bug 2 (parcial): 4 funciones PL/pgSQL existen en disco pero NO están en el array `FUNCS` → Agregar:
-  - `acceso/usuarios/fun_validar_correo.sql` — sin ella, la recuperación de contraseña falla en toda instalación limpia
+- ✅ Agregadas a `FUNCS`:
+  - `acceso/usuarios/fun_validar_correo.sql`
   - `acceso/usuarios/fun_validar_login.sql`
   - `acceso/usuarios/fun_validar_usuario.sql`
-  - `acceso/menus/fun_tab_menu_usuarios.sql`
-- Auditoría post-fix: Ejecutar `setup_smartcset.sh` en BD de test, verificar que todas las funciones estén presentes: `\df fun_*` (en particular `\df fun_validar_correo`)
+- ❌ `acceso/menus/fun_tab_menu_usuarios.sql` — **NO agregada**: contiene versiones legacy de
+  `fun_insert_menu_usuarios`/`fun_delete_perfil_usuario` que sobreescribirían las versiones seguras ya
+  desplegadas (sin validación de existencia, manejo de errores no estándar). Permanece en el repo solo
+  como referencia histórica.
+- Auditoría post-fix realizada: las 3 funciones se desplegaron y compilaron sin errores en BD local (`CREATE FUNCTION` OK)
 - Antes de ejecutar contra producción: backup completo con `pg_dump` — el esquema se aplica con DROP implícito
 
 **8. Hardening de Red y Arquitectura de Despliegue** (1-2 semanas, requiere Oficina TI SENA)
@@ -475,7 +484,7 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 - 🔲 CSRF tokens en 100% de formularios POST (E5)
 - 🔲 Tokens de sesión regenerados tras login (E4)
 - ✅ Validación de uploads verificada (E6 — ya OK)
-- 🔲 Bugs de setup corregidos, BD se instala sin errores (E7)
+- ✅ Bugs de setup corregidos, BD se instala sin errores (E7 — completado 2026-06-13)
 - 🔲 Diagrama de red objetivo y matriz de reglas de firewall documentados y aprobados por Oficina TI (E8)
 - 🔲 Conexión PHP↔PostgreSQL verificada bajo TLS (`sslmode=require`) y puerto 5432 restringido (E8)
 - 🔲 Inventario de componentes con SLA de parches documentado y suscripciones activas (E9)
@@ -1063,12 +1072,14 @@ Carpeta: `FASE 0_documentos politicas de tratamiento de datos/`
 - A partir de hoy, ningún commit a producción sin pasar el checklist
 - **Por qué primero:** No requiere código. Previene introducir nuevas brechas mientras se cierran las existentes.
 
-### Paso 2 — Corregir los bugs de setup_smartcset.sh (E7) · ~30 horas
+### Paso 2 — Corregir los bugs de setup_smartcset.sh (E7) · ✅ Completado (2026-06-13)
 
-- Es el entregable menos riesgoso (no afecta lógica de negocio) y más urgente para instalaciones nuevas
-- Estado actual (verificado 2026-06-08): el schema V.1.7 y las migraciones ya están corregidos en el script; lo único pendiente es el array `FUNCS`
-- Corrección concreta documentada en FASE1-BLI-001 (E7): agregar al array `FUNCS` las 4 funciones ausentes (`fun_validar_correo`, `fun_validar_login`, `fun_validar_usuario`, `fun_tab_menu_usuarios`)
-- Verificar con `psql -d db_smartcset_test -c "\df fun_*"` tras ejecutar el script corregido
+- Schema V.1.7 y migraciones críticas ya estaban corregidos en el script
+- Array `FUNCS`: se agregaron `fun_validar_correo`, `fun_validar_login`, `fun_validar_usuario`
+  (alineadas al patrón estándar de manejo de errores)
+- `fun_tab_menu_usuarios` se excluyó deliberadamente — contiene versiones legacy que sobreescribirían
+  funciones ya mejoradas y desplegadas (ver REPORTE_E1-E07)
+- Las 3 funciones se desplegaron y compilaron sin errores en BD local (`CREATE FUNCTION` OK)
 
 ### Paso 3 — Hardening de sesiones PHP (E4) · ~8 horas
 

@@ -4,6 +4,7 @@ $_asset_root = dirname(__DIR__, 2);
 $_v_layout = @filemtime($_asset_root . '/css/layout.css') ?: time();
 $_v_crud   = @filemtime($_asset_root . '/css/style_crud.css') ?: time();
 $_v_comp   = @filemtime($_asset_root . '/css/components.css') ?: time();
+$_v_theme_init = @filemtime($_asset_root . '/js/theme-init.js') ?: time();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -28,15 +29,5 @@ $_v_comp   = @filemtime($_asset_root . '/css/components.css') ?: time();
     </style>
 </head>
 <body>
-<script>
-    (function () {
-        try {
-            if (localStorage.getItem('smartcset_theme') === 'light') {
-                document.body.classList.add('light-theme');
-            }
-        } catch (err) {
-            /* noop: fallback a tema oscuro por defecto */
-        }
-    })();
-</script>
+<script src="<?= htmlspecialchars($_asset_href) ?>js/theme-init.js?v=<?= (int) $_v_theme_init ?>"></script>
 <div class="app-wrapper">

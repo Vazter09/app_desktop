@@ -130,6 +130,27 @@
         var dpto = data.id_dpto_reside || '';
         setFieldValue('id_dpto_reside', dpto);
 
+        // Ensure id_ficha option exists even if the ficha is closed
+        if (data.id_ficha) {
+            var selectFicha = document.getElementById('id_ficha');
+            if (selectFicha) {
+                var optionExists = false;
+                for (var i = 0; i < selectFicha.options.length; i++) {
+                    if (selectFicha.options[i].value === String(data.id_ficha)) {
+                        optionExists = true;
+                        break;
+                    }
+                }
+                if (!optionExists) {
+                    var opt = document.createElement('option');
+                    opt.value = String(data.id_ficha);
+                    opt.textContent = String(data.id_ficha);
+                    selectFicha.appendChild(opt);
+                }
+                selectFicha.value = String(data.id_ficha);
+            }
+        }
+
         return cargarCiudades(dpto, data.id_ciudad_reside || '');
     }
 

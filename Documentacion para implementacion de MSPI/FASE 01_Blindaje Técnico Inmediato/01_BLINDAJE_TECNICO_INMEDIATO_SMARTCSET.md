@@ -6,10 +6,10 @@
 | Campo | Valor |
 |---|---|
 | **Documento N°** | FASE1-BLI-001 |
-| **Versión** | 1.1 — Revisión: +E9 gestión de parches, +E10 SDLC seguro |
+| **Versión** | 1.2 — Actualización 2026-06-16: estado de avance real; E5 descartado; tests 23/23 PASS en servidor |
 | **Fecha de elaboración** | 2026-06-08 |
 | **Elaborado por** | Equipo de Desarrollo - SmartCSET |
-| **Estado** | 🔴 Pendiente de implementación — base técnica auditada, lista para ejecutar |
+| **Estado** | 🟡 En ejecución — E10✅ E7✅ E4✅ E6⚠️(IT) E1⚠️(parcial) · E3🔲 E2⛔ E8⛔(IT) E9🔲 · E5⛔ DESCARTADO |
 | **Fundamento normativo / metodológico** | OWASP Top 10 2021; ISO/IEC 27001 Annex A (controles técnicos); MSPI MinTIC Ejes 3, 5, 6, 7, 8; ISC2 Certified in Cybersecurity — Dominios 3 (Access Control), 4 (Network Security) y 5 (Security Operations) |
 | **Insumos directos de Fase 0** | FASE0-POL-001 (Tratamiento de Datos); FASE0-INV-002 (Inventario de Activos C-I-D); FASE0-RIE-003 (Matriz de Riesgos); FASE0-ROL-004 (Roles y Responsabilidades); FASE0-AUD-005 (Cronograma de Auditorías); FASE0-PSI-006 (Política General de Seguridad); FASE0-ACC-007 (Control de Acceso y Seguridad Física); FASE0-INC-008 (Marco de Gestión de Incidentes y Continuidad) |
 | **Auditoría de codebase** | Realizada el 2026-06-08 sobre el código fuente real de SmartCSET — todos los extractos de código en este documento son del estado actual verificado |
@@ -207,16 +207,15 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 | Separación de capas (vista/lógica/datos) | Inspección de que las vistas (`index.php`) no contienen lógica de negocio directa | ✅ Patrón `index.php → procesar.php → lib/` bien implementado |
 | Principio de mínimo privilegio en BD | Verificar permisos del usuario de BD que usa PHP: `SELECT * FROM information_schema.role_table_grants WHERE grantee = 'usuario_php';` | 🔲 Verificar — idealmente el usuario PHP no tiene DROP ni TRUNCATE en tablas de auditoría |
 
-#### A05 — Security Misconfiguration 🟠 Parcialmente cubierto
+#### A05 — Security Misconfiguration 🟡 Mayormente cubierto
 
 | Subcontrol | Archivo | Estado actual |
 |---|---|---|
-| Headers HTTP de seguridad | `index.php` líneas 8-11 / `src/core/SecurityMiddleware.php` | ⚠️ Solo 4 headers en `index.php`; el resto del sistema no los tiene; CSP y STS ausentes |
+| Headers HTTP de seguridad | `SecurityMiddleware.php` incluido en `prepare.php`/`prepare_login.php` | ✅ 5 headers activos en TODO el sistema desde E4 (2026-06-14); CSP `script-src 'self'` activo; validado por test PASS |
+| CSP sin scripts inline | `src/layout/head.php`, módulos portería | ✅ `head.php` y portería sin scripts inline; `js/theme-init.js` externalizado y desplegado (2026-06-16) |
 | Mensajes de error sin exposición técnica | `src/core/ErrorHandler.php` | ✅ `ErrorHandler::userMessageFromException()` traduce SQLSTATE a mensajes en español |
 | `php.ini` en producción | `/etc/php/*/php.ini` o equivalente | 🔲 Verificar: `display_errors = Off`, `log_errors = On`, `expose_php = Off` |
-| Directorio `storage/` no ejecutable via web | Config de Apache/Nginx | 🔲 Verificar que PHP no se ejecuta si se sube un archivo `.php` a `storage/` |
-
-**Acción concreta para A05:** Activar `SecurityMiddleware` en `src/core/prepare.php` (ver Entregable 4) cubre la mayoría de este control.
+| Directorio `storage/` no ejecutable via web | Config Apache VirtualHost | ⚠️ Pendiente IT — Apache tiene `AllowOverride None`; directivas deben ir en VirtualHost (ver E6) |
 
 #### A06 — Vulnerable and Outdated Components 🟡 Verificar
 
@@ -226,13 +225,13 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 | Versión de PostgreSQL actualizada | `SELECT version();` en psql | 🔲 Verificar: debe ser PostgreSQL 14+ con parches al día |
 | Dependencias de frontend (Bootstrap, etc.) | Revisar versiones en `src/layout/head.php` | 🔲 Verificar versión de Bootstrap y otras librerías CDN |
 
-#### A07 — Identification and Authentication Failures 🔴 Crítico — pendiente
+#### A07 — Identification and Authentication Failures 🟡 Parcialmente cerrado
 
 | Subcontrol | Archivo | Estado actual |
 |---|---|---|
-| Rate limiting en login | `index.php` | ❌ No existe — ver Entregable 3 |
-| Regeneración de sesión tras login | `index.php` líneas 54-68 | ❌ No existe — ver Entregable 4 |
-| Cookie flags de sesión | `src/core/config.php` | ❌ No configurados — ver Entregable 4 |
+| Rate limiting en login | `index.php` | ❌ No existe — ver Entregable 3 (pendiente) |
+| Regeneración de sesión tras login | `index.php` | ✅ `session_regenerate_id(true)` activo tras E4 (2026-06-14); validado por test PASS |
+| Cookie flags `HttpOnly`+`SameSite=Strict` | `SecurityMiddleware.php` | ✅ Activos desde E4 (2026-06-14); validado por test PASS |
 | Recuperación de contraseña robusta | `src/auth/recuperar.php` | 🔲 Auditar: ¿valida identidad con múltiples factores o solo correo? |
 
 #### A08 — Software and Data Integrity Failures 🟡 Revisar
@@ -728,7 +727,9 @@ if (defined('APP_ENV') && APP_ENV === 'production' && empty($_SERVER['HTTPS'])) 
 
 ---
 
-## 7. ENTREGABLE 5 — TOKENS ANTI-CSRF EN FORMULARIOS
+## 7. ENTREGABLE 5 — TOKENS ANTI-CSRF EN FORMULARIOS ⛔ DESCARTADO (2026-06-16)
+
+> **Decisión del equipo (2026-06-16):** Este entregable queda fuera del alcance de la Fase 1. Las cookies con `SameSite=Strict` (activas desde E4) mitigan el vector CSRF principal en navegadores modernos. El esfuerzo se redirige a E3 (rate limiting). La infraestructura de `SecurityMiddleware::generateCSRFToken()` y `validateCSRFToken()` permanece disponible para una Fase 2 si cambia la evaluación de riesgo. El resto de esta sección se conserva como documentación de diseño para implementación futura.
 
 ### 7.1 Situación actual
 
@@ -872,42 +873,51 @@ Crear o verificar `storage/porteria/.htaccess` con el mismo contenido.
 
 ## 9. ENTREGABLE 7 — CORRECCIÓN DE BUGS EN setup_smartcset.sh
 
-### 9.1 Estado actual tras revisión del 2026-06-08
+### 9.1 Estado actual tras revisión del 2026-06-08 (✅ cerrado el 2026-06-13, ver REPORTE_E1-E07)
 
-La auditoría del script reveló que **algunos bugs documentados en SETUP_AUDIT.md ya fueron corregidos** en versiones posteriores del archivo. El estado actual es:
+La auditoría del script reveló que **algunos bugs documentados en SETUP_AUDIT.md ya fueron corregidos** en versiones posteriores del archivo. El estado al cierre de E7 es:
 
-| Bug original en SETUP_AUDIT.md | Estado actual (2026-06-08) |
+| Bug original en SETUP_AUDIT.md | Estado |
 |---|---|
 | Bug 1: Schema V.1.5 en lugar de V.1.6 (líneas 37, 50, 124) | ✅ **CORREGIDO** — el script ya apunta a V.1.7 |
-| Bug 2a: `fun_trigger_menu.sql` no en FUNCS | ✅ **CORREGIDO** — línea 76 del script |
-| Bug 2b: `fun_trigger_menu_admin.sql` no en FUNCS | ✅ **CORREGIDO** — línea 77 del script |
-| Bug 2c: `fun_delete_perfil_usuarios.sql` no en FUNCS | ✅ **CORREGIDO** — línea 81 del script |
-| Bug 3: 3 migraciones críticas faltantes | ✅ **CORREGIDO** — líneas 127-130 del script |
-| Bug 2d: `fun_validar_correo.sql` no en FUNCS | ❌ **PERSISTE** — el archivo existe en disco pero NO está en el array FUNCS |
-| Bug 2e: `fun_validar_login.sql` no en FUNCS | ❌ **PERSISTE** — el archivo existe en disco pero NO está en el array FUNCS |
-| Bug 2f: `fun_validar_usuario.sql` no en FUNCS | ❌ **PERSISTE** — el archivo existe en disco pero NO está en el array FUNCS |
-| Bug 2g: `fun_tab_menu_usuarios.sql` no en FUNCS | ❌ **PERSISTE** — el archivo existe en disco pero NO está en el array FUNCS |
+| Bug 2a: `fun_trigger_menu.sql` no en FUNCS | ✅ **CORREGIDO** — ya presente en el script |
+| Bug 2b: `fun_trigger_menu_admin.sql` no en FUNCS | ✅ **CORREGIDO** — ya presente en el script |
+| Bug 3: 3 migraciones críticas faltantes | ✅ **CORREGIDO** |
+| Bug 2d: `fun_validar_correo.sql` no en FUNCS | ✅ **CORREGIDO (E7)** — agregada al array FUNCS, alineada al patrón estándar de manejo de errores |
+| Bug 2e: `fun_validar_login.sql` no en FUNCS | ✅ **CORREGIDO (E7)** — agregada al array FUNCS, alineada al patrón estándar de manejo de errores |
+| Bug 2f: `fun_validar_usuario.sql` no en FUNCS | ✅ **CORREGIDO (E7)** — agregada al array FUNCS, alineada al patrón estándar de manejo de errores |
+| Bug 2g: `fun_tab_menu_usuarios.sql` no en FUNCS | ❌ **EXCLUIDA DELIBERADAMENTE (E7)** — ver sección 9.2 |
+| `fun_delete_perfil_usuarios.sql` (plural) no en FUNCS | 🔲 **PENDIENTE** — fuera del alcance de E7; su descripción no coincide con su implementación real y requiere análisis propio. Nota: la entrada de FUNCS que esta tabla atribuía a "Bug 2c" corresponde en realidad a `fun_delete_perfil_usuario.sql` (singular), una función distinta. |
 
-### 9.2 Corrección de los 4 bugs restantes
+### 9.2 Resultado de la corrección (E7, 2026-06-13)
 
-**Las 4 funciones faltantes a agregar al array FUNCS de `database/setup_smartcset.sh`:**
+**3 de las 4 funciones identificadas se agregaron al array FUNCS de `database/setup_smartcset.sh`**,
+tras revisar y alinear su bloque `EXCEPTION` al patrón estándar del proyecto
+(`smartcset_handle_sql_error()`):
 
 ```bash
-# En setup_smartcset.sh, dentro del array FUNCS=(...)
-# Agregar DESPUÉS de la línea de fun_actualizar_password.sql (línea 73 actual):
-
-  "$ROOT/database/functions/acceso/usuarios/fun_validar_correo.sql"
   "$ROOT/database/functions/acceso/usuarios/fun_validar_login.sql"
+  "$ROOT/database/functions/acceso/usuarios/fun_validar_correo.sql"
   "$ROOT/database/functions/acceso/usuarios/fun_validar_usuario.sql"
-
-# Agregar DESPUÉS de la línea de fun_insert_menu_usuarios.sql (línea 80 actual):
-  "$ROOT/database/functions/acceso/menus/fun_tab_menu_usuarios.sql"
 ```
 
-**Impacto si no se corrige:**
-- `fun_validar_correo.sql` — la recuperación de contraseña (`src/auth/recuperar.php`) falla en cualquier instalación limpia, porque invoca esta función PL/pgSQL que no existe en la BD.
-- `fun_validar_login.sql` y `fun_validar_usuario.sql` — afectan flujos de validación de usuarios.
-- `fun_tab_menu_usuarios.sql` — puede afectar la asignación/visualización de menús.
+**La 4ª función, `fun_tab_menu_usuarios.sql`, NO se agregó.** Contiene versiones legacy de
+`fun_insert_menu_usuarios` y `fun_delete_perfil_usuario`, ya presentes en FUNCS con una implementación
+más segura (validación de existencia, `ON CONFLICT DO NOTHING`, manejo de errores estándar). Agregarla
+habría hecho que su `CREATE OR REPLACE FUNCTION` sobreescribiera silenciosamente las versiones seguras
+en cada instalación nueva — una regresión de seguridad real. El archivo permanece en el repo como
+referencia histórica.
+
+**Impacto real verificado (corrige la estimación original de este documento):**
+- `fun_validar_correo.sql`, `fun_validar_login.sql`, `fun_validar_usuario.sql` — se verificó que
+  `src/auth/recuperar.php` y el flujo de login (`prepare.php`) usan SQL directo
+  (`$stmt_valida_mail`, `$stmt_login`, `$stmt_upd_pass`), **no** estas funciones PL/pgSQL. Su ausencia
+  era una brecha documental (función documentada como parte del catálogo pero ausente del instalador),
+  no una falla funcional activa — la recuperación de contraseña **no** fallaba por su ausencia.
+- `fun_tab_menu_usuarios.sql` — su inclusión habría sido un riesgo nuevo, no una corrección.
+
+Detalle completo en
+`Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`.
 
 ### 9.3 Verificación post-corrección
 

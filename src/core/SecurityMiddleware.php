@@ -28,7 +28,10 @@ class SecurityMiddleware {
         header("Referrer-Policy: strict-origin-when-cross-origin");
         header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
         
-        // CSP: Content Security Policy (básico, ajustar según necesidad)
+        // CSP activado (Fase 1 MSPI, E4): todos los scripts inline fueron
+        // externalizados a js/ (incluyendo los wizards de porteria
+        // ingreso/salida y cambiar_clave). style-src permite 'unsafe-inline'
+        // porque varios módulos usan <style> embebido para temas dinámicos.
         header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;");
     }
 
@@ -63,12 +66,14 @@ class SecurityMiddleware {
 
     private static function configureSessionSecurity() {
         if (session_status() === PHP_SESSION_NONE) {
+            $w_cookie_secure = (defined('APP_ENV') && APP_ENV === 'production') ? '1' : '0';
+
             // Configuración de sesión segura
             ini_set('session.cookie_httponly', '1');      // No accesible desde JavaScript
-            ini_set('session.cookie_secure', '1');        // Solo HTTPS (comentar en desarrollo)
+            ini_set('session.cookie_secure', $w_cookie_secure); // Solo HTTPS en producción
             ini_set('session.cookie_samesite', 'Strict'); // CSRF protection
             ini_set('session.use_strict_mode', '1');      // Rechazar session IDs desconocidas
-            
+
             session_start();
         }
     }

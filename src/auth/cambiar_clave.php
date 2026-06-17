@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once(__DIR__ . '/../core/prepare.php');
 require_once(__DIR__ . '/../core/helpers.php');
 
@@ -94,30 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 </div>
-<script>
-    // Bloquear navegación hacia atrás
-    history.pushState(null, null, location.href);
-    window.onpopstate = function () {
-        history.go(1);
-    };
-    
-    // Confirmación solo si hay cambios sin guardar
-    let hasChanges = false;
-    document.addEventListener('input', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-            hasChanges = true;
-        }
-    });
-    window.addEventListener('beforeunload', function (e) {
-        if (hasChanges) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-    document.addEventListener('submit', function() {
-        hasChanges = false;
-    });
-</script>
+<?php $_v_cc_js = @filemtime(dirname(__DIR__, 2) . '/js/auth-cambiar-clave.js') ?: time(); ?>
+<script src="../../js/auth-cambiar-clave.js?v=<?= (int) $_v_cc_js ?>"></script>
 <?php $ui_assets_prefix = '../../'; include __DIR__ . '/../layout/ui_kit.php'; ?>
 </body>
 </html>

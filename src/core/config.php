@@ -20,6 +20,13 @@ define('DB_PASS', EnvLoader::get('DB_PASS', 'postgres123'));
 // (postgresql.conf: ssl=on + certificados) — ver Fase 1 Entregable 8.
 define('DB_SSLMODE', EnvLoader::get('DB_SSLMODE', ''));
 
+// Clave de cifrado de datos sensibles en reposo (pgcrypto, ver Fase 1 Entregable 2).
+// Debe coincidir con app.encryption_key configurado en PostgreSQL (ALTER DATABASE ... SET).
+define('DB_ENCRYPTION_KEY', EnvLoader::get('DB_ENCRYPTION_KEY', ''));
+if (empty(DB_ENCRYPTION_KEY)) {
+    error_log('[SmartCSET] ADVERTENCIA: DB_ENCRYPTION_KEY no configurada.');
+}
+
 // Estilos corporativos y rutas (desde .env)
 define('COLOR_VERDE_OSCURO', EnvLoader::get('COLOR_VERDE_OSCURO', '#004d40'));
 define('COLOR_VERDE_OLIVA', EnvLoader::get('COLOR_VERDE_OLIVA', '#808000'));
