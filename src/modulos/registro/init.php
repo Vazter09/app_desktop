@@ -6,11 +6,13 @@ require_once dirname(__DIR__, 2) . '/core/ErrorHandler.php';
 require_once dirname(__DIR__, 2) . '/core/helpers.php';
 require_once __DIR__ . '/lib/access.php';
 require_once __DIR__ . '/lib/catalogos.php';
+require_once __DIR__ . '/lib/registro_persistencia.php';
 
 /** @var PDO $pdo */
 /** @var PDOStatement $stmt_fun_registrar_persona */
 /** @var PDOStatement $stmt_fun_registrar_contratista */
 /** @var PDOStatement $stmt_fun_registrar_aprendiz */
+/** @var PDOStatement $stmt_fun_actualizar_aprendiz */
 /** @var PDOStatement $stmt_fun_registrar_instructor */
 /** @var PDOStatement $stmt_fun_registrar_funcionario */
 
