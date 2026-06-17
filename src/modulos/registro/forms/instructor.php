@@ -64,16 +64,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="breadcrumb animate-in">
             <a href="../index.php">INICIO</a>
             <span class="sep">//</span>
-            <span class="current">REGISTRO INSTRUCTOR</span>
+            <span class="current">ACTUALIZACIÓN INSTRUCTOR</span>
         </div>
 
         <div class="form-container">
             <p class="section-title" style="color:#4a9eff;text-shadow:0 0 20px rgba(74,158,255,0.5)">Módulo 02</p>
-            <h1 class="section-heading" style="margin-bottom:0.3rem">Registro de <em style="color:#4a9eff;text-shadow:0 0 20px rgba(74,158,255,0.5)">Instructor</em></h1>
+            <h1 class="section-heading" style="margin-bottom:0.3rem">Actualización datos del <em style="color:#4a9eff;text-shadow:0 0 20px rgba(74,158,255,0.5)">Instructor</em></h1>
             <p class="section-sub">Diligencie la información del instructor de planta o contratista.</p>
 
             <?php if ($success): ?>
-            <div class="alert alert-success">✔ Instructor registrado exitosamente en el sistema.</div>
+            <div class="alert alert-success">✔ Datos del instructor actualizados correctamente.</div>
             <?php endif; ?>
             <?php if ($error): ?>
             <div class="alert alert-error">⚠ <?= htmlspecialchars($error) ?></div>
@@ -273,9 +273,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="btn-row">
                     <button type="submit" class="btn-primary" style="background:#4a9eff;color:#fff">
-                        ✔ Registrar Instructor
+                        ✔ ACTUALIZAR DATOS
                     </button>
-                    <a href="../index.php" class="btn-secondary">← Volver</a>
                     <button type="reset" class="btn-secondary">↺ Limpiar</button>
                 </div>
             </form>

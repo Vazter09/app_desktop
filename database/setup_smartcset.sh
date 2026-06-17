@@ -104,6 +104,11 @@ FUNCS=(
   "$ROOT/database/functions/registro/fun_registrar_instructor.sql"
   "$ROOT/database/functions/registro/fun_registrar_aprendiz.sql"
   "$ROOT/database/functions/config/fun_update_tab_config_sistema.sql"
+  "$ROOT/database/functions/actualizar_datos/fun_actualizar_aprendiz.sql"
+  "$ROOT/database/functions/actualizar_datos/fun_actualizar_contratista.sql"
+  "$ROOT/database/functions/actualizar_datos/fun_actualizar_funcionario.sql"
+  "$ROOT/database/functions/actualizar_datos/fun_actualizar_instructor.sql"
+  "$ROOT/database/functions/actualizar_datos/fun_actualizar_persona_centro.sql"
 )
 for f in "${FUNCS[@]}"; do
   run_sql "$f"

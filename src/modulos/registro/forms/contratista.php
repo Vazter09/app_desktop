@@ -228,7 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <button type="submit" class="btn-primary" style="background:#ff7b2e">
                         ✔ Registrar Contratista
                     </button>
-                    <a href="../index.php" class="btn-secondary">← Volver</a>
                     <button type="reset" class="btn-secondary">↺ Limpiar</button>
                 </div>
             </form>
