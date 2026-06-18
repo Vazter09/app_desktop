@@ -1,14 +1,15 @@
 -- Extension de pgsql para normalizar el nombre de las ciudades.
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
+-- Crear secuencia para id_sector si no existe.
 CREATE SEQUENCE IF NOT EXISTS seq_id_sector START 1;
 
--- Crear tabla de logging (si no existe)
+-- Función para procesar tab_temp_pe04.
 CREATE OR REPLACE FUNCTION fun_procesar_pe04()
 RETURNS TEXT AS $$
 DECLARE
     r tab_temp_pe04%ROWTYPE;
-    contador INTEGER := 0;   -- total procesados (insert+update)
+    contador INTEGER := 0; 
     v_insert_count INTEGER := 0;
     v_update_count INTEGER := 0;
     v_error_count INTEGER := 0;
@@ -251,5 +252,5 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
+-- Ejecutar la función.
 select fun_procesar_pe04();

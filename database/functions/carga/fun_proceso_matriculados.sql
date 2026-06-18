@@ -1,148 +1,206 @@
-CREATE OR REPLACE FUNCTION migrar_aprendices()
-RETURNS TABLE(
-    insertados INTEGER,
-    actualizados INTEGER,
-    errores INTEGER
-) LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION fun_procesar_aprendices()
+RETURNS TEXT AS $$
 DECLARE
-    v_insertados INTEGER := 0;
-    v_actualizados INTEGER := 0;
-    v_errores INTEGER := 0;
-    r RECORD;
-    v_num_clean TEXT;
+    rec RECORD;
     v_id_persona DECIMAL(10,0);
+    v_nom_persona VARCHAR(40);
+    v_ape_persona VARCHAR(30);
+    v_mail_persona VARCHAR;
+    v_tel_movil DECIMAL(10,0);
+    v_id_ficha_actual DECIMAL(10,0);
+    v_usr_insert VARCHAR(50) := 'SISTEMA';
+    v_fec_insert TIMESTAMP := CURRENT_TIMESTAMP;
+    v_fila_temp RECORD;
+    
+    -- Variables de estadísticas
+    v_total INT := 0;
+    v_insertados INT := 0;
+    v_actualizados INT := 0;
+    v_errores INT := 0;
+    v_contador_actualizados_personas INT := 0; -- Para contar actualizaciones en personas
 BEGIN
-    -- Asegurar existencia del tipo persona 'aprendiz' (id=2)
-    INSERT INTO tab_tipos_persona (id_tipo_persona, nom_tipo_persona)
-    SELECT 2, 'Aprendiz'
-    WHERE NOT EXISTS (SELECT 1 FROM tab_tipos_persona WHERE id_tipo_persona = 2);
-    
-    -- Recorrer registros de la temporal que tengan número de documento no nulo
-    FOR r IN 
-        SELECT 
-            t.num_documento,
-            t.id_tipodoc,
-            t.nom_aprendiz,
-            t.ape_aprendiz,
-            t.val_correo,
-            t.nom_movil,
-            t.fecha_reporte,
-            t.id_ficha,
-            t.nom_ficha,
-            t.ind_estado_ficha,
-            t.ind_estado_aprendiz
-        FROM tab_temp_aprendices t
-        WHERE t.num_documento IS NOT NULL 
-          AND TRIM(t.num_documento) != ''
-        ORDER BY t.fecha_reporte ASC   -- La más antigua primero, en caso de conflicto
-    LOOP
-        -- Limpiar número (solo dígitos)
-        v_num_clean := regexp_replace(TRIM(r.num_documento), '[^0-9]', '', 'g');
-        
-        IF v_num_clean = '' THEN
-            INSERT INTO log_migracion_aprendices (num_documento_original, motivo, datos_fila)
-            VALUES (r.num_documento, 'El número no contiene dígitos', to_jsonb(r));
-            v_errores := v_errores + 1;
-            CONTINUE;
-        END IF;
-        
-        -- Convertir a DECIMAL (capturar error de overflow o formato)
+    -- Recorrer cada persona distinta (identificada por tipo y número de documento)
+    FOR rec IN (
+        SELECT DISTINCT id_tipodoc, num_documento
+        FROM tab_temp_aprendices
+    ) LOOP
+        v_total := v_total + 1;
         BEGIN
-            v_id_persona := v_num_clean::DECIMAL(10,0);
-        EXCEPTION WHEN OTHERS THEN
-            INSERT INTO log_migracion_aprendices (num_documento_original, motivo, datos_fila)
-            VALUES (r.num_documento, 'Error de conversión a DECIMAL: ' || SQLERRM, to_jsonb(r));
-            v_errores := v_errores + 1;
-            CONTINUE;
-        END;
-        
-        -- UPSERT
-        INSERT INTO tab_personas (
-            id_persona,
-            id_tipo_docum,
-            id_tipo_persona,
-            nom_persona,
-            ape_persona,
-            mail_persona,
-            fec_nacimiento,
-            ind_genero,
-            val_huella_digital,
-            val_patron_facial,
-            fec_ultima_entrada,
-            fec_ultima_salida,
-            num_visitas,
-            id_nivel_estudio,
-            id_profesion,
-            id_dpto_reside,
-            id_ciudad_reside,
-            dir_ciudad_reside,
-            tel_persona_fijo,
-            tel_persona_movil,
-            nom_contacto_emergencias,
-            tel_contacto_emergencias,
-            ind_envio_correo,
-            ind_estado,
-            usr_insert,
-            fec_insert
-        )
-        VALUES (
-            v_id_persona,
-            COALESCE((SELECT id_tipo_docum FROM tab_tipos_docum WHERE id_tipo_docum = r.id_tipodoc), 'CC'),
-            2,  -- id_tipo_persona = 2 (aprendiz)
-            INITCAP(TRIM(r.nom_aprendiz)),
-            INITCAP(TRIM(r.ape_aprendiz)),
-            CASE WHEN r.val_correo ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' 
-                 THEN TRIM(r.val_correo) ELSE 'Sin Correo' END,
-            '1900-01-01',        -- fec_nacimiento por defecto
-            99,                   -- ind_genero desconocido
-            NULL,                 -- val_huella_digital
-            NULL,                 -- val_patron_facial
-            CURRENT_TIMESTAMP,    -- fec_ultima_entrada
-            CURRENT_TIMESTAMP,    -- fec_ultima_salida
-            0,                    -- num_visitas
-            99,                   -- id_nivel_estudio (sin estudio)
-            '00',                 -- id_profesion
-            '68',                 -- id_dpto_reside (Santander)
-            '68001',              -- id_ciudad_reside (Bucaramanga)
-            'Sin Dirección',      -- dir_ciudad_reside
-            6010000000,           -- tel_persona_fijo por defecto
-            CASE WHEN r.nom_movil ~ '^[0-9]{10}$' THEN r.nom_movil ELSE '3000000000' END,
-            'Sin Contacto',       -- nom_contacto_emergencias
-            3000000000,           -- tel_contacto_emergencias
-            FALSE,                -- ind_envio_correo
-            TRUE,                 -- ind_estado
-            current_user,         -- usr_insert
-            CURRENT_TIMESTAMP     -- fec_insert
-        )
-        ON CONFLICT (id_persona) DO UPDATE SET
-            nom_persona = EXCLUDED.nom_persona,
-            ape_persona = EXCLUDED.ape_persona,
-            mail_persona = EXCLUDED.mail_persona,
-            tel_persona_movil = EXCLUDED.tel_persona_movil,
-            ind_estado = EXCLUDED.ind_estado,
-            fec_update = CURRENT_TIMESTAMP,
-            usr_update = current_user;
-        
-        -- Contar inserciones vs actualizaciones
-        IF FOUND THEN
-            IF (SELECT xmax = 0 FROM tab_personas WHERE id_persona = v_id_persona) THEN
-                v_insertados := v_insertados + 1;
+            -- Obtener el registro más reciente (por fecha_reporte) para esta persona
+            SELECT id_tipodoc, num_documento, nom_aprendiz, ape_aprendiz, val_correo, nom_movil, fecha_reporte
+            INTO v_fila_temp
+            FROM tab_temp_aprendices
+            WHERE id_tipodoc = rec.id_tipodoc AND num_documento = rec.num_documento
+            ORDER BY fecha_reporte DESC
+            LIMIT 1;
+
+            -- Asignar variables
+            v_id_persona := v_fila_temp.num_documento::DECIMAL(10,0);
+            v_nom_persona := v_fila_temp.nom_aprendiz;
+            v_ape_persona := v_fila_temp.ape_aprendiz;
+            v_mail_persona := v_fila_temp.val_correo;
+
+            -- Obtener y validar teléfono móvil (nunca debe quedar NULL)
+            BEGIN
+                -- Primero, intentar convertir y usar COALESCE para NULL
+                v_tel_movil := COALESCE(v_fila_temp.nom_movil::DECIMAL(10,0), 3000000000);
+                -- Validar rango
+                IF v_tel_movil NOT BETWEEN 3000000000 AND 3519999999 THEN
+                    v_tel_movil := 3000000000;
+                END IF;
+            EXCEPTION WHEN OTHERS THEN
+                -- Si el CAST falla (formato inválido), usar el default
+                v_tel_movil := 3000000000;
+            END;
+
+            -- 1. Insertar o actualizar tab_personas
+            IF EXISTS (SELECT 1 FROM tab_personas WHERE id_persona = v_id_persona) THEN
+                -- Actualizar solo si hay cambios (incluyendo teléfono)
+                UPDATE tab_personas
+                SET nom_persona = v_nom_persona,
+                    ape_persona = v_ape_persona,
+                    mail_persona = COALESCE(v_mail_persona, 'sin_correo@correo.com'),
+                    tel_persona_movil = v_tel_movil,
+                    usr_update = v_usr_insert,
+                    fec_update = v_fec_insert
+                WHERE id_persona = v_id_persona
+                  AND (nom_persona IS DISTINCT FROM v_nom_persona
+                       OR ape_persona IS DISTINCT FROM v_ape_persona
+                       OR mail_persona IS DISTINCT FROM COALESCE(v_mail_persona, 'sin_correo@correo.com')
+                       OR tel_persona_movil IS DISTINCT FROM v_tel_movil);
+                
+                IF FOUND THEN
+                    v_actualizados := v_actualizados + 1;
+                    v_contador_actualizados_personas := v_contador_actualizados_personas + 1;
+                END IF;
             ELSE
-                v_actualizados := v_actualizados + 1;
+                INSERT INTO tab_personas (
+                    id_persona, id_tipo_docum, id_tipo_persona, nom_persona, ape_persona,
+                    mail_persona, fec_nacimiento, ind_genero,
+                    val_huella_digital, val_patron_facial,
+                    fec_ultima_entrada, fec_ultima_salida, num_visitas,
+                    id_nivel_estudio, id_profesion,
+                    id_dpto_reside, id_ciudad_reside, dir_ciudad_reside,
+                    tel_persona_fijo, tel_persona_movil,
+                    nom_contacto_emergencias, tel_contacto_emergencias,
+                    ind_envio_correo, ind_estado,
+                    usr_insert, fec_insert, usr_update, fec_update
+                ) VALUES (
+                    v_id_persona,
+                    rec.id_tipodoc,
+                    1,
+                    v_nom_persona,
+                    v_ape_persona,
+                    COALESCE(v_mail_persona, 'sin_correo@correo.com'),
+                    '1900-01-01'::DATE,
+                    99,
+                    NULL,
+                    NULL,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP,
+                    0,
+                    99,
+                    '00',
+                    '68',
+                    '68001',
+                    'Sin Dirección',
+                    6010000000,
+                    v_tel_movil,
+                    'Sin Contacto',
+                    3000000000,
+                    FALSE,
+                    TRUE,
+                    v_usr_insert,
+                    v_fec_insert,
+                    NULL::VARCHAR,
+                    NULL::TIMESTAMP
+                );
+                v_insertados := v_insertados + 1;
             END IF;
-        END IF;
+
+            -- 2. Determinar la ficha actual: priorizar estado '3' y luego la más reciente
+            SELECT id_ficha
+            INTO v_id_ficha_actual
+            FROM tab_temp_aprendices
+            WHERE id_tipodoc = rec.id_tipodoc AND num_documento = rec.num_documento
+              AND ind_estado_ficha = '3'
+            ORDER BY fecha_reporte DESC
+            LIMIT 1;
+
+            IF v_id_ficha_actual IS NULL THEN
+                SELECT id_ficha
+                INTO v_id_ficha_actual
+                FROM tab_temp_aprendices
+                WHERE id_tipodoc = rec.id_tipodoc AND num_documento = rec.num_documento
+                ORDER BY fecha_reporte DESC
+                LIMIT 1;
+            END IF;
+
+            IF v_id_ficha_actual IS NULL THEN
+                RAISE EXCEPTION 'No se encontró ninguna ficha para la persona %', v_id_persona;
+            END IF;
+
+            -- 3. Insertar o actualizar tab_aprendices
+            IF EXISTS (SELECT 1 FROM tab_aprendices WHERE id_aprendiz = v_id_persona) THEN
+                -- Actualizar id_ficha solo si cambia
+                UPDATE tab_aprendices
+                SET id_ficha = v_id_ficha_actual,
+                    usr_update = v_usr_insert,
+                    fec_update = v_fec_insert
+                WHERE id_aprendiz = v_id_persona
+                  AND id_ficha IS DISTINCT FROM v_id_ficha_actual;
+                
+                IF FOUND THEN
+                    v_actualizados := v_actualizados + 1;
+                END IF;
+            ELSE
+                INSERT INTO tab_aprendices (
+                    id_aprendiz, datos_aprendiz, id_ficha, num_llamados,
+                    usr_insert, fec_insert, usr_update, fec_update, ind_etdo_formacion
+                ) VALUES (
+                    v_id_persona,
+                    NULL,
+                    v_id_ficha_actual,
+                    0,
+                    v_usr_insert,
+                    v_fec_insert,
+                    NULL::VARCHAR,
+                    NULL::TIMESTAMP,
+                    8
+                );
+                v_insertados := v_insertados + 1;
+            END IF;
+
+            -- 4. Insertar histórico de todas las fichas distintas (sin duplicados)
+            INSERT INTO tab_aprendices_fichas (
+                id_ficha, id_aprendiz, id_jornada,
+                usr_insert, fec_insert, usr_update, fec_update
+            )
+            SELECT DISTINCT
+                t.id_ficha,
+                v_id_persona,
+                f.id_jornada,
+                v_usr_insert,
+                v_fec_insert,
+                NULL::VARCHAR,
+                NULL::TIMESTAMP
+            FROM tab_temp_aprendices t
+            JOIN tab_fichas f ON t.id_ficha = f.id_ficha
+            WHERE t.id_tipodoc = rec.id_tipodoc AND t.num_documento = rec.num_documento
+            ON CONFLICT (id_ficha, id_aprendiz) DO NOTHING;
+
+        EXCEPTION WHEN OTHERS THEN
+            v_errores := v_errores + 1;
+            -- Puedes agregar un RAISE NOTICE si quieres ver el error específico
+            RAISE NOTICE 'Error procesando persona %: %', v_id_persona, SQLERRM;
+        END;
     END LOOP;
-    
-    -- Registro adicional: aprendices sin número (no se procesan, pero se dejan en la temporal y se pueden exportar aparte)
-    INSERT INTO log_migracion_aprendices (num_documento_original, motivo, datos_fila)
-    SELECT NULL, 'Registro sin número de documento (NULL o vacío)', to_jsonb(t)
-    FROM tab_temp_aprendices t
-    WHERE num_documento IS NULL OR TRIM(num_documento) = '';
-    
-    GET DIAGNOSTICS v_errores = ROW_COUNT;  -- sumamos los que acabamos de insertar como errores
-    -- Pero cuidado, ya llevábamos v_errores de los anteriores; mejor sumamos
-    -- (Simplificamos: retornamos solo los errores de conversión, los de sin número se pueden consultar aparte)
-    
-    RETURN QUERY SELECT v_insertados, v_actualizados, v_errores;
+
+    -- Devolver el mensaje con estadísticas
+    RETURN format('Procesados total: %s | Insertados: %s | Actualizados: %s | Errores: %s',
+                  v_total, v_insertados, v_actualizados, v_errores);
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
+-- Ejecutar la función.
+SELECT fun_procesar_aprendices();

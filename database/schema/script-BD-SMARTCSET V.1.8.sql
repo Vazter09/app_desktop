@@ -80,7 +80,7 @@ DROP DOMAIN IF EXISTS mail_personal;
 DROP TABLE IF EXISTS tab_temp_pe04;
 DROP TABLE IF EXISTS tab_temp_ofertas;
 DROP TABLE IF EXISTS tab_temp_inscritos;
-DROP TABLE IF EXISTS tab_temp_matriculados;
+DROP TABLE IF EXISTS tab_temp_aprendices;
 DROP TABLE IF EXISTS tab_temp_egresados;
 DROP TABLE IF EXISTS tab_temp_df49;
 DROP TABLE IF EXISTS tab_temp_df14A;
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
 
  CREATE TABLE IF NOT EXISTS tab_temp_aprendices
  (
-    id_ficha                VARCHAR,
+    id_ficha                DECIMAL,
     nom_ficha               VARCHAR,
     ind_estado_ficha        VARCHAR,
     fecha_reporte           DATE,
@@ -2520,7 +2520,7 @@ CREATE TABLE IF NOT EXISTS tab_fichas
     id_ambiente_base        VARCHAR                     NOT NULL DEFAULT 'Sin Ambiente Base',
     num_inscritos_opcion1   DECIMAL(3,0)                NOT NULL DEFAULT 0,
     num_inscritos_opcion2   DECIMAL(3,0)                NOT NULL DEFAULT 0,
-    ind_estado              DECIMAL(1,0)                NOT NULL DEFAULT 1, --1=Inscripción/2=En matrícula/3=Ejecución/7=Terminada * Fecha/8=Terminada
+    ind_estado              DECIMAL(1,0)                NOT NULL DEFAULT 1, --1=Inscripción/2=En matrícula/3=Ejecución/7=Terminada por fecha/9=Terminada
     num_cursos              DECIMAL(2,0)                NOT NULL DEFAULT 1,
     tot_aprendices_masc     DECIMAL(3,0)                NOT NULL,
     tot_aprendices_fem      DECIMAL(3,0)                NOT NULL,
@@ -2600,12 +2600,12 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
     id_ficha                DECIMAL(10,0)               NOT NULL,
-    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 8, -- 1=En formación / 2=Aplazado /  3=Retiro Voluntario /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     PRIMARY KEY(id_aprendiz),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_ficha)       REFERENCES tab_fichas(id_ficha)
@@ -2665,13 +2665,14 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
 (
     id_ficha                DECIMAL(10,0)               NOT NULL DEFAULT 2999900001,
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
+    id_jornada              DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_ficha,id_aprendiz),
     FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha),
+    FOREIGN KEY(id_jornada)                 REFERENCES tab_jornadas(id_jornada),
     FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
 );
 
