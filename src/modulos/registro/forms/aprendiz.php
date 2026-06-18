@@ -309,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="registro-accordion-item" id="acc-aprendiz-contacto">
                     <button type="button" class="registro-accordion-trigger form-section-title"
                             id="trigger-aprendiz-contacto" aria-expanded="false" aria-controls="panel-aprendiz-contacto">
-                        Contacto Institucional y Familiar
+                        Contactos Institucionales y Familiares
                     </button>
                     <div class="registro-accordion-panel" id="panel-aprendiz-contacto" role="region" aria-labelledby="trigger-aprendiz-contacto">
                 <div class="form-grid cols-2">
