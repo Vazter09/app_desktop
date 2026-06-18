@@ -52,7 +52,7 @@ Cybersecurity (CC) y usa SmartCSET como proyecto práctico para cubrir el
 temario (5 dominios: D1 Security Principles 26%, D2 BC/DR/IR 10%,
 D3 Access Controls 22%, D4 Network Security 24%, D5 Security Operations 18%).
 
-Ruta del proyecto: /home/ander/smartcset/ (este repo).
+Ruta del proyecto: /home/ander/smartcset/ (este repo). en el servidor instituacional con ip 10.5.213.103 esta ubicado en /var/www/html/smartcset
 Repo remoto: github.com/KevinBermudezC/smartcset (rama main, al día con
 origin/main según git status).
 
