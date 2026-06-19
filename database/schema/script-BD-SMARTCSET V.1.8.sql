@@ -2409,6 +2409,7 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
     PRIMARY KEY(id_jornada)
 );
 
+
 -- Tabla de caracterización de fichas. Se le asociará un CRUD específico y trato especial
 -- TABLA DE TAB_FICHAS
 -- __________________________________________________________________________________________________________________________
