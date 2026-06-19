@@ -45,10 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (password_verify($w_pass, $w_reg['pass_usuario'])) {
 
                     $w_ip = smartcsetClientIp();
+                    $w_timeoutSesion = !empty($w_reg['ind_usuario']) ? SESSION_TIMEOUT : 0;
                     $w_id_sesion = accesoIngresoSesion(
                         $stmt_fun_ingreso_sesion,
                         (string) $w_reg['id_usuario'],
-                        $w_ip
+                        $w_ip,
+                        $w_timeoutSesion
                     );
 
                     session_regenerate_id(true);

@@ -140,6 +140,7 @@ for f in \
   "$ROOT/database/migrations/update_logo_sena_default.sql" \
   "$ROOT/database/migrations/add_menu_sesiones_0206.sql" \
   "$ROOT/database/migrations/update_fun_salida_sesion_ip_mismatch.sql" \
+  "$ROOT/database/migrations/update_fun_ingreso_sesion_cerrar_vencidas.sql" \
   "$ROOT/database/migrations/add_tab_dispositivos_porteria.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"

@@ -21,6 +21,50 @@ final class Db
         return max(15, min($heartbeat, 300));
     }
 
+    /**
+     * Cierra la fila en tab_sesiones (fec_fin) si aún está abierta. Idempotente.
+     */
+    private static function cerrarSesionEnBd(
+        PDOStatement $stmtSalidaSesion,
+        int $idSesion,
+        string $idUsuario,
+        string $codCierre
+    ): void {
+        if ($idSesion < 1) {
+            return;
+        }
+
+        try {
+            require_once __DIR__ . '/lib/acceso_sesion.php';
+
+            accesoSalidaSesion($stmtSalidaSesion, $idSesion, $codCierre, $idUsuario);
+        } catch (Throwable $e) {
+            error_log('cerrar sesion bd: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Solo administradores (ind_usuario) reciben cierre automático en BD por timeout.
+     * Usuarios normales mantienen fec_fin NULL hasta cierre manual del admin o logout.
+     */
+    private static function cerrarSesionEnBdSiAdministrador(
+        PDOStatement $stmtSalidaSesion,
+        int $idSesion,
+        string $idUsuario,
+        string $codCierre
+    ): void {
+        if (!self::sesionUsuarioEsAdministrador()) {
+            return;
+        }
+
+        self::cerrarSesionEnBd($stmtSalidaSesion, $idSesion, $idUsuario, $codCierre);
+    }
+
+    private static function sesionUsuarioEsAdministrador(): bool
+    {
+        return !empty($_SESSION['ind_usuario']);
+    }
+
     public static function connect(): PDO
     {
         $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
@@ -72,6 +116,13 @@ final class Db
 
             $ultActividadStr = accesoValidarSesionActiva($stmtConsultarSesion, $idSesion, $idUsuario);
             if ($ultActividadStr === null) {
+                self::cerrarSesionEnBdSiAdministrador(
+                    $stmtSalidaSesion,
+                    $idSesion,
+                    $idUsuario,
+                    ACCESO_SESION_CIERRE_TIMEOUT
+                );
+
                 return self::SESION_INVALID;
             }
 
@@ -82,11 +133,11 @@ final class Db
                 $ipRegistrada = accesoObtenerIpSesionActiva($stmtSesionIp, $idSesion, $idUsuario);
                 $ipActual = smartcsetClientIp();
                 if (!smartcsetSesionIpCoincide($ipRegistrada, $ipActual)) {
-                    accesoSalidaSesion(
+                    self::cerrarSesionEnBdSiAdministrador(
                         $stmtSalidaSesion,
                         $idSesion,
-                        ACCESO_SESION_CIERRE_IP_MISMATCH,
-                        $idUsuario
+                        $idUsuario,
+                        ACCESO_SESION_CIERRE_IP_MISMATCH
                     );
                     error_log(
                         'sesion IP_MISMATCH: sesion=' . $idSesion
@@ -102,11 +153,11 @@ final class Db
             $ultActividad = smartcsetDbTimestampEpoch($ultActividadStr);
             if ($ultActividad !== null && $sessionTimeoutSeg > 0) {
                 if (time() - $ultActividad > $sessionTimeoutSeg) {
-                    accesoSalidaSesion(
+                    self::cerrarSesionEnBdSiAdministrador(
                         $stmtSalidaSesion,
                         $idSesion,
-                        ACCESO_SESION_CIERRE_TIMEOUT,
-                        $idUsuario
+                        $idUsuario,
+                        ACCESO_SESION_CIERRE_TIMEOUT
                     );
 
                     return self::SESION_INVALID;
@@ -118,6 +169,13 @@ final class Db
             return self::SESION_OK;
         } catch (Throwable $e) {
             error_log('gestionar sesion: ' . $e->getMessage());
+
+            self::cerrarSesionEnBdSiAdministrador(
+                $stmtSalidaSesion,
+                $idSesion,
+                $idUsuario,
+                ACCESO_SESION_CIERRE_TIMEOUT
+            );
 
             return self::SESION_INVALID;
         }

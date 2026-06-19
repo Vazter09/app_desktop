@@ -1,6 +1,7 @@
 CREATE OR REPLACE FUNCTION fun_ingreso_sesion(
     p_user tab_usuarios.id_usuario%TYPE,
-    p_ip_cliente tab_sesiones.ip_cliente%TYPE DEFAULT NULL
+    p_ip_cliente tab_sesiones.ip_cliente%TYPE DEFAULT NULL,
+    p_timeout_seg INTEGER DEFAULT 1800
 ) RETURNS TEXT AS $$
 DECLARE
     w_id_sesion tab_sesiones.id_sesion%TYPE;
@@ -21,6 +22,20 @@ BEGIN
             'El usuario se encuentra inhabilitado.',
             'id_usuario=' || p_user
         );
+    END IF;
+
+    -- Solo administradores: cierra sesiones vencidas al reingresar (evita bloqueo en tab_sesiones).
+    IF p_timeout_seg IS NOT NULL AND p_timeout_seg > 0 THEN
+        UPDATE tab_sesiones s
+        SET fec_fin = CURRENT_TIMESTAMP,
+            cod_cierre = 'TIMEOUT',
+            usr_cierre = p_user
+        FROM tab_usuarios u
+        WHERE s.id_usuario = p_user
+          AND u.id_usuario = p_user
+          AND u.ind_usuario = TRUE
+          AND s.fec_fin IS NULL
+          AND s.ult_actividad < (CURRENT_TIMESTAMP - make_interval(secs => p_timeout_seg));
     END IF;
 
     IF EXISTS (

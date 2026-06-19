@@ -11,7 +11,7 @@ WHERE id_usuario = ?::TEXT
 SQL;
 
     /** Escritura / reglas de negocio → funciones PL/pgSQL (retorno TEXT). */
-    public const INGRESO_SESION = 'SELECT fun_ingreso_sesion(?::TEXT, ?::TEXT)';
+    public const INGRESO_SESION = 'SELECT fun_ingreso_sesion(?::TEXT, ?::TEXT, ?::INTEGER)';
 
     public const SALIDA_SESION = 'SELECT fun_salida_sesion(?::INTEGER, ?::TEXT, ?::TEXT)';
 

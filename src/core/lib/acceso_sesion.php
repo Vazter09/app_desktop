@@ -82,7 +82,8 @@ function accesoPresenciaClaseCss(string $estado): string
 function accesoIngresoSesion(
     PDOStatement $stmtFunIngreso,
     string $idUsuario,
-    ?string $ipCliente = null
+    ?string $ipCliente = null,
+    ?int $timeoutSeg = null
 ): int {
     $idUsuario = trim($idUsuario);
     if ($idUsuario === '') {
@@ -90,8 +91,10 @@ function accesoIngresoSesion(
     }
 
     $ip = $ipCliente !== null ? substr(trim($ipCliente), 0, 45) : null;
+    $timeout = $timeoutSeg ?? (defined('SESSION_TIMEOUT') ? (int) SESSION_TIMEOUT : 1800);
+    $timeout = max(0, $timeout);
 
-    $stmtFunIngreso->execute([$idUsuario, $ip]);
+    $stmtFunIngreso->execute([$idUsuario, $ip, $timeout]);
     $idSesion = (int) $stmtFunIngreso->fetchColumn();
 
     if ($idSesion < 1) {
