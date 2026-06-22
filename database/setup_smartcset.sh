@@ -137,6 +137,7 @@ for f in \
   "$ROOT/database/migrations/update_menu_registro_listado_admin.sql" \
   "$ROOT/database/migrations/update_menu_personas_refactor.sql" \
   "$ROOT/database/migrations/fix_idx_log_ingreso_abierto.sql" \
+  "$ROOT/database/migrations/fix_salida_fec_salida_ingreso.sql" \
   "$ROOT/database/migrations/update_logo_sena_default.sql" \
   "$ROOT/database/migrations/add_menu_sesiones_0206.sql" \
   "$ROOT/database/migrations/update_fun_salida_sesion_ip_mismatch.sql" \

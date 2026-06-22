@@ -6,6 +6,7 @@ Toda la documentación del proyecto vive en esta carpeta. No se usan `README.md`
 
 | Documento | Para qué sirve |
 |-----------|----------------|
+| [ARQUITECTURA.md](ARQUITECTURA.md) | Arquitectura objetivo: capas, routers, servicios, BD |
 | [QUICK_START.md](QUICK_START.md) | Arranque rápido del proyecto |
 | [CONFIGURACION.md](CONFIGURACION.md) | Variables de entorno y ajustes |
 | [database.md](database.md) | Instalar PostgreSQL, seeds y migraciones |
