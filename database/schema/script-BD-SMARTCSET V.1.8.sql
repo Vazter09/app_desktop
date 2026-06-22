@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   cod_ver_programa  DECIMAL(3,0),
   nom_programa      VARCHAR,
   niv_formacion     VARCHAR,
-  dur_maxima        DECIMAL(2,0),
+  dur_maxima        DECIMAL(4,0),
   dur_eta_lectiva   VARCHAR,
   dur_eta_productiv VARCHAR,
   id_ficha          DECIMAL(8,0),
@@ -1727,7 +1727,7 @@ CREATE TABLE IF NOT EXISTS tab_certificados
 CREATE TABLE IF NOT EXISTS tab_programas
 (
     id_programa             DECIMAL(8,0)                NOT NULL,
-    nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
+    nom_programa            VARCHAR(200)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
     num_snies               VARCHAR                     NOT NULL DEFAULT 'SNIES-00000',
     num_version             DECIMAL(2,0)                NOT NULL DEFAULT 1,
     ind_tipo                VARCHAR    		            NOT NULL DEFAULT '0', -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
@@ -2602,11 +2602,11 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     datos_aprendiz          datos_personales_aprendiz,
     id_ficha                DECIMAL(10,0)               NOT NULL,
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
+    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 8, -- 1=En formación / 2=Aplazado /  3=Retiro Voluntario /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
-    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 8, -- 1=En formación / 2=Aplazado /  3=Retiro Voluntario /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     PRIMARY KEY(id_aprendiz),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_ficha)       REFERENCES tab_fichas(id_ficha)
@@ -2666,7 +2666,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
 (
     id_ficha                DECIMAL(10,0)               NOT NULL DEFAULT 2999900001,
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
-    id_jornada              DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
+    id_jornada              DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2962,7 +2962,7 @@ CREATE TABLE IF NOT EXISTS tab_programacion
     id_fase                 DECIMAL(1,0)                NOT NULL, -- 1=Inducción, 2=Planeación, 3=Análisis, 4= Ejecución, 5=Evaluación
     id_competencia          DECIMAL(8,0)                NOT NULL,
     id_instructor           DECIMAL(10,0)               NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 3), -- 1=Mañana / 2=Tarde /3=Noche
+    id_jornada              DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta
     fec_inicial             DATE                        NOT NULL,
     fec_final               DATE                        NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),

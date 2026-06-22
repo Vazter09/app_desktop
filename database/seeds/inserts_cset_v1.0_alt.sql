@@ -15914,7 +15914,7 @@ INSERT INTO tab_redes VALUES(29,'Red de Telecomunicaciones','Instructor Líder')
 INSERT INTO tab_redes VALUES(30,'Red de Textil, Confección, Diseño y Moda','Instructor Líder');
 INSERT INTO tab_redes VALUES(31,'Red de Transporte','Instructor Líder');
 
-INSERT INTO tab_programas VALUES(111200,'GESTIÓN FINANCIERA Y DE TESORERÍA','NA',1,'TO',24,24, );
+INSERT INTO tab_programas VALUES(111200,'GESTIÓN FINANCIERA Y DE TESORERÍA','NA',1,'TO',24,24);
 INSERT INTO tab_programas VALUES(112005,'GESTIÓN DEL TALENTO HUMANO','NA',1,'TO',24,24);
 INSERT INTO tab_programas VALUES(121201,'GESTIÓN INTEGRAL DEL RIESGO EN SEGUROS','NA',1,'TO',24,24);
 INSERT INTO tab_programas VALUES(121202,'ADMINISTRACIÓN BANCARÍA Y DE INSTITUCIONES FINANCIERAS','NA',1,'TO',24,24);

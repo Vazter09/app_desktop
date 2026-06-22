@@ -1,3 +1,6 @@
+-- Ejecutar la función.
+-- SELECT fun_procesar_aprendices();
+
 CREATE OR REPLACE FUNCTION fun_procesar_aprendices()
 RETURNS TEXT AS $$
 DECLARE
@@ -201,6 +204,3 @@ BEGIN
                   v_total, v_insertados, v_actualizados, v_errores);
 END;
 $$ LANGUAGE plpgsql;
-
--- Ejecutar la función.
-SELECT fun_procesar_aprendices();
