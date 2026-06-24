@@ -1,0 +1,10 @@
+# En producción Apache NO requiere `php -S`.
+# DocumentRoot = frontend/web/public (o copia desplegada).
+# El symlink `public/routers` → backend/routers expone los endpoints JSON.
+# Requiere: Options FollowSymLinks (o Alias equivalente en el VirtualHost).
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Pasar Authorization si aplica (algunos hosts lo pierden)
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>

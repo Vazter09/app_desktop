@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Catalogos } from '../types';
-import { fetchCatalogos } from '../api/client';
+import { fetchCatalogos } from '../routers/client';
 import { loadCatalogosCache, saveCatalogosCache } from '../db/schema';
-import { checkHealth } from '../api/client';
+import { checkHealth } from '../routers/client';
 
 export function useCatalogos(): {
   catalogos: Catalogos | null;

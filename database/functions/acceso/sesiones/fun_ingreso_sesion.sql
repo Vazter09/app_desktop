@@ -24,21 +24,19 @@ BEGIN
         );
     END IF;
 
-    -- Solo administradores: cierra sesiones vencidas al reingresar (evita bloqueo en tab_sesiones).
-    IF p_timeout_seg IS NOT NULL AND p_timeout_seg > 0 THEN
-        UPDATE tab_sesiones s
+    -- Administradores: al reingresar, cierra cualquier sesión abierta previa (sin bloqueo).
+    IF EXISTS (SELECT 1 FROM tab_usuarios WHERE id_usuario = p_user AND ind_usuario = TRUE) THEN
+        UPDATE tab_sesiones
         SET fec_fin = CURRENT_TIMESTAMP,
-            cod_cierre = 'TIMEOUT',
+            cod_cierre = 'LOGOUT',
             usr_cierre = p_user
-        FROM tab_usuarios u
-        WHERE s.id_usuario = p_user
-          AND u.id_usuario = p_user
-          AND u.ind_usuario = TRUE
-          AND s.fec_fin IS NULL
-          AND s.ult_actividad < (CURRENT_TIMESTAMP - make_interval(secs => p_timeout_seg));
+        WHERE id_usuario = p_user
+          AND fec_fin IS NULL;
     END IF;
 
-    IF EXISTS (
+    -- Usuarios normales: bloqueo si aún tienen sesión activa (hasta cierre manual del admin).
+    IF NOT EXISTS (SELECT 1 FROM tab_usuarios WHERE id_usuario = p_user AND ind_usuario = TRUE)
+       AND EXISTS (
         SELECT 1 FROM tab_sesiones
         WHERE id_usuario = p_user AND fec_fin IS NULL
     ) THEN

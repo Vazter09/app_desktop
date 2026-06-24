@@ -58,7 +58,8 @@ Credenciales de desarrollo tras el setup:
 
 **Linux/macOS (bash):**
 ```bash
-php -S localhost:8080 -t /ruta/al/proyecto
+bash scripts/dev/start_dev.sh
+# Document root: frontend/web/public — http://localhost:8080/
 ```
 
 El servidor PHP built-in es suficiente para desarrollo. No se necesita Apache ni Nginx.
@@ -488,13 +489,8 @@ Copy-Item .env.example .env
 # Editar .env con las credenciales de PostgreSQL locales
 
 # 3. Instalar la BD (requiere psql en PATH y PostgreSQL corriendo)
-bash database/setup_smartcset.sh
-
-# 4. Levantar servidor de desarrollo
-.\tools\start_dev.ps1
-
-# 5. Abrir en el navegador
-# http://localhost:8080/
+bash scripts/dev/start_dev.sh
+# Abre: http://localhost:8080/
 # Login: admin.smart / AdminSmart2026!
 ```
 

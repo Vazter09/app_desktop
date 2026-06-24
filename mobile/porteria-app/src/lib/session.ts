@@ -1,4 +1,4 @@
-import { checkHealthDetailed, validateDevice } from '../api/client';
+import { checkHealthDetailed, validateDevice } from '../routers/client';
 import {
   clearCredentials,
   getDeviceToken,

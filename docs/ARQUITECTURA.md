@@ -1,7 +1,7 @@
 # Arquitectura SmartCSET
 
 **Última actualización:** 22 de junio de 2026  
-**Estado:** Objetivo de reorganización (en transición desde `src/`)
+**Estado:** Implementado (arquitectura en capas — junio 2026)
 
 ---
 
@@ -338,3 +338,65 @@ Migrar **un módulo a la vez**. Portería es el candidato natural: la app móvil
 4. **JavaScript** → llamadas HTTP solo desde `frontend/services/`, no `fetch` disperso en vistas.
 5. **Móvil** → mismos servicios backend que la web; sin SQL en la app.
 6. **Deploy de funciones** → actualizar `database/functions/` y `scripts/db/setup_smartcset.sh`.
+
+---
+
+## Cómo se ejecuta la aplicación
+
+### Producción (Apache) — sin comando por cada uso
+
+En el servidor, **Apache ya corre como servicio del sistema** (`systemctl enable apache2`). Cada petición HTTP la atiende Apache automáticamente; **no hace falta ejecutar `php -S` ni ningún script al abrir el navegador**.
+
+Requisitos de configuración (una sola vez al desplegar):
+
+| Elemento | Valor |
+|----------|--------|
+| `DocumentRoot` | `…/smartcset/frontend/web/public` |
+| Routers JSON | Symlink `public/routers` → `backend/routers` (o `Alias` en el VirtualHost) |
+| `Options` | `FollowSymLinks` + `AllowOverride All` (`.htaccess` mínimo) |
+| PostgreSQL | Servicio activo (`systemctl start postgresql`) |
+| Referencia | [docs/infraestructura/smartcset-ssl.conf](infraestructura/smartcset-ssl.conf) |
+
+#### Despliegue bajo `/smartcset` (servidor institucional)
+
+Si el código vive en `/var/www/html/smartcset` y la URL pública es `https://IP/smartcset/`:
+
+1. **Apache** — `Alias` al `public` (no basta con copiar la carpeta sin esto):
+
+```apache
+Alias /smartcset /var/www/html/smartcset/frontend/web/public
+<Directory /var/www/html/smartcset/frontend/web/public>
+    Options FollowSymLinks
+    AllowOverride All
+    Require all granted
+</Directory>
+```
+
+2. **`.env` en producción** — prefijo de rutas absolutas en PHP y JS:
+
+```
+APP_BASE_PATH=smartcset
+```
+
+En desarrollo local dejar `APP_BASE_PATH` vacío (raíz del dominio o `php -S` en `public/`).
+
+Flujo: usuario abre `https://servidor/` → Apache ejecuta `index.php` o la vista en `/pages/…` → el JS llama `/routers/…` → PHP del router responde JSON.
+
+### Desarrollo local — requiere levantar el servidor manualmente
+
+En la máquina de desarrollo **no hay Apache por defecto**. Hay que iniciar el servidor embebido de PHP:
+
+```bash
+bash scripts/dev/start_dev.sh          # http://localhost:8080/
+```
+
+Ese script usa `php -S` con `frontend/web/public/router.php`, que además enruta `/routers/*` hacia `backend/routers/` (equivalente al symlink de producción).
+
+PostgreSQL local también debe estar corriendo. La base se instala/actualiza con `bash database/setup_smartcset.sh` (solo en instalación nueva o cuando se indique).
+
+### Resumen
+
+| Entorno | ¿Corre solo al abrir el navegador? | Qué debe estar activo |
+|---------|-------------------------------------|------------------------|
+| **Producción Apache** | Sí (si Apache y PostgreSQL están arriba) | `apache2`, `postgresql` |
+| **Desarrollo local** | No — ejecutar `scripts/dev/start_dev.sh` | `postgresql` + comando dev |

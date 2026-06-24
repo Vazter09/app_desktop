@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { checkHealthDetailed, validateDevice } from '../src/api/client';
+import { checkHealthDetailed, validateDevice } from '../src/routers/client';
 import {
   clearCredentials,
   getServerUrl,

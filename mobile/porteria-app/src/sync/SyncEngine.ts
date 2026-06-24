@@ -4,7 +4,7 @@ import {
   checkHealth,
   fetchCatalogos,
   syncBatch,
-} from '../api/client';
+} from '../routers/client';
 import {
   countPending,
   enqueueOperation,

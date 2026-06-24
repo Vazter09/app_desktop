@@ -1,4 +1,6 @@
-export const API_PREFIX = '/src/api/porteria/v1';
+export const ROUTER_PREFIX = '/routers/porteria/v1';
+/** @deprecated use ROUTER_PREFIX */
+export const API_PREFIX = ROUTER_PREFIX;
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
 

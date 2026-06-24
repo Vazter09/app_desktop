@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { puertasParaModo } from '../lib/puertaLabels';
 import { Alert } from 'react-native';
-import { consultarSalida, registrarSalida } from '../api/client';
+import { consultarSalida, registrarSalida } from '../routers/client';
 import { cerrarLocalAcceso, getLocalAccesoAbierto } from '../db/schema';
 import { parseCapturaDocumento, normalizeDocumento } from '../lib/pdf417';
 import { getEntradaDefault } from '../lib/storage';

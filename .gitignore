@@ -41,3 +41,6 @@ package-lock.json
 # Archivos temporales
 *.tmp
 *.temp
+
+# Reportes SENA subidos (no versionar los archivos cargados)
+storage/reportes/
