@@ -255,6 +255,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                     </div>
                 </div>
+                <div class="registro-accordion-item" id="acc-aprendiz-estado">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-aprendiz-estado" aria-expanded="false" aria-controls="panel-aprendiz-estado">
+                        Estado de Formación
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-aprendiz-estado" role="region" aria-labelledby="trigger-aprendiz-estado">
+                        <div class="form-grid cols-2">
+                            <div class="field-group">
+                                <label for="ind_etdo_formacion">Estado <span class="required">*</span></label>
+                                <select id="ind_etdo_formacion" name="ind_etdo_formacion" required>
+                                    <option value="1">En Formación</option>
+                                    <option value="2">Aplazado</option>
+                                    <option value="3">Retiro Voluntario</option>
+                                    <option value="4">Cancelado</option>
+                                    <option value="5">Condicionado</option>
+                                    <option value="6">Suspendido</option>
+                                    <option value="7">Desertado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="registro-accordion-item" id="acc-aprendiz-contacto">
+                    <button type="button" class="registro-accordion-trigger form-section-title"
+                            id="trigger-aprendiz-contacto" aria-expanded="false" aria-controls="panel-aprendiz-contacto">
+                        Contactos Institucionales y Familiares
+                    </button>
+                    <div class="registro-accordion-panel" id="panel-aprendiz-contacto" role="region" aria-labelledby="trigger-aprendiz-contacto">
+                        <div class="form-grid cols-2">
+                            <div class="field-group span-2">
+                                <label for="val_mail_institucional">Correo Institucional</label>
+                                <input type="email" id="val_mail_institucional" name="val_mail_institucional"
+                                       placeholder="usuario@sena.edu.co">
+                            </div>
+                            <div class="field-group">
+                                <label for="tel_alterno">Teléfono Alterno</label>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                                       id="tel_alterno" name="tel_alterno" placeholder="3009876543">
+                            </div>
+                            <div class="field-group">
+                                <label for="tel_sede">Teléfono Sede</label>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                                       id="tel_sede" name="tel_sede" placeholder="6011234567">
+                            </div>
+                            <div class="field-group">
+                                <label for="ext_sede">Extensión Sede</label>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" min"0" max="99999999"
+                                       id="ext_sede" name="ext_sede" placeholder="1234">
+                            </div>
+                            <div class="field-group">
+                                <label for="tel_padre_fijo">Tel. Acudiente Fijo</label>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                                       id="tel_padre_fijo" name="tel_padre_fijo" placeholder="6011234567">
+                            </div>
+                            <div class="field-group">
+                                <label for="tel_padre_movil">Tel. Acudiente Móvil</label>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
+                                       id="tel_padre_movil" name="tel_padre_movil" placeholder="3001234567">
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="registro-accordion-item" id="acc-persona-preferencias">
                     <button type="button" class="registro-accordion-trigger form-section-title"
@@ -273,84 +335,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 </div>
-
-                <!-- APRENDIZ (tab_aprendices + datos_personales_aprendiz) -->
-                <div class="registro-accordion-item" id="acc-aprendiz">
-                    <button type="button" class="registro-accordion-trigger form-section-title" id="trigger-aprendiz"
-                            aria-expanded="false" aria-controls="panel-aprendiz">
-                        Aprendiz
-                    </button>
-                    <div class="registro-accordion-panel" id="panel-aprendiz" role="region" aria-labelledby="trigger-aprendiz">
-                        <div class="registro-accordion">
-
-                <div class="registro-accordion-item" id="acc-aprendiz-estado">
-                    <button type="button" class="registro-accordion-trigger form-section-title"
-                            id="trigger-aprendiz-estado" aria-expanded="false" aria-controls="panel-aprendiz-estado">
-                        Estado de Formación
-                    </button>
-                    <div class="registro-accordion-panel" id="panel-aprendiz-estado" role="region" aria-labelledby="trigger-aprendiz-estado">
-                <div class="form-grid cols-2">
-                    <div class="field-group">
-                        <label for="ind_etdo_formacion">Estado <span class="required">*</span></label>
-                        <select id="ind_etdo_formacion" name="ind_etdo_formacion" required>
-                            <option value="1">En Formación</option>
-                            <option value="2">Aplazado</option>
-                            <option value="3">Retiro Voluntario</option>
-                            <option value="4">Cancelado</option>
-                            <option value="5">Condicionado</option>
-                            <option value="6">Suspendido</option>
-                            <option value="7">Desertado</option>
-                        </select>
-                    </div>
-                </div>
-                    </div>
-                </div>
-
-                <div class="registro-accordion-item" id="acc-aprendiz-contacto">
-                    <button type="button" class="registro-accordion-trigger form-section-title"
-                            id="trigger-aprendiz-contacto" aria-expanded="false" aria-controls="panel-aprendiz-contacto">
-                        Contactos Institucionales y Familiares
-                    </button>
-                    <div class="registro-accordion-panel" id="panel-aprendiz-contacto" role="region" aria-labelledby="trigger-aprendiz-contacto">
-                <div class="form-grid cols-2">
-                    <div class="field-group span-2">
-                        <label for="val_mail_institucional">Correo Institucional</label>
-                        <input type="email" id="val_mail_institucional" name="val_mail_institucional"
-                               placeholder="usuario@sena.edu.co">
-                    </div>
-                    <div class="field-group">
-                        <label for="tel_alterno">Teléfono Alterno</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
-                               id="tel_alterno" name="tel_alterno" placeholder="3009876543">
-                    </div>
-                    <div class="field-group">
-                        <label for="tel_sede">Teléfono Sede</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
-                               id="tel_sede" name="tel_sede" placeholder="6011234567">
-                    </div>
-                    <div class="field-group">
-                        <label for="ext_sede">Extensión Sede</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" min="0" max="99999999"
-                               id="ext_sede" name="ext_sede" placeholder="1234">
-                    </div>
-                    <div class="field-group">
-                        <label for="tel_padre_fijo">Tel. Acudiente Fijo</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
-                               id="tel_padre_fijo" name="tel_padre_fijo" placeholder="6011234567">
-                    </div>
-                    <div class="field-group">
-                        <label for="tel_padre_movil">Tel. Acudiente Móvil</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10"
-                               id="tel_padre_movil" name="tel_padre_movil" placeholder="3001234567">
-                    </div>
-                </div>
-                    </div>
-                </div>
-
-                        </div>
-                    </div>
-                </div>
-
                 <!-- FICHA (tab_aprendices_fichas) -->
                 <div class="registro-accordion-item" id="acc-ficha">
                     <button type="button" class="registro-accordion-trigger form-section-title" id="trigger-ficha"

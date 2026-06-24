@@ -1,0 +1,92 @@
+/* Smart CSET - Estilos del Modal de Confirmación de Salida */
+.cset-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 13, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.cset-modal-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.cset-modal-box {
+    background: #0d1310;
+    border: 1px solid #00e5b0;
+    box-shadow: 0 0 20px rgba(0, 229, 176, 0.15);
+    width: 90%;
+    max-width: 450px;
+    padding: 2rem;
+    position: relative;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: 0.5px;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.cset-modal-overlay.is-open .cset-modal-box {
+    transform: translateY(0);
+}
+
+.cset-modal-title {
+    color: #00e5b0;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    margin: 0 0 0.8rem 0;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cset-modal-text {
+    color: #a0aab0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 2rem 0;
+}
+
+.cset-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.cset-btn {
+    background: transparent;
+    border: 1px solid #334440;
+    color: #a0aab0;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cset-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.cset-btn-danger {
+    border-color: #ff3b30;
+    color: #ff3b30;
+}
+
+.cset-btn-danger:hover {
+    background: #ff3b30;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.3);
+}
