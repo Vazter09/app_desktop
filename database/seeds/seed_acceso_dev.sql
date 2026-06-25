@@ -20,7 +20,10 @@ INSERT INTO tab_tipos_docum (id_tipo_docum, nom_tipo_docum, usr_insert, fec_inse
     ('TI', 'Tarjeta de identidad', 'seed', NOW()),
     ('PA', 'Pasaporte', 'seed', NOW()),
     ('NIT', 'Número de identificación tributaria', 'seed', NOW()),
-    ('SN', 'Sin tipo', 'seed', NOW())
+    ('SN', 'Sin tipo', 'seed', NOW()),
+    ('PPT', 'Permiso por protección temporal', 'seed', NOW()),
+    ('RC', 'Registro civil', 'seed', NOW()),
+    ('PEP', 'Permiso especial de permanencia', 'seed', NOW())
 ON CONFLICT (id_tipo_docum) DO NOTHING;
 
 INSERT INTO tab_niveles_estudio (id_nivel_estudio, nom_nivel_estudio, usr_insert, fec_insert)
