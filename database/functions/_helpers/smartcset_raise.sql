@@ -8,6 +8,7 @@
 DROP FUNCTION IF EXISTS smartcset_raise_validacion(TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS smartcset_raise_negocio(TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS smartcset_raise_no_encontrado(TEXT, TEXT);
+DROP FUNCTION IF EXISTS smartcset_handle_sql_error(TEXT, TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS smartcset_handle_sql_error();
 DROP FUNCTION IF EXISTS smartcset_raise_core(TEXT, TEXT, TEXT);
 
@@ -87,7 +88,12 @@ $$ LANGUAGE plpgsql;
 --              Re-lanza P0001 sin modificar. Usar en EXCEPTION ... OTHERS.
 -- Retorna: VOID
 -- -------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION smartcset_handle_sql_error()
+CREATE OR REPLACE FUNCTION smartcset_handle_sql_error(
+    p_state  TEXT DEFAULT NULL,
+    p_msg    TEXT DEFAULT NULL,
+    p_detail TEXT DEFAULT NULL,
+    p_hint   TEXT DEFAULT NULL
+)
 RETURNS VOID AS $$
 DECLARE
     v_state  TEXT;
@@ -95,11 +101,21 @@ DECLARE
     v_detail TEXT;
     v_hint   TEXT;
 BEGIN
-    GET STACKED DIAGNOSTICS
-        v_state  = RETURNED_SQLSTATE,
-        v_msg    = MESSAGE_TEXT,
-        v_detail = PG_EXCEPTION_DETAIL,
-        v_hint   = PG_EXCEPTION_HINT;
+    -- GET STACKED DIAGNOSTICS solo es válido en el bloque EXCEPTION del mismo
+    -- subprograma; al llamar esta función vía PERFORM hay que pasar los valores.
+    IF p_state IS NULL THEN
+        PERFORM smartcset_raise_negocio(
+            'No se pudo completar la operación en base de datos.',
+            COALESCE(p_msg, NULL),
+            'Si persiste, contacte al administrador.'
+        );
+        RETURN;
+    END IF;
+
+    v_state  := p_state;
+    v_msg    := COALESCE(p_msg, '');
+    v_detail := COALESCE(p_detail, '');
+    v_hint   := COALESCE(p_hint, '');
 
     IF v_state = 'P0001' THEN
         RAISE EXCEPTION '%', v_msg

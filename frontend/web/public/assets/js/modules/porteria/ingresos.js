@@ -126,8 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputApe.value = data.persona.ape_persona || data.persona.apellidos || '';
                 inputNom.readOnly = true;
                 inputApe.readOnly = true;
-                if (selTipoPersona && data.persona.id_tipo_persona) {
-                    selTipoPersona.value = String(data.persona.id_tipo_persona);
+                const idTipoPersona = data.persona.tipo_persona ?? data.persona.id_tipo_persona;
+                if (selTipoPersona && idTipoPersona) {
+                    selTipoPersona.value = String(idTipoPersona);
                 }
                 const tipoNom = data.persona.nom_tipo_persona || 'registrada';
                 if (puedeIngresar) {

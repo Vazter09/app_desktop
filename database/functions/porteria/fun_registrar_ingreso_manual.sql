@@ -12,9 +12,13 @@ CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wcaptura_pdf417    BOOLEAN DEFAULT FALSE
 ) RETURNS INTEGER AS $$
 DECLARE
-    wid_ingreso  INTEGER;
-    wjson_origen JSONB;
-    worigen_txt  TEXT;
+    wid_ingreso    INTEGER;
+    wjson_origen   JSONB;
+    worigen_txt    TEXT;
+    w_exc_state    TEXT;
+    w_exc_msg      TEXT;
+    w_exc_detail   TEXT;
+    w_exc_hint     TEXT;
 BEGIN
     IF wid_metodo_aut IS NULL OR wid_metodo_aut < 1 THEN
         wid_metodo_aut := 1;
@@ -65,11 +69,25 @@ BEGIN
 
     PERFORM fun_update_persona_tras_ingreso(wid_persona, wusr);
 
+    -- Aprendiz (id_tipo_persona = 2): registrar asistencia / retardo si aplica.
+    IF wid_tipo_persona = 2 THEN
+        PERFORM fun_verify_retardo_aprendiz(
+            wid_persona,
+            CURRENT_TIMESTAMP,
+            wusr
+        );
+    END IF;
+
     RETURN wid_ingreso;
 EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;
