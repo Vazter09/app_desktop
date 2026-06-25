@@ -1,3 +1,5 @@
+-- Función para los retardos del aprendiz.
+
 CREATE OR REPLACE FUNCTION fun_verify_retardo_aprendiz(
     wid_aprendiz   tab_aprendices.id_aprendiz%TYPE,
     whora_llegada  TIMESTAMPTZ,                    
@@ -12,14 +14,13 @@ DECLARE
     wind_estado       VARCHAR;
     whora_limite_gracia TIME;
     wtiene_permiso    BOOLEAN := FALSE;
-    wnum_llamados_actual SMALLINT;
     whora_llegada_time TIME;
 BEGIN
-    -- Extraer solo la hora (sin zona) para comparar con columnas TIME
+    -- Extraer solo la hora para comparar con columnas TIME
     whora_llegada_time := whora_llegada::TIME;
 
     -- 1. Obtener parámetros generales
-    SELECT val_tiempo_gracia_aprendiz, val_max_llamados_aprendiz
+    SELECT val_tiempo_gracia_aprendiz
       INTO wreg_pmtros
       FROM tab_pmtros_grales
      LIMIT 1;
@@ -54,7 +55,7 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- 4. Si llegada > hora_salida → no registrar (dejar para CRON)
+    -- 4. Si llegada > hora_salida → no registrar
     IF whora_llegada_time > wreg_jornadas.hora_salida THEN
         RETURN FALSE;
     END IF;
@@ -82,26 +83,11 @@ BEGIN
         ELSE
             wind_estado      := 'Tarde';
             wminutos_retardo := EXTRACT(EPOCH FROM (whora_llegada_time - wreg_jornadas.hora_entrada)) / 60;
-
-            -- Incrementar llamados
-            UPDATE tab_aprendices
-               SET num_llamados = num_llamados + 1
-             WHERE id_aprendiz = wid_aprendiz;
-
-            -- Obtener nuevo valor y verificar límite
-            SELECT num_llamados
-              INTO wnum_llamados_actual
-              FROM tab_aprendices
-             WHERE id_aprendiz = wid_aprendiz;
-
-            IF wnum_llamados_actual >= wreg_pmtros.val_max_llamados_aprendiz THEN
-                RAISE NOTICE 'Aprendiz % será citado a comité (llamados acumulados: %).',
-                             wid_aprendiz, wnum_llamados_actual;
-            END IF;
+            -- Aquí YA NO hay UPDATE de llamados, solo se registra el retraso en la asistencia
         END IF;
     END IF;
 
-    -- 7. Insertar o actualizar asistencia (guardamos el TIMESTAMPTZ completo en hora_asistencia)
+    -- 7. Insertar o actualizar asistencia
     INSERT INTO tab_asistencia_aprendiz (
         id_aprendiz,
         fec_asistencia,
@@ -136,3 +122,60 @@ EXCEPTION
 END;
 $$
 LANGUAGE plpgsql;
+
+
+
+
+-- Trigger para actualizar los llamados de atención del aprendiz (Según los retardos).
+
+CREATE OR REPLACE FUNCTION fn_after_asistencia_llamados()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_tiempo_gracia INT;
+    v_max_llamados  INT;
+    v_llamados_actual SMALLINT;
+BEGIN
+    -- Obtener parámetros
+    SELECT val_tiempo_gracia_aprendiz, val_max_llamados_aprendiz
+      INTO v_tiempo_gracia, v_max_llamados
+      FROM tab_pmtros_grales
+     LIMIT 1;
+
+    -- Solo actuar si es 'Tarde' y supera la gracia
+    IF NEW.ind_estado = 'Tarde' AND NEW.minutos_retraso > v_tiempo_gracia THEN
+        -- Incrementar llamados
+        UPDATE tab_aprendices
+           SET num_llamados = num_llamados + 1
+         WHERE id_aprendiz = NEW.id_aprendiz;
+
+        -- Obtener nuevo valor y verificar límite
+        SELECT num_llamados
+          INTO v_llamados_actual
+          FROM tab_aprendices
+         WHERE id_aprendiz = NEW.id_aprendiz;
+
+        IF v_llamados_actual >= v_max_llamados THEN
+            RAISE NOTICE 'Aprendiz % (llamados acumulados: %).',
+                         NEW.id_aprendiz, v_llamados_actual;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_after_asistencia_llamados
+AFTER INSERT OR UPDATE ON tab_asistencia_aprendiz
+FOR EACH ROW
+EXECUTE FUNCTION fn_after_asistencia_llamados();
+
+
+
+
+-- Inserción de prueba para verificar la función.
+
+SELECT fun_verify_retardo_aprendiz(
+    1095951827,                              -- id_aprendiz
+    '2026-07-23 13:30:00'::TIMESTAMPTZ,      -- whora_llegada (TIMESTAMPTZ)
+    'postgres'                         -- wusr_insert
+);

@@ -1423,12 +1423,12 @@ CREATE TYPE datos_personales_aprendiz AS
 
 CREATE TABLE IF NOT EXISTS tab_instructores
 (
-    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
+    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 10000000),
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
-    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
+    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 3 OR ind_genero = 4) DEFAULT 3, --1=Femenino,2=Masculino,3=No binario,4=Trans
+    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9) DEFAULT 0,--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
     id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
     id_red                  DECIMAL(2,0)                NOT NULL DEFAULT 99,
@@ -3185,6 +3185,7 @@ CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_rutas FOR
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programacion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_competencia FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_bitacora FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_asistencia_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 
 -- INSERCIÓN EN TABLA DE JORNADAS
 INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
@@ -3206,3 +3207,7 @@ INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
 INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
 INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
 INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
+
+-- Inserción en tabla parametro y aprendices.
+INSERT INTO tab_pmtros_grales (id_centro, dir_centro,tel_centro,ano_academico, mes_academico, val_tiempo_gracia_aprendiz, nom_administrador, tel_administrador) VALUES (9309, 'Sin direccion', 6010000000, 2026, 7, 15, 'Sin Administrador', 6010000000);
+INSERT INTO tab_asistencia_aprendiz (id_aprendiz, fec_asistencia, hora_asistencia, minutos_retraso, ind_estado) VALUES (1095951827, '23/07/2026', '13:30:000', 90, 'Tarde');
