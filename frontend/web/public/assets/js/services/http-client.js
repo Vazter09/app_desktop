@@ -4,10 +4,36 @@
 (function (global) {
     'use strict';
 
-    async function request(url, options = {}) {
-        if (typeof url === 'string' && url.startsWith('/') && typeof global.smartcsetUrl === 'function') {
-            url = global.smartcsetUrl(url);
+    function resolveBasePath() {
+        if (typeof global.smartcsetResolveBasePath === 'function') {
+            const fromHelper = global.smartcsetResolveBasePath();
+            if (fromHelper) {
+                return fromHelper;
+            }
         }
+        if (typeof global.SMARTCSET_BASE_PATH === 'string' && global.SMARTCSET_BASE_PATH !== '') {
+            return global.SMARTCSET_BASE_PATH;
+        }
+        const meta = document.querySelector('meta[name="smartcset-base-path"]');
+        return meta ? (meta.getAttribute('content') || '').trim() : '';
+    }
+
+    function resolveAppUrl(url) {
+        if (typeof url !== 'string' || !url.startsWith('/')) {
+            return url;
+        }
+        if (typeof global.smartcsetUrl === 'function') {
+            const resolved = global.smartcsetUrl(url);
+            if (resolved !== url) {
+                return resolved;
+            }
+        }
+        const base = resolveBasePath();
+        return base ? base + url : url;
+    }
+
+    async function request(url, options = {}) {
+        url = resolveAppUrl(url);
         const opts = {
             credentials: 'include',
             headers: {
