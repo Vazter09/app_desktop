@@ -1,0 +1,40 @@
+.inst-fichas-page {
+    padding-bottom: 1.5rem;
+}
+
+.inst-fichas-title {
+    color: var(--v-oscuro, #004d40);
+}
+
+.inst-fichas-panel .list-group-item.active {
+    background-color: var(--v-oscuro, #004d40);
+    border-color: var(--v-oscuro, #004d40);
+}
+
+.inst-ficha-item {
+    transition: background-color 0.15s ease;
+}
+
+.inst-detalle-card .inst-resumen-chips .badge {
+    font-weight: 500;
+}
+
+.inst-asistencia-table th {
+    white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+.inst-fichas-placeholder {
+    min-height: 280px;
+}
+
+.inst-filtros-form .form-label {
+    color: var(--text-muted, #6c757d);
+}
+
+@media (max-width: 991.98px) {
+    .inst-fichas-list {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+}

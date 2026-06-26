@@ -91,10 +91,11 @@ if (isset($_GET['sesion'])) {
     </div>
     </div>
 
-    <?php $_v_http = @filemtime($_asset_root . '/js/services/http-client.js') ?: time(); ?>
-    <?php $_v_auth = @filemtime($_asset_root . '/js/services/auth-router.js') ?: time(); ?>
-    <?php $_v_login_js = @filemtime($_asset_root . '/js/core/login-page.js') ?: time(); ?>
-    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>"></script>
+    <?php $_v_path = smartcsetAssetVersion('js/core/smartcset-path.js'); ?>
+    <?php $_v_http = smartcsetAssetVersion('js/services/http-client.js'); ?>
+    <?php $_v_auth = smartcsetAssetVersion('js/services/auth-router.js'); ?>
+    <?php $_v_login_js = smartcsetAssetVersion('js/core/login-page.js'); ?>
+    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>?v=<?= (int) $_v_path ?>"></script>
     <script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= (int) $_v_http ?>"></script>
     <script src="<?= htmlspecialchars(smartcsetAsset('js/services/auth-router.js')) ?>?v=<?= (int) $_v_auth ?>"></script>
     <script src="<?= htmlspecialchars(smartcsetAsset('js/core/login-page.js')) ?>?v=<?= (int) $_v_login_js ?>"></script>

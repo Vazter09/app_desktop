@@ -21,6 +21,7 @@ if (
 
 <?php
 $_asset_root = dirname(__DIR__) . '/public/assets';
+$_v_path  = smartcsetAssetVersion('js/core/smartcset-path.js');
 $_v_forms   = @filemtime($_asset_root . '/js/core/smartcset-forms.js') ?: time();
 $_v_toast   = @filemtime($_asset_root . '/js/core/smartcset-toast.js') ?: time();
 $_v_confirm = @filemtime($_asset_root . '/js/core/smartcset-confirm.js') ?: time();
@@ -36,7 +37,7 @@ $bootstrap_vendor_mode = 'scripts';
 $bootstrap_asset_href = $smartcset_asset_href ?? smartcsetAssetHref();
 include __DIR__ . '/partials/bootstrap_vendor.php';
 ?>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>"></script>
+<script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>?v=<?= (int) $_v_path ?>"></script>
 <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-forms.js')) ?>?v=<?= (int) $_v_forms ?>"></script>
 <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-toast.js')) ?>?v=<?= (int) $_v_toast ?>"></script>
 <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-confirm.js')) ?>?v=<?= (int) $_v_confirm ?>"></script>

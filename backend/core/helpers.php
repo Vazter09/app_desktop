@@ -38,14 +38,28 @@ function smartcsetAsset(string $relativePath): string
     return smartcsetAssetHref() . ltrim(str_replace('\\', '/', $relativePath), '/');
 }
 
+/** Query ?v= para cache-bust de assets estáticos. */
+function smartcsetAssetVersion(string $relativePath): int
+{
+    $root = dirname(__DIR__, 2) . '/frontend/web/public/assets/';
+    return @filemtime($root . ltrim(str_replace('\\', '/', $relativePath), '/')) ?: time();
+}
+
+/** Tag script hacia /assets/ con cache-bust. */
+function smartcsetAssetScript(string $relativePath): string
+{
+    $src = smartcsetAsset($relativePath);
+    $ver = smartcsetAssetVersion($relativePath);
+
+    return '<script src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '?v=' . $ver . '"></script>';
+}
+
 /** Inyecta meta + variable JS para clientes (cargar antes de http-client.js). */
 function smartcsetRenderBasePathBootstrap(): void
 {
     $base = smartcsetBasePath();
     echo '<meta name="smartcset-base-path" content="'
         . htmlspecialchars($base, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    echo '<script>window.SMARTCSET_BASE_PATH='
-        . json_encode($base, JSON_UNESCAPED_UNICODE) . ';</script>' . "\n";
 }
 
 /** ind_id_padre de menús raíz (tab_menus exige LENGTH >= 2). */
