@@ -2,20 +2,23 @@
 set -euo pipefail
 
 # ==========================================
-# Configuración
+# CONFIGURACIÓN
 # ==========================================
-readonly DIR1="/home/adsocset/carga_planos/DF14A"
-readonly DIR2="/home/adsocset/carga_planos/DF14A_old"
-readonly DB_HOST="localhost"
-readonly DB_USER="postgres"
-readonly DB_NAME="db_smartcset2"
-readonly DB_TABLE="tab_temp_df14A"
+DIR1="/home/adsocset/carga_planos/DF14A"
+DIR2="/home/adsocset/carga_planos/DF14A_old"
+DB_HOST="localhost"
+DB_USER="postgres"
+DB_NAME="db_smartcset2"
+DB_TABLE="tab_temp_df14A"
+LOG_ERRORES="$DIR1/errores.log"
 export PGPASSWORD="cset2026*"
 
-# Verificar comandos
+# ==========================================
+# VERIFICAR COMANDOS
+# ==========================================
 for cmd in ssconvert psql; do
-    if ! command -v "$cmd" &>/dev/null; then
-        echo "Error: $cmd no está instalado." >&2
+    if ! command -v "$cmd" >/dev/null; then
+        echo "Error: $cmd no instalado." >&2
         exit 1
     fi
 done
@@ -30,11 +33,11 @@ trap cleanup EXIT
 shopt -s nullglob
 archivos=("$DIR1"/*.xls "$DIR1"/*.xlsx)
 
-if [ ${#archivos[@]} -eq 0 ]; then
-    echo "No se encontraron archivos .xls o .xlsx para procesar."
-    exit 0
-fi
+[ ${#archivos[@]} -eq 0 ] && { echo "No hay archivos .xls/.xlsx en $DIR1"; exit 0; }
 
+# ==========================================
+# PROCESAR CADA ARCHIVO
+# ==========================================
 for archivo_excel in "${archivos[@]}"; do
     nombre_base=$(basename "$archivo_excel")
     nombre_base="${nombre_base%.*}"
@@ -43,9 +46,10 @@ for archivo_excel in "${archivos[@]}"; do
 
     echo "Procesando: $nombre_base"
 
-    # Convertir a CSV
+    # 1. Convertir a CSV
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
+        echo "[$(date)] Error conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
 
@@ -54,16 +58,31 @@ for archivo_excel in "${archivos[@]}"; do
 
     fecha_reporte=$(date +%Y-%m-%d)
 
-    # Procesar con AWK (misma lógica que PE-04 y DF-49)
-    awk -F';' -v fecha_reporte="$fecha_reporte" '
-    function convertir_fecha(f) {
-        if (f ~ /^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}$/) {
-            split(f, a, "/")
-            return sprintf("%04d-%02d-%02d", a[3], a[2], a[1])
+    # 2. Procesar con AWK (con función de fecha mejorada)
+    awk -F';' -v fecha_reporte="$fecha_reporte" -v logfile="$LOG_ERRORES" -v archivo="$nombre_base" '
+    function convertir_fecha(f,    fecha_limpia, partes, i) {
+        # Eliminar espacios
+        gsub(/^[ \t]+|[ \t]+$/, "", f)
+        # Si contiene espacio, tomar la parte anterior (la fecha)
+        i = index(f, " ")
+        if (i > 0) {
+            f = substr(f, 1, i - 1)
         }
-        if (f ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) return f
+        # Ahora f debería ser "yyyy-mm-dd" o "dd/mm/yyyy"
+        if (f ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) {
+            return f
+        }
+        if (f ~ /^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}$/) {
+            split(f, partes, "/")
+            return sprintf("%04d-%02d-%02d", partes[3], partes[2], partes[1])
+        }
+        # Si no se puede convertir, registrar en log (solo la primera vez)
+        if (f != "") {
+            print "[$(date)] Fecha no convertible: \"" f "\" en archivo " archivo >> logfile
+        }
         return ""
     }
+
     BEGIN { OFS = ";" }
     NR <= 4 { next }
     {
@@ -72,37 +91,42 @@ for archivo_excel in "${archivos[@]}"; do
             gsub(/^"|"$/, "", $i)
             gsub(/^[ \t]+|[ \t]+$/, "", $i)
         }
-        # Validar que la primera columna sea numérica (para omitir encabezados)
+        # Validar primera columna numérica (omitir encabezados)
         if (NF < 2 || $1 == "" || $1 !~ /^[0-9]+$/) next
 
-        # Convertir fechas: col13 = fec_ini_ficha, col14 = fec_fin_ficha
+        # Convertir fechas (col13 y col14)
         fec_ini = convertir_fecha($13)
         fec_fin = convertir_fecha($14)
 
-        # Imprimir fecha_reporte + los 37 campos del Excel (orden tabla)
-        # El orden asumido coincide con CREATE TABLE
+        # Si ambas fechas son vacías y los campos originales no estaban vacíos, registrar
+        # (esto es opcional para debug)
+        # No descartamos líneas por fechas vacías, dejamos NULL
+
+        # Salida: 38 campos (fecha_reporte + 37 del Excel)
         print fecha_reporte,
-              $1,   $2,   $3,   $4,   $5,   $6,   $7,   $8,   $9,   $10,
-              $11,  $12,  fec_ini, fec_fin,
-              $15,  $16,  $17,  $18,  $19,  $20,  $21,  $22,  $23,  $24,
-              $25,  $26,  $27,  $28,  $29,  $30,  $31,  $32,  $33,  $34,
-              $35,  $36,  $37
+              $1,  $2,  $3,  $4,  $5,  $6,  $7,  $8,  $9,  $10,
+              $11, $12, fec_ini, fec_fin,
+              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
+              $25, $26, $27, $28, $29, $30, $31, $32, $33, $34,
+              $35, $36, $37
     }
     ' "$archivo_csv" > "$archivo_limpio"
 
+    # 3. Verificar que el archivo limpio no esté vacío
     if [ ! -s "$archivo_limpio" ]; then
         echo "Archivo limpio vacío: $archivo_limpio" >&2
+        echo "[$(date)] Archivo limpio vacío: $nombre_base" >> "$LOG_ERRORES"
         continue
     fi
 
-    # Cargar a PostgreSQL
+    # 4. Cargar a PostgreSQL
     if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -c "\copy $DB_TABLE FROM '$archivo_limpio' WITH (FORMAT csv, DELIMITER ';', ENCODING 'UTF8');" 2>&1; then
-        echo "Carga exitosa: $nombre_base"
+        echo "Carga exitosa: $nombre_base ($(wc -l < "$archivo_limpio") líneas)"
         mv "$archivo_excel" "$DIR2/"
         rm -f "$archivo_csv" "$archivo_limpio"
     else
-        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$DIR1/errores.log"
-        echo "Error en la carga. Revisa $DIR1/errores.log" >&2
+        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$LOG_ERRORES"
+        echo "Error en la carga. Revisa $LOG_ERRORES" >&2
     fi
 done
 
