@@ -37,16 +37,16 @@ BEGIN
       AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
       AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
       AND u.id_usuario = p.id_persona::VARCHAR
-      AND u.ind_usuario = TRUE;   -- Solo si es necesario cambiarlo
+      AND u.ind_usuario = TRUE;
 
-    GET DIAGNOSTICS v_actualizados = ROW_COUNT;  -- Cuenta los actualizados
+    GET DIAGNOSTICS v_actualizados = ROW_COUNT;
 
-    -- 3. Asegurar menús '03' y '0301' para todos los instructores válidos que tengan usuario
+    -- 3. Menús Instructor: padre 06 + Mis fichas 0601
     INSERT INTO tab_menu_usuarios (id_usuario, id_menu, usr_insert, fec_insert)
     SELECT u.id_usuario, m.id_menu, 'carga_automatica', CURRENT_TIMESTAMP
     FROM tab_personas p
     JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
-    CROSS JOIN (VALUES ('03'), ('0301')) AS m(id_menu)
+    CROSS JOIN (VALUES ('06'), ('0601')) AS m(id_menu)
     WHERE p.id_tipo_persona = 3
       AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
       AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
@@ -62,9 +62,6 @@ BEGIN
       AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
       AND u.id_usuario IS NULL;
 
-    -- 5. Retornar resultados
     RETURN QUERY SELECT v_insertados, v_actualizados, v_errores;
 END;
 $$ LANGUAGE plpgsql;
-
-SELECT fun_crear_usuarios_instructores();

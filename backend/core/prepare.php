@@ -256,6 +256,13 @@ try {
     );
     $stmt_list_menus = $pdo->prepare("SELECT id_menu, nom_menu, ind_id_padre, nom_programa FROM tab_menus ORDER BY id_menu ASC");
 
+    // --- 8. INSTRUCTOR — Mis fichas / asistencia ---
+    $sql_fun_listar_fichas_instructor = 'SELECT * FROM fun_listar_fichas_instructor(?::NUMERIC)';
+    $stmt_fun_listar_fichas_instructor = $pdo->prepare($sql_fun_listar_fichas_instructor);
+
+    $sql_fun_listar_asistencia_ficha = 'SELECT * FROM fun_listar_asistencia_ficha(?::NUMERIC, ?::NUMERIC, ?::DATE, ?::DATE)';
+    $stmt_fun_listar_asistencia_ficha = $pdo->prepare($sql_fun_listar_asistencia_ficha);
+
     if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         session_start();
     }
