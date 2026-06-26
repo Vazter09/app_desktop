@@ -107,21 +107,27 @@ CREATE TABLE IF NOT EXISTS tab_temp_juicios
   id_version        DECIMAL(2,0),
   nom_ficha         VARCHAR,
   ind_estado        VARCHAR,
-  fec_inicio        DATE,
-  fec_fin           DATE,
+  fec_inicio        VARCHAR,
+  fec_fin           VARCHAR,
   id_modalidad      VARCHAR,
+  cod_regional      DECIMAL(2,0),
   nom_regional      VARCHAR,
+  cod_centro        DECIMAL(4,0),
   nom_centro        VARCHAR,
--- Hasta acá el encabezado
+-- Hasta acá el encabezado 14 - 27 (24- 27)
   id_tipodoc        VARCHAR,
   num_docume        DECIMAL(10,0),
   nom_aprendiz      VARCHAR,
   ape_aprendiz      VARCHAR,
   ind_est_aprendiz  VARCHAR,
+  cod_competencia   DECIMAL(8,0),
   nom_competencia   TEXT,
+  cod_rap           DECIMAL(8,0),
   nom_rap           TEXT,
   val_juicio        VARCHAR,
   fec_juicio        VARCHAR,
+  tip_doc_instructor VARCHAR,
+  num_doc_instructor VARCHAR,
   nom_instructor    VARCHAR
 );
 
@@ -1312,7 +1318,7 @@ CREATE TABLE IF NOT EXISTS tab_personas
     id_tipo_docum               VARCHAR(4)                  NOT NULL DEFAULT 'CC',
     id_tipo_persona             DECIMAL(2,0)                NOT NULL DEFAULT 1,
     nom_persona                 VARCHAR(40)                 NOT NULL CHECK(LENGTH(nom_persona) >= 3),
-    ape_persona                 VARCHAR(30)                 NOT NULL CHECK(LENGTH(ape_persona) >= 2),
+    ape_persona                 VARCHAR(30)                 NOT NULL CHECK(LENGTH(ape_persona) >= 2) DEFAULT 'Sin Apellido',
     mail_persona                mail_personal               NOT NULL DEFAULT 'sin_correo@correo.com',
     fec_nacimiento              DATE                        NOT NULL DEFAULT '1900-01-01',
     ind_genero                  DECIMAL(2,0)                NOT NULL DEFAULT 99,  -- 99=No definido
