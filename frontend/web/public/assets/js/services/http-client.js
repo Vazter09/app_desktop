@@ -73,5 +73,8 @@
         post(url, body = {}) {
             return request(url, { method: 'POST', body });
         },
+        put(url, body = {}) {
+            return request(url, { method: 'PUT', body });
+        },
     };
 })(window);

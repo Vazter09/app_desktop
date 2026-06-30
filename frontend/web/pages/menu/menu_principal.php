@@ -83,6 +83,7 @@ $menu_paths   = dashboardFlattenMenuPaths($menu_final);
 $es_admin     = usuarioEsAdministrador($pdo, $wid_usuario);
 
 require_once dirname(__DIR__, 4) . '/backend/services/instructor/asistencia_service.php';
+require_once dirname(__DIR__) . '/modulos/instructor/lib/instructor_ui.php';
 $id_instructor = instructorResolverIdDesdeSesion($pdo, $wid_usuario);
 $es_instructor = $id_instructor !== null;
 $path_fichas   = dashboardFindMenuPath($menu_paths, 'instructor/fichas');
@@ -130,9 +131,16 @@ if (!$es_instructor) {
 } elseif ($id_instructor !== null) {
     try {
         $instructor_fichas = instructorListarFichas($stmt_fun_listar_fichas_instructor, $id_instructor);
+        $instructor_ctx = [
+            'id_instructor' => $id_instructor,
+            'es_admin' => false,
+            'modo' => 'instructor',
+            'id_usuario' => (string) $_SESSION['id_usuario'],
+        ];
         $instructor_resumen = instructorDashboardResumen(
             $stmt_fun_listar_asistencia_ficha,
-            $id_instructor,
+            $stmt_fun_listar_asistencia_ficha_admin,
+            $instructor_ctx,
             $instructor_fichas
         );
     } catch (PDOException $e) {
@@ -209,7 +217,7 @@ $quick_actions = [];
 if ($es_instructor && $path_fichas !== null) {
     $quick_actions[] = [
         'url'   => smartcsetUrlNomPrograma($path_fichas),
-        'label' => 'Mis fichas',
+        'label' => 'Las fichas del instructor',
         'icon'  => 'bi-journal-bookmark-fill',
         'class' => 'dashboard-cta--instructor',
     ];

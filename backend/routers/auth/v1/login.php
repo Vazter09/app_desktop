@@ -52,7 +52,7 @@ try {
 
     $_SESSION['id_usuario'] = $reg['id_usuario'];
     $_SESSION['nom_usuario'] = $reg['nom_usuario'];
-    $_SESSION['ind_usuario'] = !empty($reg['ind_usuario']);
+    $_SESSION['ind_usuario'] = smartcsetPgBool($reg['ind_usuario']);
     $_SESSION['id_sesion'] = $idSesion;
 
     RouterResponse::ok([

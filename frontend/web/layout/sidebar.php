@@ -13,6 +13,11 @@ $__asset_href = function_exists('smartcsetProjectAssetHref') ? smartcsetProjectA
 // Cargar menú del usuario (administrador: acceso fijo a todo el catálogo)
 $_menu_raw = obtenerMenusUsuario($pdo, $_SESSION['id_usuario']);
 
+if (isset($stmt_fun_listar_fichas_instructor) && !usuarioEsAdministrador($pdo, (string) $_SESSION['id_usuario'])) {
+    require_once dirname(__DIR__, 3) . '/backend/services/instructor/asistencia_service.php';
+    $_menu_raw = instructorFiltrarMenusUsuario($pdo, (string) $_SESSION['id_usuario'], $_menu_raw);
+}
+
 // Construir jerarquía
 $_menu = [];
 foreach ($_menu_raw as $_item) {
@@ -25,6 +30,19 @@ foreach ($_menu_raw as $_item) {
             $_menu[$_padre]['hijos'][$_item['id_menu']] = $_item;
         }
     }
+}
+
+// Mis Fichas (06): hijos dinámicos por ficha del instructor
+if (isset($stmt_fun_listar_fichas_instructor)) {
+    if (!function_exists('instructorExpandirMenuSidebar')) {
+        require_once dirname(__DIR__, 3) . '/backend/services/instructor/asistencia_service.php';
+    }
+    $_menu = instructorExpandirMenuSidebar(
+        $pdo,
+        $stmt_fun_listar_fichas_instructor,
+        (string) $_SESSION['id_usuario'],
+        $_menu
+    );
 }
 
 // Logo: prefijo según profundidad de la página (ver smartcsetModulosAssetHref)
@@ -72,6 +90,10 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                 foreach ($_padre['hijos'] as $_h) {
                     if ($_h['id_menu'] === $_active) { $_activo_p = 'active'; break; }
                 }
+                // Ficha activa (0601-123) también abre el padre 06
+                if (!$_activo_p && $_padre['id_menu'] === '06' && str_starts_with((string) $_active, '0601-')) {
+                    $_activo_p = 'active';
+                }
             }
             ?>
 
@@ -102,13 +124,14 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                             $_url_h   = $_es_ex_h ? smartcsetUrl('/routers/auth/v1/logout.php') : smartcsetUrlNomPrograma($_prog_h);
                             $_ic_h    = getIcon($_hijo['nom_menu']);
                             $_act_h   = ($_hijo['id_menu'] === $_active) ? 'active' : '';
+                            $_tip_h   = trim((string) ($_hijo['menu_tooltip'] ?? $_hijo['nom_menu']));
                             // Navegación SPA (solo cambia el <main>) para secciones marcadas.
                             $_spa_h   = (!$_es_ex_h && str_starts_with($_prog_h, 'pages/admin/reportes/')) ? ' data-spa-link="1"' : '';
                             ?>
                             <a class="nav-item child <?= $_act_h ?>"
                                href="<?= htmlspecialchars($_url_h) ?>"
                                data-menu-id="<?= htmlspecialchars((string) ($_hijo['id_menu'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"<?= $_spa_h ?>
-                               data-tooltip="<?= htmlspecialchars($_hijo['nom_menu']) ?>">
+                               data-tooltip="<?= htmlspecialchars($_tip_h) ?>">
                                 <i class="bi <?= $_ic_h ?>"></i>
                                 <span class="nav-label"><?= htmlspecialchars($_hijo['nom_menu']) ?></span>
                             </a>

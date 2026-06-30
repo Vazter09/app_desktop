@@ -101,6 +101,9 @@ FUNCS=(
   "$ROOT/database/functions/instructor/fun_marcar_ausentes_fecha.sql"
   "$ROOT/database/functions/instructor/fun_listar_fichas_instructor.sql"
   "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha.sql"
+  "$ROOT/database/functions/instructor/fun_listar_fichas_admin.sql"
+  "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha_admin.sql"
+  "$ROOT/database/functions/instructor/fun_guardar_asistencia_manual.sql"
   "$ROOT/database/functions/registro/fun_registrar_persona.sql"
   "$ROOT/database/functions/registro/fun_registrar_contratista.sql"
   "$ROOT/database/functions/registro/fun_registrar_funcionario.sql"
@@ -149,7 +152,9 @@ for f in \
   "$ROOT/database/migrations/reorganizacion_arquitectura_nom_programa.sql" \
   "$ROOT/database/migrations/add_idx_aprendices_fichas_aprendiz.sql" \
   "$ROOT/database/migrations/add_menu_reportes_sena.sql" \
-  "$ROOT/database/migrations/add_menu_instructor_asistencia.sql"
+  "$ROOT/database/migrations/add_menu_instructor_asistencia.sql" \
+  "$ROOT/database/migrations/revoke_instructores_menu_personas.sql" \
+  "$ROOT/database/migrations/ensure_admin_acceso_total.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

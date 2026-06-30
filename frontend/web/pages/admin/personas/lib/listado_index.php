@@ -20,6 +20,16 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+require_once dirname(__DIR__, 6) . '/backend/services/instructor/asistencia_service.php';
+$idUsuarioActivo = (string) $_SESSION['id_usuario'];
+if (
+    !usuarioEsAdministrador($pdo, $idUsuarioActivo)
+    && instructorEsSoloFichas($pdo, $idUsuarioActivo)
+) {
+    header('Location: ' . smartcsetUrl('/pages/modulos/instructor/fichas/index.php'));
+    exit();
+}
+
 $menuId = (string) ($personasListado['menu_id'] ?? '');
 $tituloTipo = (string) ($personasListado['titulo'] ?? 'Personas');
 $fetchFn = $personasListado['fetch'] ?? null;

@@ -263,6 +263,15 @@ try {
     $sql_fun_listar_asistencia_ficha = 'SELECT * FROM fun_listar_asistencia_ficha(?::NUMERIC, ?::NUMERIC, ?::DATE, ?::DATE)';
     $stmt_fun_listar_asistencia_ficha = $pdo->prepare($sql_fun_listar_asistencia_ficha);
 
+    $sql_fun_listar_fichas_admin = 'SELECT * FROM fun_listar_fichas_admin()';
+    $stmt_fun_listar_fichas_admin = $pdo->prepare($sql_fun_listar_fichas_admin);
+
+    $sql_fun_listar_asistencia_ficha_admin = 'SELECT * FROM fun_listar_asistencia_ficha_admin(?::NUMERIC, ?::DATE, ?::DATE)';
+    $stmt_fun_listar_asistencia_ficha_admin = $pdo->prepare($sql_fun_listar_asistencia_ficha_admin);
+
+    $sql_fun_guardar_asistencia_manual = 'SELECT fun_guardar_asistencia_manual(?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::DATE, ?::TEXT, ?::TEXT, ?::BOOLEAN)';
+    $stmt_fun_guardar_asistencia_manual = $pdo->prepare($sql_fun_guardar_asistencia_manual);
+
     if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         session_start();
     }
@@ -287,6 +296,8 @@ try {
             header('Location: ' . smartcsetLoginUrl() . '?sesion=' . $sesionQuery);
             exit();
         }
+
+        smartcsetSincronizarSesionUsuario($pdo);
     }
 
 } catch (PDOException $e) {
