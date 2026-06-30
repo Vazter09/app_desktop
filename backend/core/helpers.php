@@ -6,6 +6,53 @@
 /** Mínimo de caracteres para pass_usuario (CHECK en tab_usuarios). */
 const PASSWORD_MIN_LENGTH = 12;
 
+/** Convierte booleanos PostgreSQL/PHP a bool nativo. */
+function smartcsetPgBool(mixed $value): bool
+{
+    if ($value === true || $value === 1 || $value === '1') {
+        return true;
+    }
+    if ($value === false || $value === 0 || $value === '0' || $value === null || $value === '') {
+        return false;
+    }
+    if (is_string($value)) {
+        return in_array(strtolower(trim($value)), ['t', 'true', 'yes', 'on'], true);
+    }
+
+    return (bool) $value;
+}
+
+/**
+ * Sincroniza flags de sesión con tab_usuarios (evita ind_usuario desactualizado tras cambios en BD).
+ */
+function smartcsetSincronizarSesionUsuario(PDO $pdo): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || empty($_SESSION['id_usuario'])) {
+        return;
+    }
+
+    static $sincronizado = false;
+    if ($sincronizado) {
+        return;
+    }
+    $sincronizado = true;
+
+    $stmt = $pdo->prepare(
+        'SELECT nom_usuario, ind_usuario, ind_estado
+         FROM tab_usuarios
+         WHERE id_usuario = CAST(? AS TEXT)'
+    );
+    $stmt->execute([(string) $_SESSION['id_usuario']]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return;
+    }
+
+    $_SESSION['nom_usuario'] = (string) ($row['nom_usuario'] ?? $_SESSION['nom_usuario'] ?? '');
+    $_SESSION['ind_usuario'] = smartcsetPgBool($row['ind_usuario'] ?? false);
+    $_SESSION['ind_estado'] = smartcsetPgBool($row['ind_estado'] ?? true);
+}
+
 /**
  * Prefijo de URL bajo el dominio (vacío en raíz, '/smartcset' en subcarpeta Apache).
  */
@@ -105,6 +152,7 @@ function getIcon(string $nombre): string
         'registro'    => 'bi-person-vcard-fill',
         'aprendiz'    => 'bi-mortarboard-fill',
         'instructor'  => 'bi-person-workspace',
+        'ficha'       => 'bi-journal-bookmark-fill',
         'funcionario' => 'bi-bank2',
         'contratista' => 'bi-briefcase-fill',
     ];
@@ -120,6 +168,7 @@ function getIcon(string $nombre): string
 
 /**
  * Usuario con perfil administrador (ind_usuario = TRUE en tab_usuarios).
+ * Los administradores tienen acceso total al catálogo de menús y módulos.
  */
 function usuarioEsAdministrador(PDO $pdo, string $idUsuario): bool
 {
@@ -135,8 +184,18 @@ function usuarioEsAdministrador(PDO $pdo, string $idUsuario): bool
     $stmt->execute([$idUsuario]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $cache[$idUsuario] = $row && !empty($row['ind_usuario']);
-    return $cache[$idUsuario];
+    $esAdmin = smartcsetPgBool($row['ind_usuario'] ?? false);
+
+    if (
+        $esAdmin
+        && isset($_SESSION['id_usuario'])
+        && (string) $_SESSION['id_usuario'] === $idUsuario
+    ) {
+        $_SESSION['ind_usuario'] = true;
+    }
+
+    $cache[$idUsuario] = $esAdmin;
+    return $esAdmin;
 }
 
 /**

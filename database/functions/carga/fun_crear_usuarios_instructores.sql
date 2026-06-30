@@ -6,7 +6,7 @@ DECLARE
     v_actualizados INTEGER := 0;
     v_errores      INTEGER := 0;
 BEGIN
-    -- 1. Insertar instructores que aún no son usuarios
+    -- 1. Insertar instructores que aún no son usuarios (nunca como administrador)
     WITH nuevos AS (
         INSERT INTO tab_usuarios (id_usuario, nom_usuario, pass_usuario, mail_usuario,
                                   ind_usuario, ind_estado, usr_insert, fec_insert)
@@ -27,21 +27,9 @@ BEGIN
     )
     SELECT COUNT(id_usuario) INTO v_insertados FROM nuevos;
 
-    -- 2. Actualizar ind_usuario = FALSE para instructores YA existentes que aún tengan TRUE
-    UPDATE tab_usuarios u
-    SET ind_usuario = FALSE,
-        usr_update = 'carga_automatica',
-        fec_update = CURRENT_TIMESTAMP
-    FROM tab_personas p
-    WHERE p.id_tipo_persona = 3
-      AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
-      AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
-      AND u.id_usuario = p.id_persona::VARCHAR
-      AND u.ind_usuario = TRUE;
+    v_actualizados := 0;
 
-    GET DIAGNOSTICS v_actualizados = ROW_COUNT;
-
-    -- 3. Menús Instructor: padre 06 + Mis fichas 0601
+    -- 2. Menús Instructor (solo usuarios NO administradores)
     INSERT INTO tab_menu_usuarios (id_usuario, id_menu, usr_insert, fec_insert)
     SELECT u.id_usuario, m.id_menu, 'carga_automatica', CURRENT_TIMESTAMP
     FROM tab_personas p
@@ -50,7 +38,19 @@ BEGIN
     WHERE p.id_tipo_persona = 3
       AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
       AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
+      AND u.ind_usuario = FALSE
     ON CONFLICT (id_usuario, id_menu) DO NOTHING;
+
+    -- 3. Revocar menús ajenos al rol instructor (nunca tocar administradores)
+    DELETE FROM tab_menu_usuarios mu
+    USING tab_personas p
+    JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
+    WHERE mu.id_usuario = p.id_persona::VARCHAR
+      AND p.id_tipo_persona = 3
+      AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
+      AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
+      AND u.ind_usuario = FALSE
+      AND mu.id_menu NOT IN ('06', '0601');
 
     -- 4. Contar instructores elegibles que no tienen usuario
     SELECT COUNT(p.id_persona)

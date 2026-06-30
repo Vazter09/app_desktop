@@ -3,18 +3,12 @@ declare(strict_types=1);
 
 /**
  * Fragmento: filtros + tabla de asistencia de la ficha seleccionada.
- * Requiere: $idFichaSel, $fichaSel, $asistencia, $basePath, $modoRango (opcional).
+ * Requiere: $idFichaSel, $fichaSel, $asistencia, $basePath, $modoRango (opcional), $puedeEscribir (opcional).
  */
 
-if ($idFichaSel === null || $fichaSel === null): ?>
-    <div class="card shadow-sm inst-fichas-placeholder">
-        <div class="card-body text-center text-muted py-5">
-            <i class="bi bi-arrow-left-circle display-6 d-block mb-3"></i>
-            Elija una ficha de la lista para ver la asistencia de sus aprendices.
-        </div>
-    </div>
-    <?php return;
-endif;
+if ($idFichaSel === null || $fichaSel === null) {
+    return;
+}
 
 $desde = (string) ($asistencia['desde'] ?? date('Y-m-d'));
 $hasta = (string) ($asistencia['hasta'] ?? $desde);
@@ -35,12 +29,25 @@ $resumenDia = $porFecha[$desde] ?? [
     'Desconocido' => 0,
     'total' => 0,
 ];
+$puedeEscribir = !empty($puedeEscribir);
+$mostrarAcciones = $puedeEscribir && $esUnDia && !$modoRango;
 ?>
+<nav class="inst-fichas-breadcrumb mb-3" aria-label="Navegación de fichas">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+            <a href="<?= htmlspecialchars($basePath) ?>"><i class="bi bi-journal-bookmark-fill me-1"></i>Mis Fichas</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            Ficha <?= htmlspecialchars((string) $idFichaSel) ?>
+        </li>
+    </ol>
+</nav>
+
 <div class="card shadow-sm inst-detalle-card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
-            <span class="fw-semibold">Ficha <?= htmlspecialchars((string) $idFichaSel) ?></span>
-            <span class="text-muted ms-2"><?= htmlspecialchars((string) ($fichaSel['nom_programa'] ?? '')) ?></span>
+            <span class="fw-semibold">Aprendices</span>
+            <span class="text-muted ms-2 small"><?= htmlspecialchars((string) ($fichaSel['nom_programa'] ?? '')) ?></span>
         </div>
         <span class="badge bg-primary"><?= htmlspecialchars((string) ($fichaSel['nom_jornada'] ?? '')) ?></span>
     </div>
@@ -102,12 +109,15 @@ $resumenDia = $porFecha[$desde] ?? [
                         <th>Hora</th>
                         <th>Retardo</th>
                         <th>Estado</th>
+                        <?php if ($mostrarAcciones): ?>
+                            <th class="text-end">Marcar</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($rows === []): ?>
                         <tr>
-                            <td colspan="<?= (!$esUnDia || $modoRango) ? 7 : 6 ?>" class="text-center text-muted py-4">
+                            <td colspan="<?= (!$esUnDia || $modoRango) ? ($mostrarAcciones ? 8 : 7) : ($mostrarAcciones ? 7 : 6) ?>" class="text-center text-muted py-4">
                                 Sin aprendices activos en esta ficha para el período consultado.
                             </td>
                         </tr>
@@ -132,6 +142,22 @@ $resumenDia = $porFecha[$desde] ?? [
                                 <td><?= htmlspecialchars($horaFmt) ?></td>
                                 <td><?= $retardo > 0 ? (int) $retardo . ' min' : '—' ?></td>
                                 <td><span class="badge bg-<?= htmlspecialchars($badge) ?>"><?= htmlspecialchars($estado) ?></span></td>
+                                <?php if ($mostrarAcciones): ?>
+                                    <td class="text-end inst-asistencia-acciones">
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="Marcar asistencia">
+                                            <?php foreach (['Presente', 'Tarde', 'Ausente'] as $opcion): ?>
+                                                <button type="button"
+                                                        class="btn btn-outline-secondary inst-btn-marcar"
+                                                        data-aprendiz="<?= (int) ($row['id_aprendiz'] ?? 0) ?>"
+                                                        data-fecha="<?= htmlspecialchars($desde) ?>"
+                                                        data-estado="<?= htmlspecialchars($opcion) ?>"
+                                                        data-estado-actual="<?= htmlspecialchars($estado) ?>">
+                                                    <?= htmlspecialchars($opcion) ?>
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

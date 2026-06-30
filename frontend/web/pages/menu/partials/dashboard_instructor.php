@@ -19,13 +19,13 @@ $urlFichas = $path_fichas !== null ? smartcsetUrlNomPrograma($path_fichas) : nul
         <div class="dash2-welcome">
             <span class="dash2-eyebrow"><i class="bi bi-mortarboard-fill"></i> Panel instructor</span>
             <h2>Bienvenido, <span><?= htmlspecialchars($wnom_usuario) ?></span></h2>
-            <p>Resumen de asistencia de tus fichas para hoy (<?= htmlspecialchars($fechaLabel) ?>). Consulte el detalle por ficha en Mis fichas.</p>
+            <p>Resumen de asistencia de tus fichas para hoy (<?= htmlspecialchars($fechaLabel) ?>). Consulte el detalle por ficha en Las fichas del instructor.</p>
         </div>
         <?php if ($urlFichas !== null): ?>
         <div class="dash2-chips">
             <a href="<?= htmlspecialchars($urlFichas) ?>" class="dash2-chip">
                 <i class="bi bi-journal-bookmark-fill"></i>
-                <span>Ver <strong>Mis fichas</strong></span>
+                <span>Ver <strong>fichas del instructor</strong></span>
                 <i class="bi bi-chevron-right"></i>
             </a>
         </div>
