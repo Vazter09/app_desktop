@@ -206,3 +206,77 @@ body.light-theme .inst-fichas-breadcrumb .breadcrumb-item.active {
     font-size: 0.7rem;
     padding: 0.15rem 0.35rem;
 }
+
+/* —— Admin: listado por carrera —— */
+.inst-carreras-list,
+.inst-fichas-list-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.inst-carrera-row,
+.inst-ficha-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-main, #e8f4ff);
+    background: var(--bg-card, #0a1f1a);
+    border: 1px solid var(--surface-border, rgba(128, 128, 0, 0.28));
+    transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.inst-carrera-row:hover,
+.inst-ficha-row:hover {
+    border-color: color-mix(in srgb, var(--layout-sidebar-accent, var(--v-oliva, #808000)) 50%, transparent);
+    background: color-mix(in srgb, var(--bg-card, #0a1f1a) 90%, var(--v-oscuro, #004d40));
+    color: var(--text-main, #e8f4ff);
+    transform: translateX(2px);
+}
+
+.inst-carrera-nombre {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-bottom: 0.25rem;
+}
+
+.inst-carrera-meta,
+.inst-ficha-row-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted, rgba(232, 244, 255, 0.65));
+}
+
+.inst-ficha-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.inst-ficha-row-id {
+    font-weight: 700;
+    font-size: 0.9rem;
+    min-width: 6.5rem;
+}
+
+.inst-carrera-arrow,
+.inst-ficha-row-arrow {
+    color: var(--layout-sidebar-accent, var(--v-oliva, #808000));
+    flex-shrink: 0;
+}
+
+body.light-theme .inst-carrera-row,
+body.light-theme .inst-ficha-row {
+    background: #fff;
+    color: var(--text-main, #1a2e2a);
+}
+
+body.light-theme .inst-carrera-meta,
+body.light-theme .inst-ficha-row-meta {
+    color: var(--text-muted, #5a6b66);
+}

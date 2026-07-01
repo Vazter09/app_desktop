@@ -493,3 +493,33 @@ function smartcsetLogoUrl(string $assetHref = ''): string
 
     return ($assetHref !== '' ? $assetHref : smartcsetAssetHref()) . $path;
 }
+
+/** Enlace interno bajo pages/ apto para navegación SPA (sin recargar sidebar). */
+function smartcsetEsEnlaceSpaInterno(?string $nomPrograma): bool
+{
+    if ($nomPrograma === null) {
+        return false;
+    }
+    $raw = trim($nomPrograma);
+    if ($raw === '' || strcasecmp($raw, 'no_aplica') === 0) {
+        return false;
+    }
+    if (strcasecmp($raw, 'Exit') === 0 || strcasecmp($raw, 'exit.php') === 0) {
+        return false;
+    }
+
+    $normalized = smartcsetNormalizeNomPrograma($raw);
+    if ($normalized === '' || preg_match('#^https?://#i', $normalized)) {
+        return false;
+    }
+    if (str_contains(strtolower($normalized), 'logout')) {
+        return false;
+    }
+
+    return str_starts_with($normalized, 'pages/');
+}
+
+function smartcsetAttrSpaLink(?string $nomPrograma): string
+{
+    return smartcsetEsEnlaceSpaInterno($nomPrograma) ? ' data-spa-link="1"' : '';
+}

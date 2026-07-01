@@ -1,17 +1,18 @@
 (function () {
     'use strict';
 
-    const page = document.getElementById('inst-fichas-page');
-    const detalle = document.getElementById('inst-fichas-detalle');
-    if (!page || !detalle) {
-        return;
-    }
+    function initInstructorFichas() {
+        const page = document.getElementById('inst-fichas-page');
+        const detalle = document.getElementById('inst-fichas-detalle');
+        if (!page || !detalle) {
+            return;
+        }
 
-    const basePath = page.dataset.basePath || window.location.pathname;
-    const idFicha = parseInt(page.dataset.idFicha || '0', 10);
-    const nomPrograma = page.dataset.nomPrograma || '';
-    const nomJornada = page.dataset.nomJornada || '';
-    const puedeEscribir = page.dataset.puedeEscribir === '1';
+        const basePath = page.dataset.basePath || window.location.pathname;
+        const idFicha = parseInt(page.dataset.idFicha || '0', 10);
+        const nomPrograma = page.dataset.nomPrograma || '';
+        const nomJornada = page.dataset.nomJornada || '';
+        const puedeEscribir = page.dataset.puedeEscribir === '1';
 
     function escapeHtml(value) {
         return String(value)
@@ -279,6 +280,10 @@
         });
     }
 
-    bindForm();
-    bindMarcar();
+        bindForm();
+        bindMarcar();
+    }
+
+    initInstructorFichas();
+    document.addEventListener('smartcset:content-loaded', initInstructorFichas);
 })();

@@ -40,6 +40,11 @@ $idFichaSel = null;
 $fichaSel = null;
 $vistaDetalle = false;
 $puedeEscribir = ($ctx['modo'] === 'instructor');
+$programaSel = trim((string) ($_GET['programa'] ?? ''));
+$carreras = [];
+$fichasPrograma = [];
+$vistaCarrerasAdmin = false;
+$vistaFichasProgramaAdmin = false;
 
 try {
     $fichas = instructorListarFichasPorContexto(
@@ -107,6 +112,22 @@ try {
     $w_tipo_alerta = 'danger';
 }
 
+if (!$vistaDetalle && ($ctx['modo'] ?? '') === 'admin_lectura') {
+    $carreras = instructorAgruparFichasPorPrograma($fichas);
+    if ($programaSel !== '') {
+        $fichasPrograma = instructorFichasDePrograma($carreras, $programaSel);
+        if ($fichasPrograma === []) {
+            $w_mensaje = 'El programa seleccionado no tiene fichas en ejecución.';
+            $w_tipo_alerta = 'warning';
+            $programaSel = '';
+        } else {
+            $vistaFichasProgramaAdmin = true;
+        }
+    } else {
+        $vistaCarrerasAdmin = true;
+    }
+}
+
 $basePath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '';
 $fechaHoy = date('Y-m-d');
 $modoRango = isset($_GET['desde'], $_GET['hasta'])
@@ -116,7 +137,7 @@ $modoRango = isset($_GET['desde'], $_GET['hasta'])
 
 $page_title = $vistaDetalle && $idFichaSel !== null
     ? 'Ficha ' . $idFichaSel
-    : (($ctx['modo'] ?? '') === 'admin_lectura' ? 'Fichas en ejecución' : 'Las fichas del instructor');
+    : instructorTituloListado($ctx, $programaSel);
 $active_menu_id = ($vistaDetalle && $idFichaSel !== null)
     ? instructorMenuIdFicha($idFichaSel)
     : '0601';
@@ -166,18 +187,20 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
     <?php else: ?>
         <div class="inst-fichas-header mb-4">
             <h2 class="inst-fichas-title h4 mb-1">
-                <i class="bi bi-journal-bookmark-fill me-2"></i>
-                <?= ($ctx['modo'] ?? '') === 'admin_lectura' ? 'Fichas en ejecución' : 'Las fichas del instructor' ?>
+                <i class="bi bi-<?= $vistaFichasProgramaAdmin ? 'collection' : ($vistaCarrerasAdmin ? 'mortarboard-fill' : 'journal-bookmark-fill') ?> me-2"></i>
+                <?= htmlspecialchars(instructorTituloListado($ctx, $programaSel)) ?>
             </h2>
             <p class="inst-fichas-subtitle mb-0">
-                <?= ($ctx['modo'] ?? '') === 'admin_lectura'
-                    ? 'Seleccione una ficha para consultar la asistencia de sus aprendices.'
-                    : 'Seleccione una ficha para consultar la asistencia de sus aprendices.' ?>
+                <?= htmlspecialchars(instructorSubtituloListado($ctx, $programaSel)) ?>
             </p>
         </div>
 
         <?php if ($fichas === []): ?>
             <div class="alert alert-info">No hay fichas en ejecución disponibles para consultar.</div>
+        <?php elseif ($vistaCarrerasAdmin): ?>
+            <?php include __DIR__ . '/fragment_lista_carreras.php'; ?>
+        <?php elseif ($vistaFichasProgramaAdmin): ?>
+            <?php include __DIR__ . '/fragment_lista_fichas_programa.php'; ?>
         <?php else: ?>
             <?php include __DIR__ . '/fragment_lista.php'; ?>
         <?php endif; ?>

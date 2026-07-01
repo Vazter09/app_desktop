@@ -398,6 +398,55 @@ function instructorBuscarFichaEnListado(array $fichas, int $idFicha): ?array
 }
 
 /**
+ * Agrupa fichas por nombre de programa (carrera).
+ *
+ * @param list<array<string, mixed>> $fichas
+ * @return list<array{nom_programa: string, fichas: list<array<string, mixed>>, total_fichas: int, total_aprendices: int}>
+ */
+function instructorAgruparFichasPorPrograma(array $fichas): array
+{
+    $grupos = [];
+    foreach ($fichas as $ficha) {
+        $nom = trim((string) ($ficha['nom_programa'] ?? 'Sin programa'));
+        if ($nom === '') {
+            $nom = 'Sin programa';
+        }
+        if (!isset($grupos[$nom])) {
+            $grupos[$nom] = [
+                'nom_programa' => $nom,
+                'fichas' => [],
+                'total_fichas' => 0,
+                'total_aprendices' => 0,
+            ];
+        }
+        $grupos[$nom]['fichas'][] = $ficha;
+        $grupos[$nom]['total_fichas']++;
+        $grupos[$nom]['total_aprendices'] += (int) ($ficha['num_aprendices'] ?? 0);
+    }
+
+    $lista = array_values($grupos);
+    usort($lista, static fn(array $a, array $b): int => strcasecmp($a['nom_programa'], $b['nom_programa']));
+
+    return $lista;
+}
+
+/**
+ * @param list<array{nom_programa: string, fichas: list<array<string, mixed>>}> $carreras
+ * @return list<array<string, mixed>>
+ */
+function instructorFichasDePrograma(array $carreras, string $nomPrograma): array
+{
+    $nomPrograma = trim($nomPrograma);
+    foreach ($carreras as $grupo) {
+        if ((string) ($grupo['nom_programa'] ?? '') === $nomPrograma) {
+            return is_array($grupo['fichas'] ?? null) ? $grupo['fichas'] : [];
+        }
+    }
+
+    return [];
+}
+
+/**
  * Resumen del día para el panel de inicio del instructor.
  *
  * @param list<array<string, mixed>> $fichas

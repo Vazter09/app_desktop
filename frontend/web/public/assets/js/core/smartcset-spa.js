@@ -1,11 +1,19 @@
 /**
- * SmartCSET SPA — navegación parcial del sidebar.
- * Intercepta los enlaces del menú y reemplaza SOLO <main class="main-content">,
- * dejando fijos sidebar y topbar. Es OPT-IN y degrada con gracia:
- *   - Solo intercambia si la página destino contiene un elemento [data-spa].
- *   - Ante cualquier error (fetch, parseo, login expirado) hace navegación completa.
- * No toca el sidebar (lo gestiona layout.js), así que sus toggles persisten.
+ * SmartCSET SPA — navegación parcial sin recargar sidebar/topbar.
+ * Intercambia solo <main class="main-content">; degrada a navegación completa si falla.
  */
+window.smartcsetOnPageReady = function (fn) {
+    if (typeof fn !== 'function') {
+        return;
+    }
+    if (document.readyState !== 'loading') {
+        fn();
+    } else {
+        document.addEventListener('DOMContentLoaded', fn, { once: true });
+    }
+    document.addEventListener('smartcset:content-loaded', fn);
+};
+
 (function () {
     'use strict';
 
@@ -29,6 +37,43 @@
 
     function fullNav(url) {
         window.location.href = url;
+    }
+
+    function isInternalPagesPath(pathname) {
+        return /\/pages\//.test(pathname);
+    }
+
+    function isSpaLink(anchor) {
+        if (!anchor || anchor.tagName !== 'A') {
+            return false;
+        }
+        const href = anchor.getAttribute('href');
+        if (!href || href.charAt(0) === '#' || anchor.target === '_blank' || anchor.hasAttribute('download')) {
+            return false;
+        }
+        if (!sameOrigin(href)) {
+            return false;
+        }
+        if (/\/logout\.php/i.test(href)) {
+            return false;
+        }
+        if (anchor.closest('form')) {
+            return false;
+        }
+
+        const path = abs(href).pathname;
+        if (!isInternalPagesPath(path)) {
+            return anchor.hasAttribute('data-spa-link');
+        }
+
+        if (anchor.closest('.sidebar')) {
+            return anchor.matches('a.nav-item[href]');
+        }
+        if (anchor.closest(MAIN)) {
+            return true;
+        }
+
+        return anchor.hasAttribute('data-spa-link');
     }
 
     function loadedSrcs() {
@@ -86,19 +131,37 @@
     }
 
     function setActiveMenu(url) {
-        const path = abs(url).pathname;
+        const target = abs(url);
+        const targetPath = target.pathname;
+        const targetSearch = target.search || '';
+
         document.querySelectorAll('.sidebar .nav-item').forEach((el) => el.classList.remove('active'));
+        document.querySelectorAll('.sidebar .nav-section').forEach((el) => el.classList.remove('open'));
+        document.querySelectorAll('.sidebar .nav-item-parent').forEach((el) => el.classList.remove('active'));
+
         let match = null;
+        let exactMatch = null;
+
         document.querySelectorAll('.sidebar a.nav-item[href]').forEach((a) => {
-            if (abs(a.getAttribute('href')).pathname === path) {
+            const link = abs(a.getAttribute('href'));
+            if (link.pathname !== targetPath) {
+                return;
+            }
+            if (link.search === targetSearch) {
+                exactMatch = a;
+            }
+            if (!match) {
                 match = a;
             }
         });
-        if (!match) {
+
+        const active = exactMatch || match;
+        if (!active) {
             return;
         }
-        match.classList.add('active');
-        const section = match.closest('.nav-section');
+
+        active.classList.add('active');
+        const section = active.closest('.nav-section');
         if (section) {
             section.classList.add('open');
             const parent = section.querySelector('.nav-item-parent');
@@ -108,9 +171,50 @@
         }
     }
 
+    function updateTopbar(doc) {
+        const newCurrent = doc.querySelector('.topbar-breadcrumb .current');
+        const current = document.querySelector('.topbar-breadcrumb .current');
+        if (newCurrent && current) {
+            current.textContent = newCurrent.textContent;
+        } else if (newCurrent && !current) {
+            const nav = document.querySelector('.topbar-breadcrumb');
+            if (nav) {
+                const sep = document.createElement('span');
+                sep.className = 'separator';
+                sep.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                const span = document.createElement('span');
+                span.className = 'current';
+                span.textContent = newCurrent.textContent;
+                nav.appendChild(sep);
+                nav.appendChild(span);
+            }
+        } else if (!newCurrent && current) {
+            const sep = current.previousElementSibling;
+            current.remove();
+            if (sep && sep.classList.contains('separator')) {
+                sep.remove();
+            }
+        }
+    }
+
+    function syncPresenciaMenu(doc) {
+        const cfg = document.getElementById('smartcset-sesion-presencia');
+        const incoming = doc.getElementById('smartcset-sesion-presencia');
+        if (!cfg || !incoming) {
+            return;
+        }
+        const menuId = incoming.getAttribute('data-active-menu-id') || '';
+        if (menuId) {
+            cfg.setAttribute('data-active-menu-id', menuId);
+        }
+    }
+
     function reinit(main) {
         if (window.SmartcsetListado && typeof window.SmartcsetListado.bind === 'function') {
             main.querySelectorAll('[data-smart-listado-host]').forEach((host) => window.SmartcsetListado.bind(host));
+        }
+        if (window.SmartToast && typeof window.SmartToast.showFlashFromPage === 'function') {
+            window.SmartToast.showFlashFromPage();
         }
         document.dispatchEvent(new CustomEvent('smartcset:content-loaded', { detail: { main } }));
     }
@@ -138,7 +242,7 @@
 
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const newMain = doc.querySelector(MAIN);
-        if (!newMain || !newMain.querySelector('[data-spa]')) {
+        if (!newMain || !newMain.hasAttribute('data-spa')) {
             return fullNav(url);
         }
 
@@ -148,6 +252,8 @@
         if (doc.title) {
             document.title = doc.title;
         }
+        updateTopbar(doc);
+        syncPresenciaMenu(doc);
         if (push) {
             window.history.pushState({ spa: true }, '', url);
         }
@@ -165,17 +271,11 @@
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
             return;
         }
-        const a = e.target.closest('.sidebar a.nav-item[data-spa-link][href]');
-        if (!a) {
+        const a = e.target.closest('a[href]');
+        if (!isSpaLink(a)) {
             return;
         }
         const href = a.getAttribute('href');
-        if (!href || href.charAt(0) === '#' || a.target === '_blank' || !sameOrigin(href)) {
-            return;
-        }
-        if (/\/logout\.php/i.test(href)) {
-            return;
-        }
         if (abs(href).href === window.location.href) {
             e.preventDefault();
             return;
@@ -187,4 +287,8 @@
     window.addEventListener('popstate', function () {
         navigate(window.location.href, false);
     });
+
+    if (!window.history.state || !window.history.state.spa) {
+        window.history.replaceState({ spa: true }, '', window.location.href);
+    }
 })();

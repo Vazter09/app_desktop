@@ -24,7 +24,7 @@ $_logout_url = smartcsetUrl('/routers/auth/v1/logout.php');
 
         <!-- Breadcrumb -->
         <nav class="topbar-breadcrumb" aria-label="breadcrumb">
-            <a href="<?= $_home_url ?>"><i class="bi bi-house-fill me-1"></i>Inicio</a>
+            <a href="<?= $_home_url ?>" data-spa-link="1"><i class="bi bi-house-fill me-1"></i>Inicio</a>
             <?php if ($_title !== 'Inicio'): ?>
                 <span class="separator"><i class="bi bi-chevron-right"></i></span>
                 <span class="current"><?= htmlspecialchars($_title) ?></span>
@@ -76,4 +76,4 @@ $_logout_url = smartcsetUrl('/routers/auth/v1/logout.php');
         </div>
     </header>
 
-    <main class="main-content">
+    <main class="main-content" data-spa>

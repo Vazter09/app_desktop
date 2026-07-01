@@ -34,9 +34,23 @@ $mostrarAcciones = $puedeEscribir && $esUnDia && !$modoRango;
 ?>
 <nav class="inst-fichas-breadcrumb mb-3" aria-label="Navegación de fichas">
     <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-            <a href="<?= htmlspecialchars($basePath) ?>"><i class="bi bi-journal-bookmark-fill me-1"></i>Mis Fichas</a>
-        </li>
+        <?php if (instructorEsModoAdmin($ctx ?? ['modo' => 'instructor'])): ?>
+            <li class="breadcrumb-item">
+                <a href="<?= htmlspecialchars($basePath) ?>"><i class="bi bi-mortarboard-fill me-1"></i>Programas</a>
+            </li>
+            <?php $nomProgDet = trim((string) ($fichaSel['nom_programa'] ?? '')); ?>
+            <?php if ($nomProgDet !== '' && $nomProgDet !== 'Consulta administrador'): ?>
+                <li class="breadcrumb-item">
+                    <a href="<?= htmlspecialchars($basePath . '?programa=' . rawurlencode($nomProgDet)) ?>">
+                        <?= htmlspecialchars($nomProgDet) ?>
+                    </a>
+                </li>
+            <?php endif; ?>
+        <?php else: ?>
+            <li class="breadcrumb-item">
+                <a href="<?= htmlspecialchars($basePath) ?>"><i class="bi bi-journal-bookmark-fill me-1"></i><?= htmlspecialchars(instructorEtiquetaNavListado($ctx ?? ['modo' => 'instructor'])) ?></a>
+            </li>
+        <?php endif; ?>
         <li class="breadcrumb-item active" aria-current="page">
             Ficha <?= htmlspecialchars((string) $idFichaSel) ?>
         </li>

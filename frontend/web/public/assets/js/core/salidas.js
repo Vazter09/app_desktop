@@ -1,7 +1,9 @@
 /**
  * Registro de salidas — portería (misma línea que ingreso: PDF417, consulta, modos)
  */
-document.addEventListener('DOMContentLoaded', () => {
+(window.smartcsetOnPageReady || function (fn) {
+    document.addEventListener('DOMContentLoaded', fn);
+})(() => {
     const PC = window.PorteriaCaptura;
     const PM = window.PorteriaMedios;
     if (!PC) return;

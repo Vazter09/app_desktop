@@ -45,6 +45,17 @@ if (isset($stmt_fun_listar_fichas_instructor)) {
     );
 }
 
+// Etiquetas del módulo 06 solo para administrador (instructores ven nombres de tab_menus).
+if (isset($_menu['06']) && usuarioEsAdministrador($pdo, (string) $_SESSION['id_usuario'])) {
+    if (!function_exists('instructorMenuLabelAdminPadre')) {
+        require_once dirname(__DIR__) . '/pages/modulos/instructor/lib/instructor_ui.php';
+    }
+    $_menu['06']['nom_menu'] = instructorMenuLabelAdminPadre();
+    if (isset($_menu['06']['hijos']['0601'])) {
+        $_menu['06']['hijos']['0601']['nom_menu'] = instructorMenuLabelAdminHijo();
+    }
+}
+
 // Logo: prefijo según profundidad de la página (ver smartcsetModulosAssetHref)
 $_asset_href_logo = $smartcset_asset_href ?? '../../';
 $_logo_path = smartcsetLogoUrl($_asset_href_logo);
@@ -69,6 +80,7 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
         <div class="nav-section">
             <a class="nav-item <?= ($_active === '0') ? 'active' : '' ?>"
                href="<?= htmlspecialchars(smartcsetUrl('/pages/menu/menu_principal.php')) ?>"
+               data-spa-link="1"
                data-tooltip="Inicio">
                 <i class="bi bi-house-fill"></i>
                 <span class="nav-label">Inicio</span>
@@ -125,8 +137,7 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                             $_ic_h    = getIcon($_hijo['nom_menu']);
                             $_act_h   = ($_hijo['id_menu'] === $_active) ? 'active' : '';
                             $_tip_h   = trim((string) ($_hijo['menu_tooltip'] ?? $_hijo['nom_menu']));
-                            // Navegación SPA (solo cambia el <main>) para secciones marcadas.
-                            $_spa_h   = (!$_es_ex_h && str_starts_with($_prog_h, 'pages/admin/reportes/')) ? ' data-spa-link="1"' : '';
+                            $_spa_h   = smartcsetAttrSpaLink($_prog_h);
                             ?>
                             <a class="nav-item child <?= $_act_h ?>"
                                href="<?= htmlspecialchars($_url_h) ?>"
@@ -144,10 +155,11 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                 <?php
                 $_url_p = smartcsetUrlNomPrograma($_prog_p);
                 $_act_p = ($_active === $_padre['id_menu']) ? 'active' : '';
+                $_spa_p = smartcsetAttrSpaLink($_prog_p);
                 ?>
                 <div class="nav-section">
                     <a class="nav-item <?= $_act_p ?>"
-                       href="<?= htmlspecialchars($_url_p) ?>"
+                       href="<?= htmlspecialchars($_url_p) ?>"<?= $_spa_p ?>
                        data-tooltip="<?= htmlspecialchars($_padre['nom_menu']) ?>">
                         <i class="bi <?= $_icono ?>"></i>
                         <span class="nav-label"><?= htmlspecialchars($_padre['nom_menu']) ?></span>

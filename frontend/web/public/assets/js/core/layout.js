@@ -159,9 +159,14 @@
         if (parentSection) parentSection.classList.add('open');
     }
 
-    // ── Bloquear navegación hacia atrás ──
-    history.pushState(null, null, location.href);
-    window.onpopstate = function () { history.go(1); };
+    // Marcar ficha activa del instructor (0601-123) en el submenú dinámico.
+    document.addEventListener('smartcset:content-loaded', function () {
+        const activeChildAfter = document.querySelector('.nav-item.child.active');
+        if (activeChildAfter) {
+            const parentSection = activeChildAfter.closest('.nav-section');
+            if (parentSection) parentSection.classList.add('open');
+        }
+    });
 
     // ── Aviso de cambios sin guardar (solo formularios marcados) ──
     let hasChanges = false;
