@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Login standalone del módulo registro",
+ *   "tags": ["Registro"],
+ *   "security": [],
+ *   "requestBody": {
+ *     "required": ["usuario", "clave"],
+ *     "properties": {
+ *       "usuario": { "type": "string" },
+ *       "clave": { "type": "string", "format": "password" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Sesión registro iniciada", "dataSchema": { "type": "object", "properties": { "message": { "type": "string" }, "redirect": { "type": "string" } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/services/registro/access.php';

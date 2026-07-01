@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Restaurar sección de configuración",
+ *   "tags": ["Admin"],
+ *   "requestBody": {
+ *     "required": ["section"],
+ *     "properties": {
+ *       "section": { "type": "string", "description": "general | theme_dark | theme_light" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Sección restaurada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

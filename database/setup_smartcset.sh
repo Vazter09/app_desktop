@@ -110,6 +110,7 @@ FUNCS=(
   "$ROOT/database/functions/registro/fun_registrar_instructor.sql"
   "$ROOT/database/functions/registro/fun_registrar_aprendiz.sql"
   "$ROOT/database/functions/config/fun_update_tab_config_sistema.sql"
+  "$ROOT/database/functions/config/fun_update_tab_pmtros_grales.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_aprendiz.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_contratista.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_funcionario.sql"
@@ -154,6 +155,8 @@ for f in \
   "$ROOT/database/migrations/add_menu_reportes_sena.sql" \
   "$ROOT/database/migrations/add_menu_instructor_asistencia.sql" \
   "$ROOT/database/migrations/revoke_instructores_menu_personas.sql" \
+  "$ROOT/database/migrations/add_menu_parametros_0403.sql" \
+  "$ROOT/database/migrations/seed_tab_pmtros_grales_dev.sql" \
   "$ROOT/database/migrations/ensure_admin_acceso_total.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"

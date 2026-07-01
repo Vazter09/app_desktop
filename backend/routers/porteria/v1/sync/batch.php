@@ -1,6 +1,26 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Sincronización batch offline (móvil)",
+ *   "description": "Máximo 20 operaciones por lote. Requiere token de dispositivo.",
+ *   "tags": ["Portería"],
+ *   "requestBody": {
+ *     "required": ["operaciones"],
+ *     "schema": {
+ *       "type": "object",
+ *       "required": ["operaciones"],
+ *       "properties": {
+ *         "operaciones": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/SyncOperacion" } }
+ *       }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Resultados por operación", "dataSchema": { "type": "object", "properties": { "resultados": { "type": "array", "items": { "$ref": "#/components/schemas/SyncResultado" } } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 2) . '/prepare.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

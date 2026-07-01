@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Cambiar contraseña autenticado",
+ *   "tags": ["Auth"],
+ *   "requestBody": {
+ *     "required": ["pass_antigua", "pass_nueva"],
+ *     "properties": {
+ *       "pass_antigua": { "type": "string", "format": "password" },
+ *       "pass_nueva": { "type": "string", "format": "password", "minLength": 12 }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Contraseña actualizada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

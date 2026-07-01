@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Iniciar sesión web",
+ *   "description": "Acepta JSON o form-urlencoded. Crea sesión PHP y cookie PHPSESSID.",
+ *   "tags": ["Auth"],
+ *   "security": [],
+ *   "requestBody": {
+ *     "required": true,
+ *     "oneOf": [
+ *       { "type": "object", "required": ["usuario", "clave"], "properties": { "usuario": { "type": "string" }, "clave": { "type": "string", "format": "password" } } }
+ *     ]
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Login exitoso", "dataSchema": { "type": "object", "properties": { "redirect": { "type": "string" }, "usuario": { "$ref": "#/components/schemas/UsuarioLogin" } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare_login.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

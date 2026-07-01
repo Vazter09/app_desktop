@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Listar asistencia por ficha y rango de fechas",
+ *   "tags": ["Instructor"],
+ *   "parameters": [
+ *     { "name": "id_ficha", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+ *     { "name": "fecha", "in": "query", "schema": { "type": "string", "format": "date" } },
+ *     { "name": "desde", "in": "query", "schema": { "type": "string", "format": "date" } },
+ *     { "name": "hasta", "in": "query", "schema": { "type": "string", "format": "date" } }
+ *   ],
+ *   "responses": {
+ *     "200": { "description": "Listado de asistencia", "dataSchema": { "type": "object", "additionalProperties": true } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

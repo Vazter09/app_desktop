@@ -1,6 +1,29 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Registrar asistencia manual",
+ *   "description": "Solo instructor con permiso de escritura.",
+ *   "tags": ["Instructor"],
+ *   "requestBody": {
+ *     "required": ["id_aprendiz", "fec_asistencia"],
+ *     "schema": {
+ *       "type": "object",
+ *       "required": ["id_aprendiz", "fec_asistencia"],
+ *       "properties": {
+ *         "id_aprendiz": { "type": "integer", "minimum": 1 },
+ *         "fec_asistencia": { "type": "string", "format": "date" },
+ *         "ind_asistencia": { "type": "string" },
+ *         "observacion": { "type": "string" }
+ *       }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Asistencia registrada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

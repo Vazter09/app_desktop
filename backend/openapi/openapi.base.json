@@ -1,0 +1,121 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SmartCSET API",
+    "version": "v1",
+    "description": "API JSON del backend SmartCSET (SENA). Los routers responden con envelope `{ ok, data?, error? }` salvo excepciones documentadas (logout redirect)."
+  },
+  "servers": [
+    { "url": "http://localhost:8080", "description": "Desarrollo local" },
+    { "url": "https://ejemplo.smartcset.local", "description": "Producción (ajustar URL)" }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Autenticación web principal" },
+    { "name": "Sesión", "description": "Mantenimiento de sesión activa" },
+    { "name": "Admin", "description": "Configuración y administración (requiere admin)" },
+    { "name": "Usuarios", "description": "CRUD de usuarios del sistema (requiere admin)" },
+    { "name": "Entradas", "description": "Puertas del centro (requiere admin)" },
+    { "name": "Menús", "description": "Menús y permisos (requiere admin)" },
+    { "name": "Instructor", "description": "Fichas y asistencia del instructor" },
+    { "name": "Portería", "description": "Ingreso/salida web y app móvil" },
+    { "name": "Registro", "description": "Módulo standalone de registro de personas" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "PHPSESSID",
+        "description": "Sesión PHP del usuario logueado en SmartCSET"
+      },
+      "bearerDevice": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token de dispositivo portería. Alternativa: header X-Device-Token"
+      },
+      "registroSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "PHPSESSID",
+        "description": "Sesión standalone del módulo registro (registro_authenticated)"
+      }
+    },
+    "schemas": {
+      "ApiSuccess": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "data": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": ["ok", "error"],
+        "properties": {
+          "ok": { "type": "boolean", "const": false },
+          "error": { "type": "string" }
+        }
+      },
+      "MessageData": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" }
+        }
+      },
+      "UsuarioLogin": {
+        "type": "object",
+        "properties": {
+          "id_usuario": { "type": "string" },
+          "nom_usuario": { "type": "string" },
+          "ind_usuario": { "type": "boolean" }
+        }
+      },
+      "SyncOperacion": {
+        "type": "object",
+        "required": ["client_id", "tipo", "payload"],
+        "properties": {
+          "client_id": { "type": "string", "format": "uuid" },
+          "tipo": { "type": "string", "enum": ["ingreso", "salida"] },
+          "payload": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "SyncResultado": {
+        "type": "object",
+        "properties": {
+          "client_id": { "type": "string", "nullable": true },
+          "ok": { "type": "boolean" },
+          "error": { "type": "string" },
+          "id_ingreso": { "type": "integer" },
+          "tipo": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "No autorizado",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Datos inválidos o regla de negocio",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "MethodNotAllowed": {
+        "description": "Método HTTP no permitido",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      }
+    }
+  }
+}

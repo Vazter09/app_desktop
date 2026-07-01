@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Listar menús asignados a un usuario",
+ *   "tags": ["Menús"],
+ *   "parameters": [
+ *     { "name": "usuario", "in": "query", "required": true, "schema": { "type": "string" } }
+ *   ],
+ *   "responses": {
+ *     "200": { "description": "IDs de menú del perfil", "dataSchema": { "type": "object", "properties": { "menus": { "type": "array", "items": { "type": "string" } }, "admin": { "type": "boolean" } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/middleware/require_session.php';

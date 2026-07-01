@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Registrar ingreso manual",
+ *   "tags": ["Portería"],
+ *   "requestBody": {
+ *     "schema": { "type": "object", "additionalProperties": true, "description": "Payload de ingreso (documento, entrada, método, etc.)" }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Ingreso registrado", "dataSchema": { "type": "object", "properties": { "id_ingreso": { "type": "integer" } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 2) . '/prepare.php';
 require_once dirname(__DIR__, 4) . '/middleware/require_session_or_device.php';
 

@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Resumen dashboard de asistencia",
+ *   "tags": ["Instructor"],
+ *   "parameters": [
+ *     { "name": "fecha", "in": "query", "schema": { "type": "string", "format": "date" } }
+ *   ],
+ *   "responses": {
+ *     "200": { "description": "Resumen por ficha y totales", "dataSchema": { "type": "object", "additionalProperties": true } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

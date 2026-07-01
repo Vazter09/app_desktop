@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Crear o actualizar entrada del centro",
+ *   "tags": ["Entradas"],
+ *   "requestBody": {
+ *     "required": ["nombre", "sel_sede"],
+ *     "properties": {
+ *       "id_entrada": { "type": "integer" },
+ *       "nombre": { "type": "string" },
+ *       "sel_sede": { "type": "string", "description": "centro|sede codificado" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Entrada guardada", "dataSchema": { "type": "object", "properties": { "message": { "type": "string" }, "codigo": { "type": "string" } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

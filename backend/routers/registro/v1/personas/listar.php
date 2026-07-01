@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Listar personas por tipo",
+ *   "tags": ["Registro"],
+ *   "parameters": [
+ *     { "name": "tipo", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 1, "maximum": 4 } }
+ *   ],
+ *   "responses": {
+ *     "200": { "description": "Listado de personas", "dataSchema": { "type": "object", "properties": { "personas": { "type": "array", "items": { "type": "object" } } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/middleware/require_registro_session.php';

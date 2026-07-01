@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Eliminar entrada del centro",
+ *   "tags": ["Entradas"],
+ *   "requestBody": {
+ *     "required": ["id_entrada"],
+ *     "properties": {
+ *       "id_entrada": { "type": "integer", "minimum": 1 }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Entrada eliminada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

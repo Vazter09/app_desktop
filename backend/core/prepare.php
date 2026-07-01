@@ -9,6 +9,7 @@ require_once __DIR__ . '/SecurityMiddleware.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';
+require_once __DIR__ . '/PmtrosGralesDefaults.php';
 require_once __DIR__ . '/PrepareAuthSql.php';
 require_once __DIR__ . '/lib/acceso_sesion.php';
 
@@ -34,6 +35,20 @@ try {
         $stmt_get_config = $pdo->prepare($sql_get_config);
     } catch (PDOException $e) {
         // Tabla aún no migrada; AppConfig usará .env
+    }
+
+    $sql_fun_upd_pmtros = 'SELECT fun_update_tab_pmtros_grales(
+        ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC,
+        ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC, ?::NUMERIC,
+        ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR
+    )';
+    $stmt_fun_upd_pmtros = $pdo->prepare($sql_fun_upd_pmtros);
+
+    $stmt_get_pmtros = null;
+    try {
+        $stmt_get_pmtros = $pdo->prepare(PmtrosGralesDefaults::sqlSelect());
+    } catch (PDOException $e) {
+        // Tabla aún no migrada
     }
 
     // --- 1. SECCIÓN DE AUTENTICACIÓN Y LOGIN ---

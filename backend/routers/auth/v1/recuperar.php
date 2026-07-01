@@ -1,6 +1,24 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Recuperar contraseña",
+ *   "tags": ["Auth"],
+ *   "security": [],
+ *   "requestBody": {
+ *     "required": ["usuario"],
+ *     "properties": {
+ *       "usuario": { "type": "string" },
+ *       "metodo": { "type": "string", "enum": ["correo", "pantalla"], "default": "correo" },
+ *       "correo": { "type": "string", "format": "email" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Clave temporal generada o enviada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare_login.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 

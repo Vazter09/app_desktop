@@ -46,6 +46,7 @@ INSERT INTO tab_menus (id_menu, nom_menu, ind_id_padre, nom_programa, usr_insert
     ('04', 'Configuración', '00', 'no_aplica', 'seed', NOW()),
     ('0401', 'Config. sistema', '04', 'pages/admin/configuracion.php', 'seed', NOW()),
     ('0402', 'Config. módulo', '04', 'pages/admin/personas/config.php', 'seed', NOW()),
+    ('0403', 'Config. parámetros', '04', 'pages/admin/parametros.php', 'seed', NOW()),
     ('03', 'Personas', '00', 'no_aplica', 'seed', NOW()),
     ('0300', 'Panel registro', '03', 'pages/modulos/registro/index.php', 'seed', NOW()),
     ('0301', 'Aprendices', '03', 'pages/admin/personas/aprendices/index.php', 'seed', NOW()),

@@ -1,6 +1,24 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Crear o actualizar menú",
+ *   "tags": ["Menús"],
+ *   "requestBody": {
+ *     "required": ["id_menu", "nom_menu"],
+ *     "properties": {
+ *       "id_menu": { "type": "string" },
+ *       "nom_menu": { "type": "string" },
+ *       "id_padre": { "type": "string" },
+ *       "nom_programa": { "type": "string" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Menú guardado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

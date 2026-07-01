@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Buscar aprendiz por documento",
+ *   "tags": ["Registro"],
+ *   "parameters": [
+ *     { "name": "id_persona", "in": "query", "required": true, "schema": { "type": "string" } },
+ *     { "name": "id_tipo_docum", "in": "query", "schema": { "type": "string" } }
+ *   ],
+ *   "responses": {
+ *     "200": { "description": "Resultado de búsqueda", "dataSchema": { "type": "object", "additionalProperties": true } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

@@ -1,6 +1,26 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Crear o actualizar usuario",
+ *   "tags": ["Usuarios"],
+ *   "requestBody": {
+ *     "required": ["id_usuario", "nom_usuario"],
+ *     "properties": {
+ *       "id_usuario": { "type": "string" },
+ *       "nom_usuario": { "type": "string" },
+ *       "mail_usuario": { "type": "string", "format": "email" },
+ *       "pass_usuario": { "type": "string", "format": "password" },
+ *       "admin": { "type": "boolean" },
+ *       "estado": { "type": "boolean" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Usuario guardado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

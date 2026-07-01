@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Listar fichas del instructor",
+ *   "tags": ["Instructor"],
+ *   "responses": {
+ *     "200": { "description": "Fichas asignadas", "dataSchema": { "type": "object", "properties": { "fichas": { "type": "array", "items": { "type": "object" } }, "modo": { "type": "string" } } } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

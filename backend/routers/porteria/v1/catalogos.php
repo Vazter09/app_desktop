@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Catálogos portería (tipos doc, persona, entradas)",
+ *   "tags": ["Portería"],
+ *   "responses": {
+ *     "200": { "description": "Catálogos del centro", "dataSchema": { "type": "object", "additionalProperties": true } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__) . '/prepare.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {

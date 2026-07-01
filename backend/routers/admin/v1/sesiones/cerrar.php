@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Cerrar sesión activa (admin)",
+ *   "tags": ["Admin"],
+ *   "requestBody": {
+ *     "required": ["id_sesion"],
+ *     "properties": {
+ *       "id_sesion": { "type": "integer", "minimum": 1 }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Sesión cerrada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

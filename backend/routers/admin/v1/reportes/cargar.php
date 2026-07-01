@@ -5,6 +5,23 @@ declare(strict_types=1);
  * Recibe el archivo de un reporte SENA (.xlsx / .csv) y lo guarda en storage.
  * No procesa ni TRUNCA tab_temp_* todavía: el procesamiento se habilitará tras
  * validar el layout real del archivo (evita destruir datos con un mapeo errado).
+ *
+ * @openapi {
+ *   "summary": "Cargar archivo de reporte SENA",
+ *   "description": "Formatos .xlsx o .csv, máximo 20 MB.",
+ *   "tags": ["Admin"],
+ *   "requestBody": {
+ *     "contentType": "multipart/form-data",
+ *     "required": ["reporte", "archivo"],
+ *     "properties": {
+ *       "reporte": { "type": "string", "description": "Clave del reporte (df49, pe04, etc.)" },
+ *       "archivo": { "type": "string", "format": "binary" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Archivo recibido", "dataSchema": { "type": "object", "properties": { "message": { "type": "string" }, "archivo": { "type": "string" } } } }
+ *   }
+ * }
  */
 
 require_once dirname(__DIR__, 4) . '/core/prepare.php';

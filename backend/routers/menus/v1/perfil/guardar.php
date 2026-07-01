@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Guardar perfil de menús de un usuario",
+ *   "tags": ["Menús"],
+ *   "requestBody": {
+ *     "required": ["hid_usuario"],
+ *     "properties": {
+ *       "hid_usuario": { "type": "string" },
+ *       "menus": { "type": "array", "items": { "type": "string" } }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Perfil guardado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Eliminar menú",
+ *   "tags": ["Menús"],
+ *   "requestBody": {
+ *     "required": ["id_menu"],
+ *     "properties": {
+ *       "id_menu": { "type": "string" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Menú eliminado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';
