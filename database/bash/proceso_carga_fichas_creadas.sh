@@ -7,12 +7,13 @@ set -euo pipefail
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
-DIR1="/home/adsocset/carga_planos/fichas_creadas"
-DIR2="/home/adsocset/carga_planos/fichas_creadas_old"
-DB_HOST="localhost"
-DB_USER="postgres"
-DB_NAME="db_smartcset2"
-DB_TABLE="tab_temp_fichas_creadas"
+readonly DIR1="/home/adsocset/carga_planos/fichas_creadas"
+readonly DIR2="/home/adsocset/carga_planos/fichas_creadas_old"
+readonly DB_HOST="localhost"
+readonly DB_USER="postgres"
+readonly DB_NAME="db_smartcset2"
+readonly DB_TABLE="tab_temp_fichas_creadas"
+readonly LOG_ERRORES="$DIR1/errores_fichas_creadas.log"
 export PGPASSWORD="cset2026*"
 
 # Verificar comandos necesarios
@@ -53,11 +54,9 @@ for archivo_excel in "${archivos[@]}"; do
     # 1. Convertir a CSV con separador ';'
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
+        echo "[$(date)] Error en conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
-
-    chown cperez:cperez "$archivo_csv" 2>/dev/null || true
-    chmod 664 "$archivo_csv"
 
     # 2. Procesar con AWK: omitir encabezado, limpiar comillas, convertir fechas
     awk -F';' '
@@ -101,7 +100,8 @@ for archivo_excel in "${archivos[@]}"; do
 
     # Verificar que el archivo limpio tenga datos
     if [ ! -s "$archivo_limpio" ]; then
-        echo "Archivo limpio vacío o sin datos: $archivo_limpio" >&2
+        echo "Archivo limpio vacío: $archivo_limpio" >&2
+        echo "[$(date)] Archivo vacío: $nombre_base" >> "$LOG_ERRORES"
         rm -f "$archivo_csv" "$archivo_limpio"
         continue
     fi
@@ -113,8 +113,8 @@ for archivo_excel in "${archivos[@]}"; do
         mv "$archivo_excel" "$DIR2/"
         rm -f "$archivo_csv" "$archivo_limpio"
     else
-        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$DIR1/errores.log"
-        echo "Error en la carga. Revisa $DIR1/errores.log" >&2
+        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$LOG_ERRORES"
+        echo "Error en la carga. Revisa $LOG_ERRORES" >&2
     fi
 done
 

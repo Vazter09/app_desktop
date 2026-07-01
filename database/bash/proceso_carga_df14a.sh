@@ -2,23 +2,21 @@
 set -euo pipefail
 
 # ==========================================
-# CONFIGURACIÓN
+# Configuración
 # ==========================================
-DIR1="/home/adsocset/carga_planos/DF14A"
-DIR2="/home/adsocset/carga_planos/DF14A_old"
-DB_HOST="localhost"
-DB_USER="postgres"
-DB_NAME="db_smartcset2"
-DB_TABLE="tab_temp_df14A"
-LOG_ERRORES="$DIR1/errores.log"
+readonly DIR1="/home/adsocset/carga_planos/DF14A"
+readonly DIR2="/home/adsocset/carga_planos/DF14A_old"
+readonly DB_HOST="localhost"
+readonly DB_USER="postgres"
+readonly DB_NAME="db_smartcset2"
+readonly DB_TABLE="tab_temp_df14A"
+readonly LOG_ERRORES="$DIR1/errores_df14A.log"
 export PGPASSWORD="cset2026*"
 
-# ==========================================
-# VERIFICAR COMANDOS
-# ==========================================
+# Verificar comandos
 for cmd in ssconvert psql; do
-    if ! command -v "$cmd" >/dev/null; then
-        echo "Error: $cmd no instalado." >&2
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd no está instalado." >&2
         exit 1
     fi
 done
@@ -33,11 +31,11 @@ trap cleanup EXIT
 shopt -s nullglob
 archivos=("$DIR1"/*.xls "$DIR1"/*.xlsx)
 
-[ ${#archivos[@]} -eq 0 ] && { echo "No hay archivos .xls/.xlsx en $DIR1"; exit 0; }
+if [ ${#archivos[@]} -eq 0 ]; then
+    echo "No se encontraron archivos .xls o .xlsx para procesar."
+    exit 0
+fi
 
-# ==========================================
-# PROCESAR CADA ARCHIVO
-# ==========================================
 for archivo_excel in "${archivos[@]}"; do
     nombre_base=$(basename "$archivo_excel")
     nombre_base="${nombre_base%.*}"
@@ -46,19 +44,16 @@ for archivo_excel in "${archivos[@]}"; do
 
     echo "Procesando: $nombre_base"
 
-    # 1. Convertir a CSV
+    # Convertir a CSV
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
         echo "[$(date)] Error conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
 
-    chown cperez:cperez "$archivo_csv" 2>/dev/null || true
-    chmod 664 "$archivo_csv"
-
     fecha_reporte=$(date +%Y-%m-%d)
 
-    # 2. Procesar con AWK (con función de fecha mejorada)
+    # Procesar con AWK (versión mejorada con logging de fechas no convertibles)
     awk -F';' -v fecha_reporte="$fecha_reporte" -v logfile="$LOG_ERRORES" -v archivo="$nombre_base" '
     function convertir_fecha(f,    fecha_limpia, partes, i) {
         # Eliminar espacios
@@ -98,10 +93,6 @@ for archivo_excel in "${archivos[@]}"; do
         fec_ini = convertir_fecha($13)
         fec_fin = convertir_fecha($14)
 
-        # Si ambas fechas son vacías y los campos originales no estaban vacíos, registrar
-        # (esto es opcional para debug)
-        # No descartamos líneas por fechas vacías, dejamos NULL
-
         # Salida: 38 campos (fecha_reporte + 37 del Excel)
         print fecha_reporte,
               $1,  $2,  $3,  $4,  $5,  $6,  $7,  $8,  $9,  $10,
@@ -112,14 +103,13 @@ for archivo_excel in "${archivos[@]}"; do
     }
     ' "$archivo_csv" > "$archivo_limpio"
 
-    # 3. Verificar que el archivo limpio no esté vacío
     if [ ! -s "$archivo_limpio" ]; then
         echo "Archivo limpio vacío: $archivo_limpio" >&2
         echo "[$(date)] Archivo limpio vacío: $nombre_base" >> "$LOG_ERRORES"
         continue
     fi
 
-    # 4. Cargar a PostgreSQL
+    # Cargar a PostgreSQL
     if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -c "\copy $DB_TABLE FROM '$archivo_limpio' WITH (FORMAT csv, DELIMITER ';', ENCODING 'UTF8');" 2>&1; then
         echo "Carga exitosa: $nombre_base ($(wc -l < "$archivo_limpio") líneas)"
         mv "$archivo_excel" "$DIR2/"

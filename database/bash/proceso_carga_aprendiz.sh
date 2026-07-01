@@ -7,12 +7,13 @@ set -euo pipefail
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
-DIR1="/home/adsocset/carga_planos/matriculados"
-DIR2="/home/adsocset/carga_planos/matriculados_old"
-DB_HOST="localhost"
-DB_USER="postgres"
-DB_NAME="db_smartcset2"
-DB_TABLE="tab_temp_aprendices"
+readonly DIR1="/home/adsocset/carga_planos/matriculados"
+readonly DIR2="/home/adsocset/carga_planos/matriculados_old"
+readonly DB_HOST="localhost"
+readonly DB_USER="postgres"
+readonly DB_NAME="db_smartcset2"
+readonly DB_TABLE="tab_temp_aprendices"
+readonly LOG_ERRORES="$DIR1/errores_matriculados.log"
 export PGPASSWORD="cset2026*"
 
 # Verificar comandos necesarios
@@ -54,12 +55,9 @@ for archivo_excel in "${archivos[@]}"; do
     # 1. Convertir a CSV (separador ;)
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
+        echo "[$(date)] Error en conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
-
-    # Ajustar permisos (no crítico)
-    chown cperez:cperez "$archivo_csv" 2>/dev/null || true
-    chmod 664 "$archivo_csv"
 
     # 2. Procesar con AWK
     awk -F';' '
@@ -105,7 +103,7 @@ for archivo_excel in "${archivos[@]}"; do
         # Saltar si el primer campo (tipo doc) está vacío
         if ($1 == "") next
         
-        # Imprimir las 11 columnas en el orden de la tabla
+        # Imprimir las 7 columnas en el orden de la tabla
         print atr1, atr2, atr3, atr4, $1, $2, $3, $4, $5, $6, $7
     }
     ' "$archivo_csv" > "$archivo_limpio"
@@ -113,6 +111,7 @@ for archivo_excel in "${archivos[@]}"; do
     # Verificar que el archivo limpio tenga contenido
     if [ ! -s "$archivo_limpio" ]; then
         echo "Archivo limpio vacío: $archivo_limpio" >&2
+        echo "[$(date)] Archivo vacío: $nombre_base" >> "$LOG_ERRORES"
         rm -f "$archivo_csv" "$archivo_limpio"
         continue
     fi
@@ -124,8 +123,8 @@ for archivo_excel in "${archivos[@]}"; do
         mv "$archivo_excel" "$DIR2/"
         rm -f "$archivo_csv" "$archivo_limpio"
     else
-        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$DIR1/errores.log"
-        echo "Error en la carga. Revisa $DIR1/errores.log" >&2
+        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$LOG_ERRORES"
+        echo "Error en la carga. Revisa $LOG_ERRORES" >&2
     fi
 done
 

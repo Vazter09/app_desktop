@@ -96,11 +96,13 @@ DROP DOMAIN IF EXISTS telefono_movil;
 DROP DOMAIN IF EXISTS extension;
 
 -- *****************************
--- CREACIÓN DE LAS EXTENSIONES *
+-- CREACIÓN DE LAS EXTENSIONES 
 -- *****************************
 CREATE EXTENSION IF NOT EXISTS PLPGSQL;
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS PG_VECTOR;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 --**********************************************************
 -- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
@@ -385,6 +387,7 @@ CREATE TABLE IF NOT EXISTS tab_usuarios
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_usuario)
 );
+
 
 -- TABLA DE SESIONES DE APLICACIÓN (módulo acceso / login)
 CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;

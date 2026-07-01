@@ -1,18 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-# ==========================================
 # Configuración
-# ==========================================
 readonly DIR1="/home/adsocset/carga_planos/DF49"
 readonly DIR2="/home/adsocset/carga_planos/DF49_old"
 readonly DB_HOST="localhost"
 readonly DB_USER="postgres"
 readonly DB_NAME="db_smartcset2"
 readonly DB_TABLE="tab_temp_df49"
+readonly LOG_ERRORES="$DIR1/errores_df49.log"
 export PGPASSWORD="cset2026*"
 
-# Verificar comandos
+# Verificar comandos necesarios
 for cmd in ssconvert psql; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: $cmd no está instalado." >&2
@@ -20,8 +19,10 @@ for cmd in ssconvert psql; do
     fi
 done
 
+# Crear directorios si no existen
 mkdir -p "$DIR1" "$DIR2"
 
+# Limpiar archivos temporales al salir
 cleanup() {
     rm -f "$archivo_csv" "$archivo_limpio" 2>/dev/null
 }
@@ -46,11 +47,9 @@ for archivo_excel in "${archivos[@]}"; do
     # Convertir a CSV con separador ;
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
+        echo "[$(date)] Error en conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
-
-    chown cperez:cperez "$archivo_csv" 2>/dev/null || true
-    chmod 664 "$archivo_csv"
 
     fecha_reporte=$(date +%Y-%m-%d)
 
@@ -79,6 +78,7 @@ for archivo_excel in "${archivos[@]}"; do
 
     if [ ! -s "$archivo_limpio" ]; then
         echo "Archivo limpio vacío: $archivo_limpio" >&2
+        echo "[$(date)] Archivo vacío: $nombre_base" >> "$LOG_ERRORES"
         continue
     fi
 
@@ -88,8 +88,8 @@ for archivo_excel in "${archivos[@]}"; do
         mv "$archivo_excel" "$DIR2/"
         rm -f "$archivo_csv" "$archivo_limpio"
     else
-        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$DIR1/errores.log"
-        echo "Error en la carga. Revisa $DIR1/errores.log" >&2
+        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$LOG_ERRORES"
+        echo "Error en la carga. Revisa $LOG_ERRORES" >&2
     fi
 done
 

@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # Configuración
-DIR1="/home/adsocset/carga_planos/juicios"
-DIR2="/home/adsocset/carga_planos/juicios_old"
-DB_HOST="localhost"
-DB_USER="postgres"
-DB_NAME="db_smartcset2"
-DB_TABLE="tab_temp_juicios"
-LOG_ERRORES="$DIR1/errores_juicios.log"
+readonly DIR1="/home/adsocset/carga_planos/juicios"
+readonly DIR2="/home/adsocset/carga_planos/juicios_old"
+readonly DB_HOST="localhost"
+readonly DB_USER="postgres"
+readonly DB_NAME="db_smartcset2"
+readonly DB_TABLE="tab_temp_juicios"
+readonly LOG_ERRORES="$DIR1/errores_juicios.log"
 export PGPASSWORD="cset2026*"
 
 # Verificar herramientas
@@ -38,6 +38,7 @@ for archivo_excel in "${archivos[@]}"; do
     # 1. Convertir a CSV con separador ;
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
+        echo "[$(date)] Error en conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
 

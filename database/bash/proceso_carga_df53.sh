@@ -10,6 +10,7 @@ readonly DB_HOST="localhost"
 readonly DB_USER="postgres"
 readonly DB_NAME="db_smartcset2"
 readonly DB_TABLE="tab_temp_df53"
+readonly LOG_ERRORES="$DIR1/errores_df53.log"
 export PGPASSWORD="cset2026*"
 
 # Verificar comandos
@@ -46,11 +47,9 @@ for archivo_excel in "${archivos[@]}"; do
     # Convertir a CSV
     if ! ssconvert --export-type=Gnumeric_stf:stf_assistant -O 'separator=;' "$archivo_excel" "$archivo_csv" 2>/dev/null; then
         echo "Error en conversión: $archivo_excel" >&2
+        echo "[$(date)] Error en conversión: $archivo_excel" >> "$LOG_ERRORES"
         continue
     fi
-
-    chown cperez:cperez "$archivo_csv" 2>/dev/null || true
-    chmod 664 "$archivo_csv"
 
     fecha_reporte=$(date +%Y-%m-%d)
 
@@ -89,17 +88,19 @@ for archivo_excel in "${archivos[@]}"; do
 
     if [ ! -s "$archivo_limpio" ]; then
         echo "Archivo limpio vacío: $archivo_limpio" >&2
+        echo "[$(date)] Archivo vacío: $nombre_base" >> "$LOG_ERRORES"
         continue
     fi
 
     # Cargar a PostgreSQL
+    # Opción A: sin lista de columnas (asume orden exacto)
     if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -c "\copy $DB_TABLE FROM '$archivo_limpio' WITH (FORMAT csv, DELIMITER ';', ENCODING 'UTF8');" 2>&1; then
         echo "Carga exitosa: $nombre_base"
         mv "$archivo_excel" "$DIR2/"
         rm -f "$archivo_csv" "$archivo_limpio"
     else
-        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$DIR1/errores.log"
-        echo "Error en la carga. Revisa $DIR1/errores.log" >&2
+        echo "[$(date)] Error en DB al cargar: $archivo_limpio" >> "$LOG_ERRORES"
+        echo "Error en la carga. Revisa $LOG_ERRORES" >&2
     fi
 done
 
