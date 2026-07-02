@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Heartbeat de sesión activa",
+ *   "description": "Actualiza última ruta y menú visitado en tab_sesiones.",
+ *   "tags": ["Sesión"],
+ *   "requestBody": {
+ *     "contentType": "application/x-www-form-urlencoded",
+ *     "properties": {
+ *       "ult_ruta": { "type": "string" },
+ *       "ult_menu_id": { "type": "string" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Actividad actualizada", "dataSchema": { "type": "object" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

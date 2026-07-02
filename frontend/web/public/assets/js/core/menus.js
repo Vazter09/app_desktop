@@ -1,7 +1,9 @@
 /**
  * Menús: listado + modal crear/editar
  */
-document.addEventListener('DOMContentLoaded', () => {
+(window.smartcsetOnPageReady || function (fn) {
+    document.addEventListener('DOMContentLoaded', fn);
+})(() => {
     const modalEl = document.getElementById('modalMenu');
     const form = document.getElementById('form_menu');
     const titulo = document.getElementById('menu-editor-titulo');

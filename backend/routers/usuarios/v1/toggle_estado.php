@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Activar o desactivar usuario",
+ *   "tags": ["Usuarios"],
+ *   "requestBody": {
+ *     "required": ["id_usuario", "nuevo_estado"],
+ *     "properties": {
+ *       "id_usuario": { "type": "string" },
+ *       "nuevo_estado": { "type": "string", "enum": ["true", "false"] }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Estado actualizado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';

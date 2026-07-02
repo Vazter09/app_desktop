@@ -14,6 +14,7 @@ $_v_theme_init = @filemtime($_asset_root . '/js/core/theme-init.js') ?: time();
     <title><?= htmlspecialchars($page_title ?? AppConfig::nomSistema()) ?> | <?= htmlspecialchars(AppConfig::nomSistema()) ?></title>
     <?php smartcsetRenderBasePathBootstrap(); ?>
     <?php
+    $_v_path_head = smartcsetAssetVersion('js/core/smartcset-path.js');
     $bootstrap_vendor_mode = 'head';
     $bootstrap_asset_href = $_asset_href;
     include __DIR__ . '/partials/bootstrap_vendor.php';
@@ -30,6 +31,6 @@ $_v_theme_init = @filemtime($_asset_root . '/js/core/theme-init.js') ?: time();
     </style>
 </head>
 <body>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>"></script>
+<script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>?v=<?= (int) $_v_path_head ?>"></script>
 <script src="<?= htmlspecialchars(smartcsetAsset('js/core/theme-init.js')) ?>?v=<?= (int) $_v_theme_init ?>"></script>
 <div class="app-wrapper">

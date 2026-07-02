@@ -17,5 +17,11 @@
         restaurarConfigPersonas() {
             return SmartcsetHttp.post(`${P}/personas/config_restaurar.php`, {});
         },
+        guardarPmtrosGrales(formData) {
+            return SmartcsetHttp.post(`${P}/pmtros/guardar.php`, formData);
+        },
+        restaurarPmtrosGrales() {
+            return SmartcsetHttp.post(`${P}/pmtros/restaurar.php`, {});
+        },
     };
 })(window);

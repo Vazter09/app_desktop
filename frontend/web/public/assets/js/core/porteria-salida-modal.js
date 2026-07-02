@@ -15,24 +15,29 @@
         document.body.appendChild(modalEl);
     }
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
-    var isDesktopKiosk = window.matchMedia("(min-width: 768px)").matches;
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
     var btnFinal = document.getElementById("dm-btn-final");
     var stepSub  = document.getElementById("dm-brand-sub");
 
+    function getTipoDoc() {
+        var sel = document.getElementById("sel_tipo_doc");
+        return sel && sel.value ? sel.value : "CC";
+    }
+
     function prefetch() {
         if (num.length < 5) { fetchResult = null; fetchPromise = null; return; }
-        fetchPromise = fetch(
-            "consultar.php?" + new URLSearchParams({documento: num, tipo_doc: "CC"}),
-            {headers: {Accept: "application/json"}}
-        )
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            fetchResult = data.ok ? data : null;
-            return fetchResult;
-        })
-        .catch(function(){ fetchResult = null; return null; });
+        if (typeof SmartcsetSalidaRouter === "undefined") {
+            fetchResult = null;
+            fetchPromise = null;
+            return;
+        }
+        fetchPromise = SmartcsetSalidaRouter.consultar(num, getTipoDoc())
+            .then(function (data) {
+                fetchResult = data || null;
+                return fetchResult;
+            })
+            .catch(function () { fetchResult = null; return null; });
     }
 
     function goStep(n) {
@@ -84,13 +89,20 @@
 
         if (fDoc) fDoc.value = num;
         if (fTipDoc) {
-            var ccOpt = Array.from(fTipDoc.options).find(function(o){ return o.value === "CC"; });
-            if (ccOpt) fTipDoc.value = "CC";
+            var tipoDoc = getTipoDoc();
+            var docOpt = Array.from(fTipDoc.options).find(function (o) { return o.value === tipoDoc; });
+            if (docOpt) fTipDoc.value = tipoDoc;
         }
         if (persona) {
-            if (fNom) fNom.value = persona.nom_persona || "";
-            if (fApe) fApe.value = persona.ape_persona || "";
-            if (fTip && persona.id_tipo_persona) fTip.value = String(persona.id_tipo_persona);
+            if (fNom) fNom.value = persona.nombres || persona.nom_persona || "";
+            if (fApe) fApe.value = persona.apellidos || persona.ape_persona || "";
+            var idTipo = persona.tipo_persona || persona.id_tipo_persona;
+            if (fTip && idTipo) fTip.value = String(idTipo);
+        } else if (ingreso) {
+            if (fNom) fNom.value = ingreso.nombres || ingreso.nom_persona || "";
+            if (fApe) fApe.value = ingreso.apellidos || ingreso.ape_persona || "";
+            var idTipoIng = ingreso.tipo_persona || ingreso.id_tipo_persona;
+            if (fTip && idTipoIng) fTip.value = String(idTipoIng);
         }
         if (hidIngreso && ingreso) hidIngreso.value = String(ingreso.id_ingreso);
     }
@@ -101,9 +113,13 @@
         var ingreso = data && data.ingreso_abierto;
 
         if (puedeSalir && (persona || ingreso)) {
-            var nombre = persona
-                ? (persona.nom_persona + " " + (persona.ape_persona || "")).trim()
-                : ((ingreso.nom_persona || "") + " " + (ingreso.ape_persona || "")).trim();
+            var nomPersona = (persona && (persona.nombres || persona.nom_persona))
+                || (ingreso && (ingreso.nombres || ingreso.nom_persona))
+                || "";
+            var apePersona = (persona && (persona.apellidos || persona.ape_persona))
+                || (ingreso && (ingreso.apellidos || ingreso.ape_persona))
+                || "";
+            var nombre = (nomPersona + " " + apePersona).trim();
             var tipoNom = (persona && persona.nom_tipo_persona)
                 || (ingreso && ingreso.nom_tipo_persona)
                 || "Registrado";
@@ -111,15 +127,16 @@
             f.style.display = "block";
             document.getElementById("dm-persona-nombre").textContent    = nombre;
             document.getElementById("dm-persona-tipo-text").textContent = tipoNom;
-            document.getElementById("dm-persona-doc-text").textContent  = "CC " + num;
-            document.getElementById("dm-confirm-name").textContent      = (persona && persona.nom_persona)
-                ? persona.nom_persona.split(" ")[0]
+            document.getElementById("dm-persona-doc-text").textContent  = getTipoDoc() + " " + num;
+            document.getElementById("dm-confirm-name").textContent      = nomPersona
+                ? nomPersona.split(" ")[0]
                 : nombre.split(" ")[0];
             aplicarDatosFormulario(data);
         } else {
             var s = document.getElementById("dm-persona-sin-ingreso");
             s.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:16px var(--dm-pad)";
-            document.getElementById("hid_id_ingreso").value = "";
+            var hidIngreso = document.getElementById("hid_id_ingreso");
+            if (hidIngreso) hidIngreso.value = "";
         }
     }
 
@@ -202,8 +219,18 @@
     btnFinal.addEventListener("click", function() {
         var hidPuerta = document.getElementById("sel_entrada");
         if (hidPuerta) hidPuerta.value = puerta;
+        document.querySelectorAll(".ing-puerta").forEach(function (b) {
+            b.classList.toggle("is-selected", b.dataset.puerta === puerta);
+        });
         if (fetchResult) aplicarDatosFormulario(fetchResult);
-        document.getElementById("form_salida").submit();
+
+        var form = document.getElementById("form_salida");
+        if (form && typeof form.requestSubmit === "function") {
+            form.requestSubmit();
+        } else {
+            var btnReg = document.getElementById("btn_registrar_salida");
+            if (btnReg) btnReg.click();
+        }
     });
 
     modalEl.addEventListener("show.bs.modal", function() {
@@ -224,8 +251,5 @@
     var btnAbrirKiosk = document.getElementById("btn_abrir_modal_kiosk");
     if (btnAbrirKiosk) {
         btnAbrirKiosk.addEventListener("click", function () { modal.show(); });
-    }
-    if (isDesktopKiosk) {
-        modal.show();
     }
 })();

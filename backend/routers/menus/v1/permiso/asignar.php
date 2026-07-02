@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Asignar permiso individual de menú",
+ *   "tags": ["Menús"],
+ *   "requestBody": {
+ *     "required": ["id_usuario", "id_menu"],
+ *     "properties": {
+ *       "id_usuario": { "type": "string" },
+ *       "id_menu": { "type": "string" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Permiso asignado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

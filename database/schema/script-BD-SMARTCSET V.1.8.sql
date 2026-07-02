@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict OvcI2pyikl2e4uSUwtCNPZagm5w2eRHbWFBL8DbW5FWJSwCHjwiiGI6jDGYVq9c
+\restrict i4eEGgAcgIyteo6StLYtzPUlRUw1QaAm8uaXUFNsnzyl4cbN0hPaBoKdGjHJij9
 
 -- Dumped from database version 18.4 (Ubuntu 18.4-1.pgdg24.04+1)
 -- Dumped by pg_dump version 18.4 (Ubuntu 18.4-1.pgdg24.04+1)
@@ -18,6 +18,13 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA public IS '';
+
 
 --
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
@@ -198,29 +205,44 @@ $$;
 CREATE FUNCTION public.fun_act_tabla() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-    DECLARE wid_consec tab_borrados.id_consec%TYPE;
-    BEGIN
-        IF TG_OP = 'INSERT' THEN
-           NEW.usr_insert = CURRENT_USER;
-           NEW.fec_insert = CURRENT_TIMESTAMP;
-           RETURN NEW;
+DECLARE
+    w_usuario   TEXT;
+    wid_consec  tab_borrados.id_consec%TYPE;
+BEGIN
+    -- Intenta leer el usuario SmartCSET seteado por PHP en esta sesión.
+    -- El segundo argumento TRUE evita error si la variable no existe.
+    w_usuario := NULLIF(TRIM(current_setting('app.usuario', TRUE)), '');
+
+    -- Si no hay usuario de app (conexión directa a la BD), usa el
+    -- usuario de conexión PostgreSQL como fallback.
+    IF w_usuario IS NULL THEN
+        w_usuario := CURRENT_USER;
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        NEW.usr_insert = w_usuario;
+        NEW.fec_insert = CURRENT_TIMESTAMP;
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'UPDATE' THEN
+        NEW.usr_update = w_usuario;
+        NEW.fec_update = CURRENT_TIMESTAMP;
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'INSERT OR UPDATE' THEN
+        SELECT MAX(a.id_consec) INTO wid_consec FROM tab_borrados a;
+        IF wid_consec IS NULL THEN
+            wid_consec = 1;
+        ELSE
+            wid_consec = wid_consec + 1;
         END IF;
-        IF TG_OP = 'UPDATE' THEN
-           NEW.usr_update = CURRENT_USER;
-           NEW.fec_update = CURRENT_TIMESTAMP;
-           RETURN NEW;
-        END IF;
-        IF TG_OP = 'INSERT OR UPDATE' THEN
-            SELECT MAX(a.id_consec) INTO wid_consec FROM tab_borrados a;
-            IF wid_consec IS NULL THEN
-                wid_consec = 1;
-            ELSE
-                wid_consec = wid_consec + 1;
-            END IF;
-            INSERT INTO tab_borrados VALUES(wid_consec,TG_RELNAME,CURRENT_USER,CURRENT_TIMESTAMP);
-            RETURN OLD; 
-        END IF;
-    END;
+        INSERT INTO tab_borrados
+        VALUES (wid_consec, TG_RELNAME, w_usuario, CURRENT_TIMESTAMP);
+        RETURN OLD;
+    END IF;
+END;
 $$;
 
 
@@ -233,12 +255,16 @@ CREATE FUNCTION public.fun_actualizar_aprendiz(wid_persona numeric, wid_tipo_doc
     AS $_$
 DECLARE
     v_tipo_aprendiz CONSTANT DECIMAL(2,0) := 2;
-    v_nom           VARCHAR(40);
-    v_ape           VARCHAR(30);
-    v_dir           VARCHAR(100);
-    v_contacto      VARCHAR(60);
-    v_mail_norm     TEXT;
-    v_datos         datos_personales_aprendiz;
+    v_nom            VARCHAR(40);
+    v_ape            VARCHAR(30);
+    v_dir            VARCHAR(100);
+    v_contacto       VARCHAR(60);
+    v_mail_norm      TEXT;
+    v_datos          datos_personales_aprendiz;
+    w_exc_state      TEXT;
+    w_exc_msg        TEXT;
+    w_exc_detail     TEXT;
+    w_exc_hint       TEXT;
 BEGIN
     IF wusr IS NULL OR LENGTH(TRIM(wusr)) < 3 THEN
         PERFORM smartcset_raise_validacion('El usuario de auditoría no es válido.');
@@ -469,7 +495,12 @@ EXCEPTION
     WHEN unique_violation THEN
         PERFORM smartcset_raise_negocio('Ya existe un registro con esos datos.');
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $_$;
 
@@ -481,6 +512,11 @@ $_$;
 CREATE FUNCTION public.fun_actualizar_password(wid_usuario text, wpass_nuevo text) RETURNS text
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_usuario IS NULL OR TRIM(wid_usuario) = '' THEN
         PERFORM smartcset_raise_validacion('El usuario es obligatorio.');
@@ -510,7 +546,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -522,6 +563,11 @@ $$;
 CREATE FUNCTION public.fun_actualizar_sesion_actividad(p_id_sesion integer, p_ult_ruta character varying DEFAULT NULL::character varying, p_ult_menu_id character varying DEFAULT NULL::character varying) RETURNS text
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF p_id_sesion IS NULL OR p_id_sesion < 1 THEN
         RETURN 'OK';
@@ -539,7 +585,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -552,7 +603,11 @@ CREATE FUNCTION public.fun_archivar_sesiones_antiguas(p_dias integer DEFAULT 7) 
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    w_eliminados INTEGER;
+    w_eliminados  INTEGER;
+    w_exc_state   TEXT;
+    w_exc_msg     TEXT;
+    w_exc_detail  TEXT;
+    w_exc_hint    TEXT;
 BEGIN
     IF p_dias IS NULL OR p_dias < 1 THEN
         PERFORM smartcset_raise_validacion('Los días de retención deben ser al menos 1.');
@@ -584,7 +639,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -597,7 +657,11 @@ CREATE FUNCTION public.fun_buscar_ingreso_abierto(wid_visitante numeric) RETURNS
     LANGUAGE plpgsql STABLE
     AS $$
 DECLARE
-    wid_ingreso INTEGER;
+    wid_ingreso  INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_visitante IS NULL OR wid_visitante < 1 THEN
         RETURN NULL;
@@ -616,7 +680,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
         RETURN NULL;
 END;
 $$;
@@ -630,7 +699,11 @@ CREATE FUNCTION public.fun_cifrar_documento(wtexto text) RETURNS bytea
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
-    vclave TEXT;
+    vclave       TEXT;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wtexto IS NULL THEN
         RETURN NULL;
@@ -647,8 +720,15 @@ BEGIN
 
     RETURN pgp_sym_encrypt(wtexto, vclave);
 EXCEPTION
-    WHEN SQLSTATE 'P0001' THEN RAISE;
-    WHEN OTHERS THEN PERFORM smartcset_handle_sql_error();
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -810,6 +890,11 @@ $$;
 CREATE FUNCTION public.fun_delete_tab_entradas_centro(wid_entrada_centro numeric) RETURNS text
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_entrada_centro IS NULL OR wid_entrada_centro < 1 OR wid_entrada_centro > 9 THEN
         PERFORM smartcset_raise_validacion(
@@ -840,7 +925,12 @@ EXCEPTION
             'Cierre o reasigne los ingresos asociados antes de eliminar la puerta.'
         );
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -906,7 +996,11 @@ CREATE FUNCTION public.fun_descifrar_documento(wenc bytea) RETURNS text
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
-    vclave TEXT;
+    vclave       TEXT;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wenc IS NULL THEN
         RETURN NULL;
@@ -923,8 +1017,15 @@ BEGIN
 
     RETURN pgp_sym_decrypt(wenc, vclave);
 EXCEPTION
-    WHEN SQLSTATE 'P0001' THEN RAISE;
-    WHEN OTHERS THEN PERFORM smartcset_handle_sql_error();
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -937,7 +1038,11 @@ CREATE FUNCTION public.fun_ingreso_sesion(p_user character varying, p_ip_cliente
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    w_id_sesion tab_sesiones.id_sesion%TYPE;
+    w_id_sesion  tab_sesiones.id_sesion%TYPE;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF p_user IS NULL OR TRIM(p_user) = '' THEN
         PERFORM smartcset_raise_validacion('El usuario de sesión es obligatorio.');
@@ -991,22 +1096,31 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_insert_log_ingreso(numeric, numeric, numeric, jsonb, text, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_insert_log_ingreso(numeric, numeric, numeric, jsonb, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_insert_log_ingreso(wid_visitante numeric, wid_metodo_aut numeric, wid_entrada_centro numeric, wval_datos_origen jsonb, wval_observaciones text, wusr character varying) RETURNS integer
+CREATE FUNCTION public.fun_insert_log_ingreso(wid_visitante numeric, wid_metodo_aut numeric, wid_entrada_centro numeric, wval_datos_origen jsonb, wval_observaciones text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     wid_ingreso    INTEGER;
     wts_ingreso    TIMESTAMP WITHOUT TIME ZONE;
     wid_existente  INTEGER;
+    w_exc_state    TEXT;
+    w_exc_msg      TEXT;
+    w_exc_detail   TEXT;
+    w_exc_hint     TEXT;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM tab_personas WHERE id_persona = wid_visitante) THEN
         PERFORM smartcset_raise_no_encontrado(
@@ -1049,12 +1163,10 @@ BEGIN
 
     INSERT INTO tab_log_ingresos (
         id_ingreso, id_visitante, fec_ingreso, fec_salida,
-        id_metodo_aut, id_entrada_centro, val_datos_origen, val_observaciones,
-        usr_insert, fec_insert
+        id_metodo_aut, id_entrada_centro, val_datos_origen, val_observaciones
     ) VALUES (
         wid_ingreso, wid_visitante, wts_ingreso, wts_ingreso,
-        wid_metodo_aut, wid_entrada_centro, wval_datos_origen, wval_observaciones,
-        wusr, wts_ingreso
+        wid_metodo_aut, wid_entrada_centro, wval_datos_origen, wval_observaciones
     );
 
     RETURN wid_ingreso;
@@ -1068,7 +1180,12 @@ EXCEPTION
             'Use el módulo Registro salida.'
         );
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -1080,6 +1197,11 @@ $$;
 CREATE FUNCTION public.fun_insert_menu_usuarios(p_id_usuario character varying, p_id_menu character varying) RETURNS void
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM tab_usuarios WHERE id_usuario = p_id_usuario) THEN
         PERFORM smartcset_raise_no_encontrado(
@@ -1102,7 +1224,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -1115,7 +1242,11 @@ CREATE FUNCTION public.fun_insert_tab_menus(wid_menu character varying, wnom_men
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    v_nom_len INTEGER;
+    v_nom_len    INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_menu IS NULL OR TRIM(wid_menu) = '' THEN
         PERFORM smartcset_raise_validacion('El ID del menú es obligatorio.');
@@ -1161,7 +1292,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -1173,6 +1309,11 @@ $$;
 CREATE FUNCTION public.fun_insert_tab_usuarios(wid_usuario character varying, wnom_usuario character varying, wpass_usuario character varying, wmail_usuario public.mail_personal, wind_usuario boolean, wind_estado boolean) RETURNS text
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_usuario IS NULL OR LENGTH(TRIM(wid_usuario)) < 5 THEN
         PERFORM smartcset_raise_validacion(
@@ -1201,7 +1342,12 @@ EXCEPTION
     WHEN unique_violation THEN
         PERFORM smartcset_raise_negocio('El usuario ya está registrado.');
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -1807,12 +1953,16 @@ CREATE FUNCTION public.fun_registrar_aprendiz(wid_persona numeric, wid_tipo_docu
     AS $_$
 DECLARE
     v_tipo_aprendiz CONSTANT DECIMAL(2,0) := 2;
-    v_nom           VARCHAR(40);
-    v_ape           VARCHAR(30);
-    v_dir           VARCHAR(100);
-    v_contacto      VARCHAR(60);
-    v_mail_norm     TEXT;
-    v_datos         datos_personales_aprendiz;
+    v_nom            VARCHAR(40);
+    v_ape            VARCHAR(30);
+    v_dir            VARCHAR(100);
+    v_contacto       VARCHAR(60);
+    v_mail_norm      TEXT;
+    v_datos          datos_personales_aprendiz;
+    w_exc_state      TEXT;
+    w_exc_msg        TEXT;
+    w_exc_detail     TEXT;
+    w_exc_hint       TEXT;
 BEGIN
     IF wusr IS NULL OR LENGTH(TRIM(wusr)) < 3 THEN
         PERFORM smartcset_raise_validacion('El usuario de auditoría no es válido.');
@@ -2024,7 +2174,12 @@ EXCEPTION
     WHEN unique_violation THEN
         PERFORM smartcset_raise_negocio('Ya existe un registro con esos datos.');
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $_$;
 
@@ -2038,6 +2193,10 @@ CREATE FUNCTION public.fun_registrar_contratista(wid_persona numeric, wid_tipo_d
     AS $$
 DECLARE
     wtipo_contratista CONSTANT DECIMAL(2,0) := 5;
+    w_exc_state       TEXT;
+    w_exc_msg         TEXT;
+    w_exc_detail      TEXT;
+    w_exc_hint        TEXT;
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM tab_tipos_persona WHERE id_tipo_persona = wtipo_contratista
@@ -2073,7 +2232,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -2087,6 +2251,10 @@ CREATE FUNCTION public.fun_registrar_funcionario(wid_persona numeric, wid_tipo_d
     AS $$
 DECLARE
     wtipo_funcionario CONSTANT DECIMAL(2,0) := 4;
+    w_exc_state       TEXT;
+    w_exc_msg         TEXT;
+    w_exc_detail      TEXT;
+    w_exc_hint        TEXT;
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM tab_tipos_persona WHERE id_tipo_persona = wtipo_funcionario
@@ -2174,22 +2342,31 @@ EXCEPTION
             'Revise los catálogos seleccionados (área o cargo).'
         );
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_registrar_ingreso_manual(numeric, character varying, numeric, character varying, character varying, numeric, text, character varying, numeric, boolean); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_registrar_ingreso_manual(numeric, character varying, numeric, character varying, character varying, numeric, text, numeric, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_registrar_ingreso_manual(wid_persona numeric, wid_tipo_docum character varying, wid_tipo_persona numeric, wnom_persona character varying, wape_persona character varying, wid_entrada_centro numeric, wval_observaciones text, wusr character varying, wid_metodo_aut numeric DEFAULT 1, wcaptura_pdf417 boolean DEFAULT false) RETURNS integer
+CREATE FUNCTION public.fun_registrar_ingreso_manual(wid_persona numeric, wid_tipo_docum character varying, wid_tipo_persona numeric, wnom_persona character varying, wape_persona character varying, wid_entrada_centro numeric, wval_observaciones text, wid_metodo_aut numeric DEFAULT 1, wcaptura_pdf417 boolean DEFAULT false) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    wid_ingreso  INTEGER;
-    wjson_origen JSONB;
-    worigen_txt  TEXT;
+    wid_ingreso    INTEGER;
+    wjson_origen   JSONB;
+    worigen_txt    TEXT;
+    w_exc_state    TEXT;
+    w_exc_msg      TEXT;
+    w_exc_detail   TEXT;
+    w_exc_hint     TEXT;
 BEGIN
     IF wid_metodo_aut IS NULL OR wid_metodo_aut < 1 THEN
         wid_metodo_aut := 1;
@@ -2207,6 +2384,7 @@ BEGIN
         WHEN wid_metodo_aut = 2 THEN 'codigo_qr'
         ELSE 'registro_manual'
     END;
+
     IF wid_entrada_centro IS NULL OR wid_entrada_centro < 1 OR wid_entrada_centro > 9 THEN
         PERFORM smartcset_raise_validacion(
             'La puerta de ingreso debe estar entre 1 y 9.',
@@ -2215,7 +2393,7 @@ BEGIN
     END IF;
 
     PERFORM fun_upsert_persona_visitante(
-        wid_persona, wid_tipo_docum, wid_tipo_persona, wnom_persona, wape_persona, wusr
+        wid_persona, wid_tipo_docum, wid_tipo_persona, wnom_persona, wape_persona
     );
 
     wjson_origen := jsonb_build_object(
@@ -2234,18 +2412,26 @@ BEGIN
         wid_metodo_aut,
         wid_entrada_centro,
         wjson_origen,
-        NULLIF(TRIM(wval_observaciones), ''),
-        wusr
+        NULLIF(TRIM(wval_observaciones), '')
     );
 
-    PERFORM fun_update_persona_tras_ingreso(wid_persona, wusr);
+    PERFORM fun_update_persona_tras_ingreso(wid_persona);
+
+    IF wid_tipo_persona = 2 THEN
+        PERFORM fun_verify_retardo_aprendiz(wid_persona, CURRENT_TIMESTAMP);
+    END IF;
 
     RETURN wid_ingreso;
 EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -2259,6 +2445,10 @@ CREATE FUNCTION public.fun_registrar_instructor(wid_persona numeric, wid_tipo_do
     AS $$
 DECLARE
     wid_tipo_instructor CONSTANT DECIMAL(2,0) := 3;
+    w_exc_state         TEXT;
+    w_exc_msg           TEXT;
+    w_exc_detail        TEXT;
+    w_exc_hint          TEXT;
 BEGIN
     IF wid_persona IS NULL OR wid_persona <= 20000000 THEN
         PERFORM smartcset_raise_validacion(
@@ -2436,7 +2626,54 @@ EXCEPTION
     WHEN unique_violation THEN
         PERFORM smartcset_raise_negocio('Ya existe un registro con esos datos.');
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_registrar_intento_login(character varying, character varying, boolean); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_registrar_intento_login(wip_cliente character varying, wid_usuario character varying, wind_exitoso boolean) RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    IF wip_cliente IS NULL OR LENGTH(TRIM(wip_cliente)) < 7 THEN
+        PERFORM smartcset_raise_validacion(
+            'IP de cliente inválida.',
+            'ip_cliente=' || COALESCE(wip_cliente, 'NULL')
+        );
+    END IF;
+
+    INSERT INTO tab_intentos_login (ip_cliente, id_usuario, ind_exitoso)
+    VALUES (wip_cliente, wid_usuario, wind_exitoso);
+
+    -- Limpiar registros de más de 90 días para no crecer indefinidamente
+    DELETE FROM tab_intentos_login
+    WHERE fec_intento < CURRENT_TIMESTAMP - INTERVAL '90 days';
+
+    RETURN 'OK';
+EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -2449,7 +2686,11 @@ CREATE FUNCTION public.fun_registrar_persona(wid_persona numeric, wid_tipo_docum
     LANGUAGE plpgsql
     AS $_$
 DECLARE
-    wmail_norm TEXT;
+    wmail_norm   TEXT;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_persona IS NULL OR wid_persona < 1 THEN
         PERFORM smartcset_raise_validacion(
@@ -2629,20 +2870,29 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $_$;
 
 
 --
--- Name: fun_registrar_salida_manual(numeric, character varying, text, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_registrar_salida_manual(numeric, character varying, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_registrar_salida_manual(wid_persona numeric, wid_tipo_docum character varying, wval_observaciones text, wusr character varying) RETURNS integer
+CREATE FUNCTION public.fun_registrar_salida_manual(wid_persona numeric, wid_tipo_docum character varying, wval_observaciones text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    wid_ingreso INTEGER;
+    wid_ingreso  INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_persona IS NULL OR wid_persona < 1 THEN
         PERFORM smartcset_raise_validacion(
@@ -2656,9 +2906,7 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1
-          FROM tab_personas
-         WHERE id_persona = wid_persona
+        SELECT 1 FROM tab_personas WHERE id_persona = wid_persona
     ) THEN
         PERFORM smartcset_raise_no_encontrado(
             'No hay visitante registrado con ese documento.',
@@ -2678,18 +2926,22 @@ BEGIN
 
     wid_ingreso := fun_update_log_salida(
         wid_ingreso,
-        NULLIF(TRIM(wval_observaciones), ''),
-        wusr
+        NULLIF(TRIM(wval_observaciones), '')
     );
 
-    PERFORM fun_update_persona_tras_salida(wid_persona, wusr);
+    PERFORM fun_update_persona_tras_salida(wid_persona);
 
     RETURN wid_ingreso;
 EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -2702,7 +2954,11 @@ CREATE FUNCTION public.fun_salida_sesion(p_id_sesion integer, p_cod_cierre chara
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    w_cod tab_sesiones.cod_cierre%TYPE;
+    w_cod        tab_sesiones.cod_cierre%TYPE;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF p_id_sesion IS NULL OR p_id_sesion < 1 THEN
         PERFORM smartcset_raise_validacion('El identificador de sesión es obligatorio.');
@@ -2725,7 +2981,437 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_actividad_fisica(date, date, text, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_actividad_fisica(wfecha_desde date DEFAULT NULL::date, wfecha_hasta date DEFAULT NULL::date, wtipo_persona text DEFAULT NULL::text, wlimit integer DEFAULT 50, woffset integer DEFAULT 0) RETURNS TABLE(id_log numeric, nom_persona character varying, id_persona character varying, nom_tipo_persona character varying, nom_entrada character varying, fec_ingreso timestamp without time zone, fec_salida timestamp without time zone, abierto boolean, total_filas bigint)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        l.id_ingreso::NUMERIC,
+        p.nom_persona::VARCHAR,
+        l.id_visitante::VARCHAR AS id_persona,
+        tp.nom_tipo_persona,
+        e.nom_entrada_centro AS nom_entrada,
+        l.fec_ingreso,
+        l.fec_salida,
+        (l.fec_salida = l.fec_ingreso) AS abierto,
+        COUNT(*) OVER() AS total_filas
+    FROM tab_log_ingresos l
+    JOIN tab_personas          p  ON p.id_persona         = l.id_visitante
+    JOIN tab_tipos_persona     tp ON tp.id_tipo_persona    = p.id_tipo_persona
+    JOIN tab_entradas_centro   e  ON e.id_entrada_centro   = l.id_entrada_centro
+    WHERE
+        (wfecha_desde IS NULL OR DATE(l.fec_ingreso) >= wfecha_desde)
+        AND (wfecha_hasta IS NULL OR DATE(l.fec_ingreso) <= wfecha_hasta)
+        AND (wtipo_persona IS NULL OR wtipo_persona = ''
+             OR tp.nom_tipo_persona ILIKE '%' || wtipo_persona || '%')
+    ORDER BY l.fec_ingreso DESC
+    LIMIT wlimit OFFSET woffset;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_alertas_recientes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_alertas_recientes() RETURNS TABLE(tipo text, descripcion text, ip_cliente character varying, fec_evento timestamp without time zone, severidad text)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        CASE
+            WHEN bloqueo.ip_cliente IS NOT NULL THEN 'IP_BLOQUEADA'
+            ELSE 'FALLO_AUTH'
+        END AS tipo,
+        CASE
+            WHEN bloqueo.ip_cliente IS NOT NULL
+                THEN 'IP bloqueada por ' || bloqueo.total_fallos || ' intentos fallidos'
+            ELSE 'Intento fallido: usuario ' || COALESCE(t.id_usuario, '(desconocido)')
+        END AS descripcion,
+        t.ip_cliente,
+        t.fec_intento AS fec_evento,
+        CASE
+            WHEN bloqueo.ip_cliente IS NOT NULL THEN 'danger'
+            ELSE 'warning'
+        END AS severidad
+    FROM tab_intentos_login t
+    LEFT JOIN (
+        SELECT il.ip_cliente, COUNT(*) AS total_fallos
+        FROM tab_intentos_login il
+        WHERE il.fec_intento >= NOW() - INTERVAL '15 minutes'
+          AND il.ind_exitoso = FALSE
+        GROUP BY il.ip_cliente
+        HAVING COUNT(*) >= 5
+    ) bloqueo ON bloqueo.ip_cliente = t.ip_cliente
+    WHERE t.ind_exitoso = FALSE
+    ORDER BY t.fec_intento DESC
+    LIMIT 8;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_dashboard_kpis(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_dashboard_kpis() RETURNS TABLE(total_intentos_hoy bigint, fallos_hoy bigint, ips_bloqueadas bigint, sesiones_activas bigint)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        (SELECT COUNT(*) FROM tab_intentos_login
+         WHERE DATE(fec_intento) = CURRENT_DATE)::BIGINT,
+
+        (SELECT COUNT(*) FROM tab_intentos_login
+         WHERE DATE(fec_intento) = CURRENT_DATE
+           AND ind_exitoso = FALSE)::BIGINT,
+
+        (SELECT COUNT(DISTINCT ip_cliente) FROM tab_intentos_login
+         WHERE fec_intento >= NOW() - INTERVAL '15 minutes'
+           AND ind_exitoso = FALSE
+         GROUP BY ip_cliente
+         HAVING COUNT(*) >= 5)::BIGINT,
+
+        (SELECT COUNT(*) FROM tab_sesiones
+         WHERE fec_fin IS NULL)::BIGINT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_desbloquear_ip(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_desbloquear_ip(wip_cliente text, wid_operador text) RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    IF wip_cliente IS NULL OR TRIM(wip_cliente) = '' THEN
+        PERFORM smartcset_raise_validacion('La IP es obligatoria.');
+    END IF;
+
+    DELETE FROM tab_intentos_login
+    WHERE ip_cliente = wip_cliente
+      AND ind_exitoso = FALSE
+      AND fec_intento >= NOW() - INTERVAL '30 minutes';
+
+    RETURN 'OK';
+
+EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN RAISE;
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_eventos_por_hora(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_eventos_por_hora() RETURNS TABLE(hora integer, exitosos bigint, fallidos bigint)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        EXTRACT(HOUR FROM fec_intento)::INT AS hora,
+        COUNT(*) FILTER (WHERE ind_exitoso = TRUE)  AS exitosos,
+        COUNT(*) FILTER (WHERE ind_exitoso = FALSE) AS fallidos
+    FROM tab_intentos_login
+    WHERE fec_intento >= NOW() - INTERVAL '24 hours'
+    GROUP BY EXTRACT(HOUR FROM fec_intento)
+    ORDER BY hora;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_forzar_cierre_sesion(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_forzar_cierre_sesion(wid_sesion text, wid_operador text) RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    IF wid_sesion IS NULL OR TRIM(wid_sesion) = '' THEN
+        PERFORM smartcset_raise_validacion('El ID de sesión es obligatorio.');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM tab_sesiones WHERE id_sesion = wid_sesion::INTEGER) THEN
+        PERFORM smartcset_raise_negocio('La sesión no existe.');
+    END IF;
+
+    UPDATE tab_sesiones
+    SET fec_fin    = NOW(),
+        usr_cierre = wid_operador,
+        cod_cierre = 'ADMIN'
+    WHERE id_sesion = wid_sesion::INTEGER
+      AND fec_fin IS NULL;
+
+    RETURN 'OK';
+
+EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN RAISE;
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_ips_bloqueadas(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_ips_bloqueadas(wmax_intentos integer DEFAULT 5, wventana_minutos integer DEFAULT 15) RETURNS TABLE(ip_cliente character varying, total_intentos bigint, ultimo_intento timestamp without time zone, minutos_expira integer, expirada boolean)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        t.ip_cliente,
+        COUNT(*)                      AS total_intentos,
+        MAX(t.fec_intento)            AS ultimo_intento,
+        GREATEST(0,
+            wventana_minutos - EXTRACT(EPOCH FROM (NOW() - MIN(t.fec_intento)))::INT / 60
+        )                             AS minutos_expira,
+        (MAX(t.fec_intento) < NOW() - (wventana_minutos || ' minutes')::INTERVAL) AS expirada
+    FROM tab_intentos_login t
+    WHERE t.ind_exitoso = FALSE
+      AND t.fec_intento >= NOW() - (wventana_minutos * 2 || ' minutes')::INTERVAL
+    GROUP BY t.ip_cliente
+    HAVING COUNT(*) >= wmax_intentos
+    ORDER BY MAX(t.fec_intento) DESC;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_list_eventos(text, text, date, date, text, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_list_eventos(wip_cliente text DEFAULT NULL::text, wid_usuario text DEFAULT NULL::text, wfecha_desde date DEFAULT NULL::date, wfecha_hasta date DEFAULT NULL::date, wind_exitoso text DEFAULT NULL::text, wlimit integer DEFAULT 50, woffset integer DEFAULT 0) RETURNS TABLE(ip_cliente character varying, id_usuario character varying, ind_exitoso boolean, fec_intento timestamp without time zone, total_filas bigint)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        t.ip_cliente,
+        t.id_usuario,
+        t.ind_exitoso,
+        t.fec_intento,
+        COUNT(*) OVER() AS total_filas
+    FROM tab_intentos_login t
+    WHERE
+        (wip_cliente IS NULL OR wip_cliente = ''  OR t.ip_cliente ILIKE '%' || wip_cliente || '%')
+        AND (wid_usuario IS NULL OR wid_usuario = '' OR t.id_usuario ILIKE '%' || wid_usuario || '%')
+        AND (wfecha_desde IS NULL OR DATE(t.fec_intento) >= wfecha_desde)
+        AND (wfecha_hasta IS NULL OR DATE(t.fec_intento) <= wfecha_hasta)
+        AND (wind_exitoso IS NULL OR wind_exitoso = ''
+             OR (wind_exitoso = 'true'  AND t.ind_exitoso = TRUE)
+             OR (wind_exitoso = 'false' AND t.ind_exitoso = FALSE))
+    ORDER BY t.fec_intento DESC
+    LIMIT wlimit OFFSET woffset;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_sesiones_activas(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_sesiones_activas() RETURNS TABLE(id_sesion text, id_usuario character varying, nom_usuario character varying, ip_cliente character varying, fec_ingreso timestamp without time zone, fec_actividad timestamp without time zone, minutos_activo integer)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        s.id_sesion::TEXT,
+        s.id_usuario,
+        u.nom_usuario,
+        s.ip_cliente,
+        s.fec_inicio      AS fec_ingreso,
+        s.ult_actividad   AS fec_actividad,
+        EXTRACT(EPOCH FROM (NOW() - s.fec_inicio))::INT / 60 AS minutos_activo
+    FROM tab_sesiones s
+    JOIN tab_usuarios u ON u.id_usuario = s.id_usuario
+    WHERE s.fec_fin IS NULL
+    ORDER BY s.fec_inicio DESC;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_siem_top_ips_fallidas(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_siem_top_ips_fallidas() RETURNS TABLE(ip_cliente character varying, total_fallos bigint, ultimo_fallo timestamp without time zone, bloqueada boolean)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
+BEGIN
+    RETURN QUERY
+    SELECT
+        t.ip_cliente,
+        COUNT(*) AS total_fallos,
+        MAX(t.fec_intento) AS ultimo_fallo,
+        (COUNT(*) FILTER (
+            WHERE t.fec_intento >= NOW() - INTERVAL '15 minutes'
+        ) >= 5) AS bloqueada
+    FROM tab_intentos_login t
+    WHERE DATE(t.fec_intento) = CURRENT_DATE
+      AND t.ind_exitoso = FALSE
+    GROUP BY t.ip_cliente
+    ORDER BY total_fallos DESC
+    LIMIT 5;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -2791,17 +3477,37 @@ $$;
 
 
 --
--- Name: fun_update_log_salida(integer, text, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_update_log_salida(integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_update_log_salida(wid_ingreso integer, wval_observaciones text, wusr character varying) RETURNS integer
+CREATE FUNCTION public.fun_update_log_salida(wid_ingreso integer, wval_observaciones text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    wts_salida TIMESTAMP WITHOUT TIME ZONE;
-    wrows      INTEGER;
+    wts_salida   TIMESTAMP WITHOUT TIME ZONE;
+    wts_ingreso  TIMESTAMP WITHOUT TIME ZONE;
+    wrows        INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
+    SELECT fec_ingreso
+      INTO wts_ingreso
+      FROM tab_log_ingresos
+     WHERE id_ingreso = wid_ingreso;
+
+    IF NOT FOUND THEN
+        PERFORM smartcset_raise_no_encontrado(
+            'No existe el registro de ingreso indicado.',
+            'id_ingreso=' || wid_ingreso::TEXT
+        );
+    END IF;
+
     wts_salida := CURRENT_TIMESTAMP;
+    IF wts_salida <= wts_ingreso THEN
+        wts_salida := wts_ingreso + interval '1 microsecond';
+    END IF;
 
     UPDATE tab_log_ingresos
     SET fec_salida = wts_salida,
@@ -2812,9 +3518,7 @@ BEGIN
                     ELSE TRIM(val_observaciones) || ' | Salida: ' || TRIM(wval_observaciones)
                 END
             ELSE val_observaciones
-        END,
-        usr_update = wusr,
-        fec_update = wts_salida
+        END
     WHERE id_ingreso = wid_ingreso
       AND fec_salida = fec_ingreso;
 
@@ -2840,24 +3544,32 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_update_persona_tras_ingreso(numeric, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_update_persona_tras_ingreso(numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_update_persona_tras_ingreso(wid_persona numeric, wusr character varying) RETURNS void
+CREATE FUNCTION public.fun_update_persona_tras_ingreso(wid_persona numeric) RETURNS void
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     UPDATE tab_personas
     SET fec_ultima_entrada = CURRENT_TIMESTAMP,
-        num_visitas        = num_visitas + 1,
-        usr_update         = wusr,
-        fec_update         = CURRENT_TIMESTAMP
+        num_visitas        = num_visitas + 1
     WHERE id_persona = wid_persona;
 
     IF NOT FOUND THEN
@@ -2870,23 +3582,31 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_update_persona_tras_salida(numeric, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_update_persona_tras_salida(numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_update_persona_tras_salida(wid_persona numeric, wusr character varying) RETURNS void
+CREATE FUNCTION public.fun_update_persona_tras_salida(wid_persona numeric) RETURNS void
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     UPDATE tab_personas
-    SET fec_ultima_salida = CURRENT_TIMESTAMP,
-        usr_update        = wusr,
-        fec_update        = CURRENT_TIMESTAMP
+    SET fec_ultima_salida = CURRENT_TIMESTAMP
     WHERE id_persona = wid_persona;
 
     IF NOT FOUND THEN
@@ -2899,18 +3619,28 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_update_tab_config_sistema(boolean, boolean, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_update_tab_config_sistema(boolean, boolean, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_update_tab_config_sistema(wind_modulo_registro boolean, wind_login_registro_standalone boolean, wnom_sistema character varying, wpath_logo character varying, wcolor_primario character varying, wcolor_secundario character varying, wtheme_bg_deep character varying, wtheme_bg_card character varying, wtheme_bg_panel character varying, wtheme_accent character varying, wtheme_accent_dim character varying, wtheme_blue character varying, wtheme_purple character varying, wtheme_orange character varying, wtheme_text_primary character varying, wtheme_text_muted character varying, wtheme_border character varying, wtheme_error character varying, wtheme_success character varying, wtheme_font_display character varying, wtheme_font_body character varying, wtheme_light_bg_deep character varying, wtheme_light_bg_card character varying, wtheme_light_accent character varying, wtheme_light_text_primary character varying, wtheme_light_text_muted character varying, wusr_registro character varying, wpass_registro_hash character varying, wusr_update character varying) RETURNS text
+CREATE FUNCTION public.fun_update_tab_config_sistema(wind_modulo_registro boolean, wind_login_registro_standalone boolean, wnom_sistema character varying, wpath_logo character varying, wcolor_primario character varying, wcolor_secundario character varying, wtheme_bg_deep character varying, wtheme_bg_card character varying, wtheme_bg_panel character varying, wtheme_accent character varying, wtheme_accent_dim character varying, wtheme_blue character varying, wtheme_purple character varying, wtheme_orange character varying, wtheme_text_primary character varying, wtheme_text_muted character varying, wtheme_border character varying, wtheme_error character varying, wtheme_success character varying, wtheme_font_display character varying, wtheme_font_body character varying, wtheme_light_bg_deep character varying, wtheme_light_bg_card character varying, wtheme_light_accent character varying, wtheme_light_text_primary character varying, wtheme_light_text_muted character varying, wusr_registro character varying, wpass_registro_hash character varying) RETURNS text
     LANGUAGE plpgsql
     AS $_$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wcolor_primario !~ '^#[0-9A-Fa-f]{6}$' OR wcolor_secundario !~ '^#[0-9A-Fa-f]{6}$' THEN
         PERFORM smartcset_raise_validacion('Los colores primario y secundario deben ser hex de 6 dígitos (#RRGGBB).');
@@ -2951,9 +3681,7 @@ BEGIN
         pass_registro_hash            = CASE
             WHEN wpass_registro_hash IS NULL OR TRIM(wpass_registro_hash) = '' THEN pass_registro_hash
             ELSE wpass_registro_hash
-        END,
-        usr_update                    = wusr_update,
-        fec_update                    = NOW()
+        END
     WHERE id_config = 1;
 
     IF NOT FOUND THEN
@@ -2965,7 +3693,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $_$;
 
@@ -2978,7 +3711,11 @@ CREATE FUNCTION public.fun_update_tab_menus(wid_menu character varying, wnom_men
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    v_nom_len INTEGER;
+    v_nom_len    INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM tab_menus WHERE id_menu = wid_menu) THEN
         PERFORM smartcset_raise_no_encontrado(
@@ -3015,7 +3752,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -3027,6 +3769,11 @@ $$;
 CREATE FUNCTION public.fun_update_tab_usuarios(wid_usuario character varying, wnom_usuario character varying, wpass_usuario character varying, wmail_usuario public.mail_personal, wind_usuario boolean, wind_estado boolean) RETURNS text
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     UPDATE tab_usuarios
     SET nom_usuario  = wnom_usuario,
@@ -3048,18 +3795,28 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_upsert_persona_visitante(numeric, character varying, numeric, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_upsert_persona_visitante(numeric, character varying, numeric, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_upsert_persona_visitante(wid_persona numeric, wid_tipo_docum character varying, wid_tipo_persona numeric, wnom_persona character varying, wape_persona character varying, wusr character varying) RETURNS void
+CREATE FUNCTION public.fun_upsert_persona_visitante(wid_persona numeric, wid_tipo_docum character varying, wid_tipo_persona numeric, wnom_persona character varying, wape_persona character varying) RETURNS void
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state    TEXT;
+    w_exc_msg      TEXT;
+    w_exc_detail   TEXT;
+    w_exc_hint     TEXT;
 BEGIN
     IF wid_persona IS NULL OR wid_persona < 1 THEN
         PERFORM smartcset_raise_validacion(
@@ -3103,52 +3860,47 @@ BEGIN
         SET id_tipo_docum   = wid_tipo_docum,
             id_tipo_persona = wid_tipo_persona,
             nom_persona     = TRIM(wnom_persona),
-            ape_persona     = TRIM(wape_persona),
-            usr_update      = wusr,
-            fec_update      = CURRENT_TIMESTAMP
+            ape_persona     = TRIM(wape_persona)
         WHERE id_persona = wid_persona;
     ELSE
         INSERT INTO tab_personas (
-            id_persona, id_tipo_docum, id_tipo_persona, nom_persona, ape_persona,
-            mail_persona, ind_genero, fec_ultima_entrada, fec_ultima_salida,
-            id_nivel_estudio, id_profesion, id_dpto_reside, id_ciudad_reside,
-            dir_ciudad_reside, tel_persona_fijo, tel_persona_movil,
-            nom_contacto_emergencias, tel_contacto_emergencias,
-            usr_insert, fec_insert
+            id_persona, id_tipo_docum, id_tipo_persona,
+            nom_persona, ape_persona
         ) VALUES (
             wid_persona, wid_tipo_docum, wid_tipo_persona,
-            TRIM(wnom_persona), TRIM(wape_persona),
-            'sin.correo@cset.local', 99, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
-            99, '00', '00', '00000',
-            'Sin dirección', 0, 0, 0, 0,
-            wusr, CURRENT_TIMESTAMP
+            TRIM(wnom_persona), TRIM(wape_persona)
         );
     END IF;
 EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_upsert_tab_entradas_centro(numeric, character varying, numeric, numeric, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_upsert_tab_entradas_centro(numeric, character varying, numeric, numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_upsert_tab_entradas_centro(wid_entrada_centro numeric, wnom_entrada_centro character varying, wid_centro numeric, wid_sede numeric, wusr character varying) RETURNS text
+CREATE FUNCTION public.fun_upsert_tab_entradas_centro(wid_entrada_centro numeric, wnom_entrada_centro character varying, wid_centro numeric, wid_sede numeric) RETURNS text
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    v_nom   VARCHAR(50);
-    v_len   INTEGER;
-    v_id    tab_entradas_centro.id_entrada_centro%TYPE;
+    v_nom        VARCHAR(50);
+    v_len        INTEGER;
+    v_id         tab_entradas_centro.id_entrada_centro%TYPE;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
-    IF wusr IS NULL OR LENGTH(TRIM(wusr)) < 3 THEN
-        PERFORM smartcset_raise_validacion('El usuario de auditoría no es válido.');
-    END IF;
-
     v_nom := UPPER(TRIM(wnom_entrada_centro));
     v_len := LENGTH(v_nom);
     IF v_len < 5 OR v_len > 50 THEN
@@ -3185,9 +3937,7 @@ BEGIN
         UPDATE tab_entradas_centro
         SET nom_entrada_centro = v_nom,
             id_centro          = wid_centro,
-            id_sede            = wid_sede,
-            usr_update         = TRIM(wusr),
-            fec_update         = CURRENT_TIMESTAMP
+            id_sede            = wid_sede
         WHERE id_entrada_centro = v_id;
     ELSE
         IF wid_entrada_centro IS NOT NULL THEN
@@ -3224,11 +3974,9 @@ BEGIN
         END IF;
 
         INSERT INTO tab_entradas_centro (
-            id_entrada_centro, nom_entrada_centro, id_centro, id_sede,
-            usr_insert, fec_insert
+            id_entrada_centro, nom_entrada_centro, id_centro, id_sede
         ) VALUES (
-            v_id, v_nom, wid_centro, wid_sede,
-            TRIM(wusr), CURRENT_TIMESTAMP
+            v_id, v_nom, wid_centro, wid_sede
         );
     END IF;
 
@@ -3237,7 +3985,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -3250,7 +4003,11 @@ CREATE FUNCTION public.fun_validar_correo(wuser character varying, wmail public.
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    v_existe INTEGER;
+    v_existe     INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     SELECT COUNT(*) INTO v_existe 
     FROM tab_usuarios 
@@ -3265,7 +4022,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -3277,6 +4039,11 @@ $$;
 CREATE FUNCTION public.fun_validar_login(wuser character varying, wpass character varying) RETURNS TABLE(v_status text, v_mensaje text, v_id character varying, v_nombre character varying)
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 -- NOTA IMPORTANTE:
 -- Esta función ya no compara la contraseña en el motor porque las claves
 -- se almacenan como hashes PHP (bcrypt / password_hash).
@@ -3292,7 +4059,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -3305,7 +4077,11 @@ CREATE FUNCTION public.fun_validar_sesion_activa(p_id_sesion integer, p_id_usuar
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    w_ult_actividad tab_sesiones.ult_actividad%TYPE;
+    w_ult_actividad  tab_sesiones.ult_actividad%TYPE;
+    w_exc_state      TEXT;
+    w_exc_msg        TEXT;
+    w_exc_detail     TEXT;
+    w_exc_hint       TEXT;
 BEGIN
     IF p_id_sesion IS NULL OR p_id_sesion < 1 THEN
         RETURN NULL;
@@ -3331,7 +4107,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
@@ -3343,6 +4124,11 @@ $$;
 CREATE FUNCTION public.fun_validar_usuario(_usuario character varying) RETURNS TABLE(id_usuario text, nom_usuario text)
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     -- Solo verifica que el usuario exista y esté activo.
     -- La validación de la contraseña se hace en PHP con password_verify().
@@ -3355,32 +4141,86 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$;
 
 
 --
--- Name: fun_verify_retardo_aprendiz(numeric, timestamp with time zone, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fun_verificar_bloqueo_ip(character varying, integer, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fun_verify_retardo_aprendiz(wid_aprendiz numeric, whora_llegada timestamp with time zone, wusr_insert character varying) RETURNS boolean
+CREATE FUNCTION public.fun_verificar_bloqueo_ip(wip_cliente character varying, wmax_intentos integer DEFAULT 5, wventana_minutos integer DEFAULT 15) RETURNS text
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    wreg_pmtros       RECORD;
-    wreg_trabajo      RECORD;
-    wreg_jornadas     RECORD;
-    wminutos_retardo  INT := 0;
-    wind_estado       VARCHAR;
-    whora_limite_gracia TIME;
-    wtiene_permiso    BOOLEAN := FALSE;
-    whora_llegada_time TIME;
+    v_intentos   INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
-    -- Extraer solo la hora para comparar con columnas TIME
+    IF wip_cliente IS NULL OR LENGTH(TRIM(wip_cliente)) < 7 THEN
+        PERFORM smartcset_raise_validacion(
+            'IP de cliente inválida.',
+            'ip_cliente=' || COALESCE(wip_cliente, 'NULL')
+        );
+    END IF;
+
+    SELECT COUNT(*)
+    INTO v_intentos
+    FROM tab_intentos_login
+    WHERE ip_cliente    = wip_cliente
+      AND ind_exitoso   = FALSE
+      AND fec_intento  >= CURRENT_TIMESTAMP - (wventana_minutos || ' minutes')::INTERVAL;
+
+    IF v_intentos >= wmax_intentos THEN
+        PERFORM smartcset_raise_negocio(
+            'Acceso bloqueado temporalmente por múltiples intentos fallidos. '
+            || 'Intente de nuevo en ' || wventana_minutos || ' minutos.',
+            'ip=' || wip_cliente || ' intentos_fallidos=' || v_intentos
+        );
+    END IF;
+
+    RETURN 'OK';
+EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+        RAISE;
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
+END;
+$$;
+
+
+--
+-- Name: fun_verify_retardo_aprendiz(numeric, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fun_verify_retardo_aprendiz(wid_aprendiz numeric, whora_llegada timestamp with time zone) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    wreg_pmtros         RECORD;
+    wreg_trabajo        RECORD;
+    wreg_jornadas       RECORD;
+    wminutos_retardo    INT := 0;
+    wind_estado         VARCHAR;
+    whora_limite_gracia TIME;
+    wtiene_permiso      BOOLEAN := FALSE;
+    whora_llegada_time  TIME;
+BEGIN
     whora_llegada_time := whora_llegada::TIME;
 
-    -- 1. Obtener parámetros generales
     SELECT val_tiempo_gracia_aprendiz
       INTO wreg_pmtros
       FROM tab_pmtros_grales
@@ -3391,7 +4231,6 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- 2. Validar aprendiz activo (ind_etdo_formacion = 1) y ficha en ejecución (ind_estado = 3)
     SELECT a.id_ficha, b.id_jornada
       INTO wreg_trabajo
       FROM tab_aprendices a
@@ -3405,7 +4244,6 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- 3. Obtener jornada
     SELECT hora_entrada, hora_salida
       INTO wreg_jornadas
       FROM tab_jornadas
@@ -3416,21 +4254,17 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- 4. Si llegada > hora_salida → no registrar
     IF whora_llegada_time > wreg_jornadas.hora_salida THEN
         RETURN FALSE;
     END IF;
 
-    -- 5. Calcular límite de gracia
     whora_limite_gracia := wreg_jornadas.hora_entrada +
                            (wreg_pmtros.val_tiempo_gracia_aprendiz || ' minutes')::INTERVAL;
 
-    -- 6. Determinar estado y retardo
     IF whora_llegada_time <= whora_limite_gracia THEN
         wind_estado      := 'Presente';
         wminutos_retardo := 0;
     ELSE
-        -- Verificar permiso activo para el aprendiz
         SELECT EXISTS (
             SELECT 1
               FROM tab_permisos_aprendiz
@@ -3444,37 +4278,20 @@ BEGIN
         ELSE
             wind_estado      := 'Tarde';
             wminutos_retardo := EXTRACT(EPOCH FROM (whora_llegada_time - wreg_jornadas.hora_entrada)) / 60;
-            -- Aquí YA NO hay UPDATE de llamados, solo se registra el retraso en la asistencia
         END IF;
     END IF;
 
-    -- 7. Insertar o actualizar asistencia
     INSERT INTO tab_asistencia_aprendiz (
-        id_aprendiz,
-        fec_asistencia,
-        hora_asistencia,
-        minutos_retraso,
-        ind_estado,
-        usr_insert,
-        fec_insert
+        id_aprendiz, fec_asistencia, hora_asistencia, minutos_retraso, ind_estado
     ) VALUES (
-        wid_aprendiz,
-        CURRENT_DATE,
-        whora_llegada,               
-        wminutos_retardo,
-        wind_estado,
-        wusr_insert,
-        CURRENT_TIMESTAMP
+        wid_aprendiz, CURRENT_DATE, whora_llegada, wminutos_retardo, wind_estado
     )
     ON CONFLICT (id_aprendiz, fec_asistencia) DO UPDATE
     SET hora_asistencia  = EXCLUDED.hora_asistencia,
         minutos_retraso  = EXCLUDED.minutos_retraso,
-        ind_estado       = EXCLUDED.ind_estado,
-        usr_update       = wusr_insert,
-        fec_update       = CURRENT_TIMESTAMP;
+        ind_estado       = EXCLUDED.ind_estado;
 
     RETURN TRUE;
-
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Excepción al procesar asistencia del aprendiz %. ERROR: % - ESTADO: %',
@@ -3485,10 +4302,10 @@ $$;
 
 
 --
--- Name: smartcset_handle_sql_error(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: smartcset_handle_sql_error(text, text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.smartcset_handle_sql_error() RETURNS void
+CREATE FUNCTION public.smartcset_handle_sql_error(p_state text DEFAULT NULL::text, p_msg text DEFAULT NULL::text, p_detail text DEFAULT NULL::text, p_hint text DEFAULT NULL::text) RETURNS void
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -3497,11 +4314,21 @@ DECLARE
     v_detail TEXT;
     v_hint   TEXT;
 BEGIN
-    GET STACKED DIAGNOSTICS
-        v_state  = RETURNED_SQLSTATE,
-        v_msg    = MESSAGE_TEXT,
-        v_detail = PG_EXCEPTION_DETAIL,
-        v_hint   = PG_EXCEPTION_HINT;
+    -- GET STACKED DIAGNOSTICS solo es válido en el bloque EXCEPTION del mismo
+    -- subprograma; al llamar esta función vía PERFORM hay que pasar los valores.
+    IF p_state IS NULL THEN
+        PERFORM smartcset_raise_negocio(
+            'No se pudo completar la operación en base de datos.',
+            COALESCE(p_msg, NULL),
+            'Si persiste, contacte al administrador.'
+        );
+        RETURN;
+    END IF;
+
+    v_state  := p_state;
+    v_msg    := COALESCE(p_msg, '');
+    v_detail := COALESCE(p_detail, '');
+    v_hint   := COALESCE(p_hint, '');
 
     IF v_state = 'P0001' THEN
         RAISE EXCEPTION '%', v_msg
@@ -3664,6 +4491,40 @@ CREATE SEQUENCE public.seq_id_sector
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
+
+
+--
+-- Name: seq_intentos_login; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.seq_intentos_login
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tab_log_ingresos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tab_log_ingresos (
+    id_ingreso integer NOT NULL,
+    id_visitante numeric(10,0) NOT NULL,
+    fec_ingreso timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    fec_salida timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id_metodo_aut numeric(2,0) NOT NULL,
+    id_entrada_centro numeric(1,0) NOT NULL,
+    val_datos_origen jsonb,
+    val_observaciones text,
+    usr_insert character varying(50) NOT NULL,
+    fec_insert timestamp without time zone NOT NULL,
+    usr_update character varying(50),
+    fec_update timestamp without time zone,
+    CONSTRAINT tab_log_ingresos_usr_insert_check CHECK ((length(TRIM(BOTH FROM usr_insert)) >= 3)),
+    CONSTRAINT tab_log_ingresos_usr_update_check CHECK ((length(TRIM(BOTH FROM usr_update)) >= 3))
+);
 
 
 --
@@ -4099,6 +4960,45 @@ CREATE TABLE public.tab_contratos_instructor (
 
 
 --
+-- Name: tab_dispositivos_porteria; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tab_dispositivos_porteria (
+    id_dispositivo integer NOT NULL,
+    nom_dispositivo character varying(100) NOT NULL,
+    token_hash text NOT NULL,
+    id_usuario_audit character varying NOT NULL,
+    id_entrada_default numeric,
+    ind_activo boolean DEFAULT true NOT NULL,
+    fec_ultimo_uso timestamp without time zone,
+    usr_insert character varying(50) DEFAULT 'system'::character varying NOT NULL,
+    fec_insert timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    usr_update character varying(50),
+    fec_update timestamp without time zone
+);
+
+
+--
+-- Name: tab_dispositivos_porteria_id_dispositivo_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tab_dispositivos_porteria_id_dispositivo_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tab_dispositivos_porteria_id_dispositivo_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tab_dispositivos_porteria_id_dispositivo_seq OWNED BY public.tab_dispositivos_porteria.id_dispositivo;
+
+
+--
 -- Name: tab_dptos; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4316,6 +5216,20 @@ CREATE TABLE public.tab_instructores (
 
 
 --
+-- Name: tab_intentos_login; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tab_intentos_login (
+    id_intento integer DEFAULT nextval('public.seq_intentos_login'::regclass) NOT NULL,
+    ip_cliente character varying(45) NOT NULL,
+    id_usuario character varying(20),
+    ind_exitoso boolean DEFAULT false NOT NULL,
+    fec_intento timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT tab_intentos_login_ip_check CHECK ((length(TRIM(BOTH FROM ip_cliente)) >= 7))
+);
+
+
+--
 -- Name: tab_jornadas; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4393,28 +5307,6 @@ CREATE SEQUENCE public.tab_llamados_atencion_id_llamado_seq
 --
 
 ALTER SEQUENCE public.tab_llamados_atencion_id_llamado_seq OWNED BY public.tab_llamados_atencion.id_llamado;
-
-
---
--- Name: tab_log_ingresos; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.tab_log_ingresos (
-    id_ingreso integer NOT NULL,
-    id_visitante numeric(10,0) NOT NULL,
-    fec_ingreso timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    fec_salida timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_metodo_aut numeric(2,0) NOT NULL,
-    id_entrada_centro numeric(1,0) NOT NULL,
-    val_datos_origen jsonb,
-    val_observaciones text,
-    usr_insert character varying(50) NOT NULL,
-    fec_insert timestamp without time zone NOT NULL,
-    usr_update character varying(50),
-    fec_update timestamp without time zone,
-    CONSTRAINT tab_log_ingresos_usr_insert_check CHECK ((length(TRIM(BOTH FROM usr_insert)) >= 3)),
-    CONSTRAINT tab_log_ingresos_usr_update_check CHECK ((length(TRIM(BOTH FROM usr_update)) >= 3))
-);
 
 
 --
@@ -4614,6 +5506,20 @@ CREATE TABLE public.tab_pmtros_grales (
     CONSTRAINT tab_pmtros_grales_usr_insert_check CHECK ((length(TRIM(BOTH FROM usr_insert)) >= 3)),
     CONSTRAINT tab_pmtros_grales_usr_update_check CHECK ((length(TRIM(BOTH FROM usr_update)) >= 3)),
     CONSTRAINT tab_pmtros_grales_val_nota_minima_rap_check CHECK (((val_nota_minima_rap >= (0)::numeric) AND (val_nota_minima_rap <= (100)::numeric)))
+);
+
+
+--
+-- Name: tab_porteria_sync_client; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tab_porteria_sync_client (
+    client_id uuid NOT NULL,
+    id_dispositivo integer NOT NULL,
+    tipo_operacion character varying(10) NOT NULL,
+    id_ingreso numeric NOT NULL,
+    fec_sync timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT chk_sync_tipo_operacion CHECK (((tipo_operacion)::text = ANY (ARRAY[('ingreso'::character varying)::text, ('salida'::character varying)::text])))
 );
 
 
@@ -5284,6 +6190,13 @@ ALTER TABLE ONLY public.tab_bitacora ALTER COLUMN id_consecutivo SET DEFAULT nex
 
 
 --
+-- Name: tab_dispositivos_porteria id_dispositivo; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tab_dispositivos_porteria ALTER COLUMN id_dispositivo SET DEFAULT nextval('public.tab_dispositivos_porteria_id_dispositivo_seq'::regclass);
+
+
+--
 -- Name: tab_llamados_atencion id_llamado; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5458,6 +6371,14 @@ ALTER TABLE ONLY public.tab_contratos_instructor
 
 
 --
+-- Name: tab_dispositivos_porteria tab_dispositivos_porteria_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tab_dispositivos_porteria
+    ADD CONSTRAINT tab_dispositivos_porteria_pkey PRIMARY KEY (id_dispositivo);
+
+
+--
 -- Name: tab_dptos tab_dptos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5527,6 +6448,14 @@ ALTER TABLE ONLY public.tab_horas_instructor
 
 ALTER TABLE ONLY public.tab_instructores
     ADD CONSTRAINT tab_instructores_pkey PRIMARY KEY (id_instructor);
+
+
+--
+-- Name: tab_intentos_login tab_intentos_login_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tab_intentos_login
+    ADD CONSTRAINT tab_intentos_login_pkey PRIMARY KEY (id_intento);
 
 
 --
@@ -5631,6 +6560,14 @@ ALTER TABLE ONLY public.tab_personas
 
 ALTER TABLE ONLY public.tab_pmtros_grales
     ADD CONSTRAINT tab_pmtros_grales_pkey PRIMARY KEY (id_centro);
+
+
+--
+-- Name: tab_porteria_sync_client tab_porteria_sync_client_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tab_porteria_sync_client
+    ADD CONSTRAINT tab_porteria_sync_client_pkey PRIMARY KEY (client_id);
 
 
 --
@@ -5800,10 +6737,52 @@ COMMENT ON INDEX public.idx_aprendices_fichas_aprendiz IS 'Ficha más reciente p
 
 
 --
+-- Name: idx_disp_porteria_activo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_disp_porteria_activo ON public.tab_dispositivos_porteria USING btree (ind_activo) WHERE (ind_activo = true);
+
+
+--
 -- Name: idx_fec_ingresos; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_fec_ingresos ON public.tab_log_ingresos USING btree (fec_ingreso DESC);
+
+
+--
+-- Name: idx_log_ingreso_persona_abierto; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_log_ingreso_persona_abierto ON public.tab_log_ingresos USING btree (id_visitante) WHERE (fec_salida = fec_ingreso);
+
+
+--
+-- Name: INDEX idx_log_ingreso_persona_abierto; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON INDEX public.idx_log_ingreso_persona_abierto IS 'Una sola visita abierta por persona (salida pendiente).';
+
+
+--
+-- Name: idx_sync_client_dispositivo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sync_client_dispositivo ON public.tab_porteria_sync_client USING btree (id_dispositivo, fec_sync DESC);
+
+
+--
+-- Name: ix_tab_intentos_login_fec; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_tab_intentos_login_fec ON public.tab_intentos_login USING btree (fec_intento DESC);
+
+
+--
+-- Name: ix_tab_intentos_login_ip_fec; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_tab_intentos_login_ip_fec ON public.tab_intentos_login USING btree (ip_cliente, fec_intento DESC);
 
 
 --
@@ -6224,6 +7203,22 @@ CREATE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON public.tab_usuarios FOR 
 --
 
 CREATE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON public.tab_vehiculos FOR EACH ROW EXECUTE FUNCTION public.fun_act_tabla();
+
+
+--
+-- Name: tab_dispositivos_porteria fk_disp_porteria_usuario; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tab_dispositivos_porteria
+    ADD CONSTRAINT fk_disp_porteria_usuario FOREIGN KEY (id_usuario_audit) REFERENCES public.tab_usuarios(id_usuario);
+
+
+--
+-- Name: tab_porteria_sync_client fk_sync_client_dispositivo; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tab_porteria_sync_client
+    ADD CONSTRAINT fk_sync_client_dispositivo FOREIGN KEY (id_dispositivo) REFERENCES public.tab_dispositivos_porteria(id_dispositivo);
 
 
 --
@@ -6806,5 +7801,5 @@ ALTER TABLE ONLY public.tab_vehiculos
 -- PostgreSQL database dump complete
 --
 
-\unrestrict OvcI2pyikl2e4uSUwtCNPZagm5w2eRHbWFBL8DbW5FWJSwCHjwiiGI6jDGYVq9c
+\unrestrict i4eEGgAcgIyteo6StLYtzPUlRUw1QaAm8uaXUFNsnzyl4cbN0hPaBoKdGjHJij9
 

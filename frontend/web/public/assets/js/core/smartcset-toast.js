@@ -143,7 +143,8 @@
         warning: (msg, title) => show('warning', title || TITLES.warning, msg),
         info: (msg, title) => show('info', title || TITLES.info, msg),
         fromErrorData,
-        fromSuccessData
+        fromSuccessData,
+        showFlashFromPage,
     };
 
     function bootFlashFromPage() {

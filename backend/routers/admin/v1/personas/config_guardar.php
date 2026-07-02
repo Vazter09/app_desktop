@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Guardar configuración del módulo registro/personas",
+ *   "tags": ["Admin"],
+ *   "requestBody": {
+ *     "contentType": "application/x-www-form-urlencoded",
+ *     "properties": {
+ *       "chk_modulo_registro": { "type": "boolean" },
+ *       "txt_usr_registro": { "type": "string" },
+ *       "txt_pass_registro": { "type": "string" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Configuración guardada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

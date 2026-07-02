@@ -1,6 +1,17 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Cerrar sesión web",
+ *   "description": "Destruye la sesión PHP y redirige al login. No devuelve JSON.",
+ *   "tags": ["Auth"],
+ *   "security": [],
+ *   "method": "GET",
+ *   "responseType": "redirect",
+ *   "redirectDescription": "Redirección a /index.php"
+ * }
+ */
 require_once dirname(__DIR__, 3) . '/core/prepare.php';
 require_once dirname(__DIR__, 3) . '/core/helpers.php';
 require_once dirname(__DIR__, 3) . '/core/lib/acceso_sesion.php';

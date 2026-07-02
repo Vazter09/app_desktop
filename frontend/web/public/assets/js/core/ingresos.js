@@ -2,7 +2,9 @@
  * Registro de ingresos — portería (captura PDF417, bloqueo ingreso activo).
  * Documentación línea por línea: docs/porteria-codigo-linea-a-linea.md
  */
-document.addEventListener('DOMContentLoaded', () => {
+(window.smartcsetOnPageReady || function (fn) {
+    document.addEventListener('DOMContentLoaded', fn);
+})(() => {
     const PC = window.PorteriaCaptura;
     const PM = window.PorteriaMedios;
     if (!PC) return;

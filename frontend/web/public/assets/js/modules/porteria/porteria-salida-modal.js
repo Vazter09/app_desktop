@@ -15,25 +15,29 @@
         document.body.appendChild(modalEl);
     }
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
-    var isDesktopKiosk = window.matchMedia("(min-width: 768px)").matches;
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
     var btnFinal = document.getElementById("dm-btn-final");
     var stepSub  = document.getElementById("dm-brand-sub");
 
+    function getTipoDoc() {
+        var sel = document.getElementById("sel_tipo_doc");
+        return sel && sel.value ? sel.value : "CC";
+    }
+
     function prefetch() {
         if (num.length < 5) { fetchResult = null; fetchPromise = null; return; }
-        if (typeof SmartcsetSalidaRouter === 'undefined') {
+        if (typeof SmartcsetSalidaRouter === "undefined") {
             fetchResult = null;
             fetchPromise = null;
             return;
         }
-        fetchPromise = SmartcsetSalidaRouter.consultar(num, "CC")
-            .then(function(data){
+        fetchPromise = SmartcsetSalidaRouter.consultar(num, getTipoDoc())
+            .then(function (data) {
                 fetchResult = data || null;
                 return fetchResult;
             })
-            .catch(function(){ fetchResult = null; return null; });
+            .catch(function () { fetchResult = null; return null; });
     }
 
     function goStep(n) {
@@ -85,13 +89,20 @@
 
         if (fDoc) fDoc.value = num;
         if (fTipDoc) {
-            var ccOpt = Array.from(fTipDoc.options).find(function(o){ return o.value === "CC"; });
-            if (ccOpt) fTipDoc.value = "CC";
+            var tipoDoc = getTipoDoc();
+            var docOpt = Array.from(fTipDoc.options).find(function (o) { return o.value === tipoDoc; });
+            if (docOpt) fTipDoc.value = tipoDoc;
         }
         if (persona) {
             if (fNom) fNom.value = persona.nombres || persona.nom_persona || "";
             if (fApe) fApe.value = persona.apellidos || persona.ape_persona || "";
-            if (fTip && persona.id_tipo_persona) fTip.value = String(persona.id_tipo_persona);
+            var idTipo = persona.tipo_persona || persona.id_tipo_persona;
+            if (fTip && idTipo) fTip.value = String(idTipo);
+        } else if (ingreso) {
+            if (fNom) fNom.value = ingreso.nombres || ingreso.nom_persona || "";
+            if (fApe) fApe.value = ingreso.apellidos || ingreso.ape_persona || "";
+            var idTipoIng = ingreso.tipo_persona || ingreso.id_tipo_persona;
+            if (fTip && idTipoIng) fTip.value = String(idTipoIng);
         }
         if (hidIngreso && ingreso) hidIngreso.value = String(ingreso.id_ingreso);
     }
@@ -102,9 +113,13 @@
         var ingreso = data && data.ingreso_abierto;
 
         if (puedeSalir && (persona || ingreso)) {
-            var nombre = persona
-                ? ((persona.nombres || persona.nom_persona || "") + " " + (persona.apellidos || persona.ape_persona || "")).trim()
-                : (((ingreso.nombres || ingreso.nom_persona || "") + " " + (ingreso.apellidos || ingreso.ape_persona || "")).trim());
+            var nomPersona = (persona && (persona.nombres || persona.nom_persona))
+                || (ingreso && (ingreso.nombres || ingreso.nom_persona))
+                || "";
+            var apePersona = (persona && (persona.apellidos || persona.ape_persona))
+                || (ingreso && (ingreso.apellidos || ingreso.ape_persona))
+                || "";
+            var nombre = (nomPersona + " " + apePersona).trim();
             var tipoNom = (persona && persona.nom_tipo_persona)
                 || (ingreso && ingreso.nom_tipo_persona)
                 || "Registrado";
@@ -112,15 +127,16 @@
             f.style.display = "block";
             document.getElementById("dm-persona-nombre").textContent    = nombre;
             document.getElementById("dm-persona-tipo-text").textContent = tipoNom;
-            document.getElementById("dm-persona-doc-text").textContent  = "CC " + num;
-            document.getElementById("dm-confirm-name").textContent      = (persona && (persona.nombres || persona.nom_persona))
-                ? (persona.nombres || persona.nom_persona).split(" ")[0]
+            document.getElementById("dm-persona-doc-text").textContent  = getTipoDoc() + " " + num;
+            document.getElementById("dm-confirm-name").textContent      = nomPersona
+                ? nomPersona.split(" ")[0]
                 : nombre.split(" ")[0];
             aplicarDatosFormulario(data);
         } else {
             var s = document.getElementById("dm-persona-sin-ingreso");
             s.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:16px var(--dm-pad)";
-            document.getElementById("hid_id_ingreso").value = "";
+            var hidIngreso = document.getElementById("hid_id_ingreso");
+            if (hidIngreso) hidIngreso.value = "";
         }
     }
 
@@ -203,8 +219,18 @@
     btnFinal.addEventListener("click", function() {
         var hidPuerta = document.getElementById("sel_entrada");
         if (hidPuerta) hidPuerta.value = puerta;
+        document.querySelectorAll(".ing-puerta").forEach(function (b) {
+            b.classList.toggle("is-selected", b.dataset.puerta === puerta);
+        });
         if (fetchResult) aplicarDatosFormulario(fetchResult);
 
+        // NOTA: no usar form.requestSubmit() / form.submit() aquí — salidas.js
+        // mantiene su propia bandera interna `puedeSalir` que solo se activa
+        // con el evento `input` disparado manualmente por el usuario. El modal
+        // llena los campos por programación y nunca dispara `input`, así que
+        // ese submit quedaría bloqueado con "Debe existir un ingreso activo".
+        // Se llama directo al router usando el `puedeSalir` propio del modal,
+        // ya confirmado por el servidor en el paso 2 (`puede_salir: true`).
         if (!puedeSalir || typeof SmartcsetSalidaRouter === "undefined") {
             return;
         }
@@ -212,7 +238,7 @@
         btnFinal.disabled = true;
         SmartcsetSalidaRouter.registrar({
             documento: num,
-            tipo_doc: "CC",
+            tipo_doc: getTipoDoc(),
             metodo_aut: Number(document.getElementById("hid_metodo_aut")?.value || 1),
             observaciones: document.getElementById("txt_observaciones")?.value || "",
             foto_base64: document.getElementById("hid_foto_data")?.value || "",
@@ -246,8 +272,5 @@
     var btnAbrirKiosk = document.getElementById("btn_abrir_modal_kiosk");
     if (btnAbrirKiosk) {
         btnAbrirKiosk.addEventListener("click", function () { modal.show(); });
-    }
-    if (isDesktopKiosk) {
-        modal.show();
     }
 })();

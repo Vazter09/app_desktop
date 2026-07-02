@@ -70,9 +70,9 @@ $logo = htmlspecialchars(smartcsetLogoUrl(), ENT_QUOTES, 'UTF-8');
     </div>
     <?php $_ar = dirname(__DIR__, 3) . '/public/assets'; ?>
     <script src="<?= htmlspecialchars(smartcsetAsset('js/core/registro-theme-toggle.js')) ?>"></script>
-    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>"></script>
-    <script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/services/http-client.js') ?: time()) ?>"></script>
-    <script src="<?= htmlspecialchars(smartcsetAsset('js/services/registro-router.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/services/registro-router.js') ?: time()) ?>"></script>
-    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/registro-login.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/core/registro-login.js') ?: time()) ?>"></script>
+    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>?v=<?= smartcsetAssetVersion('js/core/smartcset-path.js') ?>"></script>
+    <script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= smartcsetAssetVersion('js/services/http-client.js') ?>"></script>
+    <script src="<?= htmlspecialchars(smartcsetAsset('js/services/registro-router.js')) ?>?v=<?= smartcsetAssetVersion('js/services/registro-router.js') ?>"></script>
+    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/registro-login.js')) ?>?v=<?= smartcsetAssetVersion('js/core/registro-login.js') ?>"></script>
 </body>
 </html>

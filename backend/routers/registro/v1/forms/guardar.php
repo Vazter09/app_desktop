@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Guardar formulario de registro de persona",
+ *   "tags": ["Registro"],
+ *   "requestBody": {
+ *     "contentType": "application/x-www-form-urlencoded",
+ *     "required": ["tipo"],
+ *     "properties": {
+ *       "tipo": { "type": "string", "description": "aprendiz | instructor | funcionario | contratista" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Persona registrada", "dataSchema": { "type": "object", "additionalProperties": true } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

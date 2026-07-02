@@ -6,6 +6,53 @@
 /** Mínimo de caracteres para pass_usuario (CHECK en tab_usuarios). */
 const PASSWORD_MIN_LENGTH = 12;
 
+/** Convierte booleanos PostgreSQL/PHP a bool nativo. */
+function smartcsetPgBool(mixed $value): bool
+{
+    if ($value === true || $value === 1 || $value === '1') {
+        return true;
+    }
+    if ($value === false || $value === 0 || $value === '0' || $value === null || $value === '') {
+        return false;
+    }
+    if (is_string($value)) {
+        return in_array(strtolower(trim($value)), ['t', 'true', 'yes', 'on'], true);
+    }
+
+    return (bool) $value;
+}
+
+/**
+ * Sincroniza flags de sesión con tab_usuarios (evita ind_usuario desactualizado tras cambios en BD).
+ */
+function smartcsetSincronizarSesionUsuario(PDO $pdo): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || empty($_SESSION['id_usuario'])) {
+        return;
+    }
+
+    static $sincronizado = false;
+    if ($sincronizado) {
+        return;
+    }
+    $sincronizado = true;
+
+    $stmt = $pdo->prepare(
+        'SELECT nom_usuario, ind_usuario, ind_estado
+         FROM tab_usuarios
+         WHERE id_usuario = CAST(? AS TEXT)'
+    );
+    $stmt->execute([(string) $_SESSION['id_usuario']]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return;
+    }
+
+    $_SESSION['nom_usuario'] = (string) ($row['nom_usuario'] ?? $_SESSION['nom_usuario'] ?? '');
+    $_SESSION['ind_usuario'] = smartcsetPgBool($row['ind_usuario'] ?? false);
+    $_SESSION['ind_estado'] = smartcsetPgBool($row['ind_estado'] ?? true);
+}
+
 /**
  * Prefijo de URL bajo el dominio (vacío en raíz, '/smartcset' en subcarpeta Apache).
  */
@@ -38,14 +85,28 @@ function smartcsetAsset(string $relativePath): string
     return smartcsetAssetHref() . ltrim(str_replace('\\', '/', $relativePath), '/');
 }
 
+/** Query ?v= para cache-bust de assets estáticos. */
+function smartcsetAssetVersion(string $relativePath): int
+{
+    $root = dirname(__DIR__, 2) . '/frontend/web/public/assets/';
+    return @filemtime($root . ltrim(str_replace('\\', '/', $relativePath), '/')) ?: time();
+}
+
+/** Tag script hacia /assets/ con cache-bust. */
+function smartcsetAssetScript(string $relativePath): string
+{
+    $src = smartcsetAsset($relativePath);
+    $ver = smartcsetAssetVersion($relativePath);
+
+    return '<script src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '?v=' . $ver . '"></script>';
+}
+
 /** Inyecta meta + variable JS para clientes (cargar antes de http-client.js). */
 function smartcsetRenderBasePathBootstrap(): void
 {
     $base = smartcsetBasePath();
     echo '<meta name="smartcset-base-path" content="'
         . htmlspecialchars($base, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    echo '<script>window.SMARTCSET_BASE_PATH='
-        . json_encode($base, JSON_UNESCAPED_UNICODE) . ';</script>' . "\n";
 }
 
 /** ind_id_padre de menús raíz (tab_menus exige LENGTH >= 2). */
@@ -91,6 +152,7 @@ function getIcon(string $nombre): string
         'registro'    => 'bi-person-vcard-fill',
         'aprendiz'    => 'bi-mortarboard-fill',
         'instructor'  => 'bi-person-workspace',
+        'ficha'       => 'bi-journal-bookmark-fill',
         'funcionario' => 'bi-bank2',
         'contratista' => 'bi-briefcase-fill',
     ];
@@ -106,6 +168,7 @@ function getIcon(string $nombre): string
 
 /**
  * Usuario con perfil administrador (ind_usuario = TRUE en tab_usuarios).
+ * Los administradores tienen acceso total al catálogo de menús y módulos.
  */
 function usuarioEsAdministrador(PDO $pdo, string $idUsuario): bool
 {
@@ -121,8 +184,18 @@ function usuarioEsAdministrador(PDO $pdo, string $idUsuario): bool
     $stmt->execute([$idUsuario]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $cache[$idUsuario] = $row && !empty($row['ind_usuario']);
-    return $cache[$idUsuario];
+    $esAdmin = smartcsetPgBool($row['ind_usuario'] ?? false);
+
+    if (
+        $esAdmin
+        && isset($_SESSION['id_usuario'])
+        && (string) $_SESSION['id_usuario'] === $idUsuario
+    ) {
+        $_SESSION['ind_usuario'] = true;
+    }
+
+    $cache[$idUsuario] = $esAdmin;
+    return $esAdmin;
 }
 
 /**
@@ -449,4 +522,34 @@ function smartcsetLogoUrl(string $assetHref = ''): string
     }
 
     return ($assetHref !== '' ? $assetHref : smartcsetAssetHref()) . $path;
+}
+
+/** Enlace interno bajo pages/ apto para navegación SPA (sin recargar sidebar). */
+function smartcsetEsEnlaceSpaInterno(?string $nomPrograma): bool
+{
+    if ($nomPrograma === null) {
+        return false;
+    }
+    $raw = trim($nomPrograma);
+    if ($raw === '' || strcasecmp($raw, 'no_aplica') === 0) {
+        return false;
+    }
+    if (strcasecmp($raw, 'Exit') === 0 || strcasecmp($raw, 'exit.php') === 0) {
+        return false;
+    }
+
+    $normalized = smartcsetNormalizeNomPrograma($raw);
+    if ($normalized === '' || preg_match('#^https?://#i', $normalized)) {
+        return false;
+    }
+    if (str_contains(strtolower($normalized), 'logout')) {
+        return false;
+    }
+
+    return str_starts_with($normalized, 'pages/');
+}
+
+function smartcsetAttrSpaLink(?string $nomPrograma): string
+{
+    return smartcsetEsEnlaceSpaInterno($nomPrograma) ? ' data-spa-link="1"' : '';
 }

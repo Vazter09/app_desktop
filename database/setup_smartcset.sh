@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.7.sql + funciones/seeds
+# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.8.sql + funciones/seeds
 # Uso: ./database/setup_smartcset.sh
 # ATENCIÓN: Si la BD ya existe, el paso de esquema BORRA todas las tablas (DROP).
 #           Solo usar en instalación nueva o cuando quiera resetear por completo.
@@ -34,7 +34,7 @@ do
 done
 [[ -n "$PSQL" ]] || { echo "psql no encontrado. Instale PostgreSQL." >&2; exit 1; }
 
-SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.7.sql"
+SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.8.sql"
 [[ -f "$SCHEMA" ]] || { echo "No existe: $SCHEMA" >&2; exit 1; }
 
 echo "==> Base de datos $DB_NAME"
@@ -47,7 +47,7 @@ else
   echo "    Ya existe."
 fi
 
-echo "==> Esquema V.1.7"
+echo "==> Esquema V.1.8"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$SCHEMA"
 
 run_sql() {
@@ -103,12 +103,19 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/instructor/fun_marcar_ausentes_fecha.sql"
+  "$ROOT/database/functions/instructor/fun_listar_fichas_instructor.sql"
+  "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha.sql"
+  "$ROOT/database/functions/instructor/fun_listar_fichas_admin.sql"
+  "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha_admin.sql"
+  "$ROOT/database/functions/instructor/fun_guardar_asistencia_manual.sql"
   "$ROOT/database/functions/registro/fun_registrar_persona.sql"
   "$ROOT/database/functions/registro/fun_registrar_contratista.sql"
   "$ROOT/database/functions/registro/fun_registrar_funcionario.sql"
   "$ROOT/database/functions/registro/fun_registrar_instructor.sql"
   "$ROOT/database/functions/registro/fun_registrar_aprendiz.sql"
   "$ROOT/database/functions/config/fun_update_tab_config_sistema.sql"
+  "$ROOT/database/functions/config/fun_update_tab_pmtros_grales.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_aprendiz.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_contratista.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_funcionario.sql"
@@ -157,6 +164,11 @@ for f in \
   "$ROOT/database/migrations/reorganizacion_arquitectura_nom_programa.sql" \
   "$ROOT/database/migrations/add_idx_aprendices_fichas_aprendiz.sql" \
   "$ROOT/database/migrations/add_menu_reportes_sena.sql" \
+  "$ROOT/database/migrations/add_menu_instructor_asistencia.sql" \
+  "$ROOT/database/migrations/revoke_instructores_menu_personas.sql" \
+  "$ROOT/database/migrations/add_menu_parametros_0403.sql" \
+  "$ROOT/database/migrations/seed_tab_pmtros_grales_dev.sql" \
+  "$ROOT/database/migrations/ensure_admin_acceso_total.sql" \
   "$ROOT/database/migrations/fix_auditoria_app_usuario.sql" \
   "$ROOT/database/migrations/fix_auditoria_eliminar_wusr.sql"
 do
@@ -177,5 +189,5 @@ fi
 
 unset PGPASSWORD
 echo ""
-echo "Listo. Base: $DB_NAME | Esquema V.1.7"
+echo "Listo. Base: $DB_NAME | Esquema V.1.8"
 echo "Login: admin.smart / AdminSmart2026! | porteria / Porteria2026!"

@@ -68,10 +68,10 @@ $_v_http = @filemtime($_ar . '/js/services/http-client.js') ?: time();
 $_v_auth = @filemtime($_ar . '/js/services/auth-router.js') ?: time();
 $_v_rec = @filemtime($_ar . '/js/core/recuperar.js') ?: time();
 ?>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= (int) $_v_http ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/services/auth-router.js')) ?>?v=<?= (int) $_v_auth ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/core/recuperar.js')) ?>?v=<?= (int) $_v_rec ?>"></script>
+<script src="<?= htmlspecialchars(smartcsetAsset('js/core/smartcset-path.js')) ?>?v=<?= smartcsetAssetVersion('js/core/smartcset-path.js') ?>"></script>
+<script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= smartcsetAssetVersion('js/services/http-client.js') ?>"></script>
+<script src="<?= htmlspecialchars(smartcsetAsset('js/services/auth-router.js')) ?>?v=<?= smartcsetAssetVersion('js/services/auth-router.js') ?>"></script>
+<script src="<?= htmlspecialchars(smartcsetAsset('js/core/recuperar.js')) ?>?v=<?= smartcsetAssetVersion('js/core/recuperar.js') ?>"></script>
 <?php $ui_assets_prefix = smartcsetAssetHref(); include smartcsetLayoutPath('ui_kit.php'); ?>
 </body>
 </html>

@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Restaurar configuración del módulo registro/personas",
+ *   "tags": ["Admin"],
+ *   "responses": {
+ *     "200": { "description": "Valores por defecto restaurados", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

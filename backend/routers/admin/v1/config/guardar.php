@@ -1,6 +1,26 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Guardar configuración del sistema",
+ *   "description": "Acepta multipart/form-data (logo) o campos de formulario.",
+ *   "tags": ["Admin"],
+ *   "requestBody": {
+ *     "contentType": "multipart/form-data",
+ *     "properties": {
+ *       "txt_nom_sistema": { "type": "string" },
+ *       "txt_color_primario": { "type": "string" },
+ *       "txt_color_secundario": { "type": "string" },
+ *       "chk_modulo_registro": { "type": "boolean" },
+ *       "logo_file": { "type": "string", "format": "binary" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Configuración guardada", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';

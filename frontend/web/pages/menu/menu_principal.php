@@ -82,6 +82,12 @@ try {
 $menu_paths   = dashboardFlattenMenuPaths($menu_final);
 $es_admin     = usuarioEsAdministrador($pdo, $wid_usuario);
 
+require_once dirname(__DIR__, 4) . '/backend/services/instructor/asistencia_service.php';
+require_once dirname(__DIR__) . '/modulos/instructor/lib/instructor_ui.php';
+$id_instructor = instructorResolverIdDesdeSesion($pdo, $wid_usuario);
+$es_instructor = $id_instructor !== null;
+$path_fichas   = dashboardFindMenuPath($menu_paths, 'instructor/fichas');
+
 $tiene_porteria_ingreso = dashboardFindMenuPath($menu_paths, 'porteria/ingreso') !== null;
 $tiene_porteria_salida  = dashboardFindMenuPath($menu_paths, 'porteria/salida') !== null;
 $tiene_porteria         = $tiene_porteria_ingreso || $tiene_porteria_salida;
@@ -96,35 +102,70 @@ $kpi_ingresos      = 0;
 $kpi_salidas       = 0;
 $personas_dentro   = 0;
 $por_tipo_persona  = [];
+$instructor_resumen = null;
 
-try {
-    $stmt_list_ingresos_hoy->execute();
-    $ingresos_hoy = $stmt_list_ingresos_hoy->fetchAll(PDO::FETCH_ASSOC);
-    $kpi_ingresos = count($ingresos_hoy);
+if (!$es_instructor) {
+    try {
+        $stmt_list_ingresos_hoy->execute();
+        $ingresos_hoy = $stmt_list_ingresos_hoy->fetchAll(PDO::FETCH_ASSOC);
+        $kpi_ingresos = count($ingresos_hoy);
 
-    foreach ($ingresos_hoy as $row) {
-        $tipo = trim((string) ($row['nom_tipo_persona'] ?? 'Sin tipo'));
-        $por_tipo_persona[$tipo] = ($por_tipo_persona[$tipo] ?? 0) + 1;
+        foreach ($ingresos_hoy as $row) {
+            $tipo = trim((string) ($row['nom_tipo_persona'] ?? 'Sin tipo'));
+            $por_tipo_persona[$tipo] = ($por_tipo_persona[$tipo] ?? 0) + 1;
+        }
+        arsort($por_tipo_persona);
+
+        $stmt_list_salidas_hoy->execute();
+        $salidas_hoy = $stmt_list_salidas_hoy->fetchAll(PDO::FETCH_ASSOC);
+        $kpi_salidas = count($salidas_hoy);
+
+        $stmt_dentro = $pdo->query(
+            "SELECT COUNT(*)::int FROM tab_log_ingresos
+             WHERE fec_salida = fec_ingreso"
+        );
+        $personas_dentro = (int) $stmt_dentro->fetchColumn();
+    } catch (PDOException $e) {
+        $kpi_error = ErrorHandler::userMessageFromException($e);
     }
-    arsort($por_tipo_persona);
-
-    $stmt_list_salidas_hoy->execute();
-    $salidas_hoy = $stmt_list_salidas_hoy->fetchAll(PDO::FETCH_ASSOC);
-    $kpi_salidas = count($salidas_hoy);
-
-    $stmt_dentro = $pdo->query(
-        "SELECT COUNT(*)::int FROM tab_log_ingresos
-         WHERE fec_salida = fec_ingreso"
-    );
-    $personas_dentro = (int) $stmt_dentro->fetchColumn();
-} catch (PDOException $e) {
-    $kpi_error = ErrorHandler::userMessageFromException($e);
+} elseif ($id_instructor !== null) {
+    try {
+        $instructor_fichas = instructorListarFichas($stmt_fun_listar_fichas_instructor, $id_instructor);
+        $instructor_ctx = [
+            'id_instructor' => $id_instructor,
+            'es_admin' => false,
+            'modo' => 'instructor',
+            'id_usuario' => (string) $_SESSION['id_usuario'],
+        ];
+        $instructor_resumen = instructorDashboardResumen(
+            $stmt_fun_listar_asistencia_ficha,
+            $stmt_fun_listar_asistencia_ficha_admin,
+            $instructor_ctx,
+            $instructor_fichas
+        );
+    } catch (PDOException $e) {
+        $kpi_error = ErrorHandler::userMessageFromException($e);
+        $instructor_resumen = [
+            'fecha' => date('Y-m-d'),
+            'total_fichas' => 0,
+            'total_aprendices' => 0,
+            'hoy' => [
+                'Presente' => 0,
+                'Tarde' => 0,
+                'Ausente' => 0,
+                'Pendiente' => 0,
+                'Desconocido' => 0,
+                'total' => 0,
+            ],
+            'por_ficha' => [],
+        ];
+    }
 }
 
 $actividad_reciente = array_slice($ingresos_hoy, 0, 8);
 
 $hay_datos_porteria = $kpi_ingresos > 0 || $kpi_salidas > 0 || $personas_dentro > 0;
-$show_porteria      = $tiene_porteria || $hay_datos_porteria;
+$show_porteria      = !$es_instructor && ($tiene_porteria || $hay_datos_porteria);
 
 $sesiones_activas_count = 0;
 if ($es_admin) {
@@ -173,42 +214,53 @@ $path_usuarios = dashboardFindMenuPath($menu_paths, 'usuarios/usuarios.php')
 $path_sesiones = dashboardFindMenuPath($menu_paths, 'admin/sesiones');
 
 $quick_actions = [];
-if ($path_ingreso !== null) {
+if ($es_instructor && $path_fichas !== null) {
     $quick_actions[] = [
-        'url'   => smartcsetUrlNomPrograma($path_ingreso),
-        'label' => 'Registro de ingreso',
-        'icon'  => 'bi-box-arrow-in-right',
-        'class' => 'dashboard-cta--ingreso',
+        'url'   => smartcsetUrlNomPrograma($path_fichas),
+        'label' => 'Las fichas del instructor',
+        'icon'  => 'bi-journal-bookmark-fill',
+        'class' => 'dashboard-cta--instructor',
     ];
+} else {
+    if ($path_ingreso !== null) {
+        $quick_actions[] = [
+            'url'   => smartcsetUrlNomPrograma($path_ingreso),
+            'label' => 'Registro de ingreso',
+            'icon'  => 'bi-box-arrow-in-right',
+            'class' => 'dashboard-cta--ingreso',
+        ];
+    }
+    if ($path_salida !== null) {
+        $quick_actions[] = [
+            'url'   => smartcsetUrlNomPrograma($path_salida),
+            'label' => 'Registro de salida',
+            'icon'  => 'bi-box-arrow-left',
+            'class' => 'dashboard-cta--salida',
+        ];
+    }
+    if ($path_usuarios !== null) {
+        $quick_actions[] = [
+            'url'   => smartcsetUrlNomPrograma($path_usuarios),
+            'label' => 'Usuarios',
+            'icon'  => 'bi-people-fill',
+            'class' => 'dashboard-cta--admin',
+        ];
+    }
+    if ($path_sesiones !== null) {
+        $quick_actions[] = [
+            'url'   => smartcsetUrlNomPrograma($path_sesiones),
+            'label' => 'Auditoría de sesiones',
+            'icon'  => 'bi-shield-check',
+            'class' => 'dashboard-cta--admin',
+        ];
+    }
+    $quick_actions = array_slice($quick_actions, 0, 3);
 }
-if ($path_salida !== null) {
-    $quick_actions[] = [
-        'url'   => smartcsetUrlNomPrograma($path_salida),
-        'label' => 'Registro de salida',
-        'icon'  => 'bi-box-arrow-left',
-        'class' => 'dashboard-cta--salida',
-    ];
-}
-if ($path_usuarios !== null) {
-    $quick_actions[] = [
-        'url'   => smartcsetUrlNomPrograma($path_usuarios),
-        'label' => 'Usuarios',
-        'icon'  => 'bi-people-fill',
-        'class' => 'dashboard-cta--admin',
-    ];
-}
-if ($path_sesiones !== null) {
-    $quick_actions[] = [
-        'url'   => smartcsetUrlNomPrograma($path_sesiones),
-        'label' => 'Auditoría de sesiones',
-        'icon'  => 'bi-shield-check',
-        'class' => 'dashboard-cta--admin',
-    ];
-}
-$quick_actions = array_slice($quick_actions, 0, 3);
 
 $modulo_registro_off = $es_admin && !AppConfig::moduloRegistroHabilitado();
-$has_dashboard_body  = !empty($quick_actions) || $show_porteria;
+$has_dashboard_body  = $es_instructor
+    ? ($path_fichas !== null || !empty($instructor_resumen['por_ficha'] ?? []))
+    : (!empty($quick_actions) || $show_porteria);
 
 $page_title        = 'Inicio';
 $active_menu_id    = '0';
@@ -222,6 +274,10 @@ include smartcsetLayoutPath('topbar.php');
 ?>
 
 <div class="dash2">
+
+<?php if ($es_instructor && is_array($instructor_resumen)): ?>
+<?php include __DIR__ . '/partials/dashboard_instructor.php'; ?>
+<?php else: ?>
 
 <header class="dash2-hero">
     <div class="dash2-hero-top">
@@ -376,6 +432,8 @@ include smartcsetLayoutPath('topbar.php');
         </div>
     </div>
 </div>
+<?php endif; ?>
+
 <?php endif; ?>
 
 </div>

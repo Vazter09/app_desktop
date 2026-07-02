@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * @openapi {
+ *   "summary": "Copiar perfil de menús entre usuarios",
+ *   "tags": ["Menús"],
+ *   "requestBody": {
+ *     "required": ["usuario_origen", "usuario_destino"],
+ *     "properties": {
+ *       "usuario_origen": { "type": "string" },
+ *       "usuario_destino": { "type": "string" }
+ *     }
+ *   },
+ *   "responses": {
+ *     "200": { "description": "Perfil copiado", "dataSchema": { "$ref": "#/components/schemas/MessageData" } }
+ *   }
+ * }
+ */
 require_once dirname(__DIR__, 4) . '/core/prepare.php';
 require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';
