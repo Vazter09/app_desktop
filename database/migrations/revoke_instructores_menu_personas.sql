@@ -1,4 +1,5 @@
--- Instructores (no admin): solo menús Mis Fichas (06) y permiso 0601.
+-- Instructores (no admin): solo menús Mis Fichas (07) y permiso 0701.
+-- NOTA: renumerado de 06/0601 a 07/0701 — esos IDs ya los usa el módulo SIEM.
 
 DELETE FROM tab_menu_usuarios mu
 USING tab_personas p
@@ -6,14 +7,14 @@ JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
 WHERE mu.id_usuario = p.id_persona::VARCHAR
   AND p.id_tipo_persona = 3
   AND u.ind_usuario = FALSE
-  AND mu.id_menu NOT IN ('06', '0601');
+  AND mu.id_menu NOT IN ('07', '0701');
 
 -- Menús mínimos del módulo instructor (solo no administradores)
 INSERT INTO tab_menu_usuarios (id_usuario, id_menu, usr_insert, fec_insert)
 SELECT p.id_persona::VARCHAR, m.id_menu, 'migration', NOW()
 FROM tab_personas p
 JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
-CROSS JOIN (VALUES ('06'), ('0601')) AS m(id_menu)
+CROSS JOIN (VALUES ('07'), ('0701')) AS m(id_menu)
 WHERE p.id_tipo_persona = 3
   AND u.ind_usuario = FALSE
 ON CONFLICT (id_usuario, id_menu) DO NOTHING;

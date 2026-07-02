@@ -140,7 +140,7 @@ $page_title = $vistaDetalle && $idFichaSel !== null
     : instructorTituloListado($ctx, $programaSel);
 $active_menu_id = ($vistaDetalle && $idFichaSel !== null)
     ? instructorMenuIdFicha($idFichaSel)
-    : '0601';
+    : '0701';
 $wnom_usuario = (string) ($_SESSION['nom_usuario'] ?? '');
 $_root = smartcsetProjectRoot();
 $_css_v = @filemtime($_root . '/frontend/web/public/assets/css/modulo_instructor_fichas.css') ?: time();

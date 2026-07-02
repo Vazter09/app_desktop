@@ -533,7 +533,7 @@ function instructorDashboardResumen(
 /** Menús de sistema permitidos para instructores (no administradores). */
 function instructorMenusPermitidosIds(): array
 {
-    return ['06', '0601'];
+    return ['07', '0701'];
 }
 
 /** Instructor registrado sin perfil administrador: solo módulo Mis Fichas. */
@@ -544,7 +544,7 @@ function instructorEsSoloFichas(PDO $pdo, string $idUsuario): bool
 }
 
 /**
- * Deja solo menús 06/0601 para instructores no admin (sidebar y permisos efectivos).
+ * Deja solo menús 07/0701 para instructores no admin (sidebar y permisos efectivos).
  *
  * @param list<array<string, mixed>> $menuRaw
  * @return list<array<string, mixed>>
@@ -570,11 +570,11 @@ function instructorFiltrarMenusUsuario(PDO $pdo, string $idUsuario, array $menuR
 /** ID de menú lateral sintético por ficha (no existe en tab_menus). */
 function instructorMenuIdFicha(int $idFicha): string
 {
-    return '0601-' . $idFicha;
+    return '0701-' . $idFicha;
 }
 
 /**
- * Ítems hijos dinámicos bajo menú 06 (Mis Fichas) para el sidebar del instructor.
+ * Ítems hijos dinámicos bajo menú 07 (Mis Fichas) para el sidebar del instructor.
  *
  * @return array<string, array{id_menu: string, nom_menu: string, ind_id_padre: string, nom_programa: string}>
  */
@@ -586,10 +586,10 @@ function instructorSidebarMenusFichas(PDOStatement $stmt, int $idInstructor): ar
     $items = [];
 
     if (count($fichas) > 1) {
-        $items['0601'] = [
-            'id_menu' => '0601',
+        $items['0701'] = [
+            'id_menu' => '0701',
             'nom_menu' => 'Todas las fichas',
-            'ind_id_padre' => '06',
+            'ind_id_padre' => '07',
             'nom_programa' => $programaBase,
         ];
     }
@@ -605,7 +605,7 @@ function instructorSidebarMenusFichas(PDOStatement $stmt, int $idInstructor): ar
         $items[$menuId] = [
             'id_menu' => $menuId,
             'nom_menu' => 'Ficha ' . $idFicha,
-            'ind_id_padre' => '06',
+            'ind_id_padre' => '07',
             'nom_programa' => $programaBase . '?id_ficha=' . $idFicha . '&fecha=' . urlencode($fechaHoy),
             'menu_tooltip' => $programaNom !== '' ? 'Ficha ' . $idFicha . ' — ' . $programaNom : 'Ficha ' . $idFicha,
         ];
@@ -615,14 +615,14 @@ function instructorSidebarMenusFichas(PDOStatement $stmt, int $idInstructor): ar
 }
 
 /**
- * Reemplaza hijos estáticos de Mis Fichas (06) por las fichas del instructor.
+ * Reemplaza hijos estáticos de Mis Fichas (07) por las fichas del instructor.
  *
  * @param array<string, array<string, mixed>> $menuJerarquia
  * @return array<string, array<string, mixed>>
  */
 function instructorExpandirMenuSidebar(PDO $pdo, PDOStatement $stmtFichas, string $idUsuario, array $menuJerarquia): array
 {
-    if (!isset($menuJerarquia['06'])) {
+    if (!isset($menuJerarquia['07'])) {
         return $menuJerarquia;
     }
 
@@ -638,7 +638,7 @@ function instructorExpandirMenuSidebar(PDO $pdo, PDOStatement $stmtFichas, strin
     try {
         $hijosDinamicos = instructorSidebarMenusFichas($stmtFichas, $idInstructor);
         if ($hijosDinamicos !== []) {
-            $menuJerarquia['06']['hijos'] = $hijosDinamicos;
+            $menuJerarquia['07']['hijos'] = $hijosDinamicos;
         }
     } catch (PDOException) {
         /* Mantener menú estático si falla la consulta */

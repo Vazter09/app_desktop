@@ -45,14 +45,15 @@ if (isset($stmt_fun_listar_fichas_instructor)) {
     );
 }
 
-// Etiquetas del módulo 06 solo para administrador (instructores ven nombres de tab_menus).
-if (isset($_menu['06']) && usuarioEsAdministrador($pdo, (string) $_SESSION['id_usuario'])) {
+// Etiquetas del módulo 07 (Mis Fichas / instructores) solo para administrador
+// (instructores ven nombres de tab_menus). NOTA: 07/0701, no 06/0601 — ese ID lo usa SIEM.
+if (isset($_menu['07']) && usuarioEsAdministrador($pdo, (string) $_SESSION['id_usuario'])) {
     if (!function_exists('instructorMenuLabelAdminPadre')) {
         require_once dirname(__DIR__) . '/pages/modulos/instructor/lib/instructor_ui.php';
     }
-    $_menu['06']['nom_menu'] = instructorMenuLabelAdminPadre();
-    if (isset($_menu['06']['hijos']['0601'])) {
-        $_menu['06']['hijos']['0601']['nom_menu'] = instructorMenuLabelAdminHijo();
+    $_menu['07']['nom_menu'] = instructorMenuLabelAdminPadre();
+    if (isset($_menu['07']['hijos']['0701'])) {
+        $_menu['07']['hijos']['0701']['nom_menu'] = instructorMenuLabelAdminHijo();
     }
 }
 
@@ -102,8 +103,8 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
                 foreach ($_padre['hijos'] as $_h) {
                     if ($_h['id_menu'] === $_active) { $_activo_p = 'active'; break; }
                 }
-                // Ficha activa (0601-123) también abre el padre 06
-                if (!$_activo_p && $_padre['id_menu'] === '06' && str_starts_with((string) $_active, '0601-')) {
+                // Ficha activa (0701-123) también abre el padre 07
+                if (!$_activo_p && $_padre['id_menu'] === '07' && str_starts_with((string) $_active, '0701-')) {
                     $_activo_p = 'active';
                 }
             }
