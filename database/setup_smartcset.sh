@@ -128,7 +128,11 @@ FUNCS=(
   "$ROOT/database/functions/siem/fun_siem_actividad.sql"
 )
 for f in "${FUNCS[@]}"; do
-  run_sql "$f"
+  if [[ -f "$f" ]]; then
+    run_sql "$f"
+  else
+    echo "AVISO: función omitida, archivo no encontrado: $f"
+  fi
 done
 run_sql "$ROOT/database/migrations/drop_fun_registrar_sesion.sql"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
