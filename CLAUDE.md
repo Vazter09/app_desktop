@@ -555,6 +555,13 @@ El módulo registro (`frontend/web/pages/modulos/registro/`) tenía su propio lo
 ### Bug 9: Rutas rotas en 3 endpoints del módulo registro — ✅ RESUELTO (2026-07-01)
 `backend/routers/registro/v1/forms/guardar.php`, `aprendiz/buscar.php` y `personas/listar.php` usaban `dirname(__DIR__, 3)` para llegar a `backend/core/prepare.php`, pero estos 3 archivos están un nivel más anidados que `ciudades.php`/`login.php` (que sí están a la profundidad correcta con 3). Los 3 endpoints devolvían HTTP 500 en cualquier request — nunca funcionaron. Encontrado al probar el fix del Bug 8 (antes quedaba enmascarado porque el login standalone bloqueaba el acceso antes de llegar a este bug). Corregido a `dirname(__DIR__, 4)` en los 3 archivos.
 
+### Bug 10: Colisión de `id_menu` entre SIEM (06/0601) y módulo de instructores — ✅ RESUELTO (2026-07-02)
+Al fusionar la rama `feat/seguridad` (blindaje Fase 1, incluye SIEM E11) con `origin/main` (incluye `Feat/instructores #10` de Kevin), ambos módulos habían usado independientemente `id_menu = '06'` como top-level y `'0601'` como hijo — colisión semántica que un merge de texto no puede detectar porque ambos archivos SQL son válidos por separado. `frontend/web/layout/sidebar.php` traía código del módulo de instructores que sobreescribe a la fuerza el label de `06`/`0601` a "Asistencia"/"Por carrera" para administradores, haciendo que las páginas de SIEM (dueño real de esos IDs en `tab_menus`) aparecieran mal etiquetadas. La migración `add_menu_instructor_asistencia.sql` usaba `ON CONFLICT (id_menu) DO UPDATE` — de haber corrido contra una BD con SIEM ya desplegado, habría sobreescrito silenciosamente los registros de menú de SIEM.
+
+**Fix:** renumerado el módulo de instructores de `06/0601` a `07/0701` (IDs verificados libres) en `sidebar.php`, `backend/services/instructor/asistencia_service.php`, `frontend/web/pages/modulos/instructor/fichas/index.php`, `fun_crear_usuarios_instructores.sql`, `revoke_instructores_menu_personas.sql` y `add_menu_instructor_asistencia.sql`. SIEM conserva `06/0601` sin cambios.
+
+**Lección para nuevos módulos con menú propio:** antes de elegir un `id_menu` top-level, verificar contra `SELECT id_menu FROM tab_menus WHERE ind_id_padre='00'` en la BD real — no asumir que un ID de 2 dígitos está libre solo porque no aparece en el propio branch de trabajo.
+
 ### Deuda técnica adicional
 
 - Modal de ingreso (`porteria-ingreso-modal.js`): auto-apertura en desktop agregada (2026-06-26); antes solo aparecía en salida, no en ingreso

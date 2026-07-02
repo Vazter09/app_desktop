@@ -706,9 +706,54 @@ A partir de esta sesión: **ningún comando de git (ni siquiera de solo lectura)
 
 ---
 
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-02
+
+### 1. Restauración de BD desde dump institucional (SENA)
+Se restauró `db_smartcset2_backup_20260701_173954.dump` (traído del servidor 10.5.213.111, formato `pg_dump -Fc`) sobre `db_smartcset2` local: `DROP DATABASE` + `CREATE DATABASE` + `pg_restore --no-owner --no-privileges -j 4`. Verificado: 72 tablas, 59 funciones `fun_*`, `seq_log_ingresos` presente, usuarios de prueba (`dora.castro`, `leidy.castro`) incluidos.
+
+Se corrigió además un typo en `.env`: `DB_HOST=loclahost` → `localhost` (bloqueaba toda conexión PHP→BD).
+
+### 2. Auditoría de divergencia local vs `origin/main` — hallazgo estructural
+Se detectó que el `main` local estaba **12 commits detrás** de `origin/main`: Kevin (lead) había subido en paralelo, sin visibilidad del trabajo de blindaje de seguridad hecho en local (E3, SIEM, fixes de auditoría/acceso — todo **sin commitear** hasta este punto), un feature grande de instructores (`Feat/instructores #10`), refactor de scripts de carga SENA, documentación OpenAPI y otros cambios. De 192 archivos que diferían, 17 tenían conflicto real (contenido distinto en ambos lados, no solo touch).
+
+### 3. Rama `feat/seguridad` — commit del trabajo local + merge de Kevin
+- Creada `feat/seguridad` desde el HEAD local (working tree con cambios sin commitear pasó intacto).
+- `.gitignore` actualizado: se excluyó `__pycache__/`, `*.pyc` y `.mcp/` (327MB, binario local del MCP, nunca debió versionarse).
+- Commit único (`03d04f5`) con las ~119 archivos del blindaje de Fase 1 (ver sesión 2026-07-01 arriba para el detalle funcional).
+- **Bug encontrado en el propio commit:** los symlinks `frontend/web/public/{pages,routers}` se habían borrado del disco en algún punto y quedaron commiteados como `deleted` sin notarlo — recreados en commit aparte (`aee29b6`). Sin ellos, toda la app da 404.
+- `git merge origin/main` — solo **7 conflictos reales** (menos de los 17 estimados por el diff bruto; los demás archivos se auto-fusionaron limpio). Resueltos uno por uno:
+  - 3 endpoints de registro (`aprendiz/buscar.php`, `forms/guardar.php`, `personas/listar.php`): Kevin seguía con el bug de rutas `dirname(__DIR__, 3)` (Bug 9, ya documentado); se conservó el fix local (`dirname(__DIR__, 4)`) + se adoptó la documentación OpenAPI que Kevin agregó.
+  - `porteria-salida-modal.js`: Kevin intentó su propio fix del bug de salida con `form.requestSubmit()`, pero **no resuelve el problema real** (la bandera interna `puedeSalir` de `salidas.js` solo se activa con evento `input` manual, que el modal nunca dispara). Se mantuvo el fix local verificado (llamada directa a `SmartcsetSalidaRouter.registrar()`) + se adoptó la mejora de Kevin de `getTipoDoc()` dinámico en vez de `"CC"` hardcodeado.
+  - `smartcset-path.js`, `setup_smartcset.sh`: combinados sin pérdida (listas aditivas, sin solapamiento semántico).
+  - **`database/schema/script-BD-SMARTCSET V.1.8.sql`**: las dos versiones tenían el mismo set de 69 tablas pero en formatos incompatibles (una `pg_dump` automático limpio, la otra escrita a mano con documentación ASCII). Se verificó contra la BD real con `pg_dump --schema-only` y se encontró que **ninguna de las dos versiones commiteadas coincidía con la BD real** — faltaban `tab_intentos_login`, `tab_dispositivos_porteria`, `tab_porteria_sync_client` en ambas. Con aprobación de Anderson, se **regeneró el archivo completo desde la BD real** (72 tablas, 7805 líneas), resolviendo el conflicto y la desactualización preexistente en un solo paso.
+- Merge cerrado (`d151187`).
+
+### 4. Bug heredado de Kevin: instalador abortaba por archivos faltantes
+El array `FUNCS` de `setup_smartcset.sh` (heredado de `origin/main`) referenciaba 4 archivos que nunca se crearon en el repo (`actualizar_datos/fun_actualizar_{contratista,funcionario,instructor,persona_centro}.sql`). Con `set -euo pipefail` activo, una instalación nueva **abortaba por completo** en el primer archivo faltante, dejando sin desplegar todo lo posterior (rate limiting E3, SIEM, etc.) — bug preexistente en `origin/main`, no introducido por el merge. Fix (`52bd7cc`): se aplicó al loop de `FUNCS` la misma guarda `[[ -f "$f" ]] &&` que ya usaba el loop de migraciones más abajo en el mismo script.
+
+**Verificado end-to-end:** instalador corrido de punta a punta contra una BD de prueba limpia (`db_smartcset2_test_merge`, descartada después) — exit code 0, 72 tablas, 66 funciones, avisos de los 4 archivos faltantes sin abortar el resto.
+
+### 5. Bug de colisión de `id_menu` entre SIEM e instructores (encontrado navegando, no en el merge automático)
+Anderson reportó que la página SIEM → Actividad Física mostraba "Asistencia" en el sidebar en vez de "SIEM". Causa: **el módulo SIEM (E11) y el módulo de instructores de Kevin usaron independientemente el mismo `id_menu = '06'` (y `'0601'` como hijo)** — colisión semántica que git no puede detectar en un merge de texto porque ambos archivos SQL eran válidos por separado. `sidebar.php` traía código de Kevin que sobreescribe a la fuerza el label de `06`/`0601` con "Asistencia"/"Por carrera" para administradores, asumiendo que ese ID era suyo.
+
+**Riesgo real evitado:** la migración de Kevin (`add_menu_instructor_asistencia.sql`) usaba `ON CONFLICT (id_menu) DO UPDATE` — de haber corrido contra una BD con SIEM ya desplegado (como `db_smartcset2`), habría **sobreescrito silenciosamente** los registros de menú de SIEM en `tab_menus`.
+
+**Fix (`bee4c6e`):** renumerado el módulo de instructores de `06/0601` a `07/0701` (IDs verificados libres) en los 6 puntos donde estaba hardcodeado: `sidebar.php`, `backend/services/instructor/asistencia_service.php`, `frontend/web/pages/modulos/instructor/fichas/index.php`, `fun_crear_usuarios_instructores.sql`, `revoke_instructores_menu_personas.sql`, `add_menu_instructor_asistencia.sql`. Migración corregida aplicada contra `db_smartcset2` real y verificada: SIEM conserva `06/0601` con su label correcto, instructores usa `07/0701` sin colisión, ambos módulos visibles simultáneamente en el sidebar.
+
+### 6. Push de `feat/seguridad` a GitHub
+`git push -u origin feat/seguridad` — rama nueva creada en el remoto (`https://github.com/KevinBermudezC/smartcset.git`), **`main` no se tocó** en ningún momento (ni local ni remoto). No se abrió PR — pendiente de decisión de Anderson.
+
+### 7. Verificación end-to-end en Apache real (post-merge)
+Con el código de `feat/seguridad` sirviendo desde Apache (`https://localhost/smartcset/`) contra `db_smartcset2` real: login `admin.smart` OK, dashboard 200, SIEM dashboard 200, endpoint de registro con fix de rutas responde JSON válido con datos reales, sidebar con SIEM e instructores conviviendo sin colisión.
+
+**Estado al cierre:** `feat/seguridad` en GitHub, sin PR abierto. `main` intacto. `db_smartcset2` local restaurada desde dump institucional + migración de menús corregida aplicada.
+
+---
+
 ## PRÓXIMOS PASOS (ORDEN RECOMENDADO)
 
 ### Prioridad alta
+0. **Decidir sobre `feat/seguridad`**: rama ya en GitHub, sin PR abierto. Revisar más a fondo el módulo de instructores de Kevin en busca de otras colisiones similares (misma clase de bug que el de `id_menu` 06/0601) antes de abrir el PR. Coordinar con Kevin las 4 funciones faltantes (`actualizar_datos/fun_actualizar_{contratista,funcionario,instructor,persona_centro}.sql`) — el instalador ya no aborta por su ausencia, pero la funcionalidad que dependa de ellas seguirá rota hasta que se creen.
 1. **E1 — OWASP A03-A10** (continuación de auditoría)
    - A03 — Injection: test `'; DROP TABLE tab_personas; --` en formulario ingreso
    - A04 — Insecure Design: verificar mínimo privilegio usuario BD (sin DROP/TRUNCATE en auditoría)
@@ -837,4 +882,4 @@ PGPASSWORD=ander123 psql -h localhost -U postgres -d db_smartcset2
 
 ---
 
-*Última actualización: 2026-07-01 | Responsable: Anderson | Modelo: Claude Sonnet 5*
+*Última actualización: 2026-07-02 | Responsable: Anderson | Modelo: Claude Sonnet 5*

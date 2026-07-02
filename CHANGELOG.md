@@ -1,5 +1,55 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-02] Sesión: Merge feat/seguridad con origin/main + fix colisión de menús
+
+### 🎯 Objetivos Logrados
+- ✅ Restaurar `db_smartcset2` desde dump institucional real (SENA, 2026-07-01)
+- ✅ Commitear el trabajo de blindaje Fase 1 (previamente sin commitear) en rama nueva `feat/seguridad`
+- ✅ Fusionar 12 commits de `origin/main` (Kevin: instructores, carga SENA, OpenAPI) sin perder trabajo de ningún lado
+- ✅ Regenerar `database/schema/script-BD-SMARTCSET V.1.8.sql` fiel a la BD real (ambas versiones previas estaban desactualizadas)
+- ✅ Push de `feat/seguridad` a GitHub (main intacto, sin PR abierto)
+
+---
+
+## 📋 BUGS ARREGLADOS
+
+### Bug: `DB_HOST=loclahost` (typo en `.env`)
+**Síntoma:** conexión PHP→PostgreSQL fallaba tras restaurar la BD.
+**Solución:** corregido a `localhost`.
+**Estado:** ✅ RESUELTO
+
+### Bug: symlinks `public/pages` y `public/routers` perdidos y commiteados como borrados
+**Síntoma:** sin ellos, todas las páginas y endpoints AJAX dan 404.
+**Solución:** recreados (`ln -sf ../pages pages`, `ln -sf ../../../backend/routers routers`) y commiteados como `120000`.
+**Estado:** ✅ RESUELTO
+
+### Bug (heredado de Kevin): instalador abortaba por 4 archivos de función faltantes
+**Síntoma:** `setup_smartcset.sh` (con `set -euo pipefail`) abortaba por completo en el primer archivo inexistente del array `FUNCS` (`actualizar_datos/fun_actualizar_{contratista,funcionario,instructor,persona_centro}.sql`), dejando sin desplegar todo lo posterior (rate limiting, SIEM, etc).
+**Causa raíz:** archivos referenciados en `origin/main` que nunca se crearon en el repo.
+**Solución:** guarda `[[ -f "$f" ]] &&` en el loop de `FUNCS`, igual patrón que ya usaba el loop de migraciones.
+**Estado:** ✅ MITIGADO (instalador ya no aborta; las funciones en sí siguen sin existir — pendiente que Kevin las cree)
+
+### Bug: colisión de `id_menu` entre módulo SIEM e instructores
+**Síntoma:** sidebar mostraba "Asistencia" en vez de "SIEM" al navegar a `pages/modulos/siem/actividad/index.php`.
+**Causa raíz:** SIEM (E11, Fase 1) y el módulo de instructores de Kevin (`Feat/instructores #10`) usaron independientemente el mismo `id_menu = '06'`/`'0601'`. `sidebar.php` traía código de Kevin que sobreescribe a la fuerza el label de esos IDs para administradores.
+**Riesgo evitado:** la migración de instructores usaba `ON CONFLICT (id_menu) DO UPDATE` — de haber corrido contra `db_smartcset2` (con SIEM ya desplegado), habría sobreescrito silenciosamente los registros de menú de SIEM.
+**Solución:** renumerado el módulo de instructores de `06/0601` a `07/0701` en 6 archivos (`sidebar.php`, `asistencia_service.php`, `fichas/index.php`, `fun_crear_usuarios_instructores.sql`, `revoke_instructores_menu_personas.sql`, `add_menu_instructor_asistencia.sql`).
+**Estado:** ✅ RESUELTO — verificado en vivo, ambos módulos conviven en el sidebar sin colisión.
+
+---
+
+## 📦 MERGE feat/seguridad ↔ origin/main
+
+7 conflictos reales de 192 archivos divergentes (los demás se auto-fusionaron sin intervención):
+- 3 endpoints de registro: conservado el fix de rutas local (Bug 9) + adoptada la documentación OpenAPI de Kevin
+- `porteria-salida-modal.js`: conservado el fix crítico local (el de Kevin no resolvía el bug real de `salidas.js`) + adoptada su mejora de tipo de documento dinámico
+- `smartcset-path.js`, `setup_smartcset.sh`: combinados sin pérdida
+- `schema/script-BD-SMARTCSET V.1.8.sql`: regenerado desde `pg_dump --schema-only` de la BD real (ninguna de las dos versiones commiteadas coincidía con la BD real; corrige deuda preexistente)
+
+Ver `HANDOFF.md` sección "LO QUE SE HIZO EN LA SESIÓN 2026-07-02" para el detalle completo.
+
+---
+
 ## [2026-06-27] Sesión: Restauración DB Local + Mini SIEM + Fixes Portería
 
 ### 🎯 Objectivos Logrados

@@ -100,6 +100,18 @@ Migraciones ausentes:
 
 Consultar `SETUP_AUDIT.md` en la raíz para detalles completos.
 
+> **Actualizado (2026-07-02):** el schema activo real es **V.1.8**
+> (`database/schema/script-BD-SMARTCSET V.1.8.sql`), regenerado directamente desde
+> `pg_dump --schema-only` de la BD real para corregir una desactualización preexistente
+> (faltaban `tab_intentos_login`, `tab_dispositivos_porteria`, `tab_porteria_sync_client`).
+> Además, 4 archivos referenciados en `FUNCS` nunca se crearon:
+> `database/functions/actualizar_datos/fun_actualizar_{contratista,funcionario,instructor,persona_centro}.sql`
+> — el instalador ya no aborta por su ausencia (guarda `[[ -f "$f" ]]` agregada), pero la
+> funcionalidad que dependa de ellas sigue sin implementar. Ver `CLAUDE.md` Bug 10 sobre
+> colisiones de `id_menu` entre módulos que agregan su propio menú (SIEM vs instructores,
+> ambos usaron `06`/`0601` de forma independiente) — verificar siempre contra la BD real
+> antes de elegir un `id_menu` nuevo, no asumir que un ID está libre.
+
 ---
 
 ## Dependencias
