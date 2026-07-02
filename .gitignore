@@ -51,3 +51,8 @@ __pycache__/
 
 # Binario y config local del MCP codebase-memory
 .mcp/
+
+# App desktop reconocimiento facial: entorno virtual local, storage biométrico y config del PC
+reconocimientio_facial/Desktop/.venv/
+reconocimientio_facial/Desktop/storage/
+reconocimientio_facial/Desktop/.device_config.json

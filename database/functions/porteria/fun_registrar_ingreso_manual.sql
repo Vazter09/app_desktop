@@ -32,6 +32,7 @@ BEGIN
     END IF;
 
     worigen_txt := CASE
+        WHEN wid_metodo_aut = 4 THEN 'biometrico'
         WHEN wid_metodo_aut = 3 THEN 'codigo_barras'
         WHEN wid_metodo_aut = 2 THEN 'codigo_qr'
         ELSE 'registro_manual'

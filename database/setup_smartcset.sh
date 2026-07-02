@@ -63,6 +63,9 @@ run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
 echo "==> Migración tab_intentos_login (E3 — rate limiting)"
 run_sql "$ROOT/database/migrations/add_tab_intentos_login.sql"
 
+echo "==> Migración tab_biometria_facial (reconocimiento facial portería, requiere pgvector)"
+run_sql "$ROOT/database/migrations/add_tab_biometria_facial.sql"
+
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
 
@@ -103,6 +106,8 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/porteria/fun_guardar_biometria_facial.sql"
+  "$ROOT/database/functions/porteria/fun_identificar_persona_por_rostro.sql"
   "$ROOT/database/functions/instructor/fun_marcar_ausentes_fecha.sql"
   "$ROOT/database/functions/instructor/fun_listar_fichas_instructor.sql"
   "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha.sql"

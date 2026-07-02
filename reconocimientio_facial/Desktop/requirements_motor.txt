@@ -1,0 +1,16 @@
+# Dependencias para el motor biométrico local (motor_biometrico.py)
+# Se ejecuta como proceso aparte, en el mismo PC de portería, puerto 5000.
+# ==========================================
+
+fastapi>=0.110
+uvicorn>=0.29
+deepface>=0.0.93
+tf-keras>=2.16
+opencv-python>=4.9.0
+numpy>=1.24.0
+pydantic>=2.5
+
+# ==========================================
+# Instalación:
+#   pip install -r requirements_motor.txt
+# ==========================================

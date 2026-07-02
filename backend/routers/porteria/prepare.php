@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/ingreso_service.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/salida_service.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/foto_service.php';
+require_once dirname(__DIR__, 2) . '/services/porteria/biometria_service.php';
 require_once __DIR__ . '/_lib/Payload.php';
 require_once __DIR__ . '/_lib/Sync.php';
 require_once __DIR__ . '/_lib/Auth.php';
@@ -210,4 +211,63 @@ function porteriaApiListSalidasHoy(): array
             'observaciones' => (string) ($r['val_observaciones'] ?? ''),
         ];
     }, $rows);
+}
+
+/**
+ * Enrola biometría facial de una persona ya registrada en tab_personas.
+ *
+ * @param array<string, mixed> $json {documento: string, vector_facial: float[], foto_base64?: string, calidad_facial?: float}
+ * @return array{id_persona: int}
+ */
+function porteriaApiEnrolarBiometria(array $device, array $json): array
+{
+    global $pdo, $stmt_fun_guardar_biometria;
+
+    $idPersona = (int) trim((string) ($json['documento'] ?? ''));
+    $vector = $json['vector_facial'] ?? null;
+    if (!is_array($vector)) {
+        throw new Exception('Falta el vector facial.');
+    }
+
+    $uriFoto = null;
+    $foto = trim((string) ($json['foto_base64'] ?? ''));
+    if ($foto !== '') {
+        $uriFoto = biometriaGuardarFoto($idPersona, $foto);
+    }
+
+    $usrAudit = (string) ($device['id_usuario_audit'] ?? $device['usr_audit'] ?? 'system');
+    $pdo->exec("SET app.usuario = " . $pdo->quote($usrAudit));
+
+    biometriaEnrolar(
+        $stmt_fun_guardar_biometria,
+        $idPersona,
+        array_map('floatval', $vector),
+        $uriFoto,
+        (float) ($json['calidad_facial'] ?? 0.0)
+    );
+
+    return ['id_persona' => $idPersona];
+}
+
+/**
+ * Identifica a la persona más parecida al vector facial recibido.
+ *
+ * @param array<string, mixed> $json {vector_facial: float[]}
+ * @return array{id_persona: int|null, distancia: float|null}
+ */
+function porteriaApiIdentificarBiometria(array $json): array
+{
+    global $stmt_fun_identificar_rostro;
+
+    $vector = $json['vector_facial'] ?? null;
+    if (!is_array($vector)) {
+        throw new Exception('Falta el vector facial.');
+    }
+
+    $match = biometriaIdentificar($stmt_fun_identificar_rostro, array_map('floatval', $vector));
+    if ($match === null) {
+        return ['id_persona' => null, 'distancia' => null];
+    }
+
+    return $match;
 }

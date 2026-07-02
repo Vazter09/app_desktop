@@ -196,6 +196,15 @@ try {
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
+    // --- 6c-bis. BIOMETRÍA FACIAL (app desktop portería → tab_biometria_facial) ---
+    $stmt_fun_guardar_biometria = $pdo->prepare(
+        "CALL fun_guardar_biometria_facial(?::NUMERIC, ?::TEXT, ?::TEXT, ?::NUMERIC)"
+    );
+    $stmt_fun_identificar_rostro = $pdo->prepare(
+        "SELECT id_persona_encontrado, distancia_calculada
+           FROM fun_identificar_persona_por_rostro(?::TEXT)"
+    );
+
     // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
     $sql_fun_registrar_persona = "SELECT fun_registrar_persona(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,

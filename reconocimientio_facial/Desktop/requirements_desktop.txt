@@ -1,0 +1,19 @@
+# Dependencias para la Aplicación Desktop
+# ==========================================
+
+# Procesamiento de imágenes
+Pillow>=10.0
+
+# Captura de cámara
+opencv-python>=4.9.0
+
+# Arrays numéricos
+numpy>=1.24.0
+
+# Crear ejecutable
+pyinstaller>=6.0
+
+# ==========================================
+# Instalación:
+#   pip install -r requirements_desktop.txt
+# ==========================================
