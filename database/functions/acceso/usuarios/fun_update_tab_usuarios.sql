@@ -6,6 +6,11 @@ CREATE OR REPLACE FUNCTION fun_update_tab_usuarios(
     wind_usuario  tab_usuarios.ind_usuario%TYPE,
     wind_estado   tab_usuarios.ind_estado%TYPE
 ) RETURNS TEXT AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     UPDATE tab_usuarios
     SET nom_usuario  = wnom_usuario,
@@ -27,6 +32,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

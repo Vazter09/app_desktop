@@ -23,16 +23,17 @@
 
     function prefetch() {
         if (num.length < 5) { fetchResult = null; fetchPromise = null; return; }
-        fetchPromise = fetch(
-            "consultar.php?" + new URLSearchParams({documento: num, tipo_doc: "CC"}),
-            {headers: {Accept: "application/json"}}
-        )
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            fetchResult = data.ok ? data : null;
-            return fetchResult;
-        })
-        .catch(function(){ fetchResult = null; return null; });
+        if (typeof SmartcsetSalidaRouter === 'undefined') {
+            fetchResult = null;
+            fetchPromise = null;
+            return;
+        }
+        fetchPromise = SmartcsetSalidaRouter.consultar(num, "CC")
+            .then(function(data){
+                fetchResult = data || null;
+                return fetchResult;
+            })
+            .catch(function(){ fetchResult = null; return null; });
     }
 
     function goStep(n) {
@@ -88,8 +89,8 @@
             if (ccOpt) fTipDoc.value = "CC";
         }
         if (persona) {
-            if (fNom) fNom.value = persona.nom_persona || "";
-            if (fApe) fApe.value = persona.ape_persona || "";
+            if (fNom) fNom.value = persona.nombres || persona.nom_persona || "";
+            if (fApe) fApe.value = persona.apellidos || persona.ape_persona || "";
             if (fTip && persona.id_tipo_persona) fTip.value = String(persona.id_tipo_persona);
         }
         if (hidIngreso && ingreso) hidIngreso.value = String(ingreso.id_ingreso);
@@ -102,8 +103,8 @@
 
         if (puedeSalir && (persona || ingreso)) {
             var nombre = persona
-                ? (persona.nom_persona + " " + (persona.ape_persona || "")).trim()
-                : ((ingreso.nom_persona || "") + " " + (ingreso.ape_persona || "")).trim();
+                ? ((persona.nombres || persona.nom_persona || "") + " " + (persona.apellidos || persona.ape_persona || "")).trim()
+                : (((ingreso.nombres || ingreso.nom_persona || "") + " " + (ingreso.apellidos || ingreso.ape_persona || "")).trim());
             var tipoNom = (persona && persona.nom_tipo_persona)
                 || (ingreso && ingreso.nom_tipo_persona)
                 || "Registrado";
@@ -112,8 +113,8 @@
             document.getElementById("dm-persona-nombre").textContent    = nombre;
             document.getElementById("dm-persona-tipo-text").textContent = tipoNom;
             document.getElementById("dm-persona-doc-text").textContent  = "CC " + num;
-            document.getElementById("dm-confirm-name").textContent      = (persona && persona.nom_persona)
-                ? persona.nom_persona.split(" ")[0]
+            document.getElementById("dm-confirm-name").textContent      = (persona && (persona.nombres || persona.nom_persona))
+                ? (persona.nombres || persona.nom_persona).split(" ")[0]
                 : nombre.split(" ")[0];
             aplicarDatosFormulario(data);
         } else {
@@ -203,7 +204,28 @@
         var hidPuerta = document.getElementById("sel_entrada");
         if (hidPuerta) hidPuerta.value = puerta;
         if (fetchResult) aplicarDatosFormulario(fetchResult);
-        document.getElementById("form_salida").submit();
+
+        if (!puedeSalir || typeof SmartcsetSalidaRouter === "undefined") {
+            return;
+        }
+
+        btnFinal.disabled = true;
+        SmartcsetSalidaRouter.registrar({
+            documento: num,
+            tipo_doc: "CC",
+            metodo_aut: Number(document.getElementById("hid_metodo_aut")?.value || 1),
+            observaciones: document.getElementById("txt_observaciones")?.value || "",
+            foto_base64: document.getElementById("hid_foto_data")?.value || "",
+        }).then(function() {
+            window.location.reload();
+        }).catch(function(err) {
+            btnFinal.disabled = false;
+            if (window.SmartcsetToast) {
+                window.SmartcsetToast.show("danger", "No se pudo completar", err.message);
+            } else {
+                alert(err.message);
+            }
+        });
     });
 
     modalEl.addEventListener("show.bs.modal", function() {

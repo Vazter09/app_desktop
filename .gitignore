@@ -44,3 +44,10 @@ package-lock.json
 
 # Reportes SENA subidos (no versionar los archivos cargados)
 storage/reportes/
+
+# Python bytecode cache (skills)
+__pycache__/
+*.pyc
+
+# Binario y config local del MCP codebase-memory
+.mcp/

@@ -2,7 +2,11 @@ CREATE OR REPLACE FUNCTION fun_archivar_sesiones_antiguas(
     p_dias INTEGER DEFAULT 7
 ) RETURNS TEXT AS $$
 DECLARE
-    w_eliminados INTEGER;
+    w_eliminados  INTEGER;
+    w_exc_state   TEXT;
+    w_exc_msg     TEXT;
+    w_exc_detail  TEXT;
+    w_exc_hint    TEXT;
 BEGIN
     IF p_dias IS NULL OR p_dias < 1 THEN
         PERFORM smartcset_raise_validacion('Los días de retención deben ser al menos 1.');
@@ -34,6 +38,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

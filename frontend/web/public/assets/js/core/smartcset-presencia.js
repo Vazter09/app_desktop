@@ -52,6 +52,7 @@
                 if (!res.ok) {
                     return null;
                 }
+                document.dispatchEvent(new CustomEvent('smartcset:sesion-touch'));
                 return res.json();
             })
             .catch(function () {

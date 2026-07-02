@@ -33,13 +33,12 @@ function entradasResolveIdEntradaPost(?string $raw): ?int
     return $id;
 }
 
-function entradasGuardar(PDOStatement $stmtUpsert, ?int $id, string $nombre, int $centro, int $sede, string $usrAudit): string
+function entradasGuardar(PDOStatement $stmtUpsert, ?int $id, string $nombre, int $centro, int $sede): string
 {
     $stmtUpsert->bindValue(1, $id, $id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
     $stmtUpsert->bindValue(2, $nombre);
     $stmtUpsert->bindValue(3, $centro, PDO::PARAM_INT);
     $stmtUpsert->bindValue(4, $sede, PDO::PARAM_INT);
-    $stmtUpsert->bindValue(5, $usrAudit);
     $stmtUpsert->execute();
 
     return (string) ($stmtUpsert->fetchColumn() ?: '');

@@ -42,14 +42,14 @@ crítico). Se dividió en 2 sesiones.
 - CSP dejado **comentado con TODO** (pendiente externalizar scripts portería).
 - `index.php`: eliminados 4 headers duplicados y `session_start()` manual; agregado
   `session_regenerate_id(true)` tras `password_verify()` exitoso.
-- 9 scripts inline externalizados a `js/` (login, registro x5, recuperar, admin/personas/config, theme-init).
+- 9 scripts inline externalizados a `frontend/web/frontend/web/public/assets/js/` (login, registro x5, recuperar, admin/personas/config, theme-init).
 
  **refactor portería + CSP:**
 
-- `porteria/ingreso/index.php`: wizard (~255 líneas) → `js/porteria-ingreso-modal.js` (1017→764 líneas).
-- `porteria/salida/index.php`: → `js/porteria-salida-modal.js` (914→683 líneas).
+- `porteria/ingreso/index.php`: wizard (~255 líneas) → `frontend/web/frontend/web/public/assets/js/porteria-ingreso-modal.js` (1017→764 líneas).
+- `porteria/salida/index.php`: → `frontend/web/frontend/web/public/assets/js/porteria-salida-modal.js` (914→683 líneas).
 - Bug adicional encontrado: `cambiar_clave.php` tenía `session_start()` antes de `prepare.php` (mismo patrón
-  que el bug #4) — corregido + script → `js/auth-cambiar-clave.js`.
+  que el bug #4) — corregido + script → `frontend/web/frontend/web/public/assets/js/auth-cambiar-clave.js`.
 - CSP activado en `SecurityMiddleware::setSecurityHeaders()`:
   `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;`
   (`unsafe-inline` en estilos por theming embebido; `data:` en imágenes por `porteria_foto.php`).
@@ -66,8 +66,8 @@ crítico). Se dividió en 2 sesiones.
 ## Archivos tocados (resumen)
 
 - Código: `SecurityMiddleware.php`, `prepare.php`, `prepare_login.php`, `index.php`,
-  `src/layout/head.php`, `src/modulos/registro/init.php` + 5 forms de registro,
-  `src/admin/personas/config.php`, `src/auth/recuperar.php`, `src/auth/cambiar_clave.php`,
+  `frontend/web/layout/head.php`, `backend/routers/registro/v1/init.php` + 5 forms de registro,
+  `backend/routers/admin/v1/personas/config.php`, `backend/routers/auth/v1/recuperar.php`, `backend/routers/auth/v1/cambiar_clave.php`,
   `porteria/ingreso/index.php`, `porteria/salida/index.php`.
 - JS nuevos: `theme-init.js`, `registro-session-clock.js`, `registro-cargar-ciudades.js`,
   `registro-form-funcionario.js`, `login-page.js`, `admin-personas-config.js`, `recuperar.js`,

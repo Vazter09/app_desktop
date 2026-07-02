@@ -1,11 +1,11 @@
 -- Registra un ingreso en tab_log_ingresos. Retorna el id_ingreso generado.
+-- La auditoría (usr_insert) la gestiona el trigger fun_act_tabla().
 CREATE OR REPLACE FUNCTION fun_insert_log_ingreso(
     wid_visitante       tab_log_ingresos.id_visitante%TYPE,
     wid_metodo_aut      tab_log_ingresos.id_metodo_aut%TYPE,
     wid_entrada_centro  tab_log_ingresos.id_entrada_centro%TYPE,
     wval_datos_origen   tab_log_ingresos.val_datos_origen%TYPE,
-    wval_observaciones  tab_log_ingresos.val_observaciones%TYPE,
-    wusr                tab_usuarios.id_usuario%TYPE
+    wval_observaciones  tab_log_ingresos.val_observaciones%TYPE
 ) RETURNS INTEGER AS $$
 DECLARE
     wid_ingreso    INTEGER;
@@ -57,12 +57,10 @@ BEGIN
 
     INSERT INTO tab_log_ingresos (
         id_ingreso, id_visitante, fec_ingreso, fec_salida,
-        id_metodo_aut, id_entrada_centro, val_datos_origen, val_observaciones,
-        usr_insert, fec_insert
+        id_metodo_aut, id_entrada_centro, val_datos_origen, val_observaciones
     ) VALUES (
         wid_ingreso, wid_visitante, wts_ingreso, wts_ingreso,
-        wid_metodo_aut, wid_entrada_centro, wval_datos_origen, wval_observaciones,
-        wusr, wts_ingreso
+        wid_metodo_aut, wid_entrada_centro, wval_datos_origen, wval_observaciones
     );
 
     RETURN wid_ingreso;

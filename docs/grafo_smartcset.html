@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCSET — Grafo Interactivo</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 15px 20px;
+            border-bottom: 2px solid #00d4ff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #00d4ff;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 30px;
+        }
+
+        .info-header {
+            display: inline-block;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .info-header span {
+            margin-right: 20px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        #graph {
+            flex: 1;
+            background: #0a0a0a;
+            border-right: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 380px;
+            background: #0f0f0f;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .panel {
+            margin-bottom: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .panel h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0,212,255,0.3);
+        }
+
+        button {
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #00d4ff;
+            color: #0a0a0a;
+        }
+
+        button.active {
+            background: #00d4ff;
+            color: #0a0a0a;
+        }
+
+        .info-panel {
+            background: #1a1a2e;
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+
+        .info-panel h4 {
+            color: #00d4ff;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .info-item {
+            color: #aaa;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .info-item strong {
+            color: #00d4ff;
+        }
+
+        .legend {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid #444;
+        }
+
+        .scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollbar::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        svg text {
+            pointer-events: none;
+            font-size: 11px;
+        }
+
+        .node {
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .node:hover {
+            stroke-width: 3px;
+            filter: brightness(1.2);
+        }
+
+        .link {
+            stroke-opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .link-label {
+            font-size: 10px;
+            fill: #888;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🔗 SmartCSET — GRAFO INTERACTIVO</h1>
+        <div class="info-header">
+            <span>56 funciones • 43 endpoints • 69 tablas</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <svg id="graph"></svg>
+
+        <div id="sidebar" class="scrollbar">
+            <div class="panel">
+                <h3>🔍 Búsqueda</h3>
+                <input type="text" id="searchInput" placeholder="Buscar nodo..." autocomplete="off">
+                <button onclick="searchNode()">Buscar</button>
+                <button onclick="resetView()">Reset</button>
+            </div>
+
+            <div class="panel">
+                <h3>📊 Vistas Rápidas</h3>
+                <button onclick="highlightFlowLogin()">Flujo Login</button>
+                <button onclick="highlightFlowIngreso()">Flujo Ingreso</button>
+                <button onclick="highlightCritical()">Críticas 🔐</button>
+                <button onclick="highlightPublic()">Públicos ⚠️</button>
+                <button onclick="highlightSensitive()">Sensibles 🔒</button>
+            </div>
+
+            <div class="panel">
+                <h3>ℹ️ Información del Nodo</h3>
+                <div id="infoPanel" class="info-panel">
+                    <p style="color: #888;">Click en un nodo para ver detalles</p>
+                </div>
+            </div>
+
+            <div class="legend scrollbar">
+                <h3 style="color: #00d4ff; margin-bottom: 10px; font-size: 12px;">LEYENDA</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00d4ff;"></div>
+                    <span>Función crítica 🔐</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #6366f1;"></div>
+                    <span>Función normal</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #10b981;"></div>
+                    <span>Endpoint auth</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f97316;"></div>
+                    <span>Endpoint público ⚠️</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #8b5cf6;"></div>
+                    <span>Tabla normal</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ef4444;"></div>
+                    <span>Tabla sensible 🔒</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            nodes: [
+                // ENDPOINTS
+                {id: 'ep_login', label: 'POST /auth/login', type: 'endpoint', public: true, color: '#f97316'},
+                {id: 'ep_ingreso', label: 'POST /porteria/ingreso', type: 'endpoint', public: true, color: '#f97316'},
+                {id: 'ep_registro', label: 'POST /registro/guardar', type: 'endpoint', public: true, color: '#f97316'},
+                {id: 'ep_menus', label: 'POST /menus/guardar', type: 'endpoint', public: false, color: '#10b981'},
+
+                // FUNCIONES AUTH (4)
+                {id: 'fun_validar_login', label: 'fun_validar_login', type: 'function', critical: true, color: '#00d4ff'},
+                {id: 'fun_ingreso_sesion', label: 'fun_ingreso_sesion', type: 'function', critical: true, color: '#00d4ff'},
+                {id: 'fun_verificar_bloqueo_ip', label: 'fun_verificar_bloqueo_ip', type: 'function', critical: true, color: '#00d4ff'},
+                {id: 'fun_registrar_intento', label: 'fun_registrar_intento_login', type: 'function', critical: true, color: '#00d4ff'},
+
+                // FUNCIONES PORTERIA (3)
+                {id: 'fun_registrar_ingreso', label: 'fun_registrar_ingreso_manual', type: 'function', critical: true, color: '#00d4ff'},
+                {id: 'fun_insert_log', label: 'fun_insert_log_ingreso', type: 'function', critical: true, color: '#00d4ff'},
+                {id: 'fun_upsert_persona', label: 'fun_upsert_persona_visitante', type: 'function', critical: true, color: '#00d4ff'},
+
+                // FUNCIONES REGISTRO (2)
+                {id: 'fun_registrar_aprendiz', label: 'fun_registrar_aprendiz', type: 'function', critical: true, color: '#00d4ff'},
+                {id: 'fun_registrar_persona', label: 'fun_registrar_persona', type: 'function', critical: true, color: '#00d4ff'},
+
+                // FUNCIONES MENUS (1)
+                {id: 'fun_insert_menus', label: 'fun_insert_tab_menus', type: 'function', critical: true, color: '#00d4ff'},
+
+                // TABLAS ACCESS
+                {id: 'tab_usuarios', label: 'tab_usuarios', type: 'table', sensitive: true, color: '#ef4444'},
+                {id: 'tab_sesiones', label: 'tab_sesiones', type: 'table', sensitive: true, color: '#ef4444'},
+                {id: 'tab_intentos', label: 'tab_intentos_login', type: 'table', sensitive: true, color: '#ef4444'},
+                {id: 'tab_ips', label: 'tab_ips_bloqueadas', type: 'table', sensitive: true, color: '#ef4444'},
+
+                // TABLAS OPERACIONES
+                {id: 'tab_personas', label: 'tab_personas', type: 'table', sensitive: false, color: '#8b5cf6'},
+                {id: 'tab_log_ingresos', label: 'tab_log_ingresos', type: 'table', sensitive: true, color: '#ef4444'},
+                {id: 'tab_aprendices', label: 'tab_aprendices', type: 'table', sensitive: false, color: '#8b5cf6'},
+                {id: 'tab_fichas', label: 'tab_fichas', type: 'table', sensitive: false, color: '#8b5cf6'},
+                {id: 'tab_menus', label: 'tab_menus', type: 'table', sensitive: false, color: '#8b5cf6'},
+            ],
+            links: [
+                // FLUJO LOGIN
+                {source: 'ep_login', target: 'fun_verificar_bloqueo_ip'},
+                {source: 'ep_login', target: 'fun_validar_login'},
+                {source: 'ep_login', target: 'fun_registrar_intento'},
+                {source: 'ep_login', target: 'fun_ingreso_sesion'},
+                {source: 'fun_validar_login', target: 'tab_usuarios'},
+                {source: 'fun_verificar_bloqueo_ip', target: 'tab_ips'},
+                {source: 'fun_registrar_intento', target: 'tab_intentos'},
+                {source: 'fun_ingreso_sesion', target: 'tab_sesiones'},
+
+                // FLUJO INGRESO
+                {source: 'ep_ingreso', target: 'fun_upsert_persona'},
+                {source: 'ep_ingreso', target: 'fun_registrar_ingreso'},
+                {source: 'fun_upsert_persona', target: 'tab_personas'},
+                {source: 'fun_registrar_ingreso', target: 'fun_insert_log'},
+                {source: 'fun_insert_log', target: 'tab_log_ingresos'},
+                {source: 'fun_insert_log', target: 'tab_aprendices'},
+
+                // FLUJO REGISTRO
+                {source: 'ep_registro', target: 'fun_registrar_aprendiz'},
+                {source: 'fun_registrar_aprendiz', target: 'fun_registrar_persona'},
+                {source: 'fun_registrar_persona', target: 'tab_personas'},
+                {source: 'fun_registrar_aprendiz', target: 'tab_aprendices'},
+                {source: 'fun_registrar_aprendiz', target: 'tab_fichas'},
+
+                // FLUJO MENUS
+                {source: 'ep_menus', target: 'fun_insert_menus'},
+                {source: 'fun_insert_menus', target: 'tab_menus'},
+            ]
+        };
+
+        // Crear SVG
+        const width = document.getElementById('graph').clientWidth;
+        const height = document.getElementById('graph').clientHeight;
+
+        const svg = d3.select('#graph')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Crear simulación
+        const simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(40));
+
+        // Crear grupo principal
+        const g = svg.append('g');
+
+        // Dibujar links
+        const link = g.selectAll('.link')
+            .data(data.links)
+            .enter()
+            .append('line')
+            .attr('class', 'link')
+            .attr('stroke', '#666')
+            .attr('stroke-width', 2);
+
+        // Dibujar nodos
+        const node = g.selectAll('.node')
+            .data(data.nodes)
+            .enter()
+            .append('circle')
+            .attr('class', 'node')
+            .attr('r', 25)
+            .attr('fill', d => d.color)
+            .attr('stroke', '#333')
+            .call(d3.drag()
+                .on('start', dragStarted)
+                .on('drag', dragged)
+                .on('end', dragEnded))
+            .on('click', (event, d) => showNodeInfo(d));
+
+        // Labels
+        const labels = g.selectAll('.label')
+            .data(data.nodes)
+            .enter()
+            .append('text')
+            .attr('class', 'label')
+            .attr('text-anchor', 'middle')
+            .attr('dy', '.3em')
+            .attr('fill', '#fff')
+            .attr('font-size', '10px')
+            .text(d => d.label.substring(0, 15));
+
+        // Actualizar posiciones
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            labels
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+
+        // Zoom
+        svg.call(d3.zoom()
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            }));
+
+        // Funciones drag
+        function dragStarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragEnded(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Funciones de filtro
+        function showNodeInfo(node) {
+            let html = `<h4>${node.label}</h4>`;
+            html += `<div class="info-item"><strong>Tipo:</strong> ${node.type}</div>`;
+            if (node.critical) html += `<div class="info-item"><strong>Crítica:</strong> ✓ Sí</div>`;
+            if (node.public !== undefined) html += `<div class="info-item"><strong>Público:</strong> ${node.public ? '⚠️ Sí' : 'No'}</div>`;
+            if (node.sensitive !== undefined) html += `<div class="info-item"><strong>Sensible:</strong> ${node.sensitive ? '🔒 Sí' : 'No'}</div>`;
+            document.getElementById('infoPanel').innerHTML = html;
+        }
+
+        function highlightNodes(nodeIds) {
+            node.attr('opacity', d => nodeIds.includes(d.id) ? 1 : 0.2);
+            labels.attr('opacity', d => nodeIds.includes(d.id) ? 1 : 0.2);
+            link.attr('opacity', d => (nodeIds.includes(d.source.id) || nodeIds.includes(d.target.id)) ? 1 : 0.1);
+        }
+
+        function highlightFlowLogin() {
+            const ids = ['ep_login', 'fun_verificar_bloqueo_ip', 'fun_validar_login', 'fun_registrar_intento', 'fun_ingreso_sesion', 'tab_usuarios', 'tab_ips', 'tab_intentos', 'tab_sesiones'];
+            highlightNodes(ids);
+        }
+
+        function highlightFlowIngreso() {
+            const ids = ['ep_ingreso', 'fun_upsert_persona', 'fun_registrar_ingreso', 'fun_insert_log', 'tab_personas', 'tab_log_ingresos', 'tab_aprendices'];
+            highlightNodes(ids);
+        }
+
+        function highlightCritical() {
+            const ids = data.nodes.filter(n => n.critical).map(n => n.id);
+            highlightNodes(ids);
+        }
+
+        function highlightPublic() {
+            const ids = data.nodes.filter(n => n.public).map(n => n.id);
+            highlightNodes(ids);
+        }
+
+        function highlightSensitive() {
+            const ids = data.nodes.filter(n => n.sensitive).map(n => n.id);
+            highlightNodes(ids);
+        }
+
+        function searchNode() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const found = data.nodes.find(n => n.label.toLowerCase().includes(query));
+            if (found) {
+                highlightNodes([found.id]);
+                showNodeInfo(found);
+            }
+        }
+
+        function resetView() {
+            document.getElementById('searchInput').value = '';
+            node.attr('opacity', 1);
+            labels.attr('opacity', 1);
+            link.attr('opacity', 0.6);
+            document.getElementById('infoPanel').innerHTML = '<p style="color: #888;">Click en un nodo para ver detalles</p>';
+        }
+
+        window.highlightFlowLogin = highlightFlowLogin;
+        window.highlightFlowIngreso = highlightFlowIngreso;
+        window.highlightCritical = highlightCritical;
+        window.highlightPublic = highlightPublic;
+        window.highlightSensitive = highlightSensitive;
+        window.searchNode = searchNode;
+        window.resetView = resetView;
+    </script>
+</body>
+</html>

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCSET — Grafo Completo Interactivo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 15px 20px;
+            border-bottom: 2px solid #00d4ff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #00d4ff;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 30px;
+        }
+
+        .info-header {
+            display: inline-block;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .info-header span {
+            margin-right: 20px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            position: relative;
+        }
+
+        #network {
+            flex: 1;
+            background: radial-gradient(ellipse at center, #1a1a1a 0%, #0a0a0a 100%);
+        }
+
+        #sidebar {
+            width: 380px;
+            background: #0f0f0f;
+            border-left: 1px solid #333;
+            overflow-y: auto;
+            padding: 20px;
+            max-height: calc(100vh - 60px);
+        }
+
+        .panel {
+            margin-bottom: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .panel h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0,212,255,0.3);
+        }
+
+        button {
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        button:hover {
+            background: #00d4ff;
+            color: #0a0a0a;
+            box-shadow: 0 0 10px rgba(0,212,255,0.5);
+        }
+
+        button.active {
+            background: #00d4ff;
+            color: #0a0a0a;
+        }
+
+        .info-panel {
+            background: #1a1a2e;
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+
+        .info-panel h4 {
+            color: #00d4ff;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .info-item {
+            color: #aaa;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .info-item strong {
+            color: #00d4ff;
+        }
+
+        .legend {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid #444;
+        }
+
+        .scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollbar::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #network {
+            border-right: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🔗 SmartCSET — GRAFO COMPLETO</h1>
+        <div class="info-header">
+            <span id="nodeCount">Cargando...</span>
+            <span id="edgeCount"></span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div id="network"></div>
+
+        <div id="sidebar" class="scrollbar">
+            <div class="panel">
+                <h3>🔍 Búsqueda</h3>
+                <input type="text" id="searchBox" placeholder="Buscar nodo..." autocomplete="off">
+                <button onclick="searchNode()">Buscar</button>
+                <button onclick="resetSearch()">Reset</button>
+            </div>
+
+            <div class="panel">
+                <h3>🎨 Filtrar por Tipo</h3>
+                <button onclick="filterByType('all')" class="active">Todos</button>
+                <button onclick="filterByType('function')">Funciones</button>
+                <button onclick="filterByType('endpoint')">Endpoints</button>
+                <button onclick="filterByType('table')">Tablas</button>
+            </div>
+
+            <div class="panel">
+                <h3>📊 Filtrar por Categoría</h3>
+                <button onclick="filterByCategory('all')" class="active">Todas</button>
+                <button onclick="filterByCategory('AUTH')">🔐 AUTH</button>
+                <button onclick="filterByCategory('PORTERIA')">📱 PORTERIA</button>
+                <button onclick="filterByCategory('REGISTRO')">📝 REGISTRO</button>
+                <button onclick="filterByCategory('SESSIONS')">🔄 SESSIONS</button>
+                <button onclick="filterByCategory('MENUS')">📋 MENUS</button>
+                <button onclick="filterByCategory('ADMIN')">👑 ADMIN</button>
+                <button onclick="filterByCategory('ACCESS')">🔒 ACCESS</button>
+            </div>
+
+            <div class="panel">
+                <h3>📍 Vistas Rápidas</h3>
+                <button onclick="showFlowLogin()">Flujo Login</button>
+                <button onclick="showFlowIngreso()">Flujo Ingreso</button>
+                <button onclick="showCriticalNodes()">Críticas</button>
+                <button onclick="showPublicEndpoints()">Públicos ⚠️</button>
+            </div>
+
+            <div class="panel">
+                <h3>ℹ️ Información del Nodo</h3>
+                <div id="infoPanel" class="info-panel">
+                    <p style="color: #888;">Click en un nodo para ver detalles</p>
+                </div>
+            </div>
+
+            <div class="legend scrollbar">
+                <h3 style="color: #00d4ff; margin-bottom: 10px; font-size: 12px;">LEYENDA</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00d4ff; box-shadow: 0 0 8px #00d4ff;"></div>
+                    <span>Función crítica 🔐</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #6366f1;"></div>
+                    <span>Función normal</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #10b981;"></div>
+                    <span>Endpoint auth</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f97316; box-shadow: 0 0 8px #f97316;"></div>
+                    <span>Endpoint público ⚠️</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #8b5cf6;"></div>
+                    <span>Tabla PostgreSQL</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></div>
+                    <span>Tabla sensible 🔒</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allNodes = [];
+        let allEdges = [];
+        let network = null;
+        let currentFilter = { type: 'all', category: 'all' };
+
+        // ============================================================================
+        // DATOS COMPLETOS DEL GRAFO (56 funciones + 43 endpoints + 69 tablas)
+        // ============================================================================
+
+        const graphData = {
+            nodes: [
+                // FUNCIONES AUTH (8)
+                {id: 'fun_validar_login', label: 'fun_validar_login', type: 'function', category: 'AUTH', critical: true, tables: ['tab_usuarios'], color: '#00d4ff', title: 'Valida credenciales usuario+password'},
+                {id: 'fun_ingreso_sesion', label: 'fun_ingreso_sesion', type: 'function', category: 'AUTH', critical: true, tables: ['tab_sesiones'], color: '#00d4ff', title: 'Crea sesión encriptada'},
+                {id: 'fun_verificar_bloqueo_ip', label: 'fun_verificar_bloqueo_ip', type: 'function', category: 'AUTH', critical: true, tables: ['tab_ips_bloqueadas'], color: '#00d4ff', title: 'Verifica IP no está bloqueada'},
+                {id: 'fun_registrar_intento_login', label: 'fun_registrar_intento_login', type: 'function', category: 'AUTH', critical: true, tables: ['tab_intentos_login'], color: '#00d4ff', title: 'Auditoría de login'},
+                {id: 'fun_actualizar_password', label: 'fun_actualizar_password', type: 'function', category: 'AUTH', critical: true, tables: ['tab_usuarios'], color: '#00d4ff', title: 'Cambia contraseña'},
+                {id: 'fun_insert_tab_usuarios', label: 'fun_insert_tab_usuarios', type: 'function', category: 'AUTH', critical: true, tables: ['tab_usuarios'], color: '#00d4ff', title: 'Crea usuario'},
+                {id: 'fun_validar_usuario', label: 'fun_validar_usuario', type: 'function', category: 'AUTH', critical: false, tables: ['tab_usuarios'], color: '#6366f1', title: 'Valida usuario existe'},
+                {id: 'fun_validar_correo', label: 'fun_validar_correo', type: 'function', category: 'AUTH', critical: false, tables: ['tab_usuarios'], color: '#6366f1', title: 'Valida email'},
+
+                // FUNCIONES PORTERIA (9)
+                {id: 'fun_registrar_ingreso_manual', label: 'fun_registrar_ingreso_manual', type: 'function', category: 'PORTERIA', critical: true, tables: ['tab_log_ingresos','tab_personas','tab_aprendices'], color: '#00d4ff', title: 'Orquestador ingreso'},
+                {id: 'fun_registrar_salida_manual', label: 'fun_registrar_salida_manual', type: 'function', category: 'PORTERIA', critical: true, tables: ['tab_log_ingresos','tab_personas'], color: '#00d4ff', title: 'Orquestador salida'},
+                {id: 'fun_insert_log_ingreso', label: 'fun_insert_log_ingreso', type: 'function', category: 'PORTERIA', critical: true, tables: ['tab_log_ingresos'], color: '#00d4ff', title: 'Inserta en log_ingresos'},
+                {id: 'fun_upsert_persona_visitante', label: 'fun_upsert_persona_visitante', type: 'function', category: 'PORTERIA', critical: true, tables: ['tab_personas'], color: '#00d4ff', title: 'Crea/actualiza visitante'},
+                {id: 'fun_buscar_ingreso_abierto', label: 'fun_buscar_ingreso_abierto', type: 'function', category: 'PORTERIA', critical: false, tables: ['tab_log_ingresos'], color: '#6366f1', title: 'Busca ingreso activo'},
+                {id: 'fun_update_log_salida', label: 'fun_update_log_salida', type: 'function', category: 'PORTERIA', critical: true, tables: ['tab_log_ingresos'], color: '#00d4ff', title: 'Cierra ingreso'},
+                {id: 'fun_verify_retardo_aprendiz', label: 'fun_verify_retardo_aprendiz', type: 'function', category: 'PORTERIA', critical: false, tables: ['tab_aprendices','tab_asistencia_aprendiz'], color: '#6366f1', title: 'Verifica retardo'},
+                {id: 'fun_update_persona_tras_ingreso', label: 'fun_update_persona_tras_ingreso', type: 'function', category: 'PORTERIA', critical: false, tables: ['tab_personas'], color: '#6366f1', title: 'Auditoría ingreso'},
+                {id: 'fun_update_persona_tras_salida', label: 'fun_update_persona_tras_salida', type: 'function', category: 'PORTERIA', critical: false, tables: ['tab_personas'], color: '#6366f1', title: 'Auditoría salida'},
+
+                // FUNCIONES REGISTRO (5)
+                {id: 'fun_registrar_aprendiz', label: 'fun_registrar_aprendiz', type: 'function', category: 'REGISTRO', critical: true, tables: ['tab_personas','tab_aprendices','tab_fichas'], color: '#00d4ff', title: 'Registra aprendiz'},
+                {id: 'fun_registrar_instructor', label: 'fun_registrar_instructor', type: 'function', category: 'REGISTRO', critical: true, tables: ['tab_personas','tab_instructores','tab_fichas'], color: '#00d4ff', title: 'Registra instructor'},
+                {id: 'fun_registrar_funcionario', label: 'fun_registrar_funcionario', type: 'function', category: 'REGISTRO', critical: true, tables: ['tab_personas','tab_funcionarios'], color: '#00d4ff', title: 'Registra funcionario'},
+                {id: 'fun_registrar_contratista', label: 'fun_registrar_contratista', type: 'function', category: 'REGISTRO', critical: true, tables: ['tab_personas','tab_contratistas'], color: '#00d4ff', title: 'Registra contratista'},
+                {id: 'fun_registrar_persona', label: 'fun_registrar_persona', type: 'function', category: 'REGISTRO', critical: true, tables: ['tab_personas'], color: '#00d4ff', title: 'Base para registrar personas'},
+
+                // FUNCIONES MENUS (9)
+                {id: 'fun_insert_tab_menus', label: 'fun_insert_tab_menus', type: 'function', category: 'MENUS', critical: true, tables: ['tab_menus'], color: '#00d4ff', title: 'Crea menú'},
+                {id: 'fun_update_tab_menus', label: 'fun_update_tab_menus', type: 'function', category: 'MENUS', critical: true, tables: ['tab_menus'], color: '#00d4ff', title: 'Actualiza menú'},
+                {id: 'fun_delete_tab_menus', label: 'fun_delete_tab_menus', type: 'function', category: 'MENUS', critical: true, tables: ['tab_menus'], color: '#00d4ff', title: 'Elimina menú'},
+                {id: 'fun_insert_menu_usuarios', label: 'fun_insert_menu_usuarios', type: 'function', category: 'MENUS', critical: false, tables: ['tab_menu_usuarios'], color: '#6366f1', title: 'Asigna menú a usuario'},
+                {id: 'fun_delete_menu_usuarios_por_menu', label: 'fun_delete_menu_usuarios_por_menu', type: 'function', category: 'MENUS', critical: false, tables: ['tab_menu_usuarios'], color: '#6366f1', title: 'Desasigna menu'},
+                {id: 'fun_trigger_menu', label: 'fun_trigger_menu', type: 'function', category: 'MENUS', critical: false, tables: ['tab_menus'], color: '#6366f1', title: 'Trigger automático'},
+                {id: 'fun_trigger_menu_admin', label: 'fun_trigger_menu_admin', type: 'function', category: 'MENUS', critical: false, tables: ['tab_menus'], color: '#6366f1', title: 'Trigger admin'},
+                {id: 'fun_delete_perfil_usuario', label: 'fun_delete_perfil_usuario', type: 'function', category: 'MENUS', critical: false, tables: ['tab_menu_usuarios'], color: '#6366f1', title: 'Borra permisos'},
+                {id: 'fun_delete_perfil_usuarios', label: 'fun_delete_perfil_usuarios', type: 'function', category: 'MENUS', critical: false, tables: ['tab_menu_usuarios'], color: '#6366f1', title: 'Borra perfil'},
+
+                // FUNCIONES SESSIONS (5)
+                {id: 'fun_salida_sesion', label: 'fun_salida_sesion', type: 'function', category: 'SESSIONS', critical: true, tables: ['tab_sesiones'], color: '#00d4ff', title: 'Cierra sesión'},
+                {id: 'fun_validar_sesion_activa', label: 'fun_validar_sesion_activa', type: 'function', category: 'SESSIONS', critical: true, tables: ['tab_sesiones'], color: '#00d4ff', title: 'Valida sesión'},
+                {id: 'fun_actualizar_sesion_actividad', label: 'fun_actualizar_sesion_actividad', type: 'function', category: 'SESSIONS', critical: false, tables: ['tab_sesiones'], color: '#6366f1', title: 'Heartbeat sesión'},
+                {id: 'fun_archivar_sesiones_antiguas', label: 'fun_archivar_sesiones_antiguas', type: 'function', category: 'SESSIONS', critical: true, tables: ['tab_sesiones'], color: '#00d4ff', title: 'Limpia sesiones expiradas'},
+                {id: 'fun_ingreso_sesion', label: 'fun_ingreso_sesion', type: 'function', category: 'SESSIONS', critical: true, tables: ['tab_sesiones'], color: '#00d4ff', title: 'Crea sesión'},
+
+                // FUNCIONES ENTRIES (2)
+                {id: 'fun_upsert_tab_entradas_centro', label: 'fun_upsert_tab_entradas_centro', type: 'function', category: 'ENTRIES', critical: true, tables: ['tab_entradas_centro'], color: '#00d4ff', title: 'Crea/actualiza entrada'},
+                {id: 'fun_delete_tab_entradas_centro', label: 'fun_delete_tab_entradas_centro', type: 'function', category: 'ENTRIES', critical: true, tables: ['tab_entradas_centro'], color: '#00d4ff', title: 'Elimina entrada'},
+
+                // FUNCIONES CONFIG (3)
+                {id: 'fun_update_tab_config_sistema', label: 'fun_update_tab_config_sistema', type: 'function', category: 'CONFIG', critical: true, tables: ['tab_config_sistema'], color: '#00d4ff', title: 'Actualiza configuración'},
+                {id: 'fun_cifrar_documento', label: 'fun_cifrar_documento', type: 'function', category: 'CONFIG', critical: true, tables: [], color: '#00d4ff', title: 'Encripción AES'},
+                {id: 'fun_descifrar_documento', label: 'fun_descifrar_documento', type: 'function', category: 'CONFIG', critical: true, tables: [], color: '#00d4ff', title: 'Desencripción AES'},
+
+                // FUNCIONES DATA UPDATE (1)
+                {id: 'fun_actualizar_aprendiz', label: 'fun_actualizar_aprendiz', type: 'function', category: 'DATA_UPDATE', critical: true, tables: ['tab_aprendices','tab_fichas'], color: '#00d4ff', title: 'Actualización masiva'},
+
+                // FUNCIONES SENA LOAD (8)
+                {id: 'fun_procesar_df49', label: 'fun_procesar_df49', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_aprendices','tab_fichas'], color: '#6366f1', title: 'Procesa DF49'},
+                {id: 'fun_procesar_pe04', label: 'fun_procesar_pe04', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_instructores','tab_fichas'], color: '#6366f1', title: 'Procesa PE04'},
+                {id: 'fun_proceso_df49', label: 'fun_proceso_df49', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_aprendices'], color: '#6366f1', title: 'Procesa DF49 v2'},
+                {id: 'fun_proceso_pe04', label: 'fun_proceso_pe04', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_instructores'], color: '#6366f1', title: 'Procesa PE04 v2'},
+                {id: 'fun_proceso_juicios', label: 'fun_proceso_juicios', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_juicios_eval'], color: '#6366f1', title: 'Procesa juicios'},
+                {id: 'fun_migrar_fichas_creadas', label: 'fun_migrar_fichas_creadas', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_fichas'], color: '#6366f1', title: 'Migra fichas'},
+                {id: 'fun_procesar_aprendices', label: 'fun_procesar_aprendices', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_aprendices'], color: '#6366f1', title: 'Procesa aprendices'},
+                {id: 'fun_crear_usuarios_instructores', label: 'fun_crear_usuarios_instructores', type: 'function', category: 'SENA_LOAD', critical: false, tables: ['tab_usuarios'], color: '#6366f1', title: 'Crea usuarios'},
+
+                // FUNCIONES SIEM (6)
+                {id: 'fun_siem_list_eventos', label: 'fun_siem_list_eventos', type: 'function', category: 'SIEM', critical: false, tables: ['tab_log_eventos'], color: '#6366f1', title: 'Lista eventos'},
+                {id: 'fun_siem_sesiones_activas', label: 'fun_siem_sesiones_activas', type: 'function', category: 'SIEM', critical: true, tables: ['tab_sesiones'], color: '#00d4ff', title: 'Sesiones activas'},
+                {id: 'fun_siem_ips_bloqueadas', label: 'fun_siem_ips_bloqueadas', type: 'function', category: 'SIEM', critical: true, tables: ['tab_ips_bloqueadas'], color: '#00d4ff', title: 'IPs bloqueadas'},
+                {id: 'fun_siem_actividad_fisica', label: 'fun_siem_actividad_fisica', type: 'function', category: 'SIEM', critical: false, tables: ['tab_log_ingresos'], color: '#6366f1', title: 'Actividad física'},
+                {id: 'fun_siem_dashboard_kpis', label: 'fun_siem_dashboard_kpis', type: 'function', category: 'SIEM', critical: false, tables: ['tab_log_ingresos','tab_sesiones'], color: '#6366f1', title: 'KPIs dashboard'},
+                {id: 'smartcset_raise_core', label: 'smartcset_raise_core', type: 'function', category: 'HELPERS', critical: true, tables: [], color: '#00d4ff', title: 'Helper errores'},
+
+                // ENDPOINTS AUTH (4)
+                {id: 'POST /auth/v1/login', label: 'POST /auth/login', type: 'endpoint', category: 'AUTH', critical: false, public: true, color: '#f97316', title: 'Login público ⚠️'},
+                {id: 'POST /auth/v1/logout', label: 'POST /auth/logout', type: 'endpoint', category: 'AUTH', critical: false, public: false, color: '#10b981', title: 'Logout autenticado'},
+                {id: 'POST /auth/v1/cambiar_clave', label: 'POST /auth/cambiar_clave', type: 'endpoint', category: 'AUTH', critical: false, public: false, color: '#10b981', title: 'Cambiar contraseña'},
+                {id: 'GET /auth/v1/recuperar', label: 'GET /auth/recuperar', type: 'endpoint', category: 'AUTH', critical: false, public: true, color: '#f97316', title: 'Recuperar contraseña ⚠️'},
+
+                // ENDPOINTS PORTERIA (15)
+                {id: 'POST /porteria/v1/ingreso/registrar', label: 'POST /porteria/ingreso/registrar', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Registrar ingreso ⚠️'},
+                {id: 'POST /porteria/v1/salida/registrar', label: 'POST /porteria/salida/registrar', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Registrar salida ⚠️'},
+                {id: 'GET /porteria/v1/ingreso/hoy', label: 'GET /porteria/ingreso/hoy', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Ingresos del día ⚠️'},
+                {id: 'GET /porteria/v1/salida/hoy', label: 'GET /porteria/salida/hoy', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Salidas del día ⚠️'},
+                {id: 'GET /porteria/v1/ingreso/consultar', label: 'GET /porteria/ingreso/consultar', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Consultar ingreso ⚠️'},
+                {id: 'GET /porteria/v1/salida/consultar', label: 'GET /porteria/salida/consultar', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Consultar salida ⚠️'},
+                {id: 'GET /porteria/v1/catalogos', label: 'GET /porteria/catalogos', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Catálogos'},
+                {id: 'GET /porteria/v1/device/validate', label: 'GET /porteria/device/validate', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Validar dispositivo ⚠️'},
+                {id: 'GET /porteria/v1/health', label: 'GET /porteria/health', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Health check'},
+                {id: 'POST /porteria/v1/sync/batch', label: 'POST /porteria/sync/batch', type: 'endpoint', category: 'PORTERIA', critical: false, public: true, color: '#f97316', title: 'Sincronización ⚠️'},
+
+                // ENDPOINTS REGISTRO (5)
+                {id: 'POST /registro/v1/forms/guardar', label: 'POST /registro/forms/guardar', type: 'endpoint', category: 'REGISTRO', critical: false, public: true, color: '#f97316', title: 'Guardar registro ⚠️'},
+                {id: 'GET /registro/v1/aprendiz/buscar', label: 'GET /registro/aprendiz/buscar', type: 'endpoint', category: 'REGISTRO', critical: false, public: true, color: '#f97316', title: 'Buscar aprendiz ⚠️'},
+                {id: 'GET /registro/v1/ciudades', label: 'GET /registro/ciudades', type: 'endpoint', category: 'REGISTRO', critical: false, public: true, color: '#f97316', title: 'Catálogo ciudades'},
+                {id: 'GET /registro/v1/personas/listar', label: 'GET /registro/personas/listar', type: 'endpoint', category: 'REGISTRO', critical: false, public: true, color: '#f97316', title: 'Listar personas ⚠️'},
+                {id: 'POST /registro/v1/login', label: 'POST /registro/login', type: 'endpoint', category: 'REGISTRO', critical: false, public: true, color: '#f97316', title: 'Login registro ⚠️'},
+
+                // ENDPOINTS ADMIN (6)
+                {id: 'POST /admin/v1/config/guardar', label: 'POST /admin/config/guardar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Guardar configuración'},
+                {id: 'GET /admin/v1/config/restaurar', label: 'GET /admin/config/restaurar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Restaurar configuración'},
+                {id: 'POST /admin/v1/personas/config_guardar', label: 'POST /admin/personas/config_guardar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Config registro'},
+                {id: 'POST /admin/v1/personas/config_restaurar', label: 'POST /admin/personas/config_restaurar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Restaurar config registro'},
+                {id: 'GET /admin/v1/reportes/cargar', label: 'GET /admin/reportes/cargar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Cargar reportes SENA'},
+                {id: 'POST /admin/v1/sesiones/cerrar', label: 'POST /admin/sesiones/cerrar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Cerrar sesión'},
+
+                // ENDPOINTS MENUS (6)
+                {id: 'POST /menus/v1/guardar', label: 'POST /menus/guardar', type: 'endpoint', category: 'MENUS', critical: false, public: false, color: '#10b981', title: 'Guardar menú'},
+                {id: 'POST /menus/v1/eliminar', label: 'POST /menus/eliminar', type: 'endpoint', category: 'MENUS', critical: false, public: false, color: '#10b981', title: 'Eliminar menú'},
+                {id: 'GET /menus/v1/perfil/listar', label: 'GET /menus/perfil/listar', type: 'endpoint', category: 'MENUS', critical: false, public: false, color: '#10b981', title: 'Listar perfiles'},
+                {id: 'POST /menus/v1/perfil/guardar', label: 'POST /menus/perfil/guardar', type: 'endpoint', category: 'MENUS', critical: false, public: false, color: '#10b981', title: 'Guardar perfil'},
+                {id: 'POST /menus/v1/perfil/copiar', label: 'POST /menus/perfil/copiar', type: 'endpoint', category: 'MENUS', critical: false, public: false, color: '#10b981', title: 'Copiar perfil'},
+                {id: 'POST /menus/v1/permiso/asignar', label: 'POST /menus/permiso/asignar', type: 'endpoint', category: 'MENUS', critical: false, public: false, color: '#10b981', title: 'Asignar permiso'},
+
+                // ENDPOINTS ENTRADAS (2)
+                {id: 'POST /entradas/v1/guardar', label: 'POST /entradas/guardar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Guardar entrada'},
+                {id: 'POST /entradas/v1/eliminar', label: 'POST /entradas/eliminar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Eliminar entrada'},
+
+                // ENDPOINTS SIEM (2)
+                {id: 'GET /siem/v1/desbloquear_ip', label: 'GET /siem/desbloquear_ip', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Desbloquear IP'},
+                {id: 'POST /siem/v1/forzar_sesion', label: 'POST /siem/forzar_sesion', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Forzar logout'},
+
+                // ENDPOINTS USUARIOS (2)
+                {id: 'POST /usuarios/v1/guardar', label: 'POST /usuarios/guardar', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Guardar usuario'},
+                {id: 'POST /usuarios/v1/toggle_estado', label: 'POST /usuarios/toggle_estado', type: 'endpoint', category: 'ADMIN', critical: false, public: false, color: '#10b981', title: 'Toggle estado usuario'},
+
+                // ENDPOINTS SESION (1)
+                {id: 'GET /sesion/v1/heartbeat', label: 'GET /sesion/heartbeat', type: 'endpoint', category: 'ADMIN', critical: false, public: true, color: '#f97316', title: 'Heartbeat sesión'},
+
+                // TABLAS ACCESS (5)
+                {id: 'tab_usuarios', label: 'tab_usuarios', type: 'table', category: 'ACCESS', sensitive: true, color: '#ef4444', title: '🔒 Tabla de usuarios (CRÍTICA)'},
+                {id: 'tab_sesiones', label: 'tab_sesiones', type: 'table', category: 'ACCESS', sensitive: true, color: '#ef4444', title: '🔒 Tabla de sesiones (CRÍTICA)'},
+                {id: 'tab_intentos_login', label: 'tab_intentos_login', type: 'table', category: 'ACCESS', sensitive: true, color: '#ef4444', title: '🔒 Intentos de login (CRÍTICA)'},
+                {id: 'tab_ips_bloqueadas', label: 'tab_ips_bloqueadas', type: 'table', category: 'ACCESS', sensitive: true, color: '#ef4444', title: '🔒 IPs bloqueadas (CRÍTICA)'},
+                {id: 'tab_menus', label: 'tab_menus', type: 'table', category: 'ACCESS', sensitive: false, color: '#8b5cf6', title: 'Menús del sistema'},
+
+                // TABLAS OPERACIONES (8)
+                {id: 'tab_personas', label: 'tab_personas', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Personas registradas'},
+                {id: 'tab_log_ingresos', label: 'tab_log_ingresos', type: 'table', category: 'OPERACIONES', sensitive: true, color: '#ef4444', title: '🔒 Log de ingresos/salidas (CRÍTICA)'},
+                {id: 'tab_aprendices', label: 'tab_aprendices', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Aprendices'},
+                {id: 'tab_fichas', label: 'tab_fichas', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Fichas de formación'},
+                {id: 'tab_instructores', label: 'tab_instructores', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Instructores'},
+                {id: 'tab_funcionarios', label: 'tab_funcionarios', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Funcionarios SENA'},
+                {id: 'tab_entradas_centro', label: 'tab_entradas_centro', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Puertas/Entradas'},
+                {id: 'tab_asistencia_aprendiz', label: 'tab_asistencia_aprendiz', type: 'table', category: 'OPERACIONES', sensitive: false, color: '#8b5cf6', title: 'Asistencia aprendices'},
+
+                // TABLAS PERSONAL (5)
+                {id: 'tab_aprendices_fichas', label: 'tab_aprendices_fichas', type: 'table', category: 'PERSONAL', sensitive: false, color: '#8b5cf6', title: 'Relación aprendices-fichas'},
+                {id: 'tab_contratistas', label: 'tab_contratistas', type: 'table', category: 'PERSONAL', sensitive: false, color: '#8b5cf6', title: 'Contratistas'},
+                {id: 'tab_competencias', label: 'tab_competencias', type: 'table', category: 'PERSONAL', sensitive: false, color: '#8b5cf6', title: 'Competencias laborales'},
+                {id: 'tab_competencias_ficha', label: 'tab_competencias_ficha', type: 'table', category: 'PERSONAL', sensitive: false, color: '#8b5cf6', title: 'Competencias por ficha'},
+                {id: 'tab_horas_instructor', label: 'tab_horas_instructor', type: 'table', category: 'PERSONAL', sensitive: false, color: '#8b5cf6', title: 'Horas instructor'},
+
+                // TABLAS CONFIG (8)
+                {id: 'tab_config_sistema', label: 'tab_config_sistema', type: 'table', category: 'CONFIG', sensitive: true, color: '#ef4444', title: '🔒 Configuración sistema'},
+                {id: 'tab_centros', label: 'tab_centros', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Centros SENA'},
+                {id: 'tab_sedes', label: 'tab_sedes', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Sedes'},
+                {id: 'tab_areas', label: 'tab_areas', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Áreas de formación'},
+                {id: 'tab_jornadas', label: 'tab_jornadas', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Jornadas'},
+                {id: 'tab_cargos', label: 'tab_cargos', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Cargos'},
+                {id: 'tab_empresas', label: 'tab_empresas', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Empresas'},
+                {id: 'tab_programas', label: 'tab_programas', type: 'table', category: 'CONFIG', sensitive: false, color: '#8b5cf6', title: 'Programas de formación'},
+
+                // TABLAS UBICACION (4)
+                {id: 'tab_dptos', label: 'tab_dptos', type: 'table', category: 'UBICACION', sensitive: false, color: '#8b5cf6', title: 'Departamentos'},
+                {id: 'tab_ciudades', label: 'tab_ciudades', type: 'table', category: 'UBICACION', sensitive: false, color: '#8b5cf6', title: 'Ciudades'},
+                {id: 'tab_profesiones', label: 'tab_profesiones', type: 'table', category: 'UBICACION', sensitive: false, color: '#8b5cf6', title: 'Profesiones'},
+                {id: 'tab_ocupaciones', label: 'tab_ocupaciones', type: 'table', category: 'UBICACION', sensitive: false, color: '#8b5cf6', title: 'Ocupaciones'},
+
+                // TABLAS EVALUACION (5)
+                {id: 'tab_raps', label: 'tab_raps', type: 'table', category: 'EVALUACION', sensitive: false, color: '#8b5cf6', title: 'RAPs'},
+                {id: 'tab_prog_competencia', label: 'tab_prog_competencia', type: 'table', category: 'EVALUACION', sensitive: false, color: '#8b5cf6', title: 'Programación competencias'},
+                {id: 'tab_evidencias', label: 'tab_evidencias', type: 'table', category: 'EVALUACION', sensitive: false, color: '#8b5cf6', title: 'Evidencias'},
+                {id: 'tab_juicios_eval', label: 'tab_juicios_eval', type: 'table', category: 'EVALUACION', sensitive: false, color: '#8b5cf6', title: 'Juicios de evaluación'},
+                {id: 'tab_ausencias_aprendiz', label: 'tab_ausencias_aprendiz', type: 'table', category: 'EVALUACION', sensitive: false, color: '#8b5cf6', title: 'Ausencias'},
+
+                // TABLAS OTROS (8)
+                {id: 'tab_menu_usuarios', label: 'tab_menu_usuarios', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Permisos usuario-menú'},
+                {id: 'tab_bitacora', label: 'tab_bitacora', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Bitácora auditoría'},
+                {id: 'tab_borrados', label: 'tab_borrados', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Registro de borrados'},
+                {id: 'log_migracion_aprendices', label: 'log_migracion_aprendices', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Log migraciones'},
+                {id: 'tab_programacion', label: 'tab_programacion', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Programación'},
+                {id: 'tab_redes', label: 'tab_redes', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Redes de formación'},
+                {id: 'tab_ofertas', label: 'tab_ofertas', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Ofertas educativas'},
+                {id: 'tab_metodos_aut', label: 'tab_metodos_aut', type: 'table', category: 'OTROS', sensitive: false, color: '#8b5cf6', title: 'Métodos autenticación'},
+            ],
+            edges: [
+                // LOGIN FLOW
+                {from: 'POST /auth/v1/login', to: 'fun_verificar_bloqueo_ip', label: 'calls'},
+                {from: 'POST /auth/v1/login', to: 'fun_validar_login', label: 'calls'},
+                {from: 'POST /auth/v1/login', to: 'fun_registrar_intento_login', label: 'calls'},
+                {from: 'POST /auth/v1/login', to: 'fun_ingreso_sesion', label: 'calls'},
+                {from: 'fun_validar_login', to: 'tab_usuarios', label: 'touches'},
+                {from: 'fun_verificar_bloqueo_ip', to: 'tab_ips_bloqueadas', label: 'touches'},
+                {from: 'fun_registrar_intento_login', to: 'tab_intentos_login', label: 'touches'},
+                {from: 'fun_ingreso_sesion', to: 'tab_sesiones', label: 'touches'},
+                {from: 'POST /auth/v1/logout', to: 'fun_salida_sesion', label: 'calls'},
+                {from: 'fun_salida_sesion', to: 'tab_sesiones', label: 'touches'},
+                {from: 'POST /auth/v1/cambiar_clave', to: 'fun_actualizar_password', label: 'calls'},
+                {from: 'fun_actualizar_password', to: 'tab_usuarios', label: 'touches'},
+
+                // INGRESO FLOW
+                {from: 'POST /porteria/v1/ingreso/registrar', to: 'fun_upsert_persona_visitante', label: 'calls'},
+                {from: 'POST /porteria/v1/ingreso/registrar', to: 'fun_registrar_ingreso_manual', label: 'calls'},
+                {from: 'fun_registrar_ingreso_manual', to: 'fun_insert_log_ingreso', label: 'calls'},
+                {from: 'fun_upsert_persona_visitante', to: 'tab_personas', label: 'touches'},
+                {from: 'fun_insert_log_ingreso', to: 'tab_log_ingresos', label: 'touches'},
+                {from: 'fun_insert_log_ingreso', to: 'tab_aprendices', label: 'touches'},
+                {from: 'fun_registrar_ingreso_manual', to: 'fun_verify_retardo_aprendiz', label: 'calls'},
+                {from: 'fun_verify_retardo_aprendiz', to: 'tab_asistencia_aprendiz', label: 'touches'},
+
+                // SALIDA FLOW
+                {from: 'POST /porteria/v1/salida/registrar', to: 'fun_buscar_ingreso_abierto', label: 'calls'},
+                {from: 'fun_buscar_ingreso_abierto', to: 'tab_log_ingresos', label: 'touches'},
+                {from: 'POST /porteria/v1/salida/registrar', to: 'fun_registrar_salida_manual', label: 'calls'},
+                {from: 'fun_registrar_salida_manual', to: 'fun_update_log_salida', label: 'calls'},
+                {from: 'fun_update_log_salida', to: 'tab_log_ingresos', label: 'touches'},
+
+                // REGISTRO FLOW
+                {from: 'POST /registro/v1/forms/guardar', to: 'fun_registrar_aprendiz', label: 'calls'},
+                {from: 'POST /registro/v1/forms/guardar', to: 'fun_registrar_instructor', label: 'calls'},
+                {from: 'POST /registro/v1/forms/guardar', to: 'fun_registrar_funcionario', label: 'calls'},
+                {from: 'POST /registro/v1/forms/guardar', to: 'fun_registrar_contratista', label: 'calls'},
+                {from: 'fun_registrar_aprendiz', to: 'fun_registrar_persona', label: 'calls'},
+                {from: 'fun_registrar_instructor', to: 'fun_registrar_persona', label: 'calls'},
+                {from: 'fun_registrar_funcionario', to: 'fun_registrar_persona', label: 'calls'},
+                {from: 'fun_registrar_contratista', to: 'fun_registrar_persona', label: 'calls'},
+                {from: 'fun_registrar_persona', to: 'tab_personas', label: 'touches'},
+                {from: 'fun_registrar_aprendiz', to: 'tab_aprendices', label: 'touches'},
+                {from: 'fun_registrar_aprendiz', to: 'tab_fichas', label: 'touches'},
+                {from: 'fun_registrar_instructor', to: 'tab_instructores', label: 'touches'},
+                {from: 'fun_registrar_funcionario', to: 'tab_funcionarios', label: 'touches'},
+
+                // ADMIN FLOW
+                {from: 'POST /menus/v1/guardar', to: 'fun_insert_tab_menus', label: 'calls'},
+                {from: 'fun_insert_tab_menus', to: 'tab_menus', label: 'touches'},
+                {from: 'POST /usuarios/v1/guardar', to: 'fun_insert_tab_usuarios', label: 'calls'},
+                {from: 'fun_insert_tab_usuarios', to: 'tab_usuarios', label: 'touches'},
+                {from: 'POST /menus/v1/perfil/guardar', to: 'fun_insert_menu_usuarios', label: 'calls'},
+                {from: 'fun_insert_menu_usuarios', to: 'tab_menu_usuarios', label: 'touches'},
+
+                // SENA LOAD FLOW
+                {from: 'GET /admin/v1/reportes/cargar', to: 'fun_procesar_df49', label: 'calls'},
+                {from: 'GET /admin/v1/reportes/cargar', to: 'fun_procesar_pe04', label: 'calls'},
+                {from: 'fun_procesar_df49', to: 'tab_aprendices', label: 'touches'},
+                {from: 'fun_procesar_pe04', to: 'tab_instructores', label: 'touches'},
+            ]
+        };
+
+        // Guardar todos los nodos y edges originales
+        allNodes = graphData.nodes.map(n => ({...n}));
+        allEdges = graphData.edges.map(e => ({...e}));
+
+        // Inicializar red con Vis.js
+        const container = document.getElementById('network');
+        const data = {
+            nodes: new vis.DataSet(graphData.nodes),
+            edges: new vis.DataSet(graphData.edges)
+        };
+        const options = {
+            physics: {
+                enabled: true,
+                stabilization: {
+                    iterations: 200
+                },
+                forceAtlas2Based: {
+                    gravitationalConstant: -26,
+                    centralGravity: 0.005,
+                    springLength: 200,
+                    springConstant: 0.08
+                },
+                maxVelocity: 50,
+                timestep: 0.35,
+                solver: 'forceAtlas2Based'
+            },
+            interaction: {
+                hover: true,
+                navigationButtons: true,
+                keyboard: true
+            },
+            nodes: {
+                shape: 'dot',
+                borderWidth: 2,
+                borderWidthSelected: 3,
+                font: {
+                    size: 13,
+                    face: 'Segoe UI',
+                    color: '#fff'
+                },
+                margin: 5,
+                widthConstraint: {
+                    maximum: 200
+                }
+            },
+            edges: {
+                arrows: {
+                    to: { enabled: true, scaleFactor: 0.5 }
+                },
+                color: { color: '#666', opacity: 0.6 },
+                font: {
+                    size: 10,
+                    color: '#aaa'
+                },
+                smooth: {
+                    type: 'continuous',
+                    roundness: 0.5
+                },
+                width: 1.5
+            }
+        };
+
+        network = new vis.Network(container, data, options);
+
+        // Eventos de red
+        network.on('click', function(params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const node = data.nodes.get(nodeId);
+                showNodeInfo(node);
+            }
+        });
+
+        network.on('stabilizationProgress', function(params) {
+            const widthFactor = params.iterations / params.total;
+            console.log('Estabilizando: ' + Math.round(widthFactor * 100) + '%');
+        });
+
+        network.on('stabilizationIterationsDone', function() {
+            console.log('Grafo estabilizado');
+            network.setOptions({physics: false});
+        });
+
+        // Actualizar estadísticas
+        document.getElementById('nodeCount').textContent = graphData.nodes.length + ' nodos';
+        document.getElementById('edgeCount').innerHTML = '• ' + graphData.edges.length + ' relaciones';
+
+        // Funciones de filtro y búsqueda
+        window.filterByType = function(type) {
+            currentFilter.type = type;
+            applyFilters();
+        };
+
+        window.filterByCategory = function(category) {
+            currentFilter.category = category;
+            applyFilters();
+        };
+
+        function applyFilters() {
+            const nodes = data.nodes.get({returnType: "Object"});
+            for (let nodeId in nodes) {
+                let node = nodes[nodeId];
+                let show = true;
+
+                if (currentFilter.type !== 'all' && node.type !== currentFilter.type) {
+                    show = false;
+                }
+                if (currentFilter.category !== 'all' && node.category !== currentFilter.category) {
+                    show = false;
+                }
+
+                if (show) {
+                    data.nodes.update({id: nodeId, hidden: false});
+                } else {
+                    data.nodes.update({id: nodeId, hidden: true});
+                }
+            }
+        }
+
+        window.searchNode = function() {
+            const query = document.getElementById('searchBox').value.toLowerCase();
+            if (!query) return;
+
+            const nodes = data.nodes.get({returnType: "Object"});
+            for (let nodeId in nodes) {
+                const node = nodes[nodeId];
+                if (node.label.toLowerCase().includes(query) || nodeId.toLowerCase().includes(query)) {
+                    network.focus(nodeId, {scale: 1.5, animation: true});
+                    showNodeInfo(node);
+                    break;
+                }
+            }
+        };
+
+        window.resetSearch = function() {
+            document.getElementById('searchBox').value = '';
+            currentFilter = { type: 'all', category: 'all' };
+            applyFilters();
+            document.getElementById('infoPanel').innerHTML = '<p style="color: #888;">Click en un nodo para ver detalles</p>';
+        };
+
+        window.showFlowLogin = function() {
+            const flowNodes = ['POST /auth/v1/login', 'fun_verificar_bloqueo_ip', 'fun_validar_login', 'fun_registrar_intento_login', 'fun_ingreso_sesion', 'tab_usuarios', 'tab_ips_bloqueadas', 'tab_intentos_login', 'tab_sesiones'];
+            highlightNodes(flowNodes);
+        };
+
+        window.showFlowIngreso = function() {
+            const flowNodes = ['POST /porteria/v1/ingreso/registrar', 'fun_upsert_persona_visitante', 'fun_registrar_ingreso_manual', 'fun_insert_log_ingreso', 'tab_personas', 'tab_log_ingresos', 'tab_aprendices'];
+            highlightNodes(flowNodes);
+        };
+
+        window.showCriticalNodes = function() {
+            const nodes = data.nodes.get({returnType: "Object"});
+            const criticalNodes = [];
+            for (let nodeId in nodes) {
+                if (nodes[nodeId].critical === true) {
+                    criticalNodes.push(nodeId);
+                }
+            }
+            highlightNodes(criticalNodes);
+        };
+
+        window.showPublicEndpoints = function() {
+            const nodes = data.nodes.get({returnType: "Object"});
+            const publicNodes = [];
+            for (let nodeId in nodes) {
+                if (nodes[nodeId].public === true) {
+                    publicNodes.push(nodeId);
+                }
+            }
+            highlightNodes(publicNodes);
+        };
+
+        function highlightNodes(nodeIds) {
+            const nodes = data.nodes.get({returnType: "Object"});
+            for (let nodeId in nodes) {
+                if (nodeIds.includes(nodeId)) {
+                    data.nodes.update({id: nodeId, borderWidth: 3, hidden: false});
+                } else {
+                    data.nodes.update({id: nodeId, borderWidth: 2, hidden: true});
+                }
+            }
+        }
+
+        function showNodeInfo(node) {
+            if (!node) return;
+            let html = `<h4>${node.label}</h4>`;
+            html += `<div class="info-item"><strong>Tipo:</strong> ${node.type}</div>`;
+            if (node.category) html += `<div class="info-item"><strong>Categoría:</strong> ${node.category}</div>`;
+            if (node.critical) html += `<div class="info-item"><strong>Crítica:</strong> ✓ Sí</div>`;
+            if (node.public !== undefined) html += `<div class="info-item"><strong>Público:</strong> ${node.public ? '⚠️ Sí (riesgo)' : 'No'}</div>`;
+            if (node.sensitive !== undefined) html += `<div class="info-item"><strong>Sensible:</strong> ${node.sensitive ? '🔒 Sí' : 'No'}</div>`;
+            if (node.tables && node.tables.length > 0) html += `<div class="info-item"><strong>Tablas:</strong> ${node.tables.join(', ')}</div>`;
+            if (node.title) html += `<div class="info-item"><strong>Descripción:</strong> ${node.title}</div>`;
+            document.getElementById('infoPanel').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

@@ -68,7 +68,6 @@ try {
         trim((string) ($_POST['txt_theme_light_text_muted'] ?? '')),
         trim((string) ($_POST['txt_usr_registro'] ?? '')),
         $passHash,
-        $_SESSION['id_usuario'],
     ]);
 
     $res = (string) $stmt_fun_upd_config->fetchColumn();

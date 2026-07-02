@@ -30,12 +30,16 @@ CREATE OR REPLACE FUNCTION fun_actualizar_aprendiz(
 ) RETURNS TEXT AS $$
 DECLARE
     v_tipo_aprendiz CONSTANT DECIMAL(2,0) := 2;
-    v_nom           VARCHAR(40);
-    v_ape           VARCHAR(30);
-    v_dir           VARCHAR(100);
-    v_contacto      VARCHAR(60);
-    v_mail_norm     TEXT;
-    v_datos         datos_personales_aprendiz;
+    v_nom            VARCHAR(40);
+    v_ape            VARCHAR(30);
+    v_dir            VARCHAR(100);
+    v_contacto       VARCHAR(60);
+    v_mail_norm      TEXT;
+    v_datos          datos_personales_aprendiz;
+    w_exc_state      TEXT;
+    w_exc_msg        TEXT;
+    w_exc_detail     TEXT;
+    w_exc_hint       TEXT;
 BEGIN
     IF wusr IS NULL OR LENGTH(TRIM(wusr)) < 3 THEN
         PERFORM smartcset_raise_validacion('El usuario de auditoría no es válido.');
@@ -266,6 +270,11 @@ EXCEPTION
     WHEN unique_violation THEN
         PERFORM smartcset_raise_negocio('Ya existe un registro con esos datos.');
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

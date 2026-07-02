@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 3) . '/core/prepare.php';
-require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
-require_once dirname(__DIR__, 3) . '/middleware/require_registro_session.php';
-require_once dirname(__DIR__, 3) . '/services/registro/personas_list.php';
-require_once dirname(__DIR__, 3) . '/services/registro/access.php';
+require_once dirname(__DIR__, 4) . '/core/prepare.php';
+require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
+require_once dirname(__DIR__, 4) . '/middleware/require_registro_session.php';
+require_once dirname(__DIR__, 4) . '/services/registro/personas_list.php';
+require_once dirname(__DIR__, 4) . '/services/registro/access.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     RouterResponse::fail('Método no permitido.', 405);

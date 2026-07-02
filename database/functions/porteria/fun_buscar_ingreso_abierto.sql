@@ -3,7 +3,11 @@ CREATE OR REPLACE FUNCTION fun_buscar_ingreso_abierto(
     wid_visitante tab_log_ingresos.id_visitante%TYPE
 ) RETURNS INTEGER AS $$
 DECLARE
-    wid_ingreso INTEGER;
+    wid_ingreso  INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_visitante IS NULL OR wid_visitante < 1 THEN
         RETURN NULL;
@@ -22,7 +26,12 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
         RETURN NULL;
 END;
 $$ LANGUAGE plpgsql STABLE;

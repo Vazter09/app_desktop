@@ -259,9 +259,13 @@
         if (btnFinal) btnFinal.disabled = true;
     });
 
-    /* ---- Abrir solo con el botón Teclado (no auto al cargar) ---- */
+    var isDesktopKiosk = window.matchMedia("(min-width: 768px)").matches;
+
     var btnAbrirKiosk = document.getElementById("btn_abrir_modal_kiosk");
     if (btnAbrirKiosk) {
         btnAbrirKiosk.addEventListener("click", function () { modal.show(); });
+    }
+    if (isDesktopKiosk) {
+        modal.show();
     }
 })();

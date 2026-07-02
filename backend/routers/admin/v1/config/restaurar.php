@@ -42,7 +42,7 @@ try {
     }
 
     $stmt_fun_upd_config->execute(
-        ConfigSistemaDefaults::toUpdateParamsFromRow($merged, (string) $_SESSION['id_usuario'], $passHash)
+        ConfigSistemaDefaults::toUpdateParamsFromRow($merged, $passHash)
     );
     $res = (string) $stmt_fun_upd_config->fetchColumn();
     if (strpos($res, 'OK') === false) {

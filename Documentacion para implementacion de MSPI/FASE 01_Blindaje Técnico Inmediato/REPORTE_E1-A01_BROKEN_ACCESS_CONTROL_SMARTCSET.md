@@ -21,7 +21,7 @@ atacante sin sesión, en 2 casos) podía crear/editar menús, crear/editar usuar
 cualquier usuario.
 
 **Remediación:** guardia `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` en los 8 endpoints,
-replicando el patrón ya correcto de `src/admin/configuracion.php`. Páginas HTML → `403` + mensaje; endpoints
+replicando el patrón ya correcto de `backend/routers/admin/v1/configuracion.php`. Páginas HTML → `403` + mensaje; endpoints
 JSON → `403` + envoltura `ErrorHandler::createResponse`.
 
 ## Alcance y resultado por subcontrol
@@ -34,10 +34,10 @@ JSON → `403` + envoltura `ErrorHandler::createResponse`.
 
 ## Archivos corregidos (8)
 
-`src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/menu/menu_usuarios.php`,
-`src/menu/copiar_menu_usuarios.php` — guardia HTML 403 tras chequeo de sesión.
-`src/menu/procesar_perfil.php`, `src/menu/procesar_permiso.php` (+ `require_once helpers.php`),
-`src/menu/procesar_copiar_perfil.php`, `src/menu/obtener_menus_usuario.php` — guardia sesión+admin (JSON 403).
+`backend/routers/menus/v1/menus.php`, `backend/routers/usuarios/v1/usuarios.php`, `backend/routers/menus/v1/menu_usuarios.php`,
+`backend/routers/menus/v1/copiar_menu_usuarios.php` — guardia HTML 403 tras chequeo de sesión.
+`backend/routers/menus/v1/procesar_perfil.php`, `backend/routers/menus/v1/procesar_permiso.php` (+ `require_once helpers.php`),
+`backend/routers/menus/v1/procesar_copiar_perfil.php`, `backend/routers/menus/v1/obtener_menus_usuario.php` — guardia sesión+admin (JSON 403).
 
 La lógica preexistente que aplicaba `usuarioEsAdministrador()` al **usuario objetivo** de la operación se
 conservó (propósito de negocio distinto y complementario).

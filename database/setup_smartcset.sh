@@ -60,6 +60,9 @@ echo "==> Migración tab_sesiones (auditoría)"
 run_sql "$ROOT/database/migrations/add_tab_sesiones.sql"
 run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
 
+echo "==> Migración tab_intentos_login (E3 — rate limiting)"
+run_sql "$ROOT/database/migrations/add_tab_intentos_login.sql"
+
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
 
@@ -74,6 +77,8 @@ FUNCS=(
   "$ROOT/database/functions/acceso/usuarios/fun_validar_login.sql"
   "$ROOT/database/functions/acceso/usuarios/fun_validar_correo.sql"
   "$ROOT/database/functions/acceso/usuarios/fun_validar_usuario.sql"
+  "$ROOT/database/functions/acceso/usuarios/fun_registrar_intento_login.sql"
+  "$ROOT/database/functions/acceso/usuarios/fun_verificar_bloqueo_ip.sql"
   "$ROOT/database/functions/acceso/menus/fun_insert_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_update_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_trigger_menu.sql"
@@ -109,6 +114,11 @@ FUNCS=(
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_funcionario.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_instructor.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_persona_centro.sql"
+  "$ROOT/database/functions/siem/fun_siem_dashboard.sql"
+  "$ROOT/database/functions/siem/fun_siem_eventos.sql"
+  "$ROOT/database/functions/siem/fun_siem_sesiones.sql"
+  "$ROOT/database/functions/siem/fun_siem_ips.sql"
+  "$ROOT/database/functions/siem/fun_siem_actividad.sql"
 )
 for f in "${FUNCS[@]}"; do
   run_sql "$f"
@@ -124,6 +134,7 @@ for f in \
   "$ROOT/database/seeds/seed_config_y_menus.sql" \
   "$ROOT/database/seeds/seed_acceso_dev.sql" \
   "$ROOT/database/seeds/seed_menus_admin.sql" \
+  "$ROOT/database/seeds/seed_menus_siem.sql" \
   "$ROOT/database/migrations/add_menu_accesos_0203_0204.sql" \
   "$ROOT/database/migrations/sync_admin_menu_access.sql" \
   "$ROOT/database/migrations/update_nom_programa_subfolders.sql" \
@@ -145,7 +156,9 @@ for f in \
   "$ROOT/database/migrations/add_tab_dispositivos_porteria.sql" \
   "$ROOT/database/migrations/reorganizacion_arquitectura_nom_programa.sql" \
   "$ROOT/database/migrations/add_idx_aprendices_fichas_aprendiz.sql" \
-  "$ROOT/database/migrations/add_menu_reportes_sena.sql"
+  "$ROOT/database/migrations/add_menu_reportes_sena.sql" \
+  "$ROOT/database/migrations/fix_auditoria_app_usuario.sql" \
+  "$ROOT/database/migrations/fix_auditoria_eliminar_wusr.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

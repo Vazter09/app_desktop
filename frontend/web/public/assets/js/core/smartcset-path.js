@@ -5,6 +5,11 @@
     'use strict';
 
     function basePath() {
+        // Inline script puede estar bloqueado por CSP — leer meta tag como fuente primaria
+        var meta = document.querySelector('meta[name="smartcset-base-path"]');
+        if (meta) {
+            return meta.getAttribute('content') || '';
+        }
         return typeof global.SMARTCSET_BASE_PATH === 'string' ? global.SMARTCSET_BASE_PATH : '';
     }
 

@@ -35,8 +35,7 @@ function ingresoConsultarAcceso(
 function ingresoRegistrarManual(
     PDOStatement $stmtFunRegistrar,
     PDOStatement $stmtIngresoAbierto,
-    array $datos,
-    string $usrAudit
+    array $datos
 ): int {
     $captura = accesoDocumentoDesdePost($datos);
     $doc = $captura['documento'];
@@ -78,7 +77,6 @@ function ingresoRegistrarManual(
         $ape,
         $puerta,
         $obs !== '' ? $obs : null,
-        $usrAudit,
         $metodoAut,
         // PDO(pgsql) puede convertir `false` a string vacío; Postgres no acepta ""::boolean.
         $capturaPdf417 ? 'true' : 'false',

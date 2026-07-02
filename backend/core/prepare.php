@@ -23,7 +23,7 @@ try {
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
-        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR
     )";
     $stmt_fun_upd_config = $pdo->prepare($sql_fun_upd_config);
 
@@ -107,7 +107,7 @@ try {
                           ORDER BY e.id_entrada_centro ASC";
     $stmt_list_entradas = $pdo->prepare($sql_list_entradas);
 
-    $sql_fun_upsert_entrada = 'SELECT fun_upsert_tab_entradas_centro(?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC, ?::TEXT)';
+    $sql_fun_upsert_entrada = 'SELECT fun_upsert_tab_entradas_centro(?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC)';
     $stmt_fun_upsert_entrada = $pdo->prepare($sql_fun_upsert_entrada);
 
     $sql_fun_delete_entrada = 'SELECT fun_delete_tab_entradas_centro(?::NUMERIC)';
@@ -145,7 +145,7 @@ try {
 
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
-        ?::NUMERIC, ?::TEXT, ?::VARCHAR, ?::DECIMAL, ?::BOOLEAN
+        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
 
@@ -177,7 +177,7 @@ try {
          LIMIT 1"
     );
     $sql_fun_registrar_salida = "SELECT fun_registrar_salida_manual(
-        ?::NUMERIC, ?::VARCHAR, ?::TEXT, ?::VARCHAR
+        ?::NUMERIC, ?::VARCHAR, ?::TEXT
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
@@ -261,6 +261,8 @@ try {
     }
 
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
+        $pdo->exec("SET app.usuario = " . $pdo->quote((string) $_SESSION['id_usuario']));
+
         require_once __DIR__ . '/helpers.php';
 
         $estadoSesion = Db::gestionarSesionEnRequest(
