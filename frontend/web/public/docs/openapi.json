@@ -1239,6 +1239,69 @@
                 }
             }
         },
+        "/routers/instructor/v1/asistencia/exportar.php": {
+            "get": {
+                "summary": "Exportar asistencia por ficha a Excel",
+                "description": "Descarga un archivo .xlsx con metadatos de la ficha y el detalle de asistencia del período consultado (máx. 31 días).",
+                "tags": [
+                    "Instructor"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id_ficha",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "fecha",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Archivo Excel (.xlsx)"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
         "/routers/instructor/v1/asistencia/listar.php": {
             "get": {
                 "summary": "Listar asistencia por ficha y rango de fechas",
