@@ -67,7 +67,7 @@ include smartcsetLayoutPath('topbar.php');
                             <select id="sel_origen" name="usuario_origen" class="form-select form-select-sm">
                                 <option value="">Seleccione un usuario...</option>
                                 <?php foreach ($lista_usuarios as $u):
-                                    $isAdmin = !empty($u['ind_usuario']);
+                                    $isAdmin = smartcsetPgBool($u['ind_usuario'] ?? false);
                                 ?>
                                 <option value="<?= htmlspecialchars($u['id_usuario']) ?>"
                                         data-admin="<?= $isAdmin ? '1' : '0' ?>"
@@ -82,7 +82,7 @@ include smartcsetLayoutPath('topbar.php');
                             <select id="sel_destino" name="usuario_destino" class="form-select form-select-sm">
                                 <option value="">Seleccione un usuario...</option>
                                 <?php foreach ($lista_usuarios as $u):
-                                    $isAdmin = !empty($u['ind_usuario']);
+                                    $isAdmin = smartcsetPgBool($u['ind_usuario'] ?? false);
                                 ?>
                                 <option value="<?= htmlspecialchars($u['id_usuario']) ?>"
                                         data-admin="<?= $isAdmin ? '1' : '0' ?>"
@@ -102,9 +102,18 @@ include smartcsetLayoutPath('topbar.php');
     </div>
 </div>
 
-<?php $_ar = dirname(__DIR__, 2) . '/public/assets'; ?>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/services/http-client.js') ?: time()) ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/services/menus-router.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/services/menus-router.js') ?: time()) ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/core/copiar_menu_usuarios.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/core/copiar_menu_usuarios.js') ?: time()) ?>"></script>
+<script data-smartcset-page-init="copiar-menu-usuarios">
+(function () {
+    if (typeof window.smartcsetInitCopiarMenuUsuarios === 'function') {
+        window.smartcsetInitCopiarMenuUsuarios();
+    }
+})();
+</script>
 
-<?php include smartcsetLayoutPath('footer.php'); ?>
+<?php
+$_ar = dirname(__DIR__, 2) . '/public/assets';
+$extra_js = '<script src="' . htmlspecialchars(smartcsetAsset('js/services/http-client.js')) . '?v=' . (int) (@filemtime($_ar . '/js/services/http-client.js') ?: time()) . '"></script>'
+    . '<script src="' . htmlspecialchars(smartcsetAsset('js/services/menus-router.js')) . '?v=' . (int) (@filemtime($_ar . '/js/services/menus-router.js') ?: time()) . '"></script>'
+    . '<script src="' . htmlspecialchars(smartcsetAsset('js/core/copiar_menu_usuarios.js')) . '?v=' . (int) (@filemtime($_ar . '/js/core/copiar_menu_usuarios.js') ?: time()) . '"></script>';
+include smartcsetLayoutPath('footer.php');
+?>

@@ -129,6 +129,7 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
         <div class="nav-section">
             <a class="nav-item <?= ($_active === '0') ? 'active' : '' ?>"
                href="<?= htmlspecialchars(smartcsetUrl('/pages/menu/menu_principal.php')) ?>"
+               data-menu-id="0"
                data-spa-link="1"
                data-tooltip="Inicio">
                 <i class="bi bi-house-fill"></i>

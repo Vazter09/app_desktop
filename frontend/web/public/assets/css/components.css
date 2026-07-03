@@ -361,7 +361,7 @@ body:not(.light-theme) .smart-confirm-content .modal-title {
 .modal-form-usuario .permisos-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.65rem;
+    gap: 0.75rem;
 }
 
 @media (max-width: 480px) {
@@ -370,31 +370,24 @@ body:not(.light-theme) .smart-confirm-content .modal-title {
     }
 }
 
-.modal-form-usuario .permiso-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 0.65rem 0.75rem;
-    border-radius: 8px;
-    border: 1px solid #e8ece8;
-    background: #fafbfa;
+.modal-form-usuario .permisos-grid .config-toggle-item {
     margin: 0;
+    height: 100%;
+    cursor: pointer;
 }
 
-.modal-form-usuario .permiso-item .form-check-input {
-    margin-top: 0.15rem;
+.modal-form-usuario .permisos-grid .config-toggle-item:has(.form-check-input:checked) {
+    border-color: rgba(0, 77, 64, 0.35);
+    background: rgba(0, 77, 64, 0.04);
 }
 
-.modal-form-usuario .permiso-item .form-check-label {
-    font-size: 0.82rem;
-    line-height: 1.35;
+.modal-form-usuario .permisos-grid .config-toggle-item .form-check-input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
 }
 
-.modal-form-usuario .permiso-item .permiso-desc {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: #6c757d;
+.modal-form-usuario .permisos-grid .config-toggle-item__title {
+    cursor: pointer;
 }
 
 .modal-form-usuario .modal-footer {
