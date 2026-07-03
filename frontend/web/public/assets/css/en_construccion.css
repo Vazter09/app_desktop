@@ -5,7 +5,8 @@
 
 .en-construccion-card {
     border-radius: 12px;
-    background: var(--card-bg, #fff);
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--surface-border, var(--border, transparent));
 }
 
 .en-construccion-icon {
@@ -31,12 +32,13 @@
     font-weight: 600;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: var(--v-oscuro, #2e4731);
-    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 18%, #fff);
+    color: var(--text-main, #e8f4ff);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 22%, var(--bg-card, #0a1f1a));
+    border: 1px solid color-mix(in srgb, var(--v-oliva, #6b8e23) 35%, transparent);
 }
 
 .en-construccion-title {
-    color: var(--v-oscuro, #2e4731);
+    color: var(--text-main, #e8f4ff);
     font-weight: 700;
 }
 
@@ -46,4 +48,19 @@
     max-width: 38ch;
     margin-left: auto;
     margin-right: auto;
+    color: var(--text-muted);
+}
+
+body.light-theme .en-construccion-badge {
+    color: var(--v-oscuro, #2e4731);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 18%, #fff);
+    border-color: transparent;
+}
+
+body.light-theme .en-construccion-title {
+    color: var(--v-oscuro, #2e4731);
+}
+
+body.light-theme .en-construccion-text {
+    color: var(--text-muted, rgba(55, 65, 81, 0.8));
 }

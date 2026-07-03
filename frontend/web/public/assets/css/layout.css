@@ -57,6 +57,69 @@ body:not(.light-theme) .dash2-tipo-chip {
 
 body:not(.light-theme) {
     --text-muted: color-mix(in srgb, var(--text-main) 62%, var(--v-oliva));
+    /* Bootstrap 5.3 — utilidades legibles sobre superficies oscuras */
+    --bs-body-color: var(--text-main);
+    --bs-body-color-rgb: 232, 244, 255;
+    --bs-secondary-color: var(--text-muted);
+    --bs-tertiary-color: var(--text-muted);
+    --bs-heading-color: var(--text-main);
+    --bs-emphasis-color: var(--text-main);
+    --bs-link-color: var(--v-oliva);
+    --bs-link-hover-color: color-mix(in srgb, var(--v-oliva) 72%, #fff);
+    --bs-border-color: var(--surface-border, var(--border));
+}
+
+/* Texto secundario Bootstrap y utilidades en modo oscuro */
+body:not(.light-theme) .text-muted,
+body:not(.light-theme) .text-secondary,
+body:not(.light-theme) .text-body-secondary,
+body:not(.light-theme) .form-text,
+body:not(.light-theme) .small.text-muted,
+body:not(.light-theme) .card .text-muted,
+body:not(.light-theme) .main-content .text-muted,
+body:not(.light-theme) p.text-muted {
+    color: var(--text-muted) !important;
+}
+
+body:not(.light-theme) .card,
+body:not(.light-theme) .card-body {
+    color: var(--text-main);
+}
+
+body:not(.light-theme) .card .card-title,
+body:not(.light-theme) .card h1,
+body:not(.light-theme) .card h2,
+body:not(.light-theme) .card h3,
+body:not(.light-theme) .card h4,
+body:not(.light-theme) .card h5,
+body:not(.light-theme) .card h6 {
+    color: var(--text-main);
+}
+
+body:not(.light-theme) .breadcrumb-item,
+body:not(.light-theme) .breadcrumb-item a {
+    color: var(--text-muted);
+}
+
+body:not(.light-theme) .breadcrumb-item.active {
+    color: var(--text-main);
+}
+
+body:not(.light-theme) .form-label,
+body:not(.light-theme) .form-check-label {
+    color: var(--text-main);
+}
+
+body:not(.light-theme) .btn-outline-secondary {
+    color: var(--text-main);
+    border-color: var(--surface-border, var(--border));
+}
+
+body:not(.light-theme) .btn-outline-secondary:hover,
+body:not(.light-theme) .btn-outline-secondary:focus {
+    color: var(--text-main);
+    background: var(--surface-hover, color-mix(in srgb, var(--v-oliva) 14%, transparent));
+    border-color: var(--v-oliva);
 }
 
 body.light-theme {
