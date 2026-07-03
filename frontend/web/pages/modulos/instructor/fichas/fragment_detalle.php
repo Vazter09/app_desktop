@@ -68,23 +68,28 @@ $mostrarAcciones = $puedeEscribir && $esUnDia && !$modoRango;
     <div class="card-body">
         <form method="get" class="inst-filtros-form row g-2 align-items-end mb-3" id="inst-filtros-form">
             <input type="hidden" name="id_ficha" value="<?= (int) $idFichaSel ?>">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label small mb-1" for="inst_fecha">Fecha</label>
                 <input type="date" class="form-control form-control-sm" id="inst_fecha" name="fecha"
                        value="<?= htmlspecialchars($esUnDia && !$modoRango ? $desde : '') ?>">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small mb-1" for="inst_desde">Desde</label>
                 <input type="date" class="form-control form-control-sm" id="inst_desde" name="desde"
                        value="<?= htmlspecialchars($modoRango ? $desde : '') ?>">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small mb-1" for="inst_hasta">Hasta</label>
                 <input type="date" class="form-control form-control-sm" id="inst_hasta" name="hasta"
                        value="<?= htmlspecialchars($modoRango ? $hasta : '') ?>">
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-sm btn-success w-100">Consultar</button>
+            <div class="col-md-5">
+                <div class="inst-filtros-actions">
+                    <button type="submit" class="btn btn-sm btn-success flex-grow-1">Consultar</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" id="inst-btn-exportar">
+                        <i class="bi bi-download me-1"></i>Exportar
+                    </button>
+                </div>
             </div>
         </form>
 

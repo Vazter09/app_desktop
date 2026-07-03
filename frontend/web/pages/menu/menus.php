@@ -19,7 +19,7 @@ $stmt_list_todos_menus->execute();
 $menus_lista = $stmt_list_todos_menus->fetchAll();
 
 $page_title     = 'Menús';
-$active_menu_id = '0202';
+$active_menu_id = '20902';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 $_crud_hl_v = @filemtime(dirname(__DIR__, 2) . '/public/assets/css/crud-row-highlight.css') ?: time();
 $extra_stylesheets = ($extra_stylesheets ?? '') . '<link rel="stylesheet" href="' . htmlspecialchars(smartcsetAsset('css/crud-row-highlight.css')) . '?v=' . (int) $_crud_hl_v . '">';

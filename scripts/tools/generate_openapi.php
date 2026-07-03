@@ -13,7 +13,9 @@ $projectRoot = dirname(__DIR__, 2);
 $basePath = $projectRoot . '/backend/openapi/openapi.base.json';
 $routersRoot = $projectRoot . '/backend/routers';
 $outputBackend = $projectRoot . '/backend/openapi/openapi.yaml';
+$outputBackendJson = $projectRoot . '/backend/openapi/openapi.json';
 $outputPublic = $projectRoot . '/frontend/web/public/docs/openapi.yaml';
+$outputPublicJson = $projectRoot . '/frontend/web/public/docs/openapi.json';
 
 $checkOnly = in_array('--check', $argv ?? [], true);
 
@@ -90,12 +92,24 @@ if ($errors !== []) {
 }
 
 $yaml = OpenApiYamlEncoder::encode($spec);
+$json = json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+if ($json === false) {
+    fwrite(STDERR, "No se pudo serializar openapi.json\n");
+    exit(1);
+}
 
 if ($checkOnly) {
     $existingBackend = is_file($outputBackend) ? (string) file_get_contents($outputBackend) : '';
     $existingPublic = is_file($outputPublic) ? (string) file_get_contents($outputPublic) : '';
-    if ($existingBackend !== $yaml || $existingPublic !== $yaml) {
-        fwrite(STDERR, "openapi.yaml desactualizado. Ejecute: php scripts/tools/generate_openapi.php\n");
+    $existingBackendJson = is_file($outputBackendJson) ? (string) file_get_contents($outputBackendJson) : '';
+    $existingPublicJson = is_file($outputPublicJson) ? (string) file_get_contents($outputPublicJson) : '';
+    if (
+        $existingBackend !== $yaml
+        || $existingPublic !== $yaml
+        || $existingBackendJson !== $json
+        || $existingPublicJson !== $json
+    ) {
+        fwrite(STDERR, "openapi desactualizado. Ejecute: php scripts/tools/generate_openapi.php\n");
         exit(1);
     }
     fwrite(STDOUT, "OK openapi ({$actualCount} operaciones, spec sincronizado)\n");
@@ -104,9 +118,12 @@ if ($checkOnly) {
 
 writeFile($outputBackend, $yaml);
 writeFile($outputPublic, $yaml);
+writeFile($outputBackendJson, $json);
+writeFile($outputPublicJson, $json);
 
 fwrite(STDOUT, "Generado {$outputBackend} ({$actualCount} operaciones)\n");
-fwrite(STDOUT, "Copiado a {$outputPublic}\n");
+fwrite(STDOUT, "Generado {$outputBackendJson}\n");
+fwrite(STDOUT, "Copiado a {$outputPublic} y {$outputPublicJson}\n");
 
 /**
  * @return list<string>
@@ -370,15 +387,18 @@ function buildRequestBody(array $requestBody): array
     if ($contentType === 'application/x-www-form-urlencoded') {
         $properties = $requestBody['properties'] ?? [];
         $required = $requestBody['required'] ?? [];
+        $schema = [
+            'type' => 'object',
+            'properties' => is_array($properties) ? $properties : [],
+        ];
+        if (is_array($required) && $required !== []) {
+            $schema['required'] = $required;
+        }
         return [
             'required' => true,
             'content' => [
                 'application/x-www-form-urlencoded' => [
-                    'schema' => [
-                        'type' => 'object',
-                        'required' => is_array($required) ? $required : [],
-                        'properties' => is_array($properties) ? $properties : [],
-                    ],
+                    'schema' => $schema,
                 ],
             ],
         ];
@@ -553,17 +573,35 @@ final class OpenApiYamlEncoder
     {
         if (is_array($value)) {
             if ($value === []) {
-                return "{}\n";
+                return "[]\n";
             }
 
             if (array_is_list($value)) {
                 $out = '';
                 foreach ($value as $item) {
-                    if (is_array($item) && !array_is_list($item)) {
-                        $out .= str_repeat('  ', $indent) . "- \n" . self::dumpMap($item, $indent + 1, true);
-                    } else {
+                    if (!is_array($item)) {
                         $out .= str_repeat('  ', $indent) . '- ' . self::scalarInline($item) . "\n";
+                        continue;
                     }
+
+                    if (array_is_list($item)) {
+                        $out .= str_repeat('  ', $indent) . "-\n";
+                        $out .= self::dump($item, $indent + 1);
+                        continue;
+                    }
+
+                    // Objetos en listas: estilo bloque (evita "name: X, description: Y" inválido en YAML).
+                    if (count($item) === 1) {
+                        $onlyKey = array_key_first($item);
+                        $onlyVal = $item[$onlyKey];
+                        if (!is_array($onlyVal)) {
+                            $out .= str_repeat('  ', $indent) . '- ' . $onlyKey . ': ' . self::scalarInline($onlyVal) . "\n";
+                            continue;
+                        }
+                    }
+
+                    $out .= str_repeat('  ', $indent) . "-\n";
+                    $out .= self::dumpMap($item, $indent + 1, false);
                 }
                 return $out;
             }

@@ -1,4 +1,5 @@
 (function () {
+    function initSalidaKioskModal() {
     var num              = "";
     var puerta           = "";
     var step             = 1;
@@ -7,13 +8,15 @@
     var fetchPromise     = null;
     var prefetchTimer    = null;
 
-    var modalEl  = document.getElementById("documentModal");
+    var modalEl = (window.PorteriaModalHost && window.PorteriaModalHost.ensureModalOnBody("documentModal"))
+        || document.getElementById("documentModal");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) {
         return;
     }
-    if (modalEl.parentElement !== document.body) {
-        document.body.appendChild(modalEl);
+    if (modalEl.dataset.dmBound === "1") {
+        return;
     }
+    modalEl.dataset.dmBound = "1";
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
@@ -149,20 +152,28 @@
         num = num.slice(0, -1); renderNum();
     });
 
-    document.addEventListener("keydown", function(e) {
-        if (!modalEl.classList.contains("show")) return;
-        if (step === 1) {
-            if (e.key >= "0" && e.key <= "9") {
-                if (num.length < 10) { num += e.key; renderNum(); }
-            } else if (e.key === "Backspace") {
-                num = num.slice(0, -1); renderNum();
-            } else if (e.key === "Enter" && !btnSig.disabled) {
-                btnSig.click();
+    if (!window.__porteriaSalidaKioskKeydown) {
+        window.__porteriaSalidaKioskKeydown = true;
+        document.addEventListener("keydown", function(e) {
+            var activeModal = document.getElementById("documentModal");
+            if (!activeModal || !activeModal.classList.contains("show")) return;
+            var activeBtnSig = document.getElementById("dm-btn-siguiente");
+            var activeBtnFinal = document.getElementById("dm-btn-final");
+            var activeSlide = activeModal.querySelector(".dm-slide.active");
+            var activeStep = activeSlide && activeSlide.id ? parseInt(activeSlide.id.replace("dm-slide-", ""), 10) : 1;
+            if (activeStep === 1) {
+                if (e.key >= "0" && e.key <= "9") {
+                    document.querySelector(".dm-k[data-d=\"" + e.key + "\"]")?.click();
+                } else if (e.key === "Backspace") {
+                    document.getElementById("dm-del")?.click();
+                } else if (e.key === "Enter" && activeBtnSig && !activeBtnSig.disabled) {
+                    activeBtnSig.click();
+                }
+            } else if (activeStep === 3 && e.key === "Enter" && activeBtnFinal && !activeBtnFinal.disabled) {
+                activeBtnFinal.click();
             }
-        } else if (step === 3 && e.key === "Enter" && !btnFinal.disabled) {
-            btnFinal.click();
-        }
-    });
+        });
+    }
 
     btnSig.addEventListener("click", function() {
         if (fetchResult !== null) {
@@ -224,6 +235,11 @@
         });
         if (fetchResult) aplicarDatosFormulario(fetchResult);
 
+        modal.hide();
+        var formModalEl = document.getElementById("salidaFormModal");
+        if (formModalEl && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(formModalEl).show();
+        }
         var form = document.getElementById("form_salida");
         if (form && typeof form.requestSubmit === "function") {
             form.requestSubmit();
@@ -251,5 +267,12 @@
     var btnAbrirKiosk = document.getElementById("btn_abrir_modal_kiosk");
     if (btnAbrirKiosk) {
         btnAbrirKiosk.addEventListener("click", function () { modal.show(); });
+    }
+    }
+
+    if (typeof window.smartcsetOnPageReady === "function") {
+        window.smartcsetOnPageReady(initSalidaKioskModal);
+    } else {
+        document.addEventListener("DOMContentLoaded", initSalidaKioskModal);
     }
 })();

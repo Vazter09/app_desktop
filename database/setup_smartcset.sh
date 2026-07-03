@@ -157,7 +157,12 @@ for f in \
   "$ROOT/database/migrations/revoke_instructores_menu_personas.sql" \
   "$ROOT/database/migrations/add_menu_parametros_0403.sql" \
   "$ROOT/database/migrations/seed_tab_pmtros_grales_dev.sql" \
-  "$ROOT/database/migrations/ensure_admin_acceso_total.sql"
+  "$ROOT/database/migrations/reorganizacion_menus_tres_abuelos.sql" \
+  "$ROOT/database/migrations/sync_instructor_menus_sga_operativo.sql" \
+  "$ROOT/database/migrations/update_menu_en_construccion_pages.sql" \
+  "$ROOT/database/migrations/separar_juicios_ruta_de_reportes_sga.sql" \
+  "$ROOT/database/migrations/ensure_admin_acceso_total.sql" \
+  "$ROOT/database/migrations/fix_dark_theme_contrast.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

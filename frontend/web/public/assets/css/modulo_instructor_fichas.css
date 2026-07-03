@@ -157,6 +157,12 @@
     color: var(--text-muted);
 }
 
+.inst-filtros-actions {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
 /* Modo claro */
 body.light-theme .inst-fichas-title {
     color: var(--v-oscuro, #004d40);

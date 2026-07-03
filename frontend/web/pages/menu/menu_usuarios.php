@@ -27,7 +27,7 @@ try {
 }
 
 $page_title     = 'Accesos';
-$active_menu_id = '0203';
+$active_menu_id = '20903';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 include smartcsetLayoutPath('head.php');
@@ -49,7 +49,7 @@ renderPageFlash($error_carga ?? null, 'danger', 'Error al cargar');
                 <select id="sel_usuario" class="form-select form-select-sm mb-3">
                     <option value="">Seleccione un usuario...</option>
                     <?php foreach ($lista_usuarios as $u):
-                        $esAdmin = !empty($u['ind_usuario']);
+                        $esAdmin = smartcsetPgBool($u['ind_usuario'] ?? false);
                     ?>
                     <option value="<?= htmlspecialchars($u['id_usuario']) ?>"
                             data-admin="<?= $esAdmin ? '1' : '0' ?>">
@@ -133,12 +133,19 @@ renderPageFlash($error_carga ?? null, 'danger', 'Error al cargar');
     </div>
 </div>
 
+<script data-smartcset-page-init="menu-usuarios">
+(function () {
+    if (typeof window.smartcsetInitMenuUsuarios === 'function') {
+        window.smartcsetInitMenuUsuarios();
+    }
+})();
+</script>
+
 <?php
 $_ar = dirname(__DIR__, 2) . '/public/assets';
 $_v_menu_u = @filemtime($_ar . '/js/core/menu_usuarios.js') ?: time();
+$extra_js = '<script src="' . htmlspecialchars(smartcsetAsset('js/services/http-client.js')) . '?v=' . (int) (@filemtime($_ar . '/js/services/http-client.js') ?: time()) . '"></script>'
+    . '<script src="' . htmlspecialchars(smartcsetAsset('js/services/menus-router.js')) . '?v=' . (int) (@filemtime($_ar . '/js/services/menus-router.js') ?: time()) . '"></script>'
+    . '<script src="' . htmlspecialchars(smartcsetAsset('js/core/menu_usuarios.js')) . '?v=' . (int) $_v_menu_u . '"></script>';
+include smartcsetLayoutPath('footer.php');
 ?>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/services/http-client.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/services/http-client.js') ?: time()) ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/services/menus-router.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/services/menus-router.js') ?: time()) ?>"></script>
-<script src="<?= htmlspecialchars(smartcsetAsset('js/core/menu_usuarios.js')) ?>?v=<?= (int) $_v_menu_u ?>"></script>
-
-<?php include smartcsetLayoutPath('footer.php'); ?>

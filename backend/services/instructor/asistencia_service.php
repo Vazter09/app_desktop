@@ -398,6 +398,175 @@ function instructorBuscarFichaEnListado(array $fichas, int $idFicha): ?array
 }
 
 /**
+ * Metadatos de ficha para encabezado de exportación Excel.
+ *
+ * @return array{
+ *   id_ficha: int,
+ *   nom_ficha: string,
+ *   nom_programa: string,
+ *   nom_jornada: string,
+ *   nom_instructor: string
+ * }
+ */
+function instructorObtenerMetadatosFichaExport(PDO $pdo, int $idFicha): array
+{
+    if ($idFicha < 1) {
+        throw new InvalidArgumentException('Debe indicar la ficha.');
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT f.id_ficha,
+                pr.nom_programa,
+                j.nom_jornada,
+                TRIM(p.nom_persona) || \' \' || TRIM(p.ape_persona) AS nom_instructor
+           FROM tab_fichas f
+           INNER JOIN tab_programas pr ON pr.id_programa = f.id_programa
+           INNER JOIN tab_jornadas j ON j.id_jornada = f.id_jornada
+           INNER JOIN tab_personas p ON p.id_persona = f.id_instructor_lider
+          WHERE f.id_ficha = ?::NUMERIC
+          LIMIT 1'
+    );
+    $stmt->execute([$idFicha]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!is_array($row)) {
+        throw new InvalidArgumentException('La ficha indicada no existe.');
+    }
+
+    $id = (int) ($row['id_ficha'] ?? 0);
+    $nomInstructor = trim((string) ($row['nom_instructor'] ?? ''));
+    if ($nomInstructor === '') {
+        $nomInstructor = 'Sin instructor';
+    }
+
+    return [
+        'id_ficha' => $id,
+        'nom_ficha' => 'Ficha ' . $id,
+        'nom_programa' => trim((string) ($row['nom_programa'] ?? '')),
+        'nom_jornada' => trim((string) ($row['nom_jornada'] ?? '')),
+        'nom_instructor' => $nomInstructor,
+    ];
+}
+
+function instructorFormatearFechaExport(string $iso): string
+{
+    if ($iso === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $iso) !== 1) {
+        return $iso;
+    }
+
+    $ts = strtotime($iso);
+
+    return $ts !== false ? date('d/m/Y', $ts) : $iso;
+}
+
+function instructorFormatearHoraExport(array $row): string
+{
+    $estado = (string) ($row['ind_estado'] ?? '');
+    $hora = (string) ($row['hora_asistencia'] ?? '');
+
+    if ($hora === '' || $hora === '00:00:00' || in_array($estado, ['Pendiente', 'Ausente'], true)) {
+        return '';
+    }
+
+    return substr($hora, 0, 5);
+}
+
+function instructorFormatearRetardoExport(array $row): int|string
+{
+    $retardo = (int) ($row['minutos_retraso'] ?? 0);
+
+    return $retardo > 0 ? $retardo : '';
+}
+
+/**
+ * Construye filas para exportación Excel de asistencia.
+ *
+ * @param array{
+ *   desde: string,
+ *   hasta: string,
+ *   rows: list<array<string, mixed>>,
+ *   por_fecha: array<string, array{Presente: int, Tarde: int, Ausente: int, Pendiente: int, Desconocido: int, total: int}>
+ * } $asistencia
+ * @param array{id_ficha: int, nom_ficha: string, nom_programa: string, nom_jornada: string, nom_instructor: string} $meta
+ * @return array{
+ *   detalle: list<list<scalar|null>>,
+ *   detalle_bold_rows: list<int>,
+ *   resumen: list<list<scalar|null>>|null,
+ *   resumen_bold_rows: list<int>
+ * }
+ */
+function instructorConstruirFilasExportacion(array $asistencia, array $meta, bool $modoRango): array
+{
+    $desde = (string) ($asistencia['desde'] ?? '');
+    $hasta = (string) ($asistencia['hasta'] ?? '');
+    $rows = is_array($asistencia['rows'] ?? null) ? $asistencia['rows'] : [];
+    $porFecha = is_array($asistencia['por_fecha'] ?? null) ? $asistencia['por_fecha'] : [];
+    $esUnDia = $desde === $hasta && !$modoRango;
+
+    $periodo = instructorFormatearFechaExport($desde);
+    if (!$esUnDia) {
+        $periodo = instructorFormatearFechaExport($desde) . ' — ' . instructorFormatearFechaExport($hasta);
+    }
+
+    $detalle = [
+        ['Ficha', (string) ($meta['id_ficha'] ?? '')],
+        ['Nombre ficha', (string) ($meta['nom_ficha'] ?? '')],
+        ['Carrera', (string) ($meta['nom_programa'] ?? '')],
+        ['Jornada ficha', (string) ($meta['nom_jornada'] ?? '')],
+        ['Instructor', (string) ($meta['nom_instructor'] ?? '')],
+        ['Período', $periodo],
+        [],
+    ];
+    $detalleBoldRows = [1, 2, 3, 4, 5, 6];
+
+    if ($esUnDia) {
+        $detalle[] = ['Aprendiz', 'Documento', 'Jornada', 'Hora', 'Retardo (min)', 'Estado'];
+    } else {
+        $detalle[] = ['Fecha', 'Aprendiz', 'Documento', 'Jornada', 'Hora', 'Retardo (min)', 'Estado'];
+    }
+    $detalleBoldRows[] = count($detalle);
+
+    foreach ($rows as $row) {
+        $fila = [];
+        if (!$esUnDia) {
+            $fila[] = instructorFormatearFechaExport((string) ($row['fec_asistencia'] ?? ''));
+        }
+        $fila[] = (string) ($row['nom_completo'] ?? '');
+        $fila[] = (string) ($row['id_aprendiz'] ?? '');
+        $fila[] = (string) ($row['nom_jornada'] ?? '');
+        $fila[] = instructorFormatearHoraExport($row);
+        $fila[] = instructorFormatearRetardoExport($row);
+        $fila[] = (string) ($row['ind_estado'] ?? '');
+        $detalle[] = $fila;
+    }
+
+    $resumen = null;
+    $resumenBoldRows = [1];
+    if (!$esUnDia && $porFecha !== []) {
+        $resumen = [
+            ['Fecha', 'Presente', 'Tarde', 'Ausente', 'Pendiente', 'Total'],
+        ];
+        foreach ($porFecha as $fec => $tot) {
+            $resumen[] = [
+                instructorFormatearFechaExport((string) $fec),
+                (int) ($tot['Presente'] ?? 0),
+                (int) ($tot['Tarde'] ?? 0),
+                (int) ($tot['Ausente'] ?? 0),
+                (int) ($tot['Pendiente'] ?? 0),
+                (int) ($tot['total'] ?? 0),
+            ];
+        }
+    }
+
+    return [
+        'detalle' => $detalle,
+        'detalle_bold_rows' => $detalleBoldRows,
+        'resumen' => $resumen,
+        'resumen_bold_rows' => $resumenBoldRows,
+    ];
+}
+
+/**
  * Agrupa fichas por nombre de programa (carrera).
  *
  * @param list<array<string, mixed>> $fichas
@@ -533,7 +702,11 @@ function instructorDashboardResumen(
 /** Menús de sistema permitidos para instructores (no administradores). */
 function instructorMenusPermitidosIds(): array
 {
-    return ['06', '0601'];
+    return [
+        '20', '202', '20201',
+        '205', '20501', '20502',
+        '206', '20601',
+    ];
 }
 
 /** Instructor registrado sin perfil administrador: solo módulo Mis Fichas. */
@@ -544,7 +717,7 @@ function instructorEsSoloFichas(PDO $pdo, string $idUsuario): bool
 }
 
 /**
- * Deja solo menús 06/0601 para instructores no admin (sidebar y permisos efectivos).
+ * Deja solo menús operativos SGA para instructores no admin (sidebar y permisos efectivos).
  *
  * @param list<array<string, mixed>> $menuRaw
  * @return list<array<string, mixed>>
@@ -559,7 +732,7 @@ function instructorFiltrarMenusUsuario(PDO $pdo, string $idUsuario, array $menuR
     $filtrado = [];
     foreach ($menuRaw as $item) {
         $idMenu = (string) ($item['id_menu'] ?? '');
-        if (isset($permitidos[$idMenu])) {
+        if (isset($permitidos[$idMenu]) || str_starts_with($idMenu, '20601-')) {
             $filtrado[] = $item;
         }
     }
@@ -570,11 +743,11 @@ function instructorFiltrarMenusUsuario(PDO $pdo, string $idUsuario, array $menuR
 /** ID de menú lateral sintético por ficha (no existe en tab_menus). */
 function instructorMenuIdFicha(int $idFicha): string
 {
-    return '0601-' . $idFicha;
+    return '20601-' . $idFicha;
 }
 
 /**
- * Ítems hijos dinámicos bajo menú 06 (Mis Fichas) para el sidebar del instructor.
+ * Ítems hijos dinámicos bajo menú 206 (Mis Fichas) para el sidebar del instructor.
  *
  * @return array<string, array{id_menu: string, nom_menu: string, ind_id_padre: string, nom_programa: string}>
  */
@@ -586,10 +759,10 @@ function instructorSidebarMenusFichas(PDOStatement $stmt, int $idInstructor): ar
     $items = [];
 
     if (count($fichas) > 1) {
-        $items['0601'] = [
-            'id_menu' => '0601',
+        $items['20601'] = [
+            'id_menu' => '20601',
             'nom_menu' => 'Todas las fichas',
-            'ind_id_padre' => '06',
+            'ind_id_padre' => '206',
             'nom_programa' => $programaBase,
         ];
     }
@@ -605,7 +778,7 @@ function instructorSidebarMenusFichas(PDOStatement $stmt, int $idInstructor): ar
         $items[$menuId] = [
             'id_menu' => $menuId,
             'nom_menu' => 'Ficha ' . $idFicha,
-            'ind_id_padre' => '06',
+            'ind_id_padre' => '206',
             'nom_programa' => $programaBase . '?id_ficha=' . $idFicha . '&fecha=' . urlencode($fechaHoy),
             'menu_tooltip' => $programaNom !== '' ? 'Ficha ' . $idFicha . ' — ' . $programaNom : 'Ficha ' . $idFicha,
         ];
@@ -615,14 +788,14 @@ function instructorSidebarMenusFichas(PDOStatement $stmt, int $idInstructor): ar
 }
 
 /**
- * Reemplaza hijos estáticos de Mis Fichas (06) por las fichas del instructor.
+ * Reemplaza hijos estáticos de Mis Fichas (206) por las fichas del instructor.
  *
  * @param array<string, array<string, mixed>> $menuJerarquia
  * @return array<string, array<string, mixed>>
  */
 function instructorExpandirMenuSidebar(PDO $pdo, PDOStatement $stmtFichas, string $idUsuario, array $menuJerarquia): array
 {
-    if (!isset($menuJerarquia['06'])) {
+    if (!isset($menuJerarquia['20']['hijos']['206'])) {
         return $menuJerarquia;
     }
 
@@ -638,7 +811,7 @@ function instructorExpandirMenuSidebar(PDO $pdo, PDOStatement $stmtFichas, strin
     try {
         $hijosDinamicos = instructorSidebarMenusFichas($stmtFichas, $idInstructor);
         if ($hijosDinamicos !== []) {
-            $menuJerarquia['06']['hijos'] = $hijosDinamicos;
+            $menuJerarquia['20']['hijos']['206']['hijos'] = $hijosDinamicos;
         }
     } catch (PDOException) {
         /* Mantener menú estático si falla la consulta */

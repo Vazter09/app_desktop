@@ -31,7 +31,7 @@ try {
 }
 
 $page_title     = 'Entradas al centro';
-$active_menu_id = '0101';
+$active_menu_id = '101';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 $_crud_hl_v = @filemtime(dirname(__DIR__, 3) . '/public/assets/css/crud-row-highlight.css') ?: time();
 $extra_stylesheets = '<link rel="stylesheet" href="' . htmlspecialchars(smartcsetAsset('css/crud-row-highlight.css')) . '?v=' . (int) $_crud_hl_v . '">';

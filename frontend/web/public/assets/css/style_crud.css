@@ -77,6 +77,41 @@ input[type="number"]::-webkit-inner-spin-button {
     color: #fff;
 }
 
+.btn-outline-corporativo {
+    color: var(--v-oliva, #6b8e23);
+    border: 1px solid color-mix(in srgb, var(--v-oliva, #6b8e23) 48%, transparent);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 10%, transparent);
+    font-weight: 600;
+    border-radius: 10px;
+}
+
+.btn-outline-corporativo:hover,
+.btn-outline-corporativo:focus,
+.btn-outline-corporativo:active {
+    color: var(--text-main, #e8f4ff);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 24%, transparent);
+    border-color: var(--v-oliva, #6b8e23);
+}
+
+.btn-outline-corporativo i,
+.btn-outline-corporativo i::before {
+    color: currentColor;
+}
+
+body.light-theme .btn-outline-corporativo {
+    color: var(--v-oscuro, #2e4731);
+    border: 1px solid color-mix(in srgb, var(--v-oscuro, #2e4731) 35%, transparent);
+    background: #fff;
+}
+
+body.light-theme .btn-outline-corporativo:hover,
+body.light-theme .btn-outline-corporativo:focus,
+body.light-theme .btn-outline-corporativo:active {
+    color: var(--v-oscuro, #2e4731);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 12%, #fff);
+    border-color: var(--v-oliva, #6b8e23);
+}
+
 .thead-oliva {
     background: linear-gradient(90deg, var(--v-oscuro), var(--v-oliva));
     color: #f6f9ff;

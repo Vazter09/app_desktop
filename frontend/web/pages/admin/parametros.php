@@ -28,7 +28,7 @@ if ($stmt_get_pmtros instanceof PDOStatement) {
 $p = $pmtros;
 $hasPmtros = $pmtros !== [];
 $page_title = 'Config. parámetros';
-$active_menu_id = '0403';
+$active_menu_id = '21003';
 $wnom_usuario = $_SESSION['nom_usuario'] ?? '';
 
 include smartcsetLayoutPath('head.php');

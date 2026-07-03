@@ -19,7 +19,7 @@ $stmt_list_users->execute();
 $usuarios_lista = $stmt_list_users->fetchAll();
 
 $page_title     = 'Usuarios';
-$active_menu_id = '0201';
+$active_menu_id = '20901';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 $_crud_hl_v = @filemtime(dirname(__DIR__, 2) . '/public/assets/css/crud-row-highlight.css') ?: time();
@@ -172,19 +172,19 @@ include smartcsetLayoutPath('topbar.php');
                     <section class="form-section">
                         <div class="form-section-title">Permisos y estado</div>
                         <div class="permisos-grid">
-                            <div class="form-check permiso-item">
+                            <div class="config-toggle-item">
                                 <input type="checkbox" name="chk_admin" id="f_adm" class="form-check-input">
-                                <label class="form-check-label" for="f_adm">
-                                    Administrador
-                                    <span class="permiso-desc">Acceso total al catálogo de menús.</span>
-                                </label>
+                                <div class="config-toggle-item__body">
+                                    <label class="config-toggle-item__title mb-0" for="f_adm">Administrador</label>
+                                    <span class="config-toggle-item__desc">Acceso total al catálogo de menús.</span>
+                                </div>
                             </div>
-                            <div class="form-check permiso-item">
+                            <div class="config-toggle-item">
                                 <input type="checkbox" name="chk_estado" id="f_est" class="form-check-input" checked>
-                                <label class="form-check-label" for="f_est">
-                                    Habilitado
-                                    <span class="permiso-desc">Puede ingresar al sistema.</span>
-                                </label>
+                                <div class="config-toggle-item__body">
+                                    <label class="config-toggle-item__title mb-0" for="f_est">Habilitado</label>
+                                    <span class="config-toggle-item__desc">Puede ingresar al sistema.</span>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -199,6 +199,14 @@ include smartcsetLayoutPath('topbar.php');
         </div>
     </div>
 </div>
+
+<script data-smartcset-page-init="usuarios">
+(function () {
+    if (typeof window.smartcsetInitUsuarios === 'function') {
+        window.smartcsetInitUsuarios();
+    }
+})();
+</script>
 
 <?php
 $_ar = dirname(__DIR__, 2) . '/public/assets';

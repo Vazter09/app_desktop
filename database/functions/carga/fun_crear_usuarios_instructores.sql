@@ -34,7 +34,12 @@ BEGIN
     SELECT u.id_usuario, m.id_menu, 'carga_automatica', CURRENT_TIMESTAMP
     FROM tab_personas p
     JOIN tab_usuarios u ON u.id_usuario = p.id_persona::VARCHAR
-    CROSS JOIN (VALUES ('06'), ('0601')) AS m(id_menu)
+    CROSS JOIN (
+        VALUES
+            ('20'), ('202'), ('20201'),
+            ('205'), ('20501'), ('20502'),
+            ('206'), ('20601')
+    ) AS m(id_menu)
     WHERE p.id_tipo_persona = 3
       AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
       AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
@@ -50,7 +55,11 @@ BEGIN
       AND p.nom_persona IS NOT NULL AND TRIM(p.nom_persona) != ''
       AND p.ape_persona IS NOT NULL AND TRIM(p.ape_persona) != ''
       AND u.ind_usuario = FALSE
-      AND mu.id_menu NOT IN ('06', '0601');
+      AND mu.id_menu NOT IN (
+          '20', '202', '20201',
+          '205', '20501', '20502',
+          '206', '20601'
+      );
 
     -- 4. Contar instructores elegibles que no tienen usuario
     SELECT COUNT(p.id_persona)

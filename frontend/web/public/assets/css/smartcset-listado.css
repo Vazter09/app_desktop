@@ -74,6 +74,31 @@ body.light-theme .smart-listado-filtros-actions .btn-outline-secondary {
     border-color: color-mix(in srgb, var(--v-oscuro) 24%, transparent);
 }
 
+body:not(.light-theme) .smart-listado-filtros-actions .btn-outline-secondary {
+    color: var(--text-main);
+    border-color: var(--surface-border, var(--border));
+    background: color-mix(in srgb, var(--bg-card) 90%, transparent);
+}
+
+body:not(.light-theme) .smart-listado-filtros-actions .btn-outline-secondary:hover,
+body:not(.light-theme) .smart-listado-filtros-actions .btn-outline-secondary:focus {
+    color: var(--text-main);
+    background: color-mix(in srgb, var(--v-oliva) 18%, var(--bg-card));
+    border-color: var(--v-oliva);
+}
+
+body:not(.light-theme) .smart-listado-paginacion .page-link {
+    color: var(--text-main);
+    background: var(--bg-card);
+    border-color: var(--surface-border, var(--border));
+}
+
+body:not(.light-theme) .smart-listado-paginacion .page-item.active .page-link {
+    color: var(--text-main);
+    background: color-mix(in srgb, var(--v-oliva) 35%, var(--bg-card));
+    border-color: var(--v-oliva);
+}
+
 body.light-theme .smart-listado-filtros-actions .btn-outline-secondary:hover,
 body.light-theme .smart-listado-filtros-actions .btn-outline-secondary:focus {
     color: #ffffff;

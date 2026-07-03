@@ -24,7 +24,7 @@ try {
 }
 
 $page_title           = 'Sesiones activas';
-$active_menu_id       = '0206';
+$active_menu_id       = '20905';
 $wnom_usuario         = $_SESSION['nom_usuario'];
 $smartcset_asset_href = smartcsetProjectAssetHref();
 

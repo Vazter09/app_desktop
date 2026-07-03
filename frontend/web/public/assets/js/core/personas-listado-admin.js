@@ -1,15 +1,15 @@
 /**
- * Navegación entre listados Personas (0301–0304) sin recargar el sidebar.
+ * Navegación entre listados Personas (20101, 20201, 20702, 20703) sin recargar el sidebar.
  */
 (function () {
     const host = document.getElementById('personas-listado-host');
     if (!host) return;
 
-    const menuIds = ['0301', '0302', '0303', '0304'];
+    const menuIds = ['20101', '20201', '20702', '20703'];
     const linkSelector = '.sidebar a[href*="/admin/personas/"]';
 
     function setActiveMenu(menuId) {
-        document.querySelectorAll('.sidebar .nav-item.child').forEach((el) => {
+        document.querySelectorAll('.sidebar .nav-item[data-menu-id]').forEach((el) => {
             el.classList.toggle('active', el.dataset.menuId === menuId);
         });
     }
@@ -28,10 +28,10 @@
             const match = u.pathname.match(/\/admin\/personas\/([^/]+)\//);
             if (!match) return '';
             const bySlug = {
-                aprendices: '0301',
-                instructores: '0302',
-                funcionarios: '0303',
-                contratistas: '0304',
+                aprendices: '20201',
+                instructores: '20101',
+                funcionarios: '20702',
+                contratistas: '20703',
             };
             return bySlug[match[1]] || '';
         } catch (_) {

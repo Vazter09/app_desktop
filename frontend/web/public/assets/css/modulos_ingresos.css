@@ -5,6 +5,58 @@
     --ing-list-max-h: calc(100vh - 9rem);
 }
 
+.ingresos-page--table-first {
+    --ing-list-min-h: min(420px, calc(100vh - 10rem));
+    --ing-list-max-h: calc(100vh - 7rem);
+}
+
+.ing-panel-full {
+    width: 100%;
+    max-width: 100%;
+}
+
+.ing-panel-head-actions .meta {
+    opacity: 0.9;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.ing-modal-form .modal-header {
+    background: linear-gradient(135deg, var(--v-oscuro, #2E4731) 0%, #3d5c42 100%);
+    color: #fff;
+    border-bottom: none;
+}
+
+.ing-modal-form .modal-header .btn-close {
+    filter: invert(1) grayscale(1);
+    opacity: 0.85;
+}
+
+.ing-panel-foot-modal {
+    padding: 0.75rem 1rem 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    background: #fafcfb;
+}
+
+#ingresoFormModal,
+#salidaFormModal {
+    z-index: 1065 !important;
+}
+
+#documentModal {
+    z-index: 1070 !important;
+}
+
+.ing-table-full .v-carrera {
+    display: block;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    color: #4a5c52;
+}
+
 /* Columnas: formulario fijo + lista flexible */
 .ingresos-layout {
     display: flex;

@@ -18,21 +18,9 @@ if (isset($stmt_fun_listar_fichas_instructor) && !usuarioEsAdministrador($pdo, (
     $_menu_raw = instructorFiltrarMenusUsuario($pdo, (string) $_SESSION['id_usuario'], $_menu_raw);
 }
 
-// Construir jerarquía
-$_menu = [];
-foreach ($_menu_raw as $_item) {
-    if (smartcsetMenuEsPadreRaiz((string) $_item['ind_id_padre'])) {
-        $_menu[$_item['id_menu']] = $_item;
-        $_menu[$_item['id_menu']]['hijos'] = [];
-    } else {
-        $_padre = $_item['ind_id_padre'];
-        if (isset($_menu[$_padre])) {
-            $_menu[$_padre]['hijos'][$_item['id_menu']] = $_item;
-        }
-    }
-}
+$_menu = smartcsetConstruirArbolMenus($_menu_raw);
 
-// Mis Fichas (06): hijos dinámicos por ficha del instructor
+// Mis Fichas (206): hijos dinámicos por ficha del instructor
 if (isset($stmt_fun_listar_fichas_instructor)) {
     if (!function_exists('instructorExpandirMenuSidebar')) {
         require_once dirname(__DIR__, 3) . '/backend/services/instructor/asistencia_service.php';
@@ -45,18 +33,80 @@ if (isset($stmt_fun_listar_fichas_instructor)) {
     );
 }
 
-// Etiquetas del módulo 06 solo para administrador (instructores ven nombres de tab_menus).
-if (isset($_menu['06']) && usuarioEsAdministrador($pdo, (string) $_SESSION['id_usuario'])) {
+// Etiquetas del módulo 206 solo para administrador (instructores ven nombres de tab_menus).
+if (isset($_menu['20']['hijos']['206']) && usuarioEsAdministrador($pdo, (string) $_SESSION['id_usuario'])) {
     if (!function_exists('instructorMenuLabelAdminPadre')) {
         require_once dirname(__DIR__) . '/pages/modulos/instructor/lib/instructor_ui.php';
     }
-    $_menu['06']['nom_menu'] = instructorMenuLabelAdminPadre();
-    if (isset($_menu['06']['hijos']['0601'])) {
-        $_menu['06']['hijos']['0601']['nom_menu'] = instructorMenuLabelAdminHijo();
+    $_menu['20']['hijos']['206']['nom_menu'] = instructorMenuLabelAdminPadre();
+    if (isset($_menu['20']['hijos']['206']['hijos']['20601'])) {
+        $_menu['20']['hijos']['206']['hijos']['20601']['nom_menu'] = instructorMenuLabelAdminHijo();
     }
 }
 
-// Logo: prefijo según profundidad de la página (ver smartcsetModulosAssetHref)
+/**
+ * @param array<string, mixed> $item
+ */
+$_sidebar_render_item = static function (array $item, int $depth = 1) use (&$_sidebar_render_item, $_active): void {
+    $prog = trim((string) ($item['nom_programa'] ?? ''));
+    $esExit = (strcasecmp($prog, 'Exit') === 0 || strcasecmp($prog, 'exit.php') === 0);
+    $hijos = $item['hijos'] ?? [];
+    $tieneHijos = is_array($hijos) && $hijos !== [];
+    $icono = getIcon((string) ($item['nom_menu'] ?? ''));
+    $ramaAbierta = smartcsetMenuRamaActiva($item, (string) $_active);
+    $itemActivo = smartcsetMenuItemActivo($item, (string) $_active);
+    $idMenu = (string) ($item['id_menu'] ?? '');
+    $nomMenu = (string) ($item['nom_menu'] ?? '');
+    $esEnlace = !$tieneHijos && $prog !== '' && strcasecmp($prog, 'no_aplica') !== 0 && !$esExit;
+    $esPlaceholder = !$tieneHijos && !$esEnlace && !$esExit;
+    $wrapperClass = $depth === 1 ? 'nav-section' : 'nav-subsection';
+
+    if ($esExit) {
+        echo '<div class="nav-section"><div class="nav-divider"></div>';
+        echo '<a class="nav-item" href="' . htmlspecialchars(smartcsetUrl('/routers/auth/v1/logout.php')) . '" data-tooltip="Salir">';
+        echo '<i class="bi bi-power"></i><span class="nav-label">Salir</span></a></div>';
+        return;
+    }
+
+    if ($tieneHijos) {
+        $parentClass = $depth === 1 ? 'nav-item-parent' : 'nav-item-group';
+        echo '<div class="' . $wrapperClass . ($ramaAbierta ? ' open' : '') . '">';
+        echo '<div class="nav-item ' . $parentClass . ($itemActivo ? ' active' : '') . ($ramaAbierta && !$itemActivo ? ' has-active-child' : '') . '"';
+        echo ' data-tooltip="' . htmlspecialchars($nomMenu) . '">';
+        echo '<i class="bi ' . htmlspecialchars($icono) . '"></i>';
+        echo '<span class="nav-label">' . htmlspecialchars($nomMenu) . '</span>';
+        echo '<i class="bi bi-chevron-right nav-arrow"></i></div>';
+        echo '<div class="nav-children nav-depth-' . $depth . '">';
+        foreach ($hijos as $hijo) {
+            $_sidebar_render_item($hijo, $depth + 1);
+        }
+        echo '</div></div>';
+        return;
+    }
+
+    if ($esPlaceholder) {
+        echo '<span class="nav-item child placeholder nav-depth-' . $depth . '"';
+        echo ' data-tooltip="' . htmlspecialchars($nomMenu . ' (próximamente)') . '">';
+        echo '<i class="bi bi-circle nav-placeholder-dot"></i>';
+        echo '<span class="nav-label nav-label-muted">' . htmlspecialchars($nomMenu) . '</span></span>';
+        return;
+    }
+
+    if ($esEnlace) {
+        $url = smartcsetUrlNomPrograma($prog);
+        $actH = smartcsetMenuItemActivo($item, (string) $_active) ? ' active' : '';
+        $tip = trim((string) ($item['menu_tooltip'] ?? $nomMenu));
+        $spa = smartcsetAttrSpaLink($prog);
+        $childClass = $depth > 1 ? ' child' : '';
+        echo '<a class="nav-item' . $childClass . ' nav-depth-' . $depth . $actH . '"';
+        echo ' href="' . htmlspecialchars($url) . '"';
+        echo ' data-menu-id="' . htmlspecialchars($idMenu, ENT_QUOTES, 'UTF-8') . '"' . $spa;
+        echo ' data-tooltip="' . htmlspecialchars($tip) . '">';
+        echo '<i class="bi ' . htmlspecialchars($icono) . '"></i>';
+        echo '<span class="nav-label">' . htmlspecialchars($nomMenu) . '</span></a>';
+    }
+};
+
 $_asset_href_logo = $smartcset_asset_href ?? '../../';
 $_logo_path = smartcsetLogoUrl($_asset_href_logo);
 ?>
@@ -76,10 +126,10 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
 
     <nav class="sidebar-nav">
 
-        <!-- Inicio (siempre presente) -->
         <div class="nav-section">
             <a class="nav-item <?= ($_active === '0') ? 'active' : '' ?>"
                href="<?= htmlspecialchars(smartcsetUrl('/pages/menu/menu_principal.php')) ?>"
+               data-menu-id="0"
                data-spa-link="1"
                data-tooltip="Inicio">
                 <i class="bi bi-house-fill"></i>
@@ -89,84 +139,8 @@ $_logo_path = smartcsetLogoUrl($_asset_href_logo);
 
         <div class="nav-divider"></div>
 
-        <?php foreach ($_menu as $_padre): ?>
-            <?php
-            $_prog_p   = trim($_padre['nom_programa'] ?? '');
-            $_es_exit  = (strcasecmp($_prog_p, 'Exit') === 0 || strcasecmp($_prog_p, 'exit.php') === 0);
-            $_has_hijos = !empty($_padre['hijos']);
-            $_icono    = getIcon($_padre['nom_menu']);
-            $_activo_p = ($_active === $_padre['id_menu']) ? 'active' : '';
-
-            // Si el padre activo tiene hijos, marcar también
-            if (!$_activo_p && $_has_hijos) {
-                foreach ($_padre['hijos'] as $_h) {
-                    if ($_h['id_menu'] === $_active) { $_activo_p = 'active'; break; }
-                }
-                // Ficha activa (0601-123) también abre el padre 06
-                if (!$_activo_p && $_padre['id_menu'] === '06' && str_starts_with((string) $_active, '0601-')) {
-                    $_activo_p = 'active';
-                }
-            }
-            ?>
-
-            <?php if ($_es_exit): ?>
-                <!-- Salir -->
-                <div class="nav-section">
-                    <div class="nav-divider"></div>
-                    <a class="nav-item" href="<?= htmlspecialchars(smartcsetUrl('/routers/auth/v1/logout.php')) ?>" data-tooltip="Salir">
-                        <i class="bi bi-power"></i>
-                        <span class="nav-label">Salir</span>
-                    </a>
-                </div>
-
-            <?php elseif ($_has_hijos): ?>
-                <!-- Padre con submenús -->
-                <div class="nav-section <?= $_activo_p ? 'open' : '' ?>">
-                    <div class="nav-item nav-item-parent <?= $_activo_p ?>"
-                         data-tooltip="<?= htmlspecialchars($_padre['nom_menu']) ?>">
-                        <i class="bi <?= $_icono ?>"></i>
-                        <span class="nav-label"><?= htmlspecialchars($_padre['nom_menu']) ?></span>
-                        <i class="bi bi-chevron-right nav-arrow"></i>
-                    </div>
-                    <div class="nav-children">
-                        <?php foreach ($_padre['hijos'] as $_hijo): ?>
-                            <?php
-                            $_prog_h  = trim($_hijo['nom_programa'] ?? '');
-                            $_es_ex_h = (strcasecmp($_prog_h, 'Exit') === 0 || strcasecmp($_prog_h, 'exit.php') === 0);
-                            $_url_h   = $_es_ex_h ? smartcsetUrl('/routers/auth/v1/logout.php') : smartcsetUrlNomPrograma($_prog_h);
-                            $_ic_h    = getIcon($_hijo['nom_menu']);
-                            $_act_h   = ($_hijo['id_menu'] === $_active) ? 'active' : '';
-                            $_tip_h   = trim((string) ($_hijo['menu_tooltip'] ?? $_hijo['nom_menu']));
-                            $_spa_h   = smartcsetAttrSpaLink($_prog_h);
-                            ?>
-                            <a class="nav-item child <?= $_act_h ?>"
-                               href="<?= htmlspecialchars($_url_h) ?>"
-                               data-menu-id="<?= htmlspecialchars((string) ($_hijo['id_menu'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"<?= $_spa_h ?>
-                               data-tooltip="<?= htmlspecialchars($_tip_h) ?>">
-                                <i class="bi <?= $_ic_h ?>"></i>
-                                <span class="nav-label"><?= htmlspecialchars($_hijo['nom_menu']) ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-            <?php else: ?>
-                <!-- Padre directo sin hijos -->
-                <?php
-                $_url_p = smartcsetUrlNomPrograma($_prog_p);
-                $_act_p = ($_active === $_padre['id_menu']) ? 'active' : '';
-                $_spa_p = smartcsetAttrSpaLink($_prog_p);
-                ?>
-                <div class="nav-section">
-                    <a class="nav-item <?= $_act_p ?>"
-                       href="<?= htmlspecialchars($_url_p) ?>"<?= $_spa_p ?>
-                       data-tooltip="<?= htmlspecialchars($_padre['nom_menu']) ?>">
-                        <i class="bi <?= $_icono ?>"></i>
-                        <span class="nav-label"><?= htmlspecialchars($_padre['nom_menu']) ?></span>
-                    </a>
-                </div>
-            <?php endif; ?>
-
+        <?php foreach ($_menu as $_abuelo): ?>
+            <?php $_sidebar_render_item($_abuelo, 1); ?>
         <?php endforeach; ?>
 
     </nav>

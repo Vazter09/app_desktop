@@ -6,6 +6,7 @@ Routers JSON bajo `backend/routers/instructor/v1/`. Auth: `require_instructor.ph
 |--------|------|-----------|
 | GET | `fichas/listar.php` | No |
 | GET | `asistencia/listar.php?id_ficha=&fecha=` | No |
+| GET | `asistencia/exportar.php?id_ficha=&fecha=` | No |
 | GET | `dashboard/resumen.php?fecha=` | No |
 | POST | `asistencia/registrar.php` | Solo instructor |
 | PUT | `asistencia/actualizar.php` | Solo instructor |

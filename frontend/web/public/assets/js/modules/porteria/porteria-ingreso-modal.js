@@ -1,4 +1,5 @@
 (function () {
+    function initIngresoKioskModal() {
     /* ---- Estado ---- */
     var num              = "";
     var puerta           = "";
@@ -9,13 +10,15 @@
     var prefetchTimer    = null;
 
     /* ---- Refs ---- */
-    var modalEl  = document.getElementById("documentModal");
+    var modalEl = (window.PorteriaModalHost && window.PorteriaModalHost.ensureModalOnBody("documentModal"))
+        || document.getElementById("documentModal");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) {
         return;
     }
-    if (modalEl.parentElement !== document.body) {
-        document.body.appendChild(modalEl);
+    if (modalEl.dataset.dmBound === "1") {
+        return;
     }
+    modalEl.dataset.dmBound = "1";
     var modal    = new bootstrap.Modal(modalEl, {backdrop:"static", keyboard:false});
     var numEl    = document.getElementById("dm-num");
     var btnSig   = document.getElementById("dm-btn-siguiente");
@@ -134,20 +137,31 @@
     });
 
     /* ---- Paso 1: teclado físico ---- */
-    document.addEventListener("keydown", function(e) {
-        if (!modalEl.classList.contains("show")) return;
-        if (step === 1) {
-            if (e.key >= "0" && e.key <= "9") {
-                if (num.length < 10) { num += e.key; renderNum(); }
-            } else if (e.key === "Backspace") {
-                num = num.slice(0, -1); renderNum();
-            } else if (e.key === "Enter" && !btnSig.disabled) {
-                btnSig.click();
+    if (!window.__porteriaIngresoKioskKeydown) {
+        window.__porteriaIngresoKioskKeydown = true;
+        document.addEventListener("keydown", function(e) {
+            var activeModal = document.getElementById("documentModal");
+            if (!activeModal || !activeModal.classList.contains("show")) return;
+            var activeBtnSig = document.getElementById("dm-btn-siguiente");
+            var activeBtnFinal = document.getElementById("dm-btn-final");
+            var activeSlide = activeModal.querySelector(".dm-slide.active");
+            var activeStep = activeSlide && activeSlide.id ? parseInt(activeSlide.id.replace("dm-slide-", ""), 10) : 1;
+            if (activeStep === 1) {
+                if (e.key >= "0" && e.key <= "9") {
+                    var numElLive = document.getElementById("dm-num");
+                    if (numElLive && numElLive.textContent.replace(/\D/g, "").length < 10) {
+                        document.querySelector(".dm-k[data-d=\"" + e.key + "\"]")?.click();
+                    }
+                } else if (e.key === "Backspace") {
+                    document.getElementById("dm-del")?.click();
+                } else if (e.key === "Enter" && activeBtnSig && !activeBtnSig.disabled) {
+                    activeBtnSig.click();
+                }
+            } else if (activeStep === 3 && e.key === "Enter" && activeBtnFinal && !activeBtnFinal.disabled) {
+                activeBtnFinal.click();
             }
-        } else if (step === 3 && e.key === "Enter" && !btnFinal.disabled) {
-            btnFinal.click();
-        }
-    });
+        });
+    }
 
     /* ---- Paso 1 → 2: usar resultado pre-cargado o esperar fetch en vuelo ---- */
     btnSig.addEventListener("click", function() {
@@ -220,9 +234,13 @@
         });
 
         if (esPersonaNueva) {
-            /* Persona no registrada: cerrar modal y dejar al operador completar nombres */
+            /* Persona no registrada: cerrar kiosk y abrir formulario */
             modal.hide();
             setTimeout(function() {
+                var formModalEl = document.getElementById("ingresoFormModal");
+                if (formModalEl && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(formModalEl).show();
+                }
                 var f = document.getElementById("txt_nombres");
                 if (f) f.focus();
             }, 300);
@@ -234,6 +252,11 @@
         var fApe = document.getElementById("txt_apellidos");
         if (fNom) fNom.readOnly = false;
         if (fApe) fApe.readOnly = false;
+        modal.hide();
+        var formModalEl = document.getElementById("ingresoFormModal");
+        if (formModalEl && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(formModalEl).show();
+        }
         var form = document.getElementById("form_ingreso");
         if (form && typeof form.requestSubmit === "function") {
             form.requestSubmit();
@@ -263,5 +286,12 @@
     var btnAbrirKiosk = document.getElementById("btn_abrir_modal_kiosk");
     if (btnAbrirKiosk) {
         btnAbrirKiosk.addEventListener("click", function () { modal.show(); });
+    }
+    }
+
+    if (typeof window.smartcsetOnPageReady === "function") {
+        window.smartcsetOnPageReady(initIngresoKioskModal);
+    } else {
+        document.addEventListener("DOMContentLoaded", initIngresoKioskModal);
     }
 })();

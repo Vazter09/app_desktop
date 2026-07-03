@@ -75,7 +75,7 @@ input[type="number"]::-webkit-inner-spin-button {
     align-items: flex-start;
     gap: 0.65rem;
     font-size: 0.84rem;
-    color: #444;
+    color: var(--text-main, #e7f1ff);
     line-height: 1.4;
 }
 
@@ -101,8 +101,8 @@ input[type="number"]::-webkit-inner-spin-button {
     font-weight: 600;
     padding: 0.25rem 0.55rem;
     border-radius: 6px;
-    background: rgba(107, 142, 35, 0.12);
-    color: var(--v-oscuro, #2E4731);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 18%, transparent);
+    color: var(--text-main, #e7f1ff);
 }
 
 .guide-actions {
@@ -119,15 +119,27 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .guide-actions .btn-outline-corporativo {
-    color: var(--v-oscuro, #2E4731);
+    color: var(--v-oliva, #6b8e23);
+    border: 1px solid color-mix(in srgb, var(--v-oliva, #6b8e23) 45%, transparent);
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 8%, transparent);
+}
+
+.guide-actions .btn-outline-corporativo:hover {
+    background: color-mix(in srgb, var(--v-oliva, #6b8e23) 22%, transparent);
+    border-color: var(--v-oliva, #6b8e23);
+    color: var(--text-main, #e8f4ff);
+}
+
+body.light-theme .guide-actions .btn-outline-corporativo {
+    color: var(--v-oscuro, #2e4731);
     border: 1px solid rgba(46, 71, 49, 0.35);
     background: #fff;
 }
 
-.guide-actions .btn-outline-corporativo:hover {
+body.light-theme .guide-actions .btn-outline-corporativo:hover {
     background: rgba(107, 142, 35, 0.1);
-    border-color: var(--v-oliva, #6B8E23);
-    color: var(--v-oscuro, #2E4731);
+    border-color: var(--v-oliva, #6b8e23);
+    color: var(--v-oscuro, #2e4731);
 }
 
 /* Variante compacta (avisos en Accesos) */
@@ -361,7 +373,7 @@ body:not(.light-theme) .smart-confirm-content .modal-title {
 .modal-form-usuario .permisos-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.65rem;
+    gap: 0.75rem;
 }
 
 @media (max-width: 480px) {
@@ -370,31 +382,24 @@ body:not(.light-theme) .smart-confirm-content .modal-title {
     }
 }
 
-.modal-form-usuario .permiso-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 0.65rem 0.75rem;
-    border-radius: 8px;
-    border: 1px solid #e8ece8;
-    background: #fafbfa;
+.modal-form-usuario .permisos-grid .config-toggle-item {
     margin: 0;
+    height: 100%;
+    cursor: pointer;
 }
 
-.modal-form-usuario .permiso-item .form-check-input {
-    margin-top: 0.15rem;
+.modal-form-usuario .permisos-grid .config-toggle-item:has(.form-check-input:checked) {
+    border-color: rgba(0, 77, 64, 0.35);
+    background: rgba(0, 77, 64, 0.04);
 }
 
-.modal-form-usuario .permiso-item .form-check-label {
-    font-size: 0.82rem;
-    line-height: 1.35;
+.modal-form-usuario .permisos-grid .config-toggle-item .form-check-input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
 }
 
-.modal-form-usuario .permiso-item .permiso-desc {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: #6c757d;
+.modal-form-usuario .permisos-grid .config-toggle-item__title {
+    cursor: pointer;
 }
 
 .modal-form-usuario .modal-footer {
@@ -513,8 +518,45 @@ body:not(.light-theme) .smart-confirm-content .modal-title {
     display: block;
     margin-top: 0.2rem;
     font-size: 0.76rem;
-    color: #6c757d;
+    color: var(--text-muted, #6c757d);
     line-height: 1.4;
+}
+
+body:not(.light-theme) .config-toggle-item {
+    background: color-mix(in srgb, var(--bg-card) 92%, var(--v-oscuro));
+    border-color: var(--surface-border, var(--border));
+}
+
+body:not(.light-theme) .config-toggle-item__title {
+    color: var(--text-main);
+}
+
+body:not(.light-theme) .config-toggle-item__desc {
+    color: var(--text-muted);
+}
+
+body:not(.light-theme) .modal-form-usuario .modal-footer {
+    background: var(--bg-card);
+    border-top-color: var(--surface-border, var(--border));
+}
+
+body:not(.light-theme) .modal-form-usuario .permisos-grid .config-toggle-item:has(.form-check-input:checked) {
+    border-color: color-mix(in srgb, var(--v-oliva) 45%, transparent);
+    background: color-mix(in srgb, var(--v-oliva) 12%, var(--bg-card));
+}
+
+body:not(.light-theme) .smart-toast {
+    background: var(--bg-card);
+    border-color: var(--surface-border, var(--border));
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+}
+
+body:not(.light-theme) .smart-toast__title {
+    color: var(--text-main);
+}
+
+body:not(.light-theme) .smart-toast__message {
+    color: var(--text-muted);
 }
 
 .config-general__logo .file-drop--gallery {

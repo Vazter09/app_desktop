@@ -190,13 +190,17 @@
             + '<div class="card-body">'
             + '<form method="get" class="inst-filtros-form row g-2 align-items-end mb-3" id="inst-filtros-form">'
             + '<input type="hidden" name="id_ficha" value="' + idFicha + '">'
-            + '<div class="col-md-4"><label class="form-label small mb-1" for="inst_fecha">Fecha</label>'
+            + '<div class="col-md-3"><label class="form-label small mb-1" for="inst_fecha">Fecha</label>'
             + '<input type="date" class="form-control form-control-sm" id="inst_fecha" name="fecha" value="' + escapeHtml(fechaVal) + '"></div>'
-            + '<div class="col-md-3"><label class="form-label small mb-1" for="inst_desde">Desde</label>'
+            + '<div class="col-md-2"><label class="form-label small mb-1" for="inst_desde">Desde</label>'
             + '<input type="date" class="form-control form-control-sm" id="inst_desde" name="desde" value="' + escapeHtml(desdeVal) + '"></div>'
-            + '<div class="col-md-3"><label class="form-label small mb-1" for="inst_hasta">Hasta</label>'
+            + '<div class="col-md-2"><label class="form-label small mb-1" for="inst_hasta">Hasta</label>'
             + '<input type="date" class="form-control form-control-sm" id="inst_hasta" name="hasta" value="' + escapeHtml(hastaVal) + '"></div>'
-            + '<div class="col-md-2"><button type="submit" class="btn btn-sm btn-success w-100">Consultar</button></div>'
+            + '<div class="col-md-5"><div class="inst-filtros-actions">'
+            + '<button type="submit" class="btn btn-sm btn-success flex-grow-1">Consultar</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" id="inst-btn-exportar">'
+            + '<i class="bi bi-download me-1"></i>Exportar</button>'
+            + '</div></div>'
             + '</form>'
             + navDia
             + '<div class="table-responsive"><table class="table table-sm table-hover align-middle inst-asistencia-table mb-0">'
@@ -209,6 +213,7 @@
             + '</div></div>';
 
         bindForm();
+        bindExport();
         bindMarcar();
     }
 
@@ -224,6 +229,24 @@
                 window.smartcsetToast('danger', err.message || 'No se pudo cargar la asistencia.');
             }
         }
+    }
+
+    function buildExportUrl(params) {
+        const qs = new URLSearchParams(params);
+        return '/routers/instructor/v1/asistencia/exportar.php?' + qs.toString();
+    }
+
+    function bindExport() {
+        const btn = document.getElementById('inst-btn-exportar');
+        if (!btn || btn.dataset.bound === '1') {
+            return;
+        }
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function () {
+            const f = document.getElementById('inst-filtros-form');
+            const params = f ? paramsFromForm(f) : { id_ficha: String(idFicha) };
+            window.location.href = buildExportUrl(params);
+        });
     }
 
     function bindForm() {
@@ -281,6 +304,7 @@
     }
 
         bindForm();
+        bindExport();
         bindMarcar();
     }
 

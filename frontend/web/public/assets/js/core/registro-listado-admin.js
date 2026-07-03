@@ -1,11 +1,11 @@
 /**
- * Cambio de tipo (0301–0304) sin recargar sidebar: solo el bloque del listado.
+ * Cambio de tipo (20101, 20201, 20702, 20703) sin recargar sidebar: solo el bloque del listado.
  */
 (function () {
     const host = document.getElementById('registro-listado-host');
     if (!host) return;
 
-    const menuIds = ['0301', '0302', '0303', '0304'];
+    const menuIds = ['20201', '20101', '20702', '20703'];
 
     function setActiveMenu(menuId) {
         document.querySelectorAll('.sidebar .nav-item.child').forEach((el) => {
@@ -62,7 +62,7 @@
     });
 
     window.addEventListener('popstate', (e) => {
-        const menuId = e.state?.menuId || new URL(window.location.href).searchParams.get('menu') || '0301';
+        const menuId = e.state?.menuId || new URL(window.location.href).searchParams.get('menu') || '20201';
         loadListado(window.location.pathname + window.location.search, menuId, false);
     });
 
@@ -74,6 +74,6 @@
         } catch (_) { /* ignore */ }
     });
 
-    const initial = new URL(window.location.href).searchParams.get('menu') || '0301';
+    const initial = new URL(window.location.href).searchParams.get('menu') || '20201';
     setActiveMenu(initial);
 })();
