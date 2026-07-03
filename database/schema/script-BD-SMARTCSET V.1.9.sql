@@ -2430,7 +2430,7 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | id_nivel_estudio | DECIMAL(2,0)     | NOT NULL                               | Identificador.                                |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | ind_jornada    | DECIMAL(1,0)     | NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4) | Indicador booleano.                           |
+-- | id_jornada    | DECIMAL(1,0)     | NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4) | Indicador booleano.                           |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | ind_modalidad  | DECIMAL(1,0)     | NOT NULL                               | Indicador booleano.                           |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
@@ -2622,7 +2622,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
     id_ficha_vigente        DECIMAL(10,0)               NOT NULL,
-    id_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
+    id_etdo_formacion       DECIMAL(1,0)                NOT NULL DEFAULT 1,   -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     id_opcion_productiva    DECIMAL(2,0)                NOT NULL DEFAULT 0,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
@@ -2689,7 +2689,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
 (
     id_ficha                DECIMAL(10,0)               NOT NULL DEFAULT 2999900001,
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
+    id_jornada             DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2791,15 +2791,34 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
 (
     id_llamado              SERIAL                      NOT NULL,
     ind_tipo                BOOLEAN                     NOT NULL,   -- TRUE=Académico / FALSE=Disciplinario
-    id_tercero              DECIMAL(10,0)               NOT NULL,
+    id_tercero              DECIMAL(10,0)               NOT NULL ,
     ind_tipo_tercero        BOOLEAN                     NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
-    fec_llamado             DATE                        NOT NULL,
+    motivo_llamado          TEXT                        NOT NULL,    
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_llamado)
 );
+
+
+CREATE TABLE IF NOT EXISTS tab_comite_aprendices
+(
+    id_comite               SERIAL                      NOT NULL,
+    id_implicado            DECIMAL(10,0)               NOT NULL,            -- Numero de documento del implicado.
+    responsable_comite      DECIMAL(10,0)               NOT NULL,            -- Numero de documento del responsable que ejecuta el comité.
+    ciclo_comite            SMALLINT                    NOT NULL DEFAULT 0,            -- Número de ciclo del comité. (Cuenta el acumulado segun el umbral máximo).
+    estado_comite           DECIMAL(1,0)                NOT NULL DEFAULT 0,  -- 0: Pendiente / 1: En revisión / 2: Cerrado
+    observacion_comite      TEXT                        NOT NULL,            -- Resumen de la situación del implicado.
+    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_comite)
+);
+
+CREATE INDEX idx_comite_implicado ON tab_comite_aprendices (id_implicado);
+CREATE INDEX idx_comite_estado ON tab_comite_aprendices (estado_comite);
 
 -- TABLA DE OFERTAS TRIMESTRALES
 
@@ -2957,8 +2976,8 @@ CREATE TABLE IF NOT EXISTS tab_rutas
 -- |                 |                   | FOREIGN KEY                                  |                                                                    |
 -- |                 |                   | NOT NULL                                     |                                                                    |
 -- +-----------------+-----------------------------+-----------------------------------------------+---------------------------------------------------------+
--- | ind_jornada     | DECIMAL(1,0)      | NOT NULL                                     | Jornada asignada.                                                  |
--- |                 |                   | CHECK(ind_jornada >= 1 AND ind_jornada <= 3) | 1=Mañana, 2=Tarde, 3=Noche.                                        |
+-- | id_jornada     | DECIMAL(1,0)      | NOT NULL                                     | Jornada asignada.                                                  |
+-- |                 |                   | CHECK(id_jornada >= 1 AND id_jornada <= 3) | 1=Mañana, 2=Tarde, 3=Noche.                                        |
 -- +-----------------+-----------------------------+-----------------------------------------------+---------------------------------------------------------+
 -- | fec_inicial     | DATE              | NOT NULL                                     | Fecha inicial de la programación.                                  |
 -- +-----------------+-----------------------------+-----------------------------------------------+---------------------------------------------------------+
@@ -2983,7 +3002,7 @@ CREATE TABLE IF NOT EXISTS tab_programacion
     id_fase                 DECIMAL(1,0)                NOT NULL, -- 1=Inducción, 2=Planeación, 3=Análisis, 4= Ejecución, 5=Evaluación
     id_competencia          DECIMAL(8,0)                NOT NULL,
     id_instructor           DECIMAL(10,0)               NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 3), -- 1=Mañana / 2=Tarde /3=Noche
+    id_jornada             DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 3), -- 1=Mañana / 2=Tarde /3=Noche
     fec_inicial             DATE                        NOT NULL,
     fec_final               DATE                        NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
