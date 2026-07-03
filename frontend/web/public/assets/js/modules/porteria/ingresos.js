@@ -3,6 +3,8 @@
  * Documentación línea por línea: docs/porteria-codigo-linea-a-linea.md
  */
 (function () {
+    let ingresosAbort = null;
+
     function showToast(tipo, titulo, mensaje) {
         const toastTipo = tipo === 'danger' ? 'error' : tipo;
         if (window.SmartToast && typeof window.SmartToast.show === 'function') {
@@ -16,41 +18,54 @@
         alert(mensaje);
     }
 
+    function resolveIngresoModal() {
+        if (window.PorteriaModalHost?.ensureModalOnBody) {
+            return window.PorteriaModalHost.ensureModalOnBody('ingresoFormModal');
+        }
+        return document.getElementById('ingresoFormModal');
+    }
+
     function initIngresos() {
         const PC = window.PorteriaCaptura;
         const PM = window.PorteriaMedios;
         if (!PC) return;
 
-        const inputDoc = document.getElementById('txt_documento');
-        const selTipo = document.getElementById('sel_tipo_doc');
-        const inputNom = document.getElementById('txt_nombres');
-        const inputApe = document.getElementById('txt_apellidos');
-        const inputPuerta = document.getElementById('sel_entrada');
-        const puertaError = document.getElementById('puerta_error');
-        const selTipoPersona = document.getElementById('sel_tipo_persona');
-        const badge = document.getElementById('badge_persona');
-        const bloqueoMsg = document.getElementById('ingreso_bloqueado_msg');
-        const btnSubmit = document.getElementById('btn_registrar_ingreso');
-        const hidCaptura = document.getElementById('hid_captura_raw');
-        const hidMetodo = document.getElementById('hid_metodo_aut');
-        const form = document.getElementById('form_ingreso');
+        const formModalEl = resolveIngresoModal();
+        if (!formModalEl) return;
 
-        if (!inputDoc || !form || form.dataset.porteriaBound === '1') return;
-        form.dataset.porteriaBound = '1';
+        const form = formModalEl.querySelector('#form_ingreso');
+        const inputDoc = formModalEl.querySelector('#txt_documento');
+        const selTipo = formModalEl.querySelector('#sel_tipo_doc');
+        const inputNom = formModalEl.querySelector('#txt_nombres');
+        const inputApe = formModalEl.querySelector('#txt_apellidos');
+        const inputPuerta = formModalEl.querySelector('#sel_entrada');
+        const puertaError = formModalEl.querySelector('#puerta_error');
+        const selTipoPersona = formModalEl.querySelector('#sel_tipo_persona');
+        const badge = formModalEl.querySelector('#badge_persona');
+        const bloqueoMsg = formModalEl.querySelector('#ingreso_bloqueado_msg');
+        const btnSubmit = formModalEl.querySelector('#btn_registrar_ingreso');
+        const hidCaptura = formModalEl.querySelector('#hid_captura_raw');
+        const hidMetodo = formModalEl.querySelector('#hid_metodo_aut');
+
+        if (!inputDoc || !form) return;
+
+        if (ingresosAbort) {
+            ingresosAbort.abort();
+        }
+        ingresosAbort = new AbortController();
+        const { signal } = ingresosAbort;
 
         let timer = null;
         let puedeIngresar = true;
         let consultaEnCurso = false;
 
-        const formModalEl = document.getElementById('ingresoFormModal');
         let formModal = null;
         if (formModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             formModal = bootstrap.Modal.getOrCreateInstance(formModalEl);
         }
 
         const btnAbrirModal = document.getElementById('btn_abrir_ingreso_modal');
-        if (btnAbrirModal && !btnAbrirModal.dataset.porteriaModalBound) {
-            btnAbrirModal.dataset.porteriaModalBound = '1';
+        if (btnAbrirModal) {
             btnAbrirModal.addEventListener('click', () => {
                 if (window.PorteriaModalHost?.showModal) {
                     window.PorteriaModalHost.showModal('ingresoFormModal');
@@ -58,7 +73,7 @@
                     formModal.show();
                 }
                 setTimeout(() => inputDoc.focus(), 200);
-            });
+            }, { signal });
         }
 
         function setBadge(state, text) {
@@ -210,17 +225,20 @@
             }
         }
 
-        PC.enlazarCapturaDocumento(inputDoc, { onCaptura });
+        if (!inputDoc.dataset.capturaEnlazada) {
+            inputDoc.dataset.capturaEnlazada = '1';
+            PC.enlazarCapturaDocumento(inputDoc, { onCaptura });
+        }
 
-        document.querySelectorAll('.ing-puerta').forEach((btn) => {
+        document.querySelectorAll('#ingresoFormModal .ing-puerta').forEach((btn) => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.ing-puerta').forEach((b) => {
+                document.querySelectorAll('#ingresoFormModal .ing-puerta').forEach((b) => {
                     b.classList.toggle('is-selected', b === btn);
                 });
                 if (inputPuerta) inputPuerta.value = btn.dataset.puerta;
                 if (puertaError) puertaError.style.display = 'none';
                 actualizarSubmit();
-            });
+            }, { signal });
         });
 
         inputDoc.addEventListener('input', () => {
@@ -231,18 +249,18 @@
             }
             clearTimeout(timer);
             timer = setTimeout(() => consultarAcceso(false), 400);
-        });
+        }, { signal });
 
         selTipo?.addEventListener('change', () => {
             liberarNombres();
             consultarAcceso(true);
-        });
+        }, { signal });
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!inputPuerta?.value) {
                 if (puertaError) puertaError.style.display = 'block';
-                document.getElementById('puertas_grid')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                formModalEl.querySelector('#puertas_grid')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return;
             }
             if (!puedeIngresar) {
@@ -260,8 +278,8 @@
                 id_entrada: Number(inputPuerta.value),
                 tipo_persona: Number(selTipoPersona?.value || 1),
                 metodo_aut: Number(hidMetodo?.value || 1),
-                observaciones: document.getElementById('txt_observaciones')?.value || '',
-                foto_base64: document.getElementById('hid_foto_data')?.value || '',
+                observaciones: formModalEl.querySelector('#txt_observaciones')?.value || '',
+                foto_base64: formModalEl.querySelector('#hid_foto_data')?.value || '',
             };
 
             if (btnSubmit) btnSubmit.disabled = true;
@@ -273,7 +291,15 @@
                 showToast('danger', 'No se pudo completar', err.message);
                 if (btnSubmit) btnSubmit.disabled = false;
             }
-        });
+        }, { signal });
+
+        formModalEl.addEventListener('shown.bs.modal', () => {
+            const doc = inputDoc.value.replace(/\D/g, '');
+            if (doc.length >= 5 && !inputNom.value.trim() && !consultaEnCurso) {
+                consultarAcceso(true);
+            }
+            inputDoc.focus();
+        }, { signal });
 
         if (PM) {
             PM.init({
@@ -286,12 +312,8 @@
         actualizarSubmit();
 
         if (inputPuerta?.value) {
-            const btn = document.querySelector(`.ing-puerta[data-puerta="${inputPuerta.value}"]`);
+            const btn = formModalEl.querySelector(`.ing-puerta[data-puerta="${inputPuerta.value}"]`);
             if (btn) btn.classList.add('is-selected');
-        }
-
-        if (!formModal && document.activeElement !== inputDoc) {
-            inputDoc.focus();
         }
     }
 

@@ -4,18 +4,40 @@ info:
   version: v1
   description: "API JSON del backend SmartCSET (SENA). Los routers responden con envelope `{ ok, data?, error? }` salvo excepciones documentadas (logout redirect)."
 servers:
-  - url: "http://localhost:8080", description: Desarrollo local
-  - url: "https://ejemplo.smartcset.local", description: Producción (ajustar URL)
+  -
+    url: "http://localhost:8080"
+    description: Desarrollo local
+  -
+    url: "https://ejemplo.smartcset.local"
+    description: Producción (ajustar URL)
 tags:
-  - name: Auth, description: Autenticación web principal
-  - name: Sesión, description: Mantenimiento de sesión activa
-  - name: Admin, description: Configuración y administración (requiere admin)
-  - name: Usuarios, description: CRUD de usuarios del sistema (requiere admin)
-  - name: Entradas, description: Puertas del centro (requiere admin)
-  - name: Menús, description: Menús y permisos (requiere admin)
-  - name: Instructor, description: Fichas y asistencia del instructor
-  - name: Portería, description: Ingreso/salida web y app móvil
-  - name: Registro, description: Módulo standalone de registro de personas
+  -
+    name: Auth
+    description: Autenticación web principal
+  -
+    name: Sesión
+    description: Mantenimiento de sesión activa
+  -
+    name: Admin
+    description: Configuración y administración (requiere admin)
+  -
+    name: Usuarios
+    description: CRUD de usuarios del sistema (requiere admin)
+  -
+    name: Entradas
+    description: Puertas del centro (requiere admin)
+  -
+    name: Menús
+    description: Menús y permisos (requiere admin)
+  -
+    name: Instructor
+    description: Fichas y asistencia del instructor
+  -
+    name: Portería
+    description: Ingreso/salida web y app móvil
+  -
+    name: Registro
+    description: Módulo standalone de registro de personas
 components:
   securitySchemes:
     sessionCookie:
@@ -130,7 +152,8 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -157,7 +180,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -170,7 +197,8 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -191,7 +219,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -204,14 +236,14 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: []
               properties:
                 chk_modulo_registro:
                   type: boolean
@@ -227,7 +259,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -240,7 +276,8 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       responses:
         200:
           description: Valores por defecto restaurados
@@ -249,7 +286,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -262,14 +303,14 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: []
               properties:
                 txt_id_centro:
                   type: integer
@@ -305,7 +346,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -318,7 +363,8 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       responses:
         200:
           description: Valores por defecto restaurados
@@ -327,7 +373,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -341,7 +391,8 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -366,7 +417,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {message: {type: string}, archivo: {type: string}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+                          archivo:
+                            type: string
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -379,7 +439,8 @@ paths:
       tags:
         - Admin
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -400,7 +461,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -413,7 +478,8 @@ paths:
       tags:
         - Auth
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -439,7 +505,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -459,11 +529,31 @@ paths:
           application/json:
             schema:
               oneOf:
-                - type: object, required: [usuario, clave], properties: {usuario: {type: string}, clave: {type: string, format: password}}
+                -
+                  type: object
+                  required:
+                    - usuario
+                    - clave
+                  properties:
+                    usuario:
+                      type: string
+                    clave:
+                      type: string
+                      format: password
           application/x-www-form-urlencoded:
             schema:
               oneOf:
-                - type: object, required: [usuario, clave], properties: {usuario: {type: string}, clave: {type: string, format: password}}
+                -
+                  type: object
+                  required:
+                    - usuario
+                    - clave
+                  properties:
+                    usuario:
+                      type: string
+                    clave:
+                      type: string
+                      format: password
       responses:
         200:
           description: Login exitoso
@@ -472,7 +562,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {redirect: {type: string}, usuario: {$ref: "#/components/schemas/UsuarioLogin"}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          redirect:
+                            type: string
+                          usuario:
+                            $ref: "#/components/schemas/UsuarioLogin"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -527,7 +626,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -540,7 +643,8 @@ paths:
       tags:
         - Entradas
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -561,7 +665,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -574,7 +682,8 @@ paths:
       tags:
         - Entradas
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -600,7 +709,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {message: {type: string}, codigo: {type: string}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+                          codigo:
+                            type: string
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -614,7 +732,8 @@ paths:
       tags:
         - Instructor
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -643,7 +762,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -656,12 +779,34 @@ paths:
       tags:
         - Instructor
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       parameters:
-        - name: id_ficha, in: query, required: true, schema: {type: integer, minimum: 1}
-        - name: fecha, in: query, schema: {type: string, format: date}
-        - name: desde, in: query, schema: {type: string, format: date}
-        - name: hasta, in: query, schema: {type: string, format: date}
+        -
+          name: id_ficha
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: fecha
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: desde
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: hasta
+          in: query
+          schema:
+            type: string
+            format: date
       responses:
         200:
           description: Listado de asistencia
@@ -670,7 +815,12 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, additionalProperties: true}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: true
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -684,7 +834,8 @@ paths:
       tags:
         - Instructor
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -713,7 +864,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -726,9 +881,15 @@ paths:
       tags:
         - Instructor
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       parameters:
-        - name: fecha, in: query, schema: {type: string, format: date}
+        -
+          name: fecha
+          in: query
+          schema:
+            type: string
+            format: date
       responses:
         200:
           description: Resumen por ficha y totales
@@ -737,7 +898,12 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, additionalProperties: true}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: true
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -750,7 +916,8 @@ paths:
       tags:
         - Instructor
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       responses:
         200:
           description: Fichas asignadas
@@ -759,7 +926,18 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {fichas: {type: array, items: {type: object}}, modo: {type: string}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          fichas:
+                            type: array
+                            items:
+                              type: object
+                          modo:
+                            type: string
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -772,7 +950,8 @@ paths:
       tags:
         - Menús
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -792,7 +971,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -805,7 +988,8 @@ paths:
       tags:
         - Menús
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -832,7 +1016,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -845,7 +1033,8 @@ paths:
       tags:
         - Menús
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -868,7 +1057,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -881,7 +1074,8 @@ paths:
       tags:
         - Menús
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -905,7 +1099,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -918,9 +1116,15 @@ paths:
       tags:
         - Menús
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       parameters:
-        - name: usuario, in: query, required: true, schema: {type: string}
+        -
+          name: usuario
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: IDs de menú del perfil
@@ -929,7 +1133,18 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {menus: {type: array, items: {type: string}}, admin: {type: boolean}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          menus:
+                            type: array
+                            items:
+                              type: string
+                          admin:
+                            type: boolean
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -942,7 +1157,8 @@ paths:
       tags:
         - Menús
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -965,7 +1181,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -978,7 +1198,8 @@ paths:
       tags:
         - Portería
       security:
-        - bearerDevice: []
+        -
+          bearerDevice: []
       responses:
         200:
           description: Catálogos del centro
@@ -987,7 +1208,12 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, additionalProperties: true}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: true
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1000,7 +1226,8 @@ paths:
       tags:
         - Portería
       security:
-        - bearerDevice: []
+        -
+          bearerDevice: []
       responses:
         200:
           description: Dispositivo válido
@@ -1009,7 +1236,21 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {id_dispositivo: {type: integer}, nom_dispositivo: {type: string}, id_usuario_audit: {type: string}, id_entrada_default: {type: integer, nullable: true}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id_dispositivo:
+                            type: integer
+                          nom_dispositivo:
+                            type: string
+                          id_usuario_audit:
+                            type: string
+                          id_entrada_default:
+                            type: integer
+                            nullable: true
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1030,7 +1271,21 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {service: {type: string}, version: {type: string}, time: {type: string, format: date-time}, api_enabled: {type: boolean}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          service:
+                            type: string
+                          version:
+                            type: string
+                          time:
+                            type: string
+                            format: date-time
+                          api_enabled:
+                            type: boolean
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1043,11 +1298,23 @@ paths:
       tags:
         - Portería
       security:
-        - sessionCookie: []
-        - bearerDevice: []
+        -
+          sessionCookie: []
+        -
+          bearerDevice: []
       parameters:
-        - name: documento, in: query, required: true, schema: {type: string}
-        - name: tipo_doc, in: query, schema: {type: string, default: CC}
+        -
+          name: documento
+          in: query
+          required: true
+          schema:
+            type: string
+        -
+          name: tipo_doc
+          in: query
+          schema:
+            type: string
+            default: CC
       responses:
         200:
           description: Estado de acceso para ingreso
@@ -1056,7 +1323,19 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {persona: {type: object}, ingreso_abierto: {type: object, nullable: true}, puede_ingresar: {type: boolean}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          persona:
+                            type: object
+                          ingreso_abierto:
+                            type: object
+                            nullable: true
+                          puede_ingresar:
+                            type: boolean
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1069,8 +1348,10 @@ paths:
       tags:
         - Portería
       security:
-        - sessionCookie: []
-        - bearerDevice: []
+        -
+          sessionCookie: []
+        -
+          bearerDevice: []
       responses:
         200:
           description: Ingresos del día
@@ -1079,7 +1360,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {items: {type: array, items: {type: object}}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1092,8 +1382,10 @@ paths:
       tags:
         - Portería
       security:
-        - sessionCookie: []
-        - bearerDevice: []
+        -
+          sessionCookie: []
+        -
+          bearerDevice: []
       requestBody:
         required: true
         content:
@@ -1110,7 +1402,14 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {id_ingreso: {type: integer}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id_ingreso:
+                            type: integer
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1123,11 +1422,23 @@ paths:
       tags:
         - Portería
       security:
-        - sessionCookie: []
-        - bearerDevice: []
+        -
+          sessionCookie: []
+        -
+          bearerDevice: []
       parameters:
-        - name: documento, in: query, required: true, schema: {type: string}
-        - name: tipo_doc, in: query, schema: {type: string, default: CC}
+        -
+          name: documento
+          in: query
+          required: true
+          schema:
+            type: string
+        -
+          name: tipo_doc
+          in: query
+          schema:
+            type: string
+            default: CC
       responses:
         200:
           description: Estado de acceso para salida
@@ -1136,7 +1447,19 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {persona: {type: object}, ingreso_abierto: {type: object, nullable: true}, puede_salir: {type: boolean}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          persona:
+                            type: object
+                          ingreso_abierto:
+                            type: object
+                            nullable: true
+                          puede_salir:
+                            type: boolean
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1149,8 +1472,10 @@ paths:
       tags:
         - Portería
       security:
-        - sessionCookie: []
-        - bearerDevice: []
+        -
+          sessionCookie: []
+        -
+          bearerDevice: []
       responses:
         200:
           description: Salidas del día
@@ -1159,7 +1484,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {items: {type: array, items: {type: object}}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1172,8 +1506,10 @@ paths:
       tags:
         - Portería
       security:
-        - sessionCookie: []
-        - bearerDevice: []
+        -
+          sessionCookie: []
+        -
+          bearerDevice: []
       requestBody:
         required: true
         content:
@@ -1190,7 +1526,14 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {id_ingreso: {type: integer}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id_ingreso:
+                            type: integer
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1204,7 +1547,8 @@ paths:
       tags:
         - Portería
       security:
-        - bearerDevice: []
+        -
+          bearerDevice: []
       requestBody:
         required: true
         content:
@@ -1227,7 +1571,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {resultados: {type: array, items: {$ref: "#/components/schemas/SyncResultado"}}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          resultados:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/SyncResultado"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1240,10 +1593,20 @@ paths:
       tags:
         - Registro
       security:
-        - registroSession: []
+        -
+          registroSession: []
       parameters:
-        - name: id_persona, in: query, required: true, schema: {type: string}
-        - name: id_tipo_docum, in: query, schema: {type: string}
+        -
+          name: id_persona
+          in: query
+          required: true
+          schema:
+            type: string
+        -
+          name: id_tipo_docum
+          in: query
+          schema:
+            type: string
       responses:
         200:
           description: Resultado de búsqueda
@@ -1252,7 +1615,12 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, additionalProperties: true}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: true
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1266,10 +1634,16 @@ paths:
       tags:
         - Registro
       security:
-        - registroSession: []
-        - sessionCookie: []
+        -
+          registroSession: []
+        -
+          sessionCookie: []
       parameters:
-        - name: id_dpto, in: query, schema: {type: string}
+        -
+          name: id_dpto
+          in: query
+          schema:
+            type: string
       responses:
         200:
           description: Ciudades del departamento
@@ -1278,7 +1652,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {ciudades: {type: array, items: {type: object}}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          ciudades:
+                            type: array
+                            items:
+                              type: object
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1291,19 +1674,20 @@ paths:
       tags:
         - Registro
       security:
-        - registroSession: []
+        -
+          registroSession: []
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required:
-                - tipo
               properties:
                 tipo:
                   type: string
                   description: "aprendiz | instructor | funcionario | contratista"
+              required:
+                - tipo
       responses:
         200:
           description: Persona registrada
@@ -1312,7 +1696,12 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, additionalProperties: true}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: true
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1348,7 +1737,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {message: {type: string}, redirect: {type: string}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+                          redirect:
+                            type: string
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1361,9 +1759,17 @@ paths:
       tags:
         - Registro
       security:
-        - registroSession: []
+        -
+          registroSession: []
       parameters:
-        - name: tipo, in: query, required: true, schema: {type: integer, minimum: 1, maximum: 4}
+        -
+          name: tipo
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
       responses:
         200:
           description: Listado de personas
@@ -1372,7 +1778,16 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object, properties: {personas: {type: array, items: {type: object}}}}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          personas:
+                            type: array
+                            items:
+                              type: object
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1386,14 +1801,14 @@ paths:
       tags:
         - Sesión
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: []
               properties:
                 ult_ruta:
                   type: string
@@ -1407,7 +1822,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {type: object}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        type: object
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1420,7 +1839,8 @@ paths:
       tags:
         - Usuarios
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -1453,7 +1873,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:
@@ -1466,7 +1890,8 @@ paths:
       tags:
         - Usuarios
       security:
-        - sessionCookie: []
+        -
+          sessionCookie: []
       requestBody:
         required: true
         content:
@@ -1492,7 +1917,11 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object, properties: {data: {$ref: "#/components/schemas/MessageData"}}
+                  -
+                    type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MessageData"
         400:
           $ref: "#/components/responses/BadRequest"
         401:

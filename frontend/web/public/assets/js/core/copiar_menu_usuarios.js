@@ -1,10 +1,14 @@
 console.log('✓ copiar_menu_usuarios.js cargado correctamente');
 
-document.addEventListener('DOMContentLoaded', () => {
+function initCopiarMenuUsuarios() {
     const selOrigen = document.getElementById('sel_origen');
     const selDestino = document.getElementById('sel_destino');
     const form = document.getElementById('form_copiar');
     const btnCopiar = document.getElementById('btn_copiar');
+
+    if (!selOrigen || !selDestino || !form || !btnCopiar) {
+        return;
+    }
 
     function validarBoton() {
         const origen = selOrigen.value;
@@ -110,4 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Inicializar estado del botón al cargar
     validarBoton();
-});
+}
+
+(window.smartcsetOnPageReady || function (fn) {
+    document.addEventListener('DOMContentLoaded', fn);
+})(initCopiarMenuUsuarios);

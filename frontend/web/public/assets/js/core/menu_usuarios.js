@@ -1,14 +1,16 @@
 console.log('✓ menu_usuarios.js cargado correctamente');
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('✓ DOMContentLoaded disparado');
-    
+function initMenuUsuarios() {
     const selUsr = document.getElementById('sel_usuario');
     const panelPermisos = document.getElementById('panel_permisos');
     const alertAdminFijo = document.getElementById('alert_admin_fijo');
     const btnGuardarPermisos = document.getElementById('btn_guardar_permisos');
     const hidUsr = document.getElementById('hid_usuario');
     const form = document.getElementById('form_perfiles');
+
+    if (!selUsr || !panelPermisos || !form) {
+        return;
+    }
 
     function esAdminSeleccionado() {
         if (!selUsr.value) return false;
@@ -275,4 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error en submit:', error);
         }
     });
-});
+}
+
+(window.smartcsetOnPageReady || function (fn) {
+    document.addEventListener('DOMContentLoaded', fn);
+})(initMenuUsuarios);

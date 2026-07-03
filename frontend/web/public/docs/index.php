@@ -2,9 +2,12 @@
 declare(strict_types=1);
 
 /**
- * Swagger UI — spec embebido desde openapi.json (sin fetch YAML).
+ * Swagger UI — carga openapi.json (válido; no usar openapi.yaml generado con sintaxis inline).
  * Assets locales en vendor/; fallback a CDN si no existen.
  */
+
+require_once dirname(__DIR__, 4) . '/backend/core/config.php';
+require_once dirname(__DIR__, 4) . '/backend/core/helpers.php';
 
 $specPath = __DIR__ . '/openapi.json';
 if (!is_file($specPath)) {
@@ -14,24 +17,21 @@ if (!is_file($specPath)) {
     exit;
 }
 
-$specJson = file_get_contents($specPath);
-if ($specJson === false) {
-    http_response_code(500);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo 'No se pudo leer openapi.json';
-    exit;
-}
+$docsBase = smartcsetUrl('/docs/');
 
 $vendorCss = __DIR__ . '/vendor/swagger-ui.css';
 $vendorBundle = __DIR__ . '/vendor/swagger-ui-bundle.js';
 $vendorPreset = __DIR__ . '/vendor/swagger-ui-standalone-preset.js';
 $cdnBase = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14';
 
-$cssHref = is_file($vendorCss) ? 'vendor/swagger-ui.css' : $cdnBase . '/swagger-ui.css';
-$bundleSrc = is_file($vendorBundle) ? 'vendor/swagger-ui-bundle.js' : $cdnBase . '/swagger-ui-bundle.js';
-$presetSrc = is_file($vendorPreset) ? 'vendor/swagger-ui-standalone-preset.js' : $cdnBase . '/swagger-ui-standalone-preset.js';
+$cssHref = is_file($vendorCss) ? $docsBase . 'vendor/swagger-ui.css' : $cdnBase . '/swagger-ui.css';
+$bundleSrc = is_file($vendorBundle) ? $docsBase . 'vendor/swagger-ui-bundle.js' : $cdnBase . '/swagger-ui-bundle.js';
+$presetSrc = is_file($vendorPreset) ? $docsBase . 'vendor/swagger-ui-standalone-preset.js' : $cdnBase . '/swagger-ui-standalone-preset.js';
+$specUrl = $docsBase . 'openapi.json';
 
 header('Content-Type: text/html; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
 header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data:; connect-src 'self';");
 ?>
 <!DOCTYPE html>
@@ -63,7 +63,6 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self' https://c
   <script src="<?= htmlspecialchars($bundleSrc, ENT_QUOTES, 'UTF-8') ?>"></script>
   <script src="<?= htmlspecialchars($presetSrc, ENT_QUOTES, 'UTF-8') ?>"></script>
   <script>
-    const spec = <?= $specJson ?>;
     window.onload = function () {
       if (typeof SwaggerUIBundle === 'undefined') {
         document.getElementById('swagger-ui').innerHTML =
@@ -72,7 +71,7 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self' https://c
         return;
       }
       SwaggerUIBundle({
-        spec: spec,
+        url: <?= json_encode($specUrl, JSON_UNESCAPED_SLASHES) ?>,
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],

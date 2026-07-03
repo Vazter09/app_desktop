@@ -387,15 +387,18 @@ function buildRequestBody(array $requestBody): array
     if ($contentType === 'application/x-www-form-urlencoded') {
         $properties = $requestBody['properties'] ?? [];
         $required = $requestBody['required'] ?? [];
+        $schema = [
+            'type' => 'object',
+            'properties' => is_array($properties) ? $properties : [],
+        ];
+        if (is_array($required) && $required !== []) {
+            $schema['required'] = $required;
+        }
         return [
             'required' => true,
             'content' => [
                 'application/x-www-form-urlencoded' => [
-                    'schema' => [
-                        'type' => 'object',
-                        'required' => is_array($required) ? $required : [],
-                        'properties' => is_array($properties) ? $properties : [],
-                    ],
+                    'schema' => $schema,
                 ],
             ],
         ];
@@ -576,12 +579,29 @@ final class OpenApiYamlEncoder
             if (array_is_list($value)) {
                 $out = '';
                 foreach ($value as $item) {
-                    if (is_array($item) && !array_is_list($item)) {
-                        $inline = self::dumpMapInline($item);
-                        $out .= str_repeat('  ', $indent) . '- ' . $inline . "\n";
-                    } else {
+                    if (!is_array($item)) {
                         $out .= str_repeat('  ', $indent) . '- ' . self::scalarInline($item) . "\n";
+                        continue;
                     }
+
+                    if (array_is_list($item)) {
+                        $out .= str_repeat('  ', $indent) . "-\n";
+                        $out .= self::dump($item, $indent + 1);
+                        continue;
+                    }
+
+                    // Objetos en listas: estilo bloque (evita "name: X, description: Y" inválido en YAML).
+                    if (count($item) === 1) {
+                        $onlyKey = array_key_first($item);
+                        $onlyVal = $item[$onlyKey];
+                        if (!is_array($onlyVal)) {
+                            $out .= str_repeat('  ', $indent) . '- ' . $onlyKey . ': ' . self::scalarInline($onlyVal) . "\n";
+                            continue;
+                        }
+                    }
+
+                    $out .= str_repeat('  ', $indent) . "-\n";
+                    $out .= self::dumpMap($item, $indent + 1, false);
                 }
                 return $out;
             }
@@ -634,29 +654,5 @@ final class OpenApiYamlEncoder
         }
 
         return $str;
-    }
-
-    /**
-     * @param array<string, mixed> $map
-     */
-    private static function dumpMapInline(array $map): string
-    {
-        $parts = [];
-        foreach ($map as $key => $val) {
-            if (is_array($val)) {
-                if ($val === []) {
-                    $parts[] = $key . ': []';
-                } elseif (array_is_list($val)) {
-                    $items = array_map(static fn ($v) => self::scalarInline($v), $val);
-                    $parts[] = $key . ': [' . implode(', ', $items) . ']';
-                } else {
-                    $parts[] = $key . ': {' . trim(self::dumpMapInline($val)) . '}';
-                }
-            } else {
-                $parts[] = $key . ': ' . self::scalarInline($val);
-            }
-        }
-
-        return implode(', ', $parts);
     }
 }
