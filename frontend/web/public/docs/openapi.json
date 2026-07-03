@@ -1,0 +1,3131 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "SmartCSET API",
+        "version": "v1",
+        "description": "API JSON del backend SmartCSET (SENA). Los routers responden con envelope `{ ok, data?, error? }` salvo excepciones documentadas (logout redirect)."
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Desarrollo local"
+        },
+        {
+            "url": "https://ejemplo.smartcset.local",
+            "description": "Producción (ajustar URL)"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Autenticación web principal"
+        },
+        {
+            "name": "Sesión",
+            "description": "Mantenimiento de sesión activa"
+        },
+        {
+            "name": "Admin",
+            "description": "Configuración y administración (requiere admin)"
+        },
+        {
+            "name": "Usuarios",
+            "description": "CRUD de usuarios del sistema (requiere admin)"
+        },
+        {
+            "name": "Entradas",
+            "description": "Puertas del centro (requiere admin)"
+        },
+        {
+            "name": "Menús",
+            "description": "Menús y permisos (requiere admin)"
+        },
+        {
+            "name": "Instructor",
+            "description": "Fichas y asistencia del instructor"
+        },
+        {
+            "name": "Portería",
+            "description": "Ingreso/salida web y app móvil"
+        },
+        {
+            "name": "Registro",
+            "description": "Módulo standalone de registro de personas"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "sessionCookie": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "PHPSESSID",
+                "description": "Sesión PHP del usuario logueado en SmartCSET"
+            },
+            "bearerDevice": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Token de dispositivo portería. Alternativa: header X-Device-Token"
+            },
+            "registroSession": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "PHPSESSID",
+                "description": "Sesión standalone del módulo registro (registro_authenticated)"
+            }
+        },
+        "schemas": {
+            "ApiSuccess": {
+                "type": "object",
+                "required": [
+                    "ok"
+                ],
+                "properties": {
+                    "ok": {
+                        "type": "boolean",
+                        "enum": [
+                            true
+                        ]
+                    },
+                    "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            },
+            "ApiError": {
+                "type": "object",
+                "required": [
+                    "ok",
+                    "error"
+                ],
+                "properties": {
+                    "ok": {
+                        "type": "boolean",
+                        "enum": [
+                            false
+                        ]
+                    },
+                    "error": {
+                        "type": "string"
+                    }
+                }
+            },
+            "MessageData": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "UsuarioLogin": {
+                "type": "object",
+                "properties": {
+                    "id_usuario": {
+                        "type": "string"
+                    },
+                    "nom_usuario": {
+                        "type": "string"
+                    },
+                    "ind_usuario": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "SyncOperacion": {
+                "type": "object",
+                "required": [
+                    "client_id",
+                    "tipo",
+                    "payload"
+                ],
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tipo": {
+                        "type": "string",
+                        "enum": [
+                            "ingreso",
+                            "salida"
+                        ]
+                    },
+                    "payload": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            },
+            "SyncResultado": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "ok": {
+                        "type": "boolean"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "id_ingreso": {
+                        "type": "integer"
+                    },
+                    "tipo": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "responses": {
+            "Unauthorized": {
+                "description": "No autorizado",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ApiError"
+                        }
+                    }
+                }
+            },
+            "BadRequest": {
+                "description": "Datos inválidos o regla de negocio",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ApiError"
+                        }
+                    }
+                }
+            },
+            "MethodNotAllowed": {
+                "description": "Método HTTP no permitido",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ApiError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/routers/admin/v1/config/guardar.php": {
+            "post": {
+                "summary": "Guardar configuración del sistema",
+                "description": "Acepta multipart/form-data (logo) o campos de formulario.",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "txt_nom_sistema": {
+                                        "type": "string"
+                                    },
+                                    "txt_color_primario": {
+                                        "type": "string"
+                                    },
+                                    "txt_color_secundario": {
+                                        "type": "string"
+                                    },
+                                    "chk_modulo_registro": {
+                                        "type": "boolean"
+                                    },
+                                    "logo_file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Configuración guardada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/config/restaurar.php": {
+            "post": {
+                "summary": "Restaurar sección de configuración",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "section": {
+                                        "type": "string",
+                                        "description": "general | theme_dark | theme_light"
+                                    }
+                                },
+                                "required": [
+                                    "section"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sección restaurada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/personas/config_guardar.php": {
+            "post": {
+                "summary": "Guardar configuración del módulo registro/personas",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "required": [],
+                                "properties": {
+                                    "chk_modulo_registro": {
+                                        "type": "boolean"
+                                    },
+                                    "txt_usr_registro": {
+                                        "type": "string"
+                                    },
+                                    "txt_pass_registro": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Configuración guardada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/personas/config_restaurar.php": {
+            "post": {
+                "summary": "Restaurar configuración del módulo registro/personas",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Valores por defecto restaurados",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/pmtros/guardar.php": {
+            "post": {
+                "summary": "Guardar parámetros generales del centro",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "required": [],
+                                "properties": {
+                                    "txt_id_centro": {
+                                        "type": "integer"
+                                    },
+                                    "txt_dir_centro": {
+                                        "type": "string"
+                                    },
+                                    "txt_tel_centro": {
+                                        "type": "integer"
+                                    },
+                                    "num_ano_academico": {
+                                        "type": "integer"
+                                    },
+                                    "num_mes_academico": {
+                                        "type": "integer"
+                                    },
+                                    "num_nota_minima_rap": {
+                                        "type": "integer"
+                                    },
+                                    "num_horas_instructor": {
+                                        "type": "integer"
+                                    },
+                                    "num_porcent_icfes_raps": {
+                                        "type": "integer"
+                                    },
+                                    "num_tiempo_gracia_aprendiz": {
+                                        "type": "integer"
+                                    },
+                                    "num_tiempo_gracia_instru": {
+                                        "type": "integer"
+                                    },
+                                    "num_max_llamados_aprendiz": {
+                                        "type": "integer"
+                                    },
+                                    "txt_nom_administrador": {
+                                        "type": "string"
+                                    },
+                                    "txt_tel_administrador": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Parámetros guardados",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/pmtros/restaurar.php": {
+            "post": {
+                "summary": "Restaurar parámetros generales del centro a valores por defecto",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Valores por defecto restaurados",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/reportes/cargar.php": {
+            "post": {
+                "summary": "Cargar archivo de reporte SENA",
+                "description": "Formatos .xlsx o .csv, máximo 20 MB.",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reporte": {
+                                        "type": "string",
+                                        "description": "Clave del reporte (df49, pe04, etc.)"
+                                    },
+                                    "archivo": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "required": [
+                                    "reporte",
+                                    "archivo"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Archivo recibido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        },
+                                                        "archivo": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/admin/v1/sesiones/cerrar.php": {
+            "post": {
+                "summary": "Cerrar sesión activa (admin)",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_sesion": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    }
+                                },
+                                "required": [
+                                    "id_sesion"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/auth/v1/cambiar_clave.php": {
+            "post": {
+                "summary": "Cambiar contraseña autenticado",
+                "tags": [
+                    "Auth"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "pass_antigua": {
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "pass_nueva": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "minLength": 12
+                                    }
+                                },
+                                "required": [
+                                    "pass_antigua",
+                                    "pass_nueva"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contraseña actualizada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/auth/v1/login.php": {
+            "post": {
+                "summary": "Iniciar sesión web",
+                "description": "Acepta JSON o form-urlencoded. Crea sesión PHP y cookie PHPSESSID.",
+                "tags": [
+                    "Auth"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "usuario",
+                                            "clave"
+                                        ],
+                                        "properties": {
+                                            "usuario": {
+                                                "type": "string"
+                                            },
+                                            "clave": {
+                                                "type": "string",
+                                                "format": "password"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "usuario",
+                                            "clave"
+                                        ],
+                                        "properties": {
+                                            "usuario": {
+                                                "type": "string"
+                                            },
+                                            "clave": {
+                                                "type": "string",
+                                                "format": "password"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "redirect": {
+                                                            "type": "string"
+                                                        },
+                                                        "usuario": {
+                                                            "$ref": "#/components/schemas/UsuarioLogin"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/auth/v1/logout.php": {
+            "get": {
+                "summary": "Cerrar sesión web",
+                "description": "Destruye la sesión PHP y redirige al login. No devuelve JSON.",
+                "tags": [
+                    "Auth"
+                ],
+                "security": [],
+                "responses": {
+                    "302": {
+                        "description": "Redirección a /index.php"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/auth/v1/recuperar.php": {
+            "post": {
+                "summary": "Recuperar contraseña",
+                "tags": [
+                    "Auth"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "usuario": {
+                                        "type": "string"
+                                    },
+                                    "metodo": {
+                                        "type": "string",
+                                        "enum": [
+                                            "correo",
+                                            "pantalla"
+                                        ],
+                                        "default": "correo"
+                                    },
+                                    "correo": {
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                },
+                                "required": [
+                                    "usuario"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Clave temporal generada o enviada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/entradas/v1/eliminar.php": {
+            "post": {
+                "summary": "Eliminar entrada del centro",
+                "tags": [
+                    "Entradas"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_entrada": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    }
+                                },
+                                "required": [
+                                    "id_entrada"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Entrada eliminada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/entradas/v1/guardar.php": {
+            "post": {
+                "summary": "Crear o actualizar entrada del centro",
+                "tags": [
+                    "Entradas"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_entrada": {
+                                        "type": "integer"
+                                    },
+                                    "nombre": {
+                                        "type": "string"
+                                    },
+                                    "sel_sede": {
+                                        "type": "string",
+                                        "description": "centro|sede codificado"
+                                    }
+                                },
+                                "required": [
+                                    "nombre",
+                                    "sel_sede"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Entrada guardada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        },
+                                                        "codigo": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/instructor/v1/asistencia/actualizar.php": {
+            "put": {
+                "summary": "Actualizar asistencia manual",
+                "description": "Solo instructor con permiso de escritura.",
+                "tags": [
+                    "Instructor"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "id_aprendiz",
+                                    "fec_asistencia"
+                                ],
+                                "properties": {
+                                    "id_aprendiz": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "fec_asistencia": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "ind_asistencia": {
+                                        "type": "string"
+                                    },
+                                    "observacion": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Asistencia actualizada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/instructor/v1/asistencia/listar.php": {
+            "get": {
+                "summary": "Listar asistencia por ficha y rango de fechas",
+                "tags": [
+                    "Instructor"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id_ficha",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "fecha",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de asistencia",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/instructor/v1/asistencia/registrar.php": {
+            "post": {
+                "summary": "Registrar asistencia manual",
+                "description": "Solo instructor con permiso de escritura.",
+                "tags": [
+                    "Instructor"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "id_aprendiz",
+                                    "fec_asistencia"
+                                ],
+                                "properties": {
+                                    "id_aprendiz": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "fec_asistencia": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "ind_asistencia": {
+                                        "type": "string"
+                                    },
+                                    "observacion": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Asistencia registrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/instructor/v1/dashboard/resumen.php": {
+            "get": {
+                "summary": "Resumen dashboard de asistencia",
+                "tags": [
+                    "Instructor"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "fecha",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resumen por ficha y totales",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/instructor/v1/fichas/listar.php": {
+            "get": {
+                "summary": "Listar fichas del instructor",
+                "tags": [
+                    "Instructor"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fichas asignadas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "fichas": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "modo": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/menus/v1/eliminar.php": {
+            "post": {
+                "summary": "Eliminar menú",
+                "tags": [
+                    "Menús"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_menu": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id_menu"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Menú eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/menus/v1/guardar.php": {
+            "post": {
+                "summary": "Crear o actualizar menú",
+                "tags": [
+                    "Menús"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_menu": {
+                                        "type": "string"
+                                    },
+                                    "nom_menu": {
+                                        "type": "string"
+                                    },
+                                    "id_padre": {
+                                        "type": "string"
+                                    },
+                                    "nom_programa": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id_menu",
+                                    "nom_menu"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Menú guardado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/menus/v1/perfil/copiar.php": {
+            "post": {
+                "summary": "Copiar perfil de menús entre usuarios",
+                "tags": [
+                    "Menús"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "usuario_origen": {
+                                        "type": "string"
+                                    },
+                                    "usuario_destino": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "usuario_origen",
+                                    "usuario_destino"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Perfil copiado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/menus/v1/perfil/guardar.php": {
+            "post": {
+                "summary": "Guardar perfil de menús de un usuario",
+                "tags": [
+                    "Menús"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "hid_usuario": {
+                                        "type": "string"
+                                    },
+                                    "menus": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "hid_usuario"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Perfil guardado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/menus/v1/perfil/listar.php": {
+            "get": {
+                "summary": "Listar menús asignados a un usuario",
+                "tags": [
+                    "Menús"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "usuario",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "IDs de menú del perfil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "menus": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "admin": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/menus/v1/permiso/asignar.php": {
+            "post": {
+                "summary": "Asignar permiso individual de menú",
+                "tags": [
+                    "Menús"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_usuario": {
+                                        "type": "string"
+                                    },
+                                    "id_menu": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id_usuario",
+                                    "id_menu"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Permiso asignado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/catalogos.php": {
+            "get": {
+                "summary": "Catálogos portería (tipos doc, persona, entradas)",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Catálogos del centro",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/device/validate.php": {
+            "post": {
+                "summary": "Validar token de dispositivo",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dispositivo válido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id_dispositivo": {
+                                                            "type": "integer"
+                                                        },
+                                                        "nom_dispositivo": {
+                                                            "type": "string"
+                                                        },
+                                                        "id_usuario_audit": {
+                                                            "type": "string"
+                                                        },
+                                                        "id_entrada_default": {
+                                                            "type": "integer",
+                                                            "nullable": true
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/health.php": {
+            "get": {
+                "summary": "Health check API portería",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "Servicio activo",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "service": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "string"
+                                                        },
+                                                        "time": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        },
+                                                        "api_enabled": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/ingreso/consultar.php": {
+            "get": {
+                "summary": "Consultar persona e ingreso abierto",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    },
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "documento",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tipo_doc",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "CC"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Estado de acceso para ingreso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "persona": {
+                                                            "type": "object"
+                                                        },
+                                                        "ingreso_abierto": {
+                                                            "type": "object",
+                                                            "nullable": true
+                                                        },
+                                                        "puede_ingresar": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/ingreso/hoy.php": {
+            "get": {
+                "summary": "Listar ingresos de hoy",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    },
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ingresos del día",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "items": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/ingreso/registrar.php": {
+            "post": {
+                "summary": "Registrar ingreso manual",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    },
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "description": "Payload de ingreso (documento, entrada, método, etc.)"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ingreso registrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id_ingreso": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/salida/consultar.php": {
+            "get": {
+                "summary": "Consultar persona e ingreso abierto para salida",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    },
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "documento",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tipo_doc",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "CC"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Estado de acceso para salida",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "persona": {
+                                                            "type": "object"
+                                                        },
+                                                        "ingreso_abierto": {
+                                                            "type": "object",
+                                                            "nullable": true
+                                                        },
+                                                        "puede_salir": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/salida/hoy.php": {
+            "get": {
+                "summary": "Listar salidas de hoy",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    },
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Salidas del día",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "items": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/salida/registrar.php": {
+            "post": {
+                "summary": "Registrar salida manual",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    },
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "description": "Payload de salida (documento, id_ingreso, etc.)"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Salida registrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id_ingreso": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/porteria/v1/sync/batch.php": {
+            "post": {
+                "summary": "Sincronización batch offline (móvil)",
+                "description": "Máximo 20 operaciones por lote. Requiere token de dispositivo.",
+                "tags": [
+                    "Portería"
+                ],
+                "security": [
+                    {
+                        "bearerDevice": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "operaciones"
+                                ],
+                                "properties": {
+                                    "operaciones": {
+                                        "type": "array",
+                                        "maxItems": 20,
+                                        "items": {
+                                            "$ref": "#/components/schemas/SyncOperacion"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Resultados por operación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "resultados": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/SyncResultado"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/registro/v1/aprendiz/buscar.php": {
+            "get": {
+                "summary": "Buscar aprendiz por documento",
+                "tags": [
+                    "Registro"
+                ],
+                "security": [
+                    {
+                        "registroSession": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id_persona",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id_tipo_docum",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultado de búsqueda",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/registro/v1/ciudades.php": {
+            "get": {
+                "summary": "Listar ciudades por departamento",
+                "description": "Requiere sesión registro standalone o sesión principal según configuración.",
+                "tags": [
+                    "Registro"
+                ],
+                "security": [
+                    {
+                        "registroSession": []
+                    },
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id_dpto",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ciudades del departamento",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "ciudades": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/registro/v1/forms/guardar.php": {
+            "post": {
+                "summary": "Guardar formulario de registro de persona",
+                "tags": [
+                    "Registro"
+                ],
+                "security": [
+                    {
+                        "registroSession": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "tipo"
+                                ],
+                                "properties": {
+                                    "tipo": {
+                                        "type": "string",
+                                        "description": "aprendiz | instructor | funcionario | contratista"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Persona registrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/registro/v1/login.php": {
+            "post": {
+                "summary": "Login standalone del módulo registro",
+                "tags": [
+                    "Registro"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "usuario": {
+                                        "type": "string"
+                                    },
+                                    "clave": {
+                                        "type": "string",
+                                        "format": "password"
+                                    }
+                                },
+                                "required": [
+                                    "usuario",
+                                    "clave"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sesión registro iniciada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        },
+                                                        "redirect": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/registro/v1/personas/listar.php": {
+            "get": {
+                "summary": "Listar personas por tipo",
+                "tags": [
+                    "Registro"
+                ],
+                "security": [
+                    {
+                        "registroSession": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "tipo",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado de personas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "personas": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/sesion/v1/heartbeat.php": {
+            "post": {
+                "summary": "Heartbeat de sesión activa",
+                "description": "Actualiza última ruta y menú visitado en tab_sesiones.",
+                "tags": [
+                    "Sesión"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "required": [],
+                                "properties": {
+                                    "ult_ruta": {
+                                        "type": "string"
+                                    },
+                                    "ult_menu_id": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Actividad actualizada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/usuarios/v1/guardar.php": {
+            "post": {
+                "summary": "Crear o actualizar usuario",
+                "tags": [
+                    "Usuarios"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_usuario": {
+                                        "type": "string"
+                                    },
+                                    "nom_usuario": {
+                                        "type": "string"
+                                    },
+                                    "mail_usuario": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "pass_usuario": {
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "admin": {
+                                        "type": "boolean"
+                                    },
+                                    "estado": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "id_usuario",
+                                    "nom_usuario"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Usuario guardado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        },
+        "/routers/usuarios/v1/toggle_estado.php": {
+            "post": {
+                "summary": "Activar o desactivar usuario",
+                "tags": [
+                    "Usuarios"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id_usuario": {
+                                        "type": "string"
+                                    },
+                                    "nuevo_estado": {
+                                        "type": "string",
+                                        "enum": [
+                                            "true",
+                                            "false"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id_usuario",
+                                    "nuevo_estado"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiSuccess"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/MessageData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/MethodNotAllowed"
+                    }
+                }
+            }
+        }
+    }
+}

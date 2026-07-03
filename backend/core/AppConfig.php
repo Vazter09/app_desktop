@@ -70,11 +70,51 @@ class AppConfig
             || str_contains($compact, '125,177,255');
     }
 
+    /**
+     * Superficies del tema oscuro con contraste legible (derivadas del color corporativo).
+     *
+     * @return array{bg_deep: string, bg_card: string, bg_panel: string, text_muted: string, border: string}
+     */
+    private static function darkThemeComputedSurfaces(): array
+    {
+        $primary = self::colorPrimario();
+        $secondary = self::colorSecundario();
+        $bgDeep = self::darkenHex($primary, 0.58);
+        $bgCard = self::darkenHex($primary, 0.42);
+
+        return [
+            'bg_deep'    => $bgDeep,
+            'bg_card'    => $bgCard,
+            'bg_panel'   => self::hexToRgba(self::darkenHex($primary, 0.38), 0.92),
+            'text_muted' => self::hexToRgba(self::lightenHex($secondary, 0.55), 0.88),
+            'border'     => self::hexToRgba($secondary, 0.38),
+        ];
+    }
+
+    private static function shouldUseComputedDarkSurface(string $stored): bool
+    {
+        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
+            return true;
+        }
+
+        $normalized = self::normalizeHex($stored);
+
+        return $normalized !== null && self::isNearBlackHex($normalized);
+    }
+
+    /** Tonos casi negros generados por versiones anteriores del tema (contraste insuficiente). */
+    private static function isNearBlackHex(string $hex): bool
+    {
+        [$r, $g, $b] = self::hexToRgb($hex);
+
+        return $r <= 12 && $g <= 16 && $b <= 12;
+    }
+
     private static function themeBgDeep(): string
     {
         $stored = (string) self::get('theme_bg_deep', '');
-        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
-            return self::darkenHex(self::colorPrimario(), 0.92);
+        if (self::shouldUseComputedDarkSurface($stored)) {
+            return self::darkThemeComputedSurfaces()['bg_deep'];
         }
 
         return $stored;
@@ -83,8 +123,8 @@ class AppConfig
     private static function themeBgCard(): string
     {
         $stored = (string) self::get('theme_bg_card', '');
-        if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
-            return self::darkenHex(self::colorPrimario(), 0.86);
+        if (self::shouldUseComputedDarkSurface($stored)) {
+            return self::darkThemeComputedSurfaces()['bg_card'];
         }
 
         return $stored;
@@ -94,7 +134,7 @@ class AppConfig
     {
         $stored = (string) self::get('theme_bg_panel', '');
         if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
-            return self::hexToRgba(self::darkenHex(self::colorPrimario(), 0.82), 0.88);
+            return self::darkThemeComputedSurfaces()['bg_panel'];
         }
 
         return $stored;
@@ -104,7 +144,7 @@ class AppConfig
     {
         $stored = (string) self::get('theme_border', '');
         if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
-            return self::hexToRgba(self::colorSecundario(), 0.28);
+            return self::darkThemeComputedSurfaces()['border'];
         }
 
         return $stored;
@@ -114,7 +154,7 @@ class AppConfig
     {
         $stored = (string) self::get('theme_text_muted', '');
         if ($stored === '' || self::isLegacyNavyThemeValue($stored)) {
-            return self::hexToRgba(self::colorSecundario(), 0.72);
+            return self::darkThemeComputedSurfaces()['text_muted'];
         }
 
         return $stored;
@@ -233,10 +273,10 @@ class AppConfig
             '--text-muted'       => self::themeTextMuted(),
             '--topbar-bg'        => self::hexToRgba(self::darkenHex($primary, 0.55), 0.82),
             '--cyan-accent'      => $secondary,
-            '--grid-line'        => self::hexToRgba($secondary, 0.08),
-            '--surface-border'   => self::hexToRgba($secondary, 0.28),
-            '--surface-hover'    => self::hexToRgba($secondary, 0.12),
-            '--table-surface-bg' => self::hexToRgba(self::darkenHex($primary, 0.82), 0.92),
+            '--grid-line'        => self::hexToRgba($secondary, 0.12),
+            '--surface-border'   => self::hexToRgba($secondary, 0.38),
+            '--surface-hover'    => self::hexToRgba($secondary, 0.16),
+            '--table-surface-bg' => self::hexToRgba(self::darkenHex($primary, 0.45), 0.95),
         ];
     }
 
@@ -293,6 +333,19 @@ class AppConfig
             (int) round($r * $factor),
             (int) round($g * $factor),
             (int) round($b * $factor)
+        );
+    }
+
+    public static function lightenHex(string $hex, float $amount = 0.3): string
+    {
+        [$r, $g, $b] = self::hexToRgb($hex);
+        $factor = max(0.0, min(1.0, $amount));
+
+        return sprintf(
+            '#%02x%02x%02x',
+            (int) round($r + (255 - $r) * $factor),
+            (int) round($g + (255 - $g) * $factor),
+            (int) round($b + (255 - $b) * $factor)
         );
     }
 

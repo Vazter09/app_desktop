@@ -155,6 +155,17 @@ function getIcon(string $nombre): string
         'ficha'       => 'bi-journal-bookmark-fill',
         'funcionario' => 'bi-bank2',
         'contratista' => 'bi-briefcase-fill',
+        'biblioteca'  => 'bi-book-fill',
+        'gimnasio'    => 'bi-heart-pulse-fill',
+        'bienestar'   => 'bi-emoji-smile-fill',
+        'novedad'     => 'bi-megaphone-fill',
+        'programa'    => 'bi-collection-fill',
+        'ruta'        => 'bi-signpost-split-fill',
+        'estadíst'    => 'bi-graph-up',
+        'estadist'    => 'bi-graph-up',
+        'sgi'         => 'bi-door-closed-fill',
+        'sga'         => 'bi-building-fill',
+        'saa'         => 'bi-mortarboard',
     ];
 
     $lower = strtolower($nombre);
@@ -221,6 +232,109 @@ function obtenerMenusUsuario(PDO $pdo, string $idUsuario): array
     );
     $stmt->execute([$idUsuario]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/** true si el usuario puede abrir un ítem del menú lateral. */
+function usuarioTieneAccesoMenu(PDO $pdo, string $idUsuario, string $idMenu): bool
+{
+    if ($idMenu === '' || $idMenu === '0') {
+        return true;
+    }
+
+    if (usuarioEsAdministrador($pdo, $idUsuario)) {
+        return true;
+    }
+
+    static $cache = [];
+    if (!isset($cache[$idUsuario])) {
+        $stmt = $pdo->prepare(
+            'SELECT id_menu FROM tab_menu_usuarios WHERE id_usuario = CAST(? AS TEXT)'
+        );
+        $stmt->execute([$idUsuario]);
+        $cache[$idUsuario] = array_flip(array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id_menu'));
+    }
+
+    return isset($cache[$idUsuario][$idMenu]);
+}
+
+/**
+ * Construye árbol de menú de hasta 3 niveles (abuelo → grupo → hoja).
+ *
+ * @param list<array<string, mixed>> $menuRaw
+ * @return array<string, array<string, mixed>>
+ */
+function smartcsetConstruirArbolMenus(array $menuRaw): array
+{
+    $arbol = [];
+
+    foreach ($menuRaw as $item) {
+        if (!smartcsetMenuEsPadreRaiz((string) ($item['ind_id_padre'] ?? ''))) {
+            continue;
+        }
+        $id = (string) $item['id_menu'];
+        $arbol[$id] = $item;
+        $arbol[$id]['hijos'] = [];
+    }
+
+    foreach ($menuRaw as $item) {
+        $padre = (string) ($item['ind_id_padre'] ?? '');
+        if (isset($arbol[$padre])) {
+            $id = (string) $item['id_menu'];
+            $arbol[$padre]['hijos'][$id] = $item;
+            $arbol[$padre]['hijos'][$id]['hijos'] = [];
+        }
+    }
+
+    foreach ($menuRaw as $item) {
+        $padre = (string) ($item['ind_id_padre'] ?? '');
+        foreach ($arbol as &$abuelo) {
+            if (!isset($abuelo['hijos'][$padre])) {
+                continue;
+            }
+            $id = (string) $item['id_menu'];
+            $abuelo['hijos'][$padre]['hijos'][$id] = $item;
+            break;
+        }
+        unset($abuelo);
+    }
+
+    return $arbol;
+}
+
+/** true si $active coincide con el ítem o alguno de sus descendientes en el sidebar. */
+function smartcsetMenuRamaActiva(array $item, string $active): bool
+{
+    if ($active !== '' && (string) ($item['id_menu'] ?? '') === $active) {
+        return true;
+    }
+    if ($active !== '' && str_starts_with($active, '20601-')
+        && in_array((string) ($item['id_menu'] ?? ''), ['206', '20601'], true)
+    ) {
+        return true;
+    }
+    foreach ($item['hijos'] ?? [] as $hijo) {
+        if (smartcsetMenuRamaActiva($hijo, $active)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/** true solo para el ítem que coincide con la página actual (resaltado fuerte). */
+function smartcsetMenuItemActivo(array $item, string $active): bool
+{
+    if ($active === '') {
+        return false;
+    }
+
+    $idMenu = (string) ($item['id_menu'] ?? '');
+    if ($idMenu === $active) {
+        return true;
+    }
+
+    return str_starts_with($active, '20601-')
+        && in_array($idMenu, ['206', '20601'], true);
 }
 
 /**

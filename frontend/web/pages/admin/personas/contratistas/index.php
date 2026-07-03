@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/query.php';
 
 $personasListado = [
-    'menu_id' => '0304',
+    'menu_id' => '20703',
     'titulo' => 'Contratistas',
     'fetch' => 'personasListadoFetchContratistas',
 ];

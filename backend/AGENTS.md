@@ -19,8 +19,9 @@ Routers unificados web + móvil en `backend/routers/porteria/v1/` con `require_s
 
 - Spec base: `backend/openapi/openapi.base.json` (info, tags, securitySchemes, schemas compartidos).
 - Cada router en `backend/routers/**/v1/` debe incluir docblock `@openapi { ... }` con metadatos JSON.
-- Regenerar: `php scripts/tools/generate_openapi.php` (escribe `backend/openapi/openapi.yaml` y copia a `frontend/web/public/docs/openapi.yaml`).
+- Regenerar: `php scripts/tools/generate_openapi.php` (escribe `openapi.yaml`, `openapi.json` y copia a `frontend/web/public/docs/`).
 - Validar sincronización: `php scripts/tools/generate_openapi.php --check`.
-- Swagger UI (dev): `http://localhost:8080/docs/`.
+- Swagger UI (dev): `http://localhost:8080/docs/` (usa `docs/index.php` con spec JSON embebido).
+- Sin acceso a CDN: `bash scripts/tools/setup_swagger_ui_vendor.sh` (assets locales en `docs/vendor/`).
 
 El generador infiere automáticamente path (`/routers/...`), método HTTP y auth desde los `require_*` del router. Sobrescribir en el JSON cuando el endpoint sea excepcional (redirect, multipart, auth dual).

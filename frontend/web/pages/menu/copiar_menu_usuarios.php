@@ -23,7 +23,7 @@ try {
 }
 
 $page_title     = 'Copiar Perfil';
-$active_menu_id = '0204';
+$active_menu_id = '20904';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 include smartcsetLayoutPath('head.php');

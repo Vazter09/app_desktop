@@ -136,10 +136,10 @@
     }
 
     // ── Accordion: expandir/colapsar secciones del menú ──
-    document.querySelectorAll('.nav-item-parent').forEach(function (item) {
+    document.querySelectorAll('.nav-item-parent, .nav-item-group').forEach(function (item) {
         item.addEventListener('click', function (e) {
             e.preventDefault();
-            const section = this.closest('.nav-section');
+            const section = this.closest('.nav-section, .nav-subsection');
             if (!section) return;
 
             // Si la sidebar está colapsada, expandirla primero
@@ -153,19 +153,25 @@
     });
 
     // ── Abrir automáticamente la sección del item activo ──
-    const activeChild = document.querySelector('.nav-item.child.active');
-    if (activeChild) {
-        const parentSection = activeChild.closest('.nav-section');
-        if (parentSection) parentSection.classList.add('open');
-    }
-
-    // Marcar ficha activa del instructor (0601-123) en el submenú dinámico.
-    document.addEventListener('smartcset:content-loaded', function () {
-        const activeChildAfter = document.querySelector('.nav-item.child.active');
-        if (activeChildAfter) {
-            const parentSection = activeChildAfter.closest('.nav-section');
-            if (parentSection) parentSection.classList.add('open');
+    document.querySelectorAll('.nav-item.active').forEach(function (activeEl) {
+        let section = activeEl.closest('.nav-section, .nav-subsection');
+        while (section) {
+            section.classList.add('open');
+            const parent = section.parentElement;
+            section = parent ? parent.closest('.nav-section, .nav-subsection') : null;
         }
+    });
+
+    // Marcar ficha activa del instructor (20601-123) en el submenú dinámico.
+    document.addEventListener('smartcset:content-loaded', function () {
+        document.querySelectorAll('.nav-item.active').forEach(function (activeEl) {
+            let section = activeEl.closest('.nav-section, .nav-subsection');
+            while (section) {
+                section.classList.add('open');
+                const parent = section.parentElement;
+                section = parent ? parent.closest('.nav-section, .nav-subsection') : null;
+            }
+        });
     });
 
     // ── Aviso de cambios sin guardar (solo formularios marcados) ──

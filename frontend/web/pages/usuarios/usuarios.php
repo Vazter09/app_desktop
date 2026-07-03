@@ -19,7 +19,7 @@ $stmt_list_users->execute();
 $usuarios_lista = $stmt_list_users->fetchAll();
 
 $page_title     = 'Usuarios';
-$active_menu_id = '0201';
+$active_menu_id = '20901';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 $_crud_hl_v = @filemtime(dirname(__DIR__, 2) . '/public/assets/css/crud-row-highlight.css') ?: time();

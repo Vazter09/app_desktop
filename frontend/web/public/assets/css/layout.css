@@ -41,6 +41,24 @@ body:not(.light-theme) {
         linear-gradient(90deg, var(--grid-line, color-mix(in srgb, var(--v-oliva) 8%, transparent)) 1px, transparent 1px);
 }
 
+/* Modo oscuro: más separación entre superficies y texto secundario legible */
+body:not(.light-theme) .card,
+body:not(.light-theme) .dash2-panel,
+body:not(.light-theme) .content-card,
+body:not(.light-theme) .smart-listado-filtros-wrap {
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.32);
+}
+
+body:not(.light-theme) .dash2-stat,
+body:not(.light-theme) .dash2-action,
+body:not(.light-theme) .dash2-tipo-chip {
+    background: color-mix(in srgb, var(--bg-card) 88%, var(--v-oscuro));
+}
+
+body:not(.light-theme) {
+    --text-muted: color-mix(in srgb, var(--text-main) 62%, var(--v-oliva));
+}
+
 body.light-theme {
     background-image:
         linear-gradient(rgba(17, 38, 60, 0.06) 1px, transparent 1px),
@@ -211,21 +229,78 @@ body.light-theme {
     margin-left: auto;
 }
 
-.nav-section.open > .nav-item-parent .nav-arrow { transform: rotate(90deg); }
+.nav-section.open > .nav-item-parent .nav-arrow,
+.nav-section.open > .nav-item-group .nav-arrow,
+.nav-subsection.open > .nav-item-group .nav-arrow { transform: rotate(90deg); }
 .sidebar.collapsed .nav-arrow { display: none; }
 
 .nav-children {
     display: none;
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(0, 0, 0, 0.12);
 }
 
-.nav-section.open > .nav-children { display: block; }
+.nav-section.open > .nav-children,
+.nav-subsection.open > .nav-children { display: block; }
 .sidebar.collapsed .nav-children { display: none !important; }
+
+.nav-subsection {
+    margin: 0;
+}
+
+.nav-item.has-active-child {
+    color: #ffffff;
+    border-left-color: var(--layout-sidebar-accent);
+    font-weight: 600;
+}
+
+.nav-item.has-active-child:not(.active) {
+    background: transparent;
+    box-shadow: none;
+}
 
 .nav-item.child {
     padding-left: 34px;
     font-size: 0.79rem;
     border-left: 3px solid transparent;
+}
+
+.nav-item.nav-depth-3,
+.nav-children .nav-children .nav-item.child {
+    padding-left: 48px;
+    font-size: 0.75rem;
+}
+
+.nav-item-group {
+    padding-left: 34px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.nav-children .nav-children {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.nav-item.placeholder {
+    opacity: 0.65;
+    cursor: default;
+    pointer-events: none;
+    min-height: 0;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-left-color: transparent !important;
+}
+
+.nav-placeholder-dot {
+    font-size: 0.35rem !important;
+    opacity: 0.7;
+}
+
+.nav-label-muted {
+    font-style: italic;
+    opacity: 0.75;
 }
 
 .sidebar.collapsed .nav-item.child { padding-left: 0; }

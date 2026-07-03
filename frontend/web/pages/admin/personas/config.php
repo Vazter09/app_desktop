@@ -28,7 +28,7 @@ if ($stmt_get_config instanceof PDOStatement) {
 
 $c = $config;
 $page_title = 'Config. módulo personas';
-$active_menu_id = '0402';
+$active_menu_id = '21002';
 $wnom_usuario = $_SESSION['nom_usuario'] ?? '';
 
 include smartcsetLayoutPath('head.php');

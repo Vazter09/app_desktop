@@ -25,11 +25,8 @@ function dashboardFlattenMenuPaths(array $menuFinal): array
         ) {
             $paths[] = $prog;
         }
-        foreach ($item['submenus'] ?? [] as $sub) {
-            $walk($sub);
-            foreach ($sub['items'] ?? [] as $leaf) {
-                $walk($leaf);
-            }
+        foreach ($item['hijos'] ?? $item['submenus'] ?? [] as $hijo) {
+            $walk($hijo);
         }
     };
     foreach ($menuFinal as $padre) {
@@ -55,26 +52,7 @@ function dashboardFindMenuPath(array $paths, string $needle): ?string
 // Construir menú del usuario para el dashboard (admin: catálogo completo)
 try {
     $menu_raw = obtenerMenusUsuario($pdo, $wid_usuario);
-
-    $menu_final = [];
-    foreach ($menu_raw as $item) {
-        if (smartcsetMenuEsPadreRaiz((string) $item['ind_id_padre'])) {
-            $menu_final[$item['id_menu']] = $item;
-            $menu_final[$item['id_menu']]['submenus'] = [];
-        } else {
-            $padre_id = $item['ind_id_padre'];
-            if (isset($menu_final[$padre_id])) {
-                $menu_final[$padre_id]['submenus'][$item['id_menu']] = $item;
-            } else {
-                foreach ($menu_final as &$abuelo) {
-                    if (isset($abuelo['submenus'][$padre_id])) {
-                        $abuelo['submenus'][$padre_id]['items'][] = $item;
-                    }
-                }
-                unset($abuelo);
-            }
-        }
-    }
+    $menu_final = smartcsetConstruirArbolMenus($menu_raw);
 } catch (Exception $e) {
     $menu_final = [];
 }

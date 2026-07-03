@@ -22,6 +22,11 @@ if (!empty($_SESSION['flash_msg'])) {
     $w_tipo_alerta = 'success';
 }
 
+if ($w_mensaje === '' && isset($_GET['ok']) && (int) $_GET['ok'] > 0) {
+    $w_mensaje     = 'Salida del ingreso #' . (int) $_GET['ok'] . ' registrada correctamente.';
+    $w_tipo_alerta = 'success';
+}
+
 try {
     $stmt_list_tipos_doc->execute();
     $tipos_doc = $stmt_list_tipos_doc->fetchAll();
@@ -40,7 +45,7 @@ try {
 }
 
 $page_title     = 'Registro de salida';
-$active_menu_id = '0103';
+$active_menu_id = '103';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 $hora_servidor  = date('H:i');
 $total_hoy      = count($salidas_hoy);
@@ -59,167 +64,93 @@ include modulosLayout('layout/topbar.php');
 
 renderPageFlash($w_mensaje, $w_tipo_alerta);
 ?>
-<div class="ingresos-page">
-    <div class="ingresos-layout">
-        <div class="ing-col-form">
-            <div class="ing-panel ing-panel-form">
-                <div class="ing-panel-head d-flex align-items-center justify-content-between gap-2">
-                    <span><i class="bi bi-box-arrow-right me-1"></i> Nueva salida</span>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btn_abrir_modal_kiosk" title="Abrir teclado numérico">
-                        <i class="bi bi-grid-3x3-gap-fill me-1"></i> Teclado
-                    </button>
-                </div>
-
-                <form method="POST" id="form_salida" action="#" autocomplete="off"
-                      data-pt-reset="<?= $pt_reset_escaner ? '1' : '0' ?>">
-                    <input type="hidden" name="hid_id_ingreso" id="hid_id_ingreso" value="">
-                    <input type="hidden" name="hid_captura_raw" id="hid_captura_raw" value="">
-                    <input type="hidden" name="hid_metodo_aut" id="hid_metodo_aut" value="1">
-                    <div class="ing-panel-body">
-                        <?php $pt_contexto = 'salida'; include __DIR__ . '/../lib/porteria_modos_ui.php'; ?>
-                        <div class="ing-field">
-                            <label for="txt_documento">Documento de identidad</label>
-                            <div class="ing-doc-row">
-                                <select name="sel_tipo_doc" id="sel_tipo_doc" class="form-select form-select-sm tipo-doc" required><?php foreach ($tipos_doc as $t): ?><option value="<?= htmlspecialchars($t['id_tipo_docum']) ?>"><?= htmlspecialchars($t['id_tipo_docum']) ?></option><?php endforeach; ?></select>
-                                <input type="text" name="txt_documento" id="txt_documento"
-                                       class="form-control form-control-sm num-doc"
-                                       data-documento-captura="1" required
-                                       placeholder="Número de documento"
-                                       autocomplete="off">
-                            </div>
-                            <span id="badge_persona" class="badge rounded-pill d-none" role="status"></span>
-                            <div id="salida_aviso_msg" class="ing-bloqueo-msg d-none" role="alert"></div>
-                        </div>
-
-                        <div class="ing-field">
-                            <label for="sel_tipo_persona">Tipo de persona</label>
-                            <select name="sel_tipo_persona" id="sel_tipo_persona"
-                                    class="form-select form-select-sm">
-                                <option value="">Seleccione…</option>
-                                <?php foreach ($tipos_persona as $tp): ?>
-                                <option value="<?= (int) $tp['id_tipo_persona'] ?>">
-                                    <?= htmlspecialchars($tp['nom_tipo_persona']) ?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="ing-field">
-                            <label>Datos de la persona</label>
-                            <div class="ing-nombres-row">
-                                <div>
-                                    <label class="small text-muted mb-1" for="txt_nombres">Nombres</label>
-                                    <input type="text" name="txt_nombres" id="txt_nombres"
-                                           class="form-control form-control-sm"
-                                           placeholder="Nombres" autocomplete="off" readonly>
-                                </div>
-                                <div>
-                                    <label class="small text-muted mb-1" for="txt_apellidos">Apellidos</label>
-                                    <input type="text" name="txt_apellidos" id="txt_apellidos"
-                                           class="form-control form-control-sm"
-                                           placeholder="Apellidos" autocomplete="off" readonly>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="ing-field">
-                            <label>Puerta de salida</label>
-                            <input type="hidden" name="sel_entrada" id="sel_entrada"
-                                   value="<?= $puerta_pref > 0 ? $puerta_pref : '' ?>">
-                            <div class="ing-puertas" id="puertas_grid" role="group">
-                                <?php if (empty($entradas_lista)): ?>
-                                <p class="small text-danger mb-0">Sin puertas configuradas.</p>
-                                <?php else: ?>
-                                <?php foreach ($entradas_lista as $e): ?>
-                                <?php
-                                $idPuerta = (int) $e['id_entrada'];
-                                $sel = ($puerta_pref === $idPuerta) ? ' is-selected' : '';
-                                ?>
-                                <button type="button" class="ing-puerta<?= $sel ?>"
-                                        data-puerta="<?= $idPuerta ?>"
-                                        title="<?= htmlspecialchars($e['nom_entrada']) ?>">
-                                    <span class="p-num"><?= $idPuerta ?></span>
-                                    <span class="p-nom"><?= htmlspecialchars($e['nom_entrada']) ?></span>
-                                </button>
-                                <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
-                            <div class="ing-puerta-error" id="puerta_error">Seleccione una puerta para continuar.</div>
-                        </div>
-
-                        <div class="ing-field">
-                            <label for="txt_observaciones">Observaciones <span class="text-muted fw-normal">(opcional)</span></label>
-                            <textarea name="txt_observaciones" id="txt_observaciones" rows="2"
-                                      class="form-control form-control-sm" placeholder="Ej. salida por puerta principal"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="ing-panel-foot">
-                        <button type="submit" id="btn_registrar_salida" class="btn btn-corporativo btn-ingreso-submit" disabled>
-                            <i class="bi bi-box-arrow-right me-1"></i>Registrar salida
-                        </button>
-                    </div>
-                </form>
+<div class="ingresos-page ingresos-page--table-first">
+    <div class="ing-panel ing-panel-list ing-panel-full">
+        <div class="ing-panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span><i class="bi bi-clock-history me-1"></i> Salidas de hoy</span>
+            <div class="ing-panel-head-actions d-flex align-items-center flex-wrap gap-2">
+                <span class="meta" title="Cantidad de salidas hoy y hora del servidor">
+                    <?= $total_hoy ?> <?= $total_hoy === 1 ? 'salida' : 'salidas' ?>
+                    · <?= htmlspecialchars($hora_servidor) ?>
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-light" id="btn_abrir_modal_kiosk" title="Abrir teclado numérico">
+                    <i class="bi bi-grid-3x3-gap-fill me-1"></i> Teclado
+                </button>
+                <button type="button" class="btn btn-sm btn-light fw-semibold" id="btn_abrir_salida_modal">
+                    <i class="bi bi-box-arrow-right me-1"></i> Nueva salida
+                </button>
             </div>
         </div>
 
-        <div class="ing-col-list">
-            <div class="ing-panel ing-panel-list">
-                <div class="ing-panel-head d-flex justify-content-between align-items-center flex-wrap gap-1">
-                    <span><i class="bi bi-clock-history me-1"></i> Salidas de hoy</span>
-                    <span class="meta" title="Cantidad de salidas hoy y hora del servidor">
-                        <?= $total_hoy ?> <?= $total_hoy === 1 ? 'salida' : 'salidas' ?>
-                        · <?= htmlspecialchars($hora_servidor) ?>
-                    </span>
-                </div>
+        <div class="ing-panel-body ing-list-scroll p-0">
+            <?php if (empty($salidas_hoy)): ?>
+            <div class="ing-empty">
+                <i class="bi bi-inbox"></i>
+                <p><strong>Sin registros hoy</strong></p>
+                <p class="small text-muted mt-2">Use <em>Nueva salida</em> para registrar la primera salida del día.</p>
+            </div>
+            <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 ing-table-full">
+                    <thead class="thead-oliva">
+                        <tr>
+                            <th style="width:2.5rem">#</th>
+                            <th style="width:3rem">Hora</th>
+                            <th>Persona</th>
+                            <th style="width:4.5rem">Tipo</th>
+                            <th style="width:5rem">Ficha</th>
+                            <th>Carrera</th>
+                            <th style="width:4rem">Puerta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($salidas_hoy as $row): ?>
+                        <?php
+                        $esReciente = $ultimo_id > 0 && (int) $row['id_ingreso'] === $ultimo_id;
+                        $nomCompleto = trim($row['nom_persona'] . ' ' . $row['ape_persona']);
+                        $idFicha = isset($row['id_ficha']) ? (int) $row['id_ficha'] : 0;
+                        $nomPrograma = trim((string) ($row['nom_programa'] ?? ''));
+                        ?>
+                        <tr class="<?= $esReciente ? 'salida-reciente' : '' ?>">
+                            <td class="text-muted fw-semibold"><?= (int) $row['id_ingreso'] ?></td>
+                            <td class="text-nowrap"><?= htmlspecialchars(smartcsetFormatDbTimestamp($row['fec_salida'], 'H:i')) ?></td>
+                            <td>
+                                <span class="v-nom" title="<?= htmlspecialchars($nomCompleto) ?>"><?= htmlspecialchars($nomCompleto) ?></span>
+                                <span class="v-doc"><?= htmlspecialchars($row['id_tipo_docum']) ?> <?= htmlspecialchars((string) $row['id_persona']) ?></span>
+                            </td>
+                            <td><span class="ing-tipo-badge"><?= htmlspecialchars($row['nom_tipo_persona']) ?></span></td>
+                            <td class="text-nowrap"><?= $idFicha > 0 ? (int) $idFicha : '—' ?></td>
+                            <td><span class="v-carrera" title="<?= htmlspecialchars($nomPrograma) ?>"><?= $nomPrograma !== '' ? htmlspecialchars($nomPrograma) : '—' ?></span></td>
+                            <td>
+                                <span class="ing-puerta-badge" title="<?= htmlspecialchars($row['nom_entrada_centro']) ?>">
+                                    <?= (int) $row['id_entrada_centro'] ?>
+                                </span>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
+        </div>
 
-                <div class="ing-panel-body ing-list-scroll p-0">
-                    <?php if (empty($salidas_hoy)): ?>
-                    <div class="ing-empty">
-                        <i class="bi bi-inbox"></i>
-                        <p><strong>Sin registros hoy</strong></p>
-                        <p class="small text-muted mt-2">Al guardar una salida aparecerá en esta lista.</p>
-                    </div>
-                    <?php else: ?>
-                    <table class="table table-hover table-sm mb-0">
-                        <thead class="thead-oliva">
-                            <tr>
-                                <th style="width:2.5rem">#</th>
-                                <th style="width:3rem">Hora</th>
-                                <th>Persona</th>
-                                <th style="width:4.5rem">Tipo</th>
-                                <th style="width:4rem">Puerta</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($salidas_hoy as $row): ?>
-                            <?php
-                            $esReciente = $ultimo_id > 0 && (int) $row['id_ingreso'] === $ultimo_id;
-                            $nomCompleto = trim($row['nom_persona'] . ' ' . $row['ape_persona']);
-                            ?>
-                            <tr class="<?= $esReciente ? 'salida-reciente' : '' ?>">
-                                <td class="text-muted fw-semibold"><?= (int) $row['id_ingreso'] ?></td>
-                                <td class="text-nowrap"><?= htmlspecialchars(smartcsetFormatDbTimestamp($row['fec_salida'], 'H:i')) ?></td>
-                                <td>
-                                    <span class="v-nom" title="<?= htmlspecialchars($nomCompleto) ?>"><?= htmlspecialchars($nomCompleto) ?></span>
-                                    <span class="v-doc"><?= htmlspecialchars($row['id_tipo_docum']) ?> <?= htmlspecialchars((string) $row['id_persona']) ?></span>
-                                </td>
-                                <td><span class="ing-tipo-badge"><?= htmlspecialchars($row['nom_tipo_persona']) ?></span></td>
-                                <td>
-                                    <span class="ing-puerta-badge" title="<?= htmlspecialchars($row['nom_entrada_centro']) ?>">
-                                        <?= (int) $row['id_entrada_centro'] ?>
-                                    </span>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <?php endif; ?>
-                </div>
+        <?php if ($total_hoy > 8): ?>
+        <div class="ing-list-hint">Desplaza para ver todos los registros</div>
+        <?php endif; ?>
+    </div>
+</div>
 
-                <?php if ($total_hoy > 8): ?>
-                <div class="ing-list-hint">Desplaza para ver todos los registros</div>
-                <?php endif; ?>
+<div class="modal fade" id="salidaFormModal" tabindex="-1" aria-labelledby="salidaFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content ing-modal-form">
+            <div class="modal-header">
+                <h5 class="modal-title" id="salidaFormModalLabel">
+                    <i class="bi bi-box-arrow-right me-1"></i> Nueva salida
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <?php include __DIR__ . '/../lib/formulario_salida.php'; ?>
             </div>
         </div>
     </div>
@@ -265,11 +196,11 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
     --dm-accent:     var(--v-oscuro, #004d40);
 }
 
+/* ---- Backdrop (sin elevar z-index: bloqueaba el modal de formulario) ---- */
 .modal-backdrop {
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     background: rgba(0,0,0,0.45) !important;
-    z-index: 1055 !important;
 }
 
 #documentModal {
@@ -675,10 +606,12 @@ $_v_cap = @filemtime(__DIR__ . '/../../../../public/assets/js/modules/porteria/p
 $_v_med = @filemtime(__DIR__ . '/../../../../public/assets/js/modules/porteria/porteria-medios.js') ?: time();
 $_v_sal = @filemtime(__DIR__ . '/../../../../public/assets/js/modules/porteria/salidas.js') ?: time();
 $_v_modal = @filemtime(__DIR__ . '/../../../../public/assets/js/modules/porteria/porteria-salida-modal.js') ?: time();
+$_v_mhost = @filemtime(__DIR__ . '/../../../../public/assets/js/modules/porteria/porteria-modal-host.js') ?: time();
 $_v_http = @filemtime(__DIR__ . '/../../../../public/assets/js/services/http-client.js') ?: time();
 $_v_sr = @filemtime(__DIR__ . '/../../../../public/assets/js/services/porteria/salida-router.js') ?: time();
 $extra_js = '<script src="' . $_asset_js . '/services/http-client.js?v=' . (int) $_v_http . '"></script>'
     . '<script src="' . $_asset_js . '/services/porteria/salida-router.js?v=' . (int) $_v_sr . '"></script>'
+    . '<script src="' . $_asset_js . '/modules/porteria/porteria-modal-host.js?v=' . (int) $_v_mhost . '"></script>'
     . '<script src="' . $_asset_js . '/modules/porteria/porteria-captura.js?v=' . (int) $_v_cap . '"></script>'
     . '<script src="' . $_asset_js . '/modules/porteria/porteria-medios.js?v=' . (int) $_v_med . '"></script>'
     . '<script src="' . $_asset_js . '/modules/porteria/salidas.js?v=' . (int) $_v_sal . '"></script>'

@@ -27,7 +27,7 @@ try {
 }
 
 $page_title     = 'Accesos';
-$active_menu_id = '0203';
+$active_menu_id = '20903';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 include smartcsetLayoutPath('head.php');

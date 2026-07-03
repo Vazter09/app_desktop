@@ -13,7 +13,9 @@ $projectRoot = dirname(__DIR__, 2);
 $basePath = $projectRoot . '/backend/openapi/openapi.base.json';
 $routersRoot = $projectRoot . '/backend/routers';
 $outputBackend = $projectRoot . '/backend/openapi/openapi.yaml';
+$outputBackendJson = $projectRoot . '/backend/openapi/openapi.json';
 $outputPublic = $projectRoot . '/frontend/web/public/docs/openapi.yaml';
+$outputPublicJson = $projectRoot . '/frontend/web/public/docs/openapi.json';
 
 $checkOnly = in_array('--check', $argv ?? [], true);
 
@@ -90,12 +92,24 @@ if ($errors !== []) {
 }
 
 $yaml = OpenApiYamlEncoder::encode($spec);
+$json = json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+if ($json === false) {
+    fwrite(STDERR, "No se pudo serializar openapi.json\n");
+    exit(1);
+}
 
 if ($checkOnly) {
     $existingBackend = is_file($outputBackend) ? (string) file_get_contents($outputBackend) : '';
     $existingPublic = is_file($outputPublic) ? (string) file_get_contents($outputPublic) : '';
-    if ($existingBackend !== $yaml || $existingPublic !== $yaml) {
-        fwrite(STDERR, "openapi.yaml desactualizado. Ejecute: php scripts/tools/generate_openapi.php\n");
+    $existingBackendJson = is_file($outputBackendJson) ? (string) file_get_contents($outputBackendJson) : '';
+    $existingPublicJson = is_file($outputPublicJson) ? (string) file_get_contents($outputPublicJson) : '';
+    if (
+        $existingBackend !== $yaml
+        || $existingPublic !== $yaml
+        || $existingBackendJson !== $json
+        || $existingPublicJson !== $json
+    ) {
+        fwrite(STDERR, "openapi desactualizado. Ejecute: php scripts/tools/generate_openapi.php\n");
         exit(1);
     }
     fwrite(STDOUT, "OK openapi ({$actualCount} operaciones, spec sincronizado)\n");
@@ -104,9 +118,12 @@ if ($checkOnly) {
 
 writeFile($outputBackend, $yaml);
 writeFile($outputPublic, $yaml);
+writeFile($outputBackendJson, $json);
+writeFile($outputPublicJson, $json);
 
 fwrite(STDOUT, "Generado {$outputBackend} ({$actualCount} operaciones)\n");
-fwrite(STDOUT, "Copiado a {$outputPublic}\n");
+fwrite(STDOUT, "Generado {$outputBackendJson}\n");
+fwrite(STDOUT, "Copiado a {$outputPublic} y {$outputPublicJson}\n");
 
 /**
  * @return list<string>
@@ -553,14 +570,15 @@ final class OpenApiYamlEncoder
     {
         if (is_array($value)) {
             if ($value === []) {
-                return "{}\n";
+                return "[]\n";
             }
 
             if (array_is_list($value)) {
                 $out = '';
                 foreach ($value as $item) {
                     if (is_array($item) && !array_is_list($item)) {
-                        $out .= str_repeat('  ', $indent) . "- \n" . self::dumpMap($item, $indent + 1, true);
+                        $inline = self::dumpMapInline($item);
+                        $out .= str_repeat('  ', $indent) . '- ' . $inline . "\n";
                     } else {
                         $out .= str_repeat('  ', $indent) . '- ' . self::scalarInline($item) . "\n";
                     }
@@ -616,5 +634,29 @@ final class OpenApiYamlEncoder
         }
 
         return $str;
+    }
+
+    /**
+     * @param array<string, mixed> $map
+     */
+    private static function dumpMapInline(array $map): string
+    {
+        $parts = [];
+        foreach ($map as $key => $val) {
+            if (is_array($val)) {
+                if ($val === []) {
+                    $parts[] = $key . ': []';
+                } elseif (array_is_list($val)) {
+                    $items = array_map(static fn ($v) => self::scalarInline($v), $val);
+                    $parts[] = $key . ': [' . implode(', ', $items) . ']';
+                } else {
+                    $parts[] = $key . ': {' . trim(self::dumpMapInline($val)) . '}';
+                }
+            } else {
+                $parts[] = $key . ': ' . self::scalarInline($val);
+            }
+        }
+
+        return implode(', ', $parts);
     }
 }

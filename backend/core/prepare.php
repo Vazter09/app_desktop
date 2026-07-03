@@ -142,11 +142,15 @@ try {
         "SELECT l.id_ingreso, l.fec_ingreso, l.val_observaciones,
                 p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona,
-                e.id_entrada_centro, e.nom_entrada_centro
+                e.id_entrada_centro, e.nom_entrada_centro,
+                ap.id_ficha, pr.nom_programa
          FROM tab_log_ingresos l
          INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          INNER JOIN tab_entradas_centro e ON l.id_entrada_centro = e.id_entrada_centro
+         LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
+         LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha
+         LEFT JOIN tab_programas pr ON pr.id_programa = f.id_programa
          WHERE l.fec_ingreso::date = CURRENT_DATE
          ORDER BY l.fec_ingreso DESC"
     );
@@ -155,7 +159,9 @@ try {
                 p.id_tipo_persona, tp.nom_tipo_persona
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
-         WHERE p.id_persona = ?::NUMERIC AND p.id_tipo_docum = ?::VARCHAR"
+         WHERE p.id_persona = ?::NUMERIC
+         ORDER BY CASE WHEN p.id_tipo_docum = ?::VARCHAR THEN 0 ELSE 1 END
+         LIMIT 1"
     );
 
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
@@ -169,11 +175,15 @@ try {
         "SELECT l.id_ingreso, l.fec_ingreso, l.fec_salida, l.val_observaciones,
                 p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona,
-                e.id_entrada_centro, e.nom_entrada_centro
+                e.id_entrada_centro, e.nom_entrada_centro,
+                ap.id_ficha, pr.nom_programa
          FROM tab_log_ingresos l
          INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          INNER JOIN tab_entradas_centro e ON l.id_entrada_centro = e.id_entrada_centro
+         LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
+         LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha
+         LEFT JOIN tab_programas pr ON pr.id_programa = f.id_programa
          WHERE l.fec_salida::date = CURRENT_DATE
            AND l.fec_salida > l.fec_ingreso
          ORDER BY l.fec_salida DESC"

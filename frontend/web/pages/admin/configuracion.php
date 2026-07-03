@@ -50,7 +50,7 @@ function configuracionBotonRestaurar(string $section, string $tituloCorto): void
     <?php
 }
 $page_title     = 'Config. sistema';
-$active_menu_id = '0401';
+$active_menu_id = '21001';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 $logo_path_db   = $c['path_logo'] ?? 'assets/img/logo-sena.png';
 $logo_preview_url = htmlspecialchars(smartcsetLogoUrl(), ENT_QUOTES, 'UTF-8');
@@ -167,8 +167,8 @@ include smartcsetLayoutPath('topbar.php');
             <div class="card-body row g-2">
                 <?php
                 $themeFields = [
-                    'txt_theme_bg_deep' => ['Fondo principal', 'color', '#020917'],
-                    'txt_theme_bg_card' => ['Fondo tarjetas', 'color', '#060f24'],
+                    'txt_theme_bg_deep' => ['Fondo principal', 'color', '#131e15'],
+                    'txt_theme_bg_card' => ['Fondo tarjetas', 'color', '#1b2a1d'],
                     'txt_theme_accent' => ['Acento', 'color', '#00e5b0'],
                     'txt_theme_text_primary' => ['Texto principal', 'color', '#e8f4ff'],
                     'txt_theme_blue' => ['Azul', 'color', '#4a9eff'],
@@ -195,10 +195,10 @@ include smartcsetLayoutPath('topbar.php');
                     <input type="text" name="txt_theme_font_body" class="form-control form-control-sm"
                            value="<?= htmlspecialchars($c['theme_font_body'] ?? 'Rajdhani') ?>">
                 </div>
-                <input type="hidden" name="txt_theme_bg_panel" value="<?= htmlspecialchars($c['theme_bg_panel'] ?? 'rgba(6, 15, 36, 0.85)') ?>">
+                <input type="hidden" name="txt_theme_bg_panel" value="<?= htmlspecialchars($c['theme_bg_panel'] ?? 'rgba(27, 42, 29, 0.92)') ?>">
                 <input type="hidden" name="txt_theme_accent_dim" value="<?= htmlspecialchars($c['theme_accent_dim'] ?? 'rgba(0, 245, 255, 0.15)') ?>">
-                <input type="hidden" name="txt_theme_text_muted" value="<?= htmlspecialchars($c['theme_text_muted'] ?? 'rgba(150,180,220,0.7)') ?>">
-                <input type="hidden" name="txt_theme_border" value="<?= htmlspecialchars($c['theme_border'] ?? 'rgba(0,245,255,0.2)') ?>">
+                <input type="hidden" name="txt_theme_text_muted" value="<?= htmlspecialchars($c['theme_text_muted'] ?? 'rgba(186, 203, 175, 0.88)') ?>">
+                <input type="hidden" name="txt_theme_border" value="<?= htmlspecialchars($c['theme_border'] ?? 'rgba(107, 142, 35, 0.38)') ?>">
                 <input type="hidden" name="txt_theme_error" value="<?= htmlspecialchars($c['theme_error'] ?? '#ff3c6e') ?>">
                 <input type="hidden" name="txt_theme_success" value="<?= htmlspecialchars($c['theme_success'] ?? '#00e5b0') ?>">
                 <?php configuracionBotonRestaurar(ConfigSistemaDefaults::SECTION_THEME_DARK, 'tema oscuro'); ?>
