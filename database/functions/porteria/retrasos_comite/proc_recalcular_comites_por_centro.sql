@@ -15,7 +15,7 @@ BEGIN
     FOR rec IN 
         SELECT a.id_aprendiz
         FROM tab_aprendices a
-        JOIN tab_fichas f ON a.id_ficha_vigente = f.id_ficha
+        JOIN tab_fichas f ON a.id_ficha = f.id_ficha
         WHERE f.id_centro = p_id_centro
     LOOP
         PERFORM fun_sincronizar_comite_aprendiz(rec.id_aprendiz);
