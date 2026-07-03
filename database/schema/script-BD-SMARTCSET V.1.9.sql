@@ -2430,7 +2430,7 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | id_nivel_estudio | DECIMAL(2,0)     | NOT NULL                               | Identificador.                                |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | ind_jornada    | DECIMAL(1,0)     | NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4) | Indicador booleano.                           |
+-- | id_jornada    | DECIMAL(1,0)     | NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4) | Indicador booleano.                           |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | ind_modalidad  | DECIMAL(1,0)     | NOT NULL                               | Indicador booleano.                           |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
@@ -2689,7 +2689,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
 (
     id_ficha                DECIMAL(10,0)               NOT NULL DEFAULT 2999900001,
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
+    id_jornada             DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 4), -- 1=Mañana / 2=Tarde / 3=Noche / 4=Mixta.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2976,8 +2976,8 @@ CREATE TABLE IF NOT EXISTS tab_rutas
 -- |                 |                   | FOREIGN KEY                                  |                                                                    |
 -- |                 |                   | NOT NULL                                     |                                                                    |
 -- +-----------------+-----------------------------+-----------------------------------------------+---------------------------------------------------------+
--- | ind_jornada     | DECIMAL(1,0)      | NOT NULL                                     | Jornada asignada.                                                  |
--- |                 |                   | CHECK(ind_jornada >= 1 AND ind_jornada <= 3) | 1=Mañana, 2=Tarde, 3=Noche.                                        |
+-- | id_jornada     | DECIMAL(1,0)      | NOT NULL                                     | Jornada asignada.                                                  |
+-- |                 |                   | CHECK(id_jornada >= 1 AND id_jornada <= 3) | 1=Mañana, 2=Tarde, 3=Noche.                                        |
 -- +-----------------+-----------------------------+-----------------------------------------------+---------------------------------------------------------+
 -- | fec_inicial     | DATE              | NOT NULL                                     | Fecha inicial de la programación.                                  |
 -- +-----------------+-----------------------------+-----------------------------------------------+---------------------------------------------------------+
@@ -3002,7 +3002,7 @@ CREATE TABLE IF NOT EXISTS tab_programacion
     id_fase                 DECIMAL(1,0)                NOT NULL, -- 1=Inducción, 2=Planeación, 3=Análisis, 4= Ejecución, 5=Evaluación
     id_competencia          DECIMAL(8,0)                NOT NULL,
     id_instructor           DECIMAL(10,0)               NOT NULL,
-    ind_jornada             DECIMAL(1,0)                NOT NULL CHECK(ind_jornada >= 1 AND ind_jornada <= 3), -- 1=Mañana / 2=Tarde /3=Noche
+    id_jornada             DECIMAL(1,0)                NOT NULL CHECK(id_jornada >= 1 AND id_jornada <= 3), -- 1=Mañana / 2=Tarde /3=Noche
     fec_inicial             DATE                        NOT NULL,
     fec_final               DATE                        NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),

@@ -1,3 +1,7 @@
+-- *******************************************************
+-- Procedimiento para recalcular los comités de un centro.
+--********************************************************
+
 CREATE OR REPLACE PROCEDURE proc_recalcular_comites_por_centro(p_id_centro DECIMAL(4,0))
 LANGUAGE plpgsql AS $$
 DECLARE

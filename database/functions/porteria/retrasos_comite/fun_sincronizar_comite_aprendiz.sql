@@ -1,5 +1,6 @@
-
-
+-- ***********************************************************
+-- Función para sincronizar los ciclos de comité del aprendiz.
+-- ***********************************************************
 
 CREATE OR REPLACE FUNCTION fun_sincronizar_comite_aprendiz(p_id_aprendiz DECIMAL)
 RETURNS VOID AS $$
