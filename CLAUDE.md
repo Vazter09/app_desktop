@@ -184,8 +184,8 @@ smartcset/
 │   ├── setup_smartcset.sh  ← Instalador completo
 │   ├── bootstrap_modulo_acceso.sql ← Script de bootstrap
 │   ├── schema/             ← Scripts de schema
-│   │   ├── script-BD-SMARTCSET V.1.8.sql   ← ACTIVO (esquema completo SENA)
-│   │   ├── script-BD-SMARTCSET V.1.8.sql.backup ← Respaldo anterior
+│   │   ├── script-BD-SMARTCSET V.1.10.sql   ← ACTIVO (esquema completo SENA)
+│   │   ├── script-BD-SMARTCSET V.1.9.sql    ← Versión anterior, aún presente
 │   │   └── history/        ← Versiones históricas
 │   ├── functions/          ← Funciones PL/pgSQL organizadas por dominio
 │   │   ├── _helpers/       ← Helpers de excepciones (desplegar PRIMERO)
@@ -494,7 +494,7 @@ Un ingreso está "abierto" cuando `fec_salida = fec_ingreso` en `tab_log_ingreso
 Ver `SETUP_AUDIT.md` para el análisis histórico original (V.1.5/V.1.6). Estado actualizado al 2026-06-26:
 
 ### Bug 1: schema desactualizado en setup.sh — ✅ RESUELTO
-El instalador usa `script-BD-SMARTCSET V.1.8.sql` (esquema activo actual).
+El instalador usa `script-BD-SMARTCSET V.1.10.sql` (esquema activo actual, desde el merge de `feat/seguridad` en 2026-07-05).
 
 ### Bug 2: funciones PL/pgSQL ausentes del instalador — ✅ Resuelto en su mayoría (E7)
 - ✅ `acceso/usuarios/fun_validar_login.sql` — agregada a `FUNCS` (E7)
@@ -562,6 +562,24 @@ Al fusionar la rama `feat/seguridad` (blindaje Fase 1, incluye SIEM E11) con `or
 
 **Lección para nuevos módulos con menú propio:** antes de elegir un `id_menu` top-level, verificar contra `SELECT id_menu FROM tab_menus WHERE ind_id_padre='00'` en la BD real — no asumir que un ID de 2 dígitos está libre solo porque no aparece en el propio branch de trabajo.
 
+### Bug 11: schema V.1.10 con múltiples errores de sintaxis que impedían instalación limpia — ✅ RESUELTO (2026-07-05)
+Nunca se había corrido `setup_smartcset.sh` contra una BD completamente vacía desde que el schema activo pasó a ser V.1.10 — los bugs quedaron enmascarados porque las BD reales (local y remota) venían de `pg_restore` de dumps, no del script. Al recrear desde cero la BD del servidor de laboratorio (`192.168.1.71`, no institucional SENA), aparecieron 8 errores en cadena, corregidos en orden:
+1. `CREATE EXTENSION IF NOT EXISTS PG_VECTOR;` — extensión inexistente, duplicaba la línea anterior (`vector`). Eliminada.
+2. `tab_festivos` sin `;` de cierre — rompía el parseo del siguiente `CREATE TABLE`.
+3. FK de `tab_aprendices` referenciaba columna inexistente `id_ficha` (la columna real es `id_ficha_vigente`).
+4. `tab_novedades_academicas`: coma sobrante antes del `)` + FK de `id_causa_novedad` apuntaba a `tab_causas_novedad(id_tipo_novedad)` (columna inexistente en esa tabla; corregido a `id_causa_novedad`).
+5. Tabla `tab_borrados` nunca se creaba pero `fun_act_tabla()` la usa como bitácora de DELETE — agregada.
+6. `INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777)` (dato de prueba de placa genérica) violaba la FK porque `tab_personas` está vacía en instalación limpia — convertido a `INSERT ... SELECT ... WHERE EXISTS (...)` para no bloquear el instalador; se mantiene el dato porque sí se va a implementar más adelante.
+7. 45 `INSERT` de datos semilla (motivos de llamado, tipos/causas de novedad, opciones de productiva, jornadas, tipos de permiso) no incluían `usr_insert`/`fec_insert`, columnas `NOT NULL` — agregados `'seed'` y `CURRENT_TIMESTAMP` a los 45.
+8. Columna `val_datos_origen JSONB` en `tab_log_ingresos` estaba comentada por error (`--    val_datos_origen`); `fun_insert_log_ingreso` la usa — descomentada.
+
+**Verificado end-to-end:** instalador corrido contra `db_smartcset2` en `192.168.1.71` desde cero, exit code 0, 78 tablas, 58 funciones, menú SIEM en `211` (ver Bug 12).
+
+### Bug 12 (evolución del Bug 10): SIEM se trae de `feat/seguridad` como submenú de SGA, no como menú raíz — 2026-07-05
+Al mergear `feat/seguridad` a la rama de trabajo actual `feat/implementacion_MSPI` (que ya tenía el árbol de menús reorganizado en 3 abuelos SGI/SGA/SAA — ver `reorganizacion_menus_tres_abuelos.sql`, posterior a cuando se escribió el Bug 10), SIEM se renumeró de `06`/`0601-0605` (menú raíz) a `211`/`21101-21105` (submenú de SGA, `20`). Nueva migración `database/migrations/add_menu_siem_sga.sql`, agregada al `setup_smartcset.sh` **después** de `reorganizacion_menus_tres_abuelos.sql` (que borra y recrea todo `tab_menus`) y **antes** de `ensure_admin_acceso_total.sql`. El seed viejo `database/seeds/seed_menus_siem.sql` (numeración `06`) fue eliminado — quedaba huérfano y nunca se ejecutaba en el orden correcto.
+
+**Reconocimiento facial excluido intencionalmente:** `feat/seguridad` también traía un módulo de biometría facial (`fun_guardar_biometria_facial`, `fun_identificar_persona_por_rostro`, tabla `tab_biometria_facial`, app desktop Python en `reconocimientio_facial/`, catálogo `tab_metodos_aut` con `id_metodo_aut=4`). Se excluyó por completo a pedido de Anderson — no está en el alcance de esta fase. Ver commit de merge en `feat/implementacion_MSPI` para el detalle completo de qué se trajo y qué no.
+
 ### Deuda técnica adicional
 
 - Modal de ingreso (`porteria-ingreso-modal.js`): auto-apertura en desktop agregada (2026-06-26); antes solo aparecía en salida, no en ingreso
@@ -606,8 +624,8 @@ cp .env.example .env
 ```bash
 # PostgreSQL debe estar corriendo
 bash database/setup_smartcset.sh
-# O usar directamente el schema V.1.8:
-psql -U postgres -d db_smartcset2 -f database/schema/script-BD-SMARTCSET\ V.1.8.sql
+# O usar directamente el schema V.1.10:
+psql -U postgres -d db_smartcset2 -f database/schema/script-BD-SMARTCSET\ V.1.10.sql
 ```
 
 ### 3. Levantar servidor de desarrollo

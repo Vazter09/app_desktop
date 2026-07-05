@@ -1,5 +1,20 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-05] Sesión: Merge feat/seguridad → feat/implementacion_MSPI + reinstalación limpia en servidor de laboratorio
+
+### 🎯 Objetivos Logrados
+- ✅ Creada rama de trabajo `feat/implementacion_MSPI` desde `main` (rama activa a partir de ahora)
+- ✅ Restaurado dump de `db_smartcset2` local contra servidor de laboratorio (`192.168.1.71`, no institucional)
+- ✅ Mergeado `feat/seguridad` → `feat/implementacion_MSPI`: SIEM (renumerado a submenú `211` de SGA), rate limiting de login, hardening de sesiones — **excluyendo intencionalmente** todo el módulo de reconocimiento facial/biometría
+- ✅ Corregidos 8 bugs de sintaxis/datos en `script-BD-SMARTCSET V.1.10.sql` que impedían instalación limpia desde cero (nunca antes probada en esta versión del schema) — ver CLAUDE.md Bug 11
+- ✅ Reinstalación completa verificada en `192.168.1.71`: exit 0, 78 tablas, 58 funciones
+- ✅ Reparado el MCP `codebase-memory-mcp` (binario faltante en el path configurado) y reindexado solo el proyecto `smartcset`
+
+### 📋 Detalle
+Ver `HANDOFF.md`, sección "LO QUE SE HIZO EN LA SESIÓN 2026-07-05", y `CLAUDE.md` Bugs 11 y 12 para el detalle técnico completo.
+
+---
+
 ## [2026-07-02] Sesión: Merge feat/seguridad con origin/main + fix colisión de menús
 
 ### 🎯 Objetivos Logrados

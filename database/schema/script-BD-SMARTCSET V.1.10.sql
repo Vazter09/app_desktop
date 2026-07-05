@@ -109,7 +109,6 @@ DROP DOMAIN IF EXISTS extension;
 -- *****************************
 CREATE EXTENSION IF NOT EXISTS PLPGSQL;
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS PG_VECTOR;
 
 --**********************************************************
 -- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
@@ -444,7 +443,7 @@ CREATE TABLE IF NOT EXISTS tab_festivos
     usr_update              VARCHAR(50)                              CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(fec_festivo)
-)
+);
 
 
 -- TABLA DE MENÚS
@@ -2182,7 +2181,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
---    val_datos_origen        JSONB,
+    val_datos_origen        JSONB,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
     val_observaciones       TEXT,
@@ -2662,7 +2661,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_aprendiz),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_personas(id_persona),
-    FOREIGN KEY(id_ficha)       REFERENCES tab_fichas(id_ficha)
+    FOREIGN KEY(id_ficha_vigente) REFERENCES tab_fichas(id_ficha)
 );
 
 -- Tabla de tipos de permiso que se puede otorgar a las personas (aprendices)
@@ -3171,8 +3170,8 @@ CREATE TABLE IF NOT EXISTS tab_novedades_academicas
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_aprendiz)        REFERENCES tab_aprendices(id_aprendiz),
     FOREIGN KEY(id_tipo_novedad)    REFERENCES tab_tipos_novedad(id_tipo_novedad),
-    FOREIGN KEY(id_causa_novedad)   REFERENCES tab_causas_novedad(id_tipo_novedad),
-    FOREIGN KEY(id_instructor)      REFERENCES tab_instructores(id_instructor),
+    FOREIGN KEY(id_causa_novedad)   REFERENCES tab_causas_novedad(id_causa_novedad),
+    FOREIGN KEY(id_instructor)      REFERENCES tab_instructores(id_instructor)
 );
 
 -- TABLA DE AUDITORÍA
@@ -3200,6 +3199,16 @@ CREATE TABLE IF NOT EXISTS tab_bitacora
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY(id_consecutivo)
+);
+
+-- TABLA DE REGISTROS BORRADOS (usada por fun_act_tabla para auditar DELETE)
+CREATE TABLE IF NOT EXISTS tab_borrados
+(
+    id_consec               BIGINT                      NOT NULL,
+    nom_tabla               VARCHAR                     NOT NULL,
+    usr_borrado             VARCHAR                     NOT NULL,
+    fec_borrado             TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY(id_consec, nom_tabla)
 );
 
 -- PENDIENTE MODIFICAR EL ATRIBUTO JSONB CON LOS REGISTROS CORRESPONDIENTES A LA ACTIVIDAD REALIZADA SOBRE LA TABLA
@@ -3296,67 +3305,72 @@ CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_novedades
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_festivos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 
 -- INSERCIÓN DE TABLA DE MOTIVOS DE LLAMADO DE ATENCIÓN
-INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
-INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');
-INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro');
-INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación');
-INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación');
-INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación');
-INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo');
-INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado');
+INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN TABLA DE TIPOS DE NOVEDADES
-INSERT INTO tab_tipos_novedad VALUES(1,'Deserción');
-INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión');
-INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico');
-INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico');
-INSERT INTO tab_tipos_novedad VALUES(5,'En Formación');
-INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento');
-INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario');
-INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad');
+INSERT INTO tab_tipos_novedad VALUES(1,'Deserción','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(5,'En Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN TABLA DE CAUSAS DE NOVEDADES
-INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida');
+INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida','seed',CURRENT_TIMESTAMP);
 INSERT INTO tab_causas_novedad VALUES(1,'a) En la formación presencial, excepto la complementaria, tener tres (3) días continuos de inasistencia injustificada o acumular cinco (5) días
- no continuos de inasistencia injustificada durante todo el proceso de formación.');
-INSERT INTO tab_causas_novedad VALUES (2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
+ no continuos de inasistencia injustificada durante todo el proceso de formación.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
 por el instructor o por el responsable del grupo o no ingresa a su ambiente virtual de formación (plataforma LMS) durante veinte (20) días consecutivos, sin previa justificación soportada 
-ante el sistema de gestión académico-administrativo');
-INSERT INTO tab_causas_novedad VALUES (3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
-programados para el desarrollo de sus actividades formativas.');
-INSERT INTO tab_causas_novedad VALUES (4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
-la empresa con la que desarrolla la alternativa establecida.');
-INSERT INTO tab_causas_novedad VALUES (5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
-o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.');
-INSERT INTO tab_causas_novedad VALUES (6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ');
+ante el sistema de gestión académico-administrativo','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
+programados para el desarrollo de sus actividades formativas.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
+la empresa con la que desarrolla la alternativa establecida.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
+o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN TABLA DE VEHÍCULOS (PLACA GENÉRICA)
-INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777);
+-- Dato de prueba: solo se inserta si ya existe la persona propietaria (evita
+-- romper instalaciones limpias, donde tab_personas aún está vacía).
+INSERT INTO tab_vehiculos (id_vehiculo, ind_tipovehiculo, id_propietario, usr_insert, fec_insert)
+SELECT 'AAA000', 1, 77777777, 'seed', CURRENT_TIMESTAMP
+WHERE EXISTS (SELECT 1 FROM tab_personas WHERE id_persona = 77777777)
+ON CONFLICT (id_vehiculo) DO NOTHING;
 
 -- INSERCIÓN TABLA DE OPCIONES DE PRODUCTIVA
-INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida');
-INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral');
-INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral');
-INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía');
-INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo');
+INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN EN TABLA DE JORNADAS
-INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
-INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
+INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
-INSERT INTO tab_tipos_permiso VALUES(1,'Consulta Médica',0,3);
-INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
-INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
-INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
-INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
-INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
-INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
-INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
-INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
-INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
-INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
-INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
-INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
+INSERT INTO tab_tipos_permiso VALUES(1,'Consulta Médica',0,3,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0,'seed',CURRENT_TIMESTAMP);

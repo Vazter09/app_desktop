@@ -9,7 +9,10 @@
       "PowerShell(Get-ChildItem *)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Force | ForEach-Object { $_.FullName })",
       "Bash(cat)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(PGPASSWORD='ander123' PGSSLMODE=require psql -h 192.168.1.71 -p 5432 -U postgres -d postgres -c \"DROP DATABASE IF EXISTS db_smartcset2;\")",
+      "Bash(PGSSLMODE=require bash database/setup_smartcset.sh)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

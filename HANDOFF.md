@@ -9,7 +9,7 @@
 
 **Stack tecnológico:**
 - **Backend:** PHP 8+ puro (sin Composer, sin framework)
-- **Base de datos:** PostgreSQL 14+ (V.1.8 del schema — 69 tablas, 49 funciones PL/pgSQL)
+- **Base de datos:** PostgreSQL 14+ (V.1.10 del schema — 78 tablas, 58 funciones PL/pgSQL)
 - **Frontend:** HTML + Bootstrap 5 + Vanilla JS (sin React, sin npm)
 - **Servidor web:** Apache 2.4.58 con HTTPS/TLS
 - **Único administrador:** Anderson
@@ -95,7 +95,7 @@ smartcset/
 │       └── uploads/logos/     ← Logos subidos (.htaccess protege ejecución PHP)
 │
 ├── database/
-│   ├── schema/                ← script-BD-SMARTCSET V.1.8.sql (schema activo)
+│   ├── schema/                ← script-BD-SMARTCSET V.1.10.sql (schema activo)
 │   ├── functions/             ← PL/pgSQL organizadas por dominio
 │   │   ├── _helpers/          ← smartcset_raise.sql (DESPLEGAR PRIMERO)
 │   │   ├── acceso/usuarios/   ← fun_insert/update_tab_usuarios, fun_registrar_intento_login, fun_verificar_bloqueo_ip
@@ -750,6 +750,40 @@ Con el código de `feat/seguridad` sirviendo desde Apache (`https://localhost/sm
 
 ---
 
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-05
+
+### 0. Contexto de rama — dejar de trabajar directo en el snapshot de `main`
+Se creó `feat/implementacion_MSPI` desde `main` (push ya hecho a `KevinBermudezC/smartcset`). **Esta es la rama de trabajo activa a partir de ahora** — no `main`, ni `feat/seguridad`, ni `feat/instructores`. Cualquier sesión nueva debe partir de aquí.
+
+### 1. Restauración de dump institucional a servidor de laboratorio (192.168.1.71)
+Se generó un `.dump` completo de `db_smartcset2` local (`pg_dump` formato plano, 7.8MB) y se restauró contra un servidor de laboratorio casero (`192.168.1.71`, **no** el servidor institucional SENA — Anderson lo describe como una réplica del entorno institucional para pruebas). Requirió: abrir el puerto 5432 en el firewall del servidor, y confirmar credenciales (`postgres`/`ander123`) vía `.env`. `pgvector` ya estaba instalado ahí de antes.
+
+### 2. Merge de `feat/seguridad` → `feat/implementacion_MSPI` (blindaje de seguridad, sin reconocimiento facial)
+`feat/seguridad` (creada 2026-07-02) y `feat/implementacion_MSPI`/`main` habían divergido del mismo ancestro sin volver a mergearse. Se trajo explícitamente a pedido de Anderson:
+- Módulo SIEM completo (5 funciones, 5 vistas, router, CSS) — **renumerado** de menú raíz `06`/`0601-0605` a submenú `211`/`21101-21105` bajo SGA (`20`), porque `feat/seguridad` es anterior a la reorganización de menús en 3 abuelos (SGI/SGA/SAA) que ya tenía `feat/implementacion_MSPI`.
+- Rate limiting de login: `fun_registrar_intento_login`, `fun_verificar_bloqueo_ip`, `tab_intentos_login`.
+- Hardening de sesiones: `session_warning_modal.php` + `smartcset-session-warning.js`.
+- Migraciones de auditoría: `fix_auditoria_app_usuario.sql`, `fix_auditoria_eliminar_wusr.sql`.
+- Documentación de trazabilidad de esa rama: `HANDOFF.md`/`CHANGELOG.md`/`INFORME_AUDITORIA_APP_USUARIO.md` propios (ya fusionados con este archivo), más actualización de la carpeta `Documentacion para implementación de MSPI/`.
+
+**Excluido intencionalmente, a pedido explícito de Anderson:** todo el módulo de reconocimiento facial/biometría que también traía `feat/seguridad` — carpeta `reconocimientio_facial/` (app desktop Python), `fun_guardar_biometria_facial`, `fun_identificar_persona_por_rostro`, `tab_biometria_facial`, catálogo `tab_metodos_aut` con `id_metodo_aut=4` y todo el código dependiente en `parse_captura_service.php` / `fun_registrar_ingreso_manual.sql`. No está en el alcance de esta fase.
+
+**Conflictos de merge (7 reales):** resueltos manteniendo siempre el diseño/UX y la numeración de menús de `feat/implementacion_MSPI` por sobre las versiones más antiguas de `feat/seguridad` (sidebar recursivo de 3 niveles, modales de ingreso/salida, árbol de menús 3-abuelos). Detalle completo en el mensaje del commit de merge.
+
+Commit y push ya hechos a `feat/implementacion_MSPI` en GitHub.
+
+### 3. Bug 11 — schema V.1.10 no instalaba limpio desde cero (✅ RESUELTO, ver CLAUDE.md)
+Al recrear la BD del servidor de laboratorio desde cero con `setup_smartcset.sh`, aparecieron 8 errores en cadena (extensión duplicada inexistente, `;` faltante, 2 FKs mal referenciadas, tabla `tab_borrados` nunca creada, insert de prueba que rompía instalación limpia, 45 inserts semilla sin `usr_insert`/`fec_insert`, columna `val_datos_origen` comentada por error). Todos corregidos directamente en `database/schema/script-BD-SMARTCSET V.1.10.sql`. Ver detalle completo en `CLAUDE.md` Bug 11.
+
+**Verificado:** instalador corrido de punta a punta contra `db_smartcset2` en `192.168.1.71`, exit 0, 78 tablas, 58 funciones, menú SIEM en `211` con sus 5 hijos, usuarios `admin.smart`/`porteria` creados.
+
+### 4. Reparación del MCP `codebase-memory-mcp`
+El binario estaba configurado globalmente (`~/.claude.json`) apuntando a `/home/anderson/smartcset/.mcp/codebase-memory-mcp`, pero el archivo no existía ahí (copiado solo en el proyecto SysMho y en `~/.local/bin/`) — por eso las herramientas nunca cargaban en esta sesión. Se copió el binario al path correcto y se reconectó (`/mcp`). Se borró también el índice cacheado de otro proyecto (SysMho) para dejar solo `smartcset` indexado. Reindexado tras el merge: 6,690 nodos / 8,844 relaciones.
+
+**Estado al cierre:** BD del servidor de laboratorio (`192.168.1.71`) 100% coherente con el código de `feat/implementacion_MSPI`. Pendiente: decidir si se aplican las mismas correcciones de schema (Bug 11) contra la BD local (`localhost`) y si se hace commit separado de esos fixes de schema (son bugs de `main`, no parte del merge de seguridad).
+
+---
+
 ## PRÓXIMOS PASOS (ORDEN RECOMENDADO)
 
 ### Prioridad alta
@@ -882,4 +916,4 @@ PGPASSWORD=ander123 psql -h localhost -U postgres -d db_smartcset2
 
 ---
 
-*Última actualización: 2026-07-02 | Responsable: Anderson | Modelo: Claude Sonnet 5*
+*Última actualización: 2026-07-05 | Rama activa: `feat/implementacion_MSPI` | Responsable: Anderson | Modelo: Claude Sonnet 5*
