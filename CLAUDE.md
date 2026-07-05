@@ -8,6 +8,30 @@ El proyecto está escrito en PHP 8+ puro (sin Composer, sin autoloading PSR-4, s
 
 ---
 
+## 5 Pilares Obligatorios + Estándares de Código
+
+**Cada línea de código debe cumplir:**
+
+1. **Coherencia** — Código consistente, patrones uniformes en todo el proyecto
+2. **Congruencia** — Todo alineado: especificaciones, implementación, documentación
+3. **Funcionalidad** — Features funcionan exactamente como se definen
+4. **Estabilidad** — Cero crashes, manejo robusto de errores
+5. **Seguridad Total** — Cero vulnerabilidades conocidas, defensa en profundidad
+
+**Estándar de código (A partir de 2026-06-25):**
+
+- **PHP**: PSR-12 (indentación 4 espacios, llaves en línea propia para clases/métodos, `camelCase` para métodos, `PascalCase` para clases)
+- **Python** (scripts, tooling): **PEP8 estricto** (línea ≤79 caracteres, `snake_case` para funciones, imports ordenados, espaciado estándar). Validar con `ruff check` antes de commit.
+- **SQL/PostgreSQL**: Convenciones documentadas abajo (prefijos `tab_`, `fun_`, `seq_`, etc.)
+- **JavaScript**: Vanilla JS, camelCase, semicolons opcionales (Bootstrap 5 compatible)
+
+**Aplicación:**
+- Todo código nuevo en `backend/`, `frontend/`, `scripts/`, `database/functions/` debe cumplir estos estándares
+- Refactorings deben alinear código antiguo a los estándares
+- CI/pre-commit puede incluir validación automática (`ruff`, `phpcs`, `sqlformat`)
+
+---
+
 ## Setup rápido de desarrollo
 
 ### Requisitos
@@ -50,19 +74,22 @@ Credenciales de desarrollo tras el setup:
 
 ### 3. Levantar servidor de desarrollo
 
-**Windows (PowerShell):**
-```powershell
-.\tools\start_dev.ps1
-# Abre: http://localhost:8080/
-```
+El entorno local usa **Apache con HTTPS** (no el servidor PHP built-in).
 
-**Linux/macOS (bash):**
+- **URL**: `https://localhost/smartcset/`
+- `http://localhost/` redirige automáticamente a HTTPS
+- Certificado autofirmado — el navegador pide confirmación la primera vez ("Configuración avanzada" → "Acceder a localhost")
+- Configuración Apache: `/etc/apache2/sites-available/smartcset-ssl-local.conf`
+- Copia en el repo: `docs/infraestructura/smartcset-ssl-local.conf`
+- `APP_BASE_PATH=smartcset` en `.env` es obligatorio para que las URLs funcionen bajo `/smartcset/`
+
+Si Apache no está corriendo: `sudo systemctl start apache2`
+
+El servidor PHP built-in (`php -S`) es una alternativa sin HTTPS (dejar `APP_BASE_PATH` vacío):
 ```bash
 bash scripts/dev/start_dev.sh
-# Document root: frontend/web/public — http://localhost:8080/
+# http://localhost:8080/  (sin HTTPS, sin /smartcset/)
 ```
-
-El servidor PHP built-in es suficiente para desarrollo. No se necesita Apache ni Nginx.
 
 ---
 
@@ -70,132 +97,137 @@ El servidor PHP built-in es suficiente para desarrollo. No se necesita Apache ni
 
 ```
 smartcset/
-├── index.php               ← Login principal. Único punto de entrada público.
 ├── .env                    ← Variables de entorno (no commitear)
 ├── .env.example            ← Plantilla de variables de entorno
 ├── CLAUDE.md               ← Este archivo
 ├── AGENTS.md               ← Guía de agentes IA
 ├── SETUP_AUDIT.md          ← Auditoría de bugs en setup_smartcset.sh
 │
-├── css/                    ← 11 archivos CSS por módulo (no usar preprocesadores)
-├── js/                     ← 20 archivos JS por módulo (vanilla JS + Bootstrap 5)
-├── img/                    ← Logo institucional estático (img/logo_empresa.png)
-├── public/
-│   └── uploads/logos/      ← Logos subidos via configuración del sistema
-├── storage/                ← Directorio de almacenamiento general
-├── files/                  ← Archivos subidos por módulos
-│
-├── src/
+├── backend/                ← API y lógica de negocio (PHP)
 │   ├── core/               ← Bootstrap central del sistema
 │   │   ├── prepare.php     ← Conexión PDO + TODOS los prepared statements globales
+│   │   ├── prepare_login.php ← Prepared statements para autenticación
 │   │   ├── config.php      ← Define constantes DB_*, APP_ENV, etc. desde .env
 │   │   ├── EnvLoader.php   ← Lector de .env a $_ENV y constantes
 │   │   ├── AppConfig.php   ← Clase singleton: configuración de BD (tab_config_sistema)
 │   │   ├── ErrorHandler.php ← Traductor SQLSTATE -> mensajes de usuario
 │   │   ├── SecurityMiddleware.php ← Headers HTTP, prevención ataques básicos
-│   │   ├── LogoUpload.php  ← Subida de logo a public/uploads/logos/
+│   │   ├── LogoUpload.php  ← Subida de logo a frontend/web/public/uploads/logos/
 │   │   ├── ConfigSistemaDefaults.php ← Valores por defecto de tab_config_sistema
-│   │   └── helpers.php     ← Funciones globales: getIcon, renderPageFlash, smartcsetProjectAssetHref, etc.
+│   │   ├── helpers.php     ← Funciones globales: getIcon, renderPageFlash, etc.
+│   │   ├── Db.php          ← Clase wrapper de base de datos
+│   │   ├── RouterResponse.php ← Manejo de respuestas HTTP
+│   │   └── lib/
+│   │       └── acceso_sesion.php ← Lógica de sesiones
 │   │
-│   ├── layout/             ← Partials HTML compartidos por todos los módulos
-│   │   ├── head.php        ← <head> con Bootstrap, CSS globales, theme_vars.php
-│   │   ├── sidebar.php     ← Sidebar de navegación dinámico (usa $pdo y $stmt_menu)
-│   │   ├── topbar.php      ← Barra superior con usuario activo
-│   │   ├── footer.php      ← Cierre HTML + JS globales (Bootstrap, smartcset-*.js)
-│   │   ├── theme_vars.php  ← Inyecta CSS custom properties desde AppConfig
-│   │   ├── ui_kit.php      ← Kit UI utilitario
-│   │   └── partials/       ← Subpartials (ej. modal de confirmación)
+│   ├── middleware/         ← Guardias de autenticación
+│   │   ├── require_session.php     ← Requiere sesión autenticada
+│   │   ├── require_admin.php       ← Requiere rol administrador
+│   │   ├── require_registro_session.php ← Requiere sesión del módulo registro
+│   │   └── require_session_or_device.php ← Sesión O dispositivo móvil
 │   │
-│   ├── auth/               ← Autenticación fuera del login principal
-│   │   ├── logout.php      ← Destruye sesión y redirige a index.php
-│   │   ├── recuperar.php   ← Formulario de recuperación de contraseña
-│   │   └── cambiar_clave.php ← Cambio de contraseña autenticado
+│   ├── routers/            ← Endpoints/controllers organizados por dominio
+│   │   ├── auth/v1/        ← Login, logout, recuperar contraseña
+│   │   ├── usuarios/v1/    ← CRUD de usuarios
+│   │   ├── menus/v1/       ← CRUD de menús y permisos
+│   │   ├── admin/v1/       ← Panel administrativo
+│   │   ├── porteria/v1/    ← Ingreso y salida de personas
+│   │   │   ├── _lib/       ← Lógica compartida de portería
+│   │   │   └── prepare.php ← Prepared statements de portería
+│   │   ├── registro/v1/    ← Módulo de registro standalone
+│   │   ├── entradas/v1/    ← CRUD de entradas/puertas
+│   │   └── sesion/v1/      ← Gestión de sesiones
 │   │
-│   ├── menu/               ← CRUD de menús y asignación de permisos
-│   │   ├── menu_principal.php  ← Dashboard post-login (cards con módulos del usuario)
-│   │   ├── menus.php       ← CRUD de tab_menus (solo admin)
-│   │   ├── menu_usuarios.php   ← Asignación de menús por usuario
-│   │   ├── copiar_menu_usuarios.php ← Copiar perfil de menús entre usuarios
-│   │   ├── obtener_menus_usuario.php ← Endpoint AJAX menús de usuario
-│   │   ├── procesar_copiar_perfil.php ← Procesa copia de perfil
-│   │   ├── procesar_perfil.php ← Procesa asignación de menús
-│   │   └── procesar_permiso.php ← Procesa toggle de permiso individual
-│   │
-│   ├── usuarios/           ← CRUD de usuarios del sistema
-│   │   └── usuarios.php    ← CRUD completo (solo admin): lista, crea, edita usuarios
-│   │
-│   ├── admin/
-│   │   ├── configuracion.php   ← Panel de configuración del sistema (colores, logo, módulos)
-│   │   └── personas/           ← Listados admin por tipo + config del módulo registro
-│   │       ├── config.php
-│   │       ├── aprendices/, instructores/, funcionarios/, contratistas/
-│   │       └── lib/            ← listado_index.php, fragmentos AJAX
-│   │
-│   └── modulos/            ← Módulos funcionales del sistema
-│       ├── porteria/       ← Control de acceso físico al centro
-│       │   ├── ingreso/    ← Registro de ingresos
-│       │   │   ├── index.php   ← Vista: formulario + lista ingresos de hoy
-│       │   │   ├── procesar.php ← Procesador POST: llama ingresoRegistrarManual()
-│       │   │   └── consultar.php ← Endpoint AJAX: busca persona por documento
-│       │   ├── salida/     ← Registro de salidas
-│       │   │   ├── index.php   ← Vista: formulario + lista salidas de hoy
-│       │   │   ├── procesar.php ← Procesador POST: llama salidaRegistrarManual()
-│       │   │   └── consultar.php ← Endpoint AJAX: busca ingreso abierto
-│       │   └── lib/        ← Lógica compartida de portería
-│       │       ├── init.php    ← Bootstrap del módulo portería
-│       │       ├── acceso_documento.php ← Normalización de documento (solo dígitos, max 10)
-│       │       ├── acceso_parse_captura.php ← Parser PDF417 cédula colombiana
-│       │       ├── porteria_consulta.php ← Búsqueda persona + ingreso abierto
-│       │       ├── porteria_foto.php ← Guardado de foto en registro
-│       │       ├── porteria_modos_ui.php ← Partial HTML: barra modos escáner/foto
-│       │       ├── ingresos_registro.php ← Función ingresoRegistrarManual()
-│       │       └── salidas_registro.php  ← Función salidaRegistrarManual()
+│   └── services/           ← Lógica de negocio reutilizable
+│       ├── porteria/       ← Servicios de portería (ingreso, salida, etc.)
+│       ├── registro/       ← Servicios de registro de personas
+│       ├── admin/          ← Servicios administrativos
+│       ├── menus/          ← Servicios de menús y permisos
+│       ├── entradas/       ← Servicios de entradas/puertas
+│       └── reportes/       ← Generación de reportes
+│
+├── frontend/               ← UI y presentación (PHP + HTML + CSS + JS)
+│   └── web/
+│       ├── init.php        ← Bootstrap del frontend
 │       │
-│       ├── registro/       ← Módulo de registro standalone de personas
-│       │   ├── index.php   ← Panel de selección de tipo de persona
-│       │   ├── login.php   ← Login standalone (usr_registro / pass_registro_hash)
-│       │   ├── init.php    ← Bootstrap del módulo registro (head, header, footer)
-│       │   ├── ajax_ciudades.php ← AJAX: ciudades por departamento
-│       │   ├── ajax_personas.php ← AJAX: búsqueda de personas
-│       │   ├── forms/      ← Formularios por tipo de persona
-│       │   │   ├── aprendiz.php
-│       │   │   ├── instructor.php
-│       │   │   ├── funcionario.php
-│       │   │   ├── contratista.php
-│       │   │   └── persona.php  ← Formulario genérico de persona
-│       │   └── lib/
-│       │       ├── access.php   ← Control de acceso standalone del módulo
-│       │       ├── catalogos.php ← Funciones: registroGet* (tipos doc, dptos, fichas, etc.)
-│       │       └── personas_list.php ← Funciones de listado de personas
+│       ├── layout/         ← Partials HTML compartidos
+│       │   ├── head.php    ← <head> con Bootstrap, CSS globales, theme_vars.php
+│       │   ├── sidebar.php ← Sidebar de navegación dinámico
+│       │   ├── topbar.php  ← Barra superior con usuario activo
+│       │   ├── footer.php  ← Cierre HTML + JS globales
+│       │   ├── theme_vars.php ← Inyecta CSS custom properties desde AppConfig
+│       │   ├── ui_kit.php  ← Kit UI utilitario
+│       │   ├── components/ ← Componentes HTML reutilizables
+│       │   └── partials/   ← Subpartials (ej. modal de confirmación)
 │       │
-│       └── entradas/       ← CRUD de puertas/entradas del centro
-│           ├── index.php   ← CRUD de tab_entradas_centro
-│           └── init.php    ← Bootstrap del módulo entradas
+│       ├── pages/          ← Vistas/páginas por sección
+│       │   ├── auth/       ← Login, logout, recuperar contraseña
+│       │   ├── menu/       ← Dashboard, menús
+│       │   ├── usuarios/   ← CRUD de usuarios (vista)
+│       │   ├── admin/      ← Panel administrativo
+│       │   ├── alertas/    ← Alertas y notificaciones
+│       │   └── modulos/    ← Módulos funcionales (portería, registro, etc.)
+│       │
+│       └── public/         ← Document root del servidor web
+│           ├── index.php   ← Punto de entrada (router principal)
+│           ├── router.php  ← Enrutador de requests
+│           ├── assets/     ← CSS, JS, imágenes
+│           │   ├── css/    ← Estilos (layout.css, modulos_*, etc.)
+│           │   └── js/     ← Scripts (vanilla JS, sin bundler)
+│           ├── uploads/    ← Directorios de uploads por módulo
+│           │   └── logos/  ← Logos subidos via configuración
+│           ├── tools/      ← Herramientas internas (diagnóstico, etc.)
+│           ├── pages -> ../pages  ← Symlink a páginas
+│           └── routers -> ../../../backend/routers ← Symlink a routers
 │
 ├── database/
-│   ├── setup_smartcset.sh  ← Instalador completo (ver "Bugs conocidos" más abajo para pendientes)
-│   ├── bootstrap_modulo_acceso.sql ← Script de bootstrap del módulo acceso
-│   ├── schema/             ← Scripts de schema por versión
-│   │   ├── script-BD-SMARTCSET V.1.7.sql   ← ACTIVO (usar este)
-│   │   └── history/        ← Versiones históricas (V.1.0 a V.1.3)
+│   ├── setup_smartcset.sh  ← Instalador completo
+│   ├── bootstrap_modulo_acceso.sql ← Script de bootstrap
+│   ├── schema/             ← Scripts de schema
+│   │   ├── script-BD-SMARTCSET V.1.8.sql   ← ACTIVO (esquema completo SENA)
+│   │   ├── script-BD-SMARTCSET V.1.8.sql.backup ← Respaldo anterior
+│   │   └── history/        ← Versiones históricas
 │   ├── functions/          ← Funciones PL/pgSQL organizadas por dominio
 │   │   ├── _helpers/       ← Helpers de excepciones (desplegar PRIMERO)
 │   │   ├── acceso/         ← Menús, usuarios, sesiones
 │   │   ├── porteria/       ← Ingreso y salida de personas
 │   │   ├── config/         ← Configuración del sistema
-│   │   └── carga/          ← Carga de reportes SENA (DF-49, PE-04, juicios)
-│   ├── migrations/         ← 15 migraciones SQL numeradas por propósito
+│   │   └── carga/          ← Carga de reportes SENA
+│   ├── migrations/         ← Migraciones SQL numeradas
 │   └── seeds/              ← Datos iniciales de desarrollo
 │
-├── tools/                  ← Scripts de deploy y diagnóstico
-│   ├── start_dev.ps1       ← Servidor PHP desarrollo (Windows)
-│   ├── setup_db.ps1        ← Setup BD desde PowerShell
-│   ├── deploy_funciones_acceso.ps1  ← Deploy funciones acceso a BD
-│   ├── deploy_funciones_ingresos.ps1 ← Deploy funciones portería a BD
-│   ├── diagnose_bd.php     ← Diagnóstico de conectividad y estado BD
-│   └── setup_production.sh ← Script de instalación en producción
+├── scripts/                ← Scripts de desarrollo y deploy
+│   ├── dev/                ← Scripts de desarrollo
+│   │   └── start_dev.sh    ← Inicia servidor PHP dev en frontend/web/public
+│   ├── deploy/             ← Scripts de deploy
+│   ├── db/                 ← Scripts de BD
+│   ├── infra/              ← Scripts de infraestructura
+│   ├── tools/              ← Herramientas auxiliares
+│   └── test_seguridad/     ← Suite de tests automatizados (Python + unittest)
 │
-└── docs/                   ← Documentación interna del proyecto
+├── test_seguridad/         ← Tests de seguridad (E1-E07)
+│   ├── common.py           ← Helpers compartidos
+│   ├── test_e1_a01_broken_access_control.py
+│   ├── test_e1_a02_cryptographic_failures.py
+│   ├── test_e4_hardening_sesiones.py
+│   ├── test_e6_verificacion_uploads.py
+│   ├── test_e7_correccion_setup.py
+│   └── README.md
+│
+├── mobile/                 ← Apps móviles
+│   └── porteria-app/       ← App portería (React Native, Flutter, etc.)
+│
+├── storage/                ← Almacenamiento de datos
+│   └── porteria/           ← Fotos de portería
+│
+├── docs/                   ← Documentación interna
+│   └── infraestructura/    ← Documentación de infraestructura
+│
+└── Documentacion para implementacion de MSPI/  ← Documentación de seguridad SENA
+    ├── PHASE 0_documentos politicas de tratamiento de datos/
+    ├── FASE 01_Blindaje Técnico Inmediato/
+    ├── MSPI_liniamientos/
+    └── plantillas_gov/
 ```
 
 ---
@@ -225,16 +257,20 @@ smartcset/
 
 **Inclusiones (require_once):**
 ```php
-// Patrón desde src/core/
-require_once('src/core/prepare.php');   // desde raíz del proyecto
+// Patrón desde frontend/web/pages/auth/ (vista):
+require_once __DIR__ . '/../../../backend/core/prepare.php';   // relativo al archivo actual
 
-// Patrón desde src/modulos/porteria/ingreso/
-require_once __DIR__ . '/../lib/init.php';   // relativo al archivo actual
+// Patrón desde backend/routers/porteria/v1/ (endpoint):
+require_once __DIR__ . '/../../../../backend/core/prepare.php';  // cuenta directorios hacia arriba
 
-// Patrón desde src/modulos/porteria/lib/init.php:
-require_once dirname(__DIR__, 3) . '/core/prepare.php';  // cuenta directorios hacia arriba
+// Patrón desde backend/services/porteria/ (servicio):
+require_once __DIR__ . '/../../core/prepare.php';
+
+// Patrón desde frontend/web/layout/ (partial):
+require_once __DIR__ . '/../../../backend/core/prepare.php';
 
 // NUNCA usar paths absolutos del sistema de archivos
+// NUNCA usar require_once('backend/core/prepare.php') — siempre relativo
 ```
 
 **Gestión de sesión:**
@@ -242,7 +278,21 @@ require_once dirname(__DIR__, 3) . '/core/prepare.php';  // cuenta directorios h
 - `$_SESSION['nom_usuario']` — Nombre completo
 - `$_SESSION['ind_usuario']` — booleano: es administrador
 - `$_SESSION['flash_msg']` + `$_SESSION['flash_tipo']` — mensajes flash entre redirects
-- `$_SESSION['registro_authenticated']` — sesión standalone del módulo registro
+- `$_SESSION['registro_authenticated']` — sesión standalone del módulo registro. **Inactiva desde 2026-07-01**: `registroUsaLoginStandalone()` retorna `false`, el módulo usa la sesión principal + menú `0300` como todo lo demás. El código standalone (`registroAuthenticateStandalone()`, `registroLogout()`, `login.php`) sigue en el repo pero inerte — reactivable poniendo ese toggle en `true` si hiciera falta.
+
+**Control de acceso por menú (páginas de módulos):**
+```php
+// Patrón obligatorio para toda página nueva bajo pages/modulos/<algo>/:
+if (!isset($_SESSION['id_usuario'])) {
+    header('Location: ' . smartcsetLoginUrl());
+    exit();
+}
+if (!usuarioTieneMenu($pdo, (string) $_SESSION['id_usuario'], '0XXX')) {
+    http_response_code(403);
+    die('Acceso denegado. No tiene el módulo asignado.');
+}
+```
+`usuarioTieneMenu()` (en `backend/core/helpers.php`) es la única función que valida contra `tab_menu_usuarios` a nivel de página — los administradores pasan siempre (bypass). **No basta con `isset($_SESSION['id_usuario'])`**: eso solo verifica que hay sesión, no que el usuario tenga ese menú específico asignado. `obtenerMenusUsuario()` es solo para pintar el sidebar, no es control de acceso — ver Bug 7 más abajo.
 
 **Flujo de autenticación:**
 1. `index.php` ejecuta POST → `prepare.php` ya tiene `$stmt_login` preparado
@@ -270,13 +320,19 @@ renderPageFlash($w_mensaje, $w_tipo_alerta);
 
 **Rutas de assets (CSS/JS):**
 ```php
-// Desde cualquier página PHP, calcular el prefijo correcto hacia la raíz del proyecto:
+// Desde cualquier página PHP, calcular el prefijo correcto hacia frontend/web/public/assets/:
 $smartcset_asset_href = smartcsetProjectAssetHref();
-// Resultado: '../../' para src/modulos/porteria/ingreso/, '../' para src/menu/, etc.
+// Resultado: depende de la profundidad del archivo actual
+// - Desde frontend/web/pages/: '../../public/assets/'
+// - Desde backend/routers/: '../../../frontend/web/public/assets/'
 
-// Uso:
-echo $smartcset_asset_href . 'css/modulos_ingresos.css';
-echo $smartcset_asset_href . 'js/ingresos.js';
+// Uso en HTML/PHP:
+echo '<link rel="stylesheet" href="' . $smartcset_asset_href . 'css/layout.css">';
+echo '<script src="' . $smartcset_asset_href . 'js/common.js"></script>';
+echo '<img src="' . $smartcset_asset_href . 'img/logo.png">';
+
+// O directamente desde vistas frontend/web/:
+echo '<link rel="stylesheet" href="public/assets/css/layout.css">';
 ```
 
 ### SQL / PostgreSQL
@@ -295,6 +351,11 @@ CREATE OR REPLACE FUNCTION fun_nombre_accion(
     wparam1  tab_tabla.columna%TYPE,
     wparam2  TEXT DEFAULT NULL
 ) RETURNS TEXT AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     -- 1. Validaciones con smartcset_raise_validacion()
     -- 2. Reglas de negocio con smartcset_raise_negocio()
@@ -302,10 +363,19 @@ BEGIN
     RETURN 'OK';  -- o RETURN id_nuevo;
 EXCEPTION
     WHEN SQLSTATE 'P0001' THEN RAISE;
-    WHEN OTHERS THEN PERFORM smartcset_handle_sql_error();
+    WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;
 ```
+> **IMPORTANTE:** `GET STACKED DIAGNOSTICS` solo es válido dentro del bloque `EXCEPTION` del mismo
+> subprograma donde ocurrió el error. Nunca llamar `smartcset_handle_sql_error()` sin argumentos —
+> la función necesita recibir los diagnósticos capturados por el bloque EXCEPTION llamante.
 
 **Errores de negocio desde PL/pgSQL:**
 - Usar `PERFORM smartcset_raise_validacion('Mensaje al usuario.')` para datos inválidos
@@ -340,11 +410,14 @@ Todas las tablas operativas tienen columnas `usr_insert`, `fec_insert`, `usr_upd
 
 ### Conectar desde PHP
 
-La conexión PDO se crea en `src/core/prepare.php` y está disponible como variable global `$pdo` en cualquier script que incluya ese archivo. No crear conexiones adicionales.
+La conexión PDO se crea en `backend/core/prepare.php` y está disponible como variable global `$pdo` en cualquier script que incluya ese archivo. No crear conexiones adicionales.
 
 ```php
-// En cualquier módulo que ya hizo require_once de prepare.php o init.php:
-$stmt = $pdo->prepare("SELECT ... FROM tab_personas WHERE id_persona = ?::NUMERIC");
+// Desde frontend/web/pages/auth/login.php:
+require_once __DIR__ . '/../../../backend/core/prepare.php';
+
+// Ahora $pdo está disponible:
+$stmt = $pdo->prepare("SELECT * FROM tab_personas WHERE id_persona = ?::NUMERIC");
 $stmt->execute([$id]);
 $row = $stmt->fetch();
 ```
@@ -374,7 +447,7 @@ psql -h localhost -U postgres -d db_smartcset -f database/functions/porteria/fun
 
 5. Agregar el archivo al array `FUNCS` en `database/setup_smartcset.sh` para que próximas instalaciones lo incluyan
 
-6. Si la función es llamada desde PHP, agregar el prepared statement a `src/core/prepare.php`
+6. Si la función es llamada desde PHP, agregar el prepared statement a `backend/core/prepare.php`
 
 ### Cómo crear una migración
 
@@ -418,10 +491,10 @@ Un ingreso está "abierto" cuando `fec_salida = fec_ingreso` en `tab_log_ingreso
 
 ## Bugs conocidos / deuda técnica
 
-Ver `SETUP_AUDIT.md` para el análisis histórico original (V.1.5/V.1.6). Estado actualizado al 2026-06-13:
+Ver `SETUP_AUDIT.md` para el análisis histórico original (V.1.5/V.1.6). Estado actualizado al 2026-06-26:
 
 ### Bug 1: schema desactualizado en setup.sh — ✅ RESUELTO
-El instalador usa `script-BD-SMARTCSET V.1.7.sql` (esquema activo actual).
+El instalador usa `script-BD-SMARTCSET V.1.8.sql` (esquema activo actual).
 
 ### Bug 2: funciones PL/pgSQL ausentes del instalador — ✅ Resuelto en su mayoría (E7)
 - ✅ `acceso/usuarios/fun_validar_login.sql` — agregada a `FUNCS` (E7)
@@ -450,10 +523,50 @@ funcional. Ver
 ### Bug 4: Funciones de carga Excel SENA no incluidas
 `fun_proceso_df49.sql`, `fun_proceso_pe04.sql`, `fun_proceso_juicios.sql` — probablemente omisión intencional; desplegar manualmente si el módulo de carga está activo.
 
+### Bug 5: `seq_log_ingresos` ausente del schema — ✅ RESUELTO (2026-06-26)
+La secuencia no estaba en `script-BD-SMARTCSET V.1.8.sql`. Se agregaron los 3 bloques necesarios al schema (`CREATE SEQUENCE`, `ALTER SEQUENCE OWNED BY`, `ALTER TABLE DEFAULT`) y se desplegó en el servidor remoto (10.5.213.111). El instalador `setup_smartcset.sh` ya tenía la línea de creación.
+
+### Bug 6: `smartcset_handle_sql_error()` — patrón viejo — ✅ RESUELTO (2026-06-26)
+La versión original (sin argumentos) usaba `GET STACKED DIAGNOSTICS` directamente en su cuerpo, lo que PostgreSQL prohíbe fuera del bloque `EXCEPTION` del mismo subprograma. Causaba crash al registrar ingresos.
+
+**Todas las funciones migradas al patrón 4-arg y desplegadas en remoto (34 total):**
+- `_helpers/smartcset_raise.sql` — versión 4-arg activa, zero-arg eliminada
+- `porteria/` — 7 funciones (incluye `fun_insert_log_ingreso`, `fun_registrar_ingreso_manual`, `fun_upsert_persona_visitante`)
+- `acceso/usuarios/` — 8 funciones
+- `acceso/sesiones/` — 5 funciones
+- `acceso/menus/` — 3 funciones
+- `acceso/entradas/` — 2 funciones
+- `config/` — 3 funciones
+- `registro/` — 5 funciones
+- `actualizar_datos/` — 1 función
+
+Verificación: `SELECT proname FROM pg_proc WHERE prosrc LIKE '%smartcset_handle_sql_error()%'` devuelve 0 filas.
+
+### Bug 7: Control de acceso solo verificaba sesión, no menú asignado — ✅ RESUELTO (2026-07-01)
+Las páginas de SIEM (`pages/modulos/siem/*/index.php`) y del módulo registro solo comprobaban `isset($_SESSION['id_usuario'])` — cualquier usuario logueado (sin importar sus menús) podía acceder a cualquier módulo por URL directa. El sistema de menús (`tab_menu_usuarios`) solo controlaba qué aparecía en el sidebar, no el acceso real a la página. Verificado con datos reales antes del fix: `porteria` (sin menú SIEM asignado) obtenía HTTP 200 en `siem/index.php`.
+
+**Fix:** nueva función `usuarioTieneMenu($pdo, $idUsuario, $idMenu)` en `backend/core/helpers.php` (admin = bypass, resto = valida `tab_menu_usuarios`), aplicada a las 5 páginas de SIEM (`0601`-`0605`) y al módulo registro (`0300`). Ver también Bug 8.
+
+### Bug 8: Módulo registro con login standalone compartido — ✅ RESUELTO (2026-07-01)
+El módulo registro (`frontend/web/pages/modulos/registro/`) tenía su propio login separado de la sesión principal, con **una sola credencial compartida** para todo el módulo (`tab_config_sistema.usr_registro`/`pass_registro_hash`) — no había forma de saber qué persona específica usó el módulo. Además, aunque el código intentaba grabar `usr_insert = wusr` explícitamente en 6 funciones PL/pgSQL (`fun_registrar_persona`, `fun_registrar_aprendiz`, `fun_registrar_instructor`, `fun_registrar_funcionario`, `fun_registrar_contratista`, `fun_actualizar_aprendiz`), el trigger `tri_act_tabla` (ver el fix de auditoría `app.usuario` más arriba) lo sobreescribía siempre con `CURRENT_USER = postgres` — ese `wusr` nunca llegaba a guardarse. Confirmado con datos: 7,381 filas en `tab_personas` con `usr_insert = 'postgres'`, 0 con algún usuario de registro.
+
+**Fix:** `registroUsaLoginStandalone()` (en `backend/services/registro/access.php`, ya existía como toggle a medio implementar) ahora retorna `false`. El módulo usa `$_SESSION['id_usuario']` + `usuarioTieneMenu(..., '0300')` como el resto de la app, y `registroDisplayUsername()` devuelve el usuario real de la sesión — que junto con el `SET app.usuario` agregado a `backend/middleware/require_registro_session.php` hace que la auditoría (`usr_insert`/`usr_update`) muestre a la persona real, no `postgres` ni el usuario compartido. Verificado con escritura real: `usr_insert = dora.castro`. El parámetro `wusr` en las 6 funciones PL/pgSQL queda como código muerto (inofensivo, no se limpió).
+
+### Bug 9: Rutas rotas en 3 endpoints del módulo registro — ✅ RESUELTO (2026-07-01)
+`backend/routers/registro/v1/forms/guardar.php`, `aprendiz/buscar.php` y `personas/listar.php` usaban `dirname(__DIR__, 3)` para llegar a `backend/core/prepare.php`, pero estos 3 archivos están un nivel más anidados que `ciudades.php`/`login.php` (que sí están a la profundidad correcta con 3). Los 3 endpoints devolvían HTTP 500 en cualquier request — nunca funcionaron. Encontrado al probar el fix del Bug 8 (antes quedaba enmascarado porque el login standalone bloqueaba el acceso antes de llegar a este bug). Corregido a `dirname(__DIR__, 4)` en los 3 archivos.
+
+### Bug 10: Colisión de `id_menu` entre SIEM (06/0601) y módulo de instructores — ✅ RESUELTO (2026-07-02)
+Al fusionar la rama `feat/seguridad` (blindaje Fase 1, incluye SIEM E11) con `origin/main` (incluye `Feat/instructores #10` de Kevin), ambos módulos habían usado independientemente `id_menu = '06'` como top-level y `'0601'` como hijo — colisión semántica que un merge de texto no puede detectar porque ambos archivos SQL son válidos por separado. `frontend/web/layout/sidebar.php` traía código del módulo de instructores que sobreescribe a la fuerza el label de `06`/`0601` a "Asistencia"/"Por carrera" para administradores, haciendo que las páginas de SIEM (dueño real de esos IDs en `tab_menus`) aparecieran mal etiquetadas. La migración `add_menu_instructor_asistencia.sql` usaba `ON CONFLICT (id_menu) DO UPDATE` — de haber corrido contra una BD con SIEM ya desplegado, habría sobreescrito silenciosamente los registros de menú de SIEM.
+
+**Fix:** renumerado el módulo de instructores de `06/0601` a `07/0701` (IDs verificados libres) en `sidebar.php`, `backend/services/instructor/asistencia_service.php`, `frontend/web/pages/modulos/instructor/fichas/index.php`, `fun_crear_usuarios_instructores.sql`, `revoke_instructores_menu_personas.sql` y `add_menu_instructor_asistencia.sql`. SIEM conserva `06/0601` sin cambios.
+
+**Lección para nuevos módulos con menú propio:** antes de elegir un `id_menu` top-level, verificar contra `SELECT id_menu FROM tab_menus WHERE ind_id_padre='00'` en la BD real — no asumir que un ID de 2 dígitos está libre solo porque no aparece en el propio branch de trabajo.
+
 ### Deuda técnica adicional
 
-- `src/modulos/registro/forms/` hace INSERTs SQL directos en lugar de llamar funciones PL/pgSQL — inconsistente con el patrón del resto del sistema
-- El módulo de registro carece de statement preparado en `prepare.php` porque usa SQL directo en los formularios
+- Modal de ingreso (`porteria-ingreso-modal.js`): auto-apertura en desktop agregada (2026-06-26); antes solo aparecía en salida, no en ingreso
+- Modal de salida (`porteria-salida-modal.js`): el botón final usaba `form.submit()` (no dispara el evento `submit`, nunca llamaba al AJAX real) — ✅ RESUELTO (2026-07-01), ahora llama directo a `SmartcsetSalidaRouter.registrar()`
+- ~~Módulo registro hace SQL directo~~ — **nota desactualizada, ya no aplica.** El módulo usa prepared statements + funciones PL/pgSQL (`fun_registrar_*`) centralizadas en `backend/core/prepare.php`, igual que el resto del sistema. Ver Bug 8 y 9 para lo que sí se arregló ahí.
 
 ---
 
@@ -465,38 +578,55 @@ funcional. Ver
 - **No crear conexiones PDO adicionales.** Usar la conexión `$pdo` de `prepare.php`.
 - **No usar variables superglobales sin sanear.** Siempre `htmlspecialchars()` al hacer echo, y prepared statements para SQL.
 - **No saltarse el patrón de prepared statements.** Nunca concatenar input de usuario en SQL, ni siquiera con `intval()`.
-- **No agregar lógica de negocio en las vistas (index.php).** Las vistas deben leer variables ya preparadas; la lógica va en `procesar.php` o en `lib/`.
-- **No codear colores corporativos directamente en CSS/HTML.** Usar las variables CSS `var(--v-oscuro)`, `var(--v-oliva)`, o las variables del sistema de temas.
-- **No crear nuevas tablas sin migración SQL.** Cualquier cambio de schema va en `database/migrations/`.
-- **No desplegar funciones PL/pgSQL sin actualizar el array FUNCS de setup_smartcset.sh.**
-- **No olvidar el EXCEPTION block** en funciones PL/pgSQL nuevas: siempre re-lanzar P0001 y llamar `smartcset_handle_sql_error()` para OTHERS.
+- **No agregar lógica de negocio en las vistas (frontend/web/pages/).** Las vistas deben leer variables ya preparadas; la lógica va en `backend/routers/` o en `backend/services/`.
+- **No codear colores corporativos directamente en CSS/HTML.** Usar las variables CSS `var(--v-oscuro)`, `var(--v-oliva)`, o las variables del sistema de temas desde `frontend/web/layout/theme_vars.php`.
+- **No crear nuevas tablas sin migración SQL.** Cualquier cambio de schema va en `database/migrations/` o en `database/schema/`.
+- **No desplegar funciones PL/pgSQL sin actualizar el array FUNCS de `database/setup_smartcset.sh`.**
+- **No olvidar el EXCEPTION block** en funciones PL/pgSQL nuevas: siempre re-lanzar P0001 y llamar `smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint)` para OTHERS — nunca sin argumentos. Los 4 valores se capturan con `GET STACKED DIAGNOSTICS` dentro del mismo bloque EXCEPTION.
 - **No commitear `.env`.** Está en `.gitignore`; usar `.env.example` para documentar variables.
-- **No usar `exit` dentro de funciones de librería** salvo en `registroRequireAccess()` y similares guardianes de acceso que son parte del contrato de la función.
+- **No usar `exit` dentro de funciones de librería** salvo en middleware y guardianes de acceso que son parte del contrato de la función.
 - **No confundir `fecha_insert` con `fec_insert`.** El proyecto usa `fec_` como prefijo consistentemente.
-- **No cambiar el tipo de retorno de funciones PL/pgSQL sin actualizar los statements de PHP.** Si una función retornaba `TEXT` y ahora retorna `VOID`, el `fetchColumn()` fallará.
+- **No cambiar el tipo de retorno de funciones PL/pgSQL sin actualizar los statements de `backend/core/prepare.php`.** Si una función retornaba `TEXT` y ahora retorna `VOID`, el `fetchColumn()` fallará.
 - **No usar `$pdo->lastInsertId()` para sequences.** PostgreSQL no lo soporta; usar el `RETURNING` de la función PL/pgSQL.
 
 ---
 
 ## Cómo correr el proyecto localmente (paso a paso completo)
 
-```powershell
-# 1. Ubicarse en el directorio del proyecto
-cd C:\ruta\a\smartcset
-
-# 2. Configurar variables de entorno
-Copy-Item .env.example .env
+### 1. Configurar variables de entorno
+```bash
+cp .env.example .env
 # Editar .env con las credenciales de PostgreSQL locales
-
-# 3. Instalar la BD (requiere psql en PATH y PostgreSQL corriendo)
-bash scripts/dev/start_dev.sh
-# Abre: http://localhost:8080/
-# Login: admin.smart / AdminSmart2026!
+# DB_NAME=db_smartcset2
+# DB_USER=postgres
+# DB_PASS=ander123
 ```
 
-Si PostgreSQL no tiene `psql` en PATH en Windows, agregar el bin de PostgreSQL:
-```powershell
-$env:PATH += ";C:\Program Files\PostgreSQL\14\bin"
+### 2. Instalar la base de datos
+```bash
+# PostgreSQL debe estar corriendo
+bash database/setup_smartcset.sh
+# O usar directamente el schema V.1.8:
+psql -U postgres -d db_smartcset2 -f database/schema/script-BD-SMARTCSET\ V.1.8.sql
 ```
 
-Tras el login exitoso, la sesión redirige a `src/menu/menu_principal.php` que muestra un dashboard con las tarjetas de módulos asignados al usuario.
+### 3. Levantar servidor de desarrollo
+
+Apache debe estar corriendo (en Linux ya inicia con el sistema):
+```bash
+sudo systemctl start apache2
+```
+
+### 4. Acceder al sistema
+- **URL**: `https://localhost/smartcset/`
+- **Usuario admin**: `admin.smart` / `AdminSmart2026!`
+- **Usuario portería**: `porteria` / `Porteria2026!`
+
+### Notas importantes
+- El document root es `frontend/web/public/` (servido vía `Alias /smartcset` en Apache)
+- El punto de entrada es `frontend/web/public/index.php`
+- Los symlinks `frontend/web/public/pages` → `../pages` y `frontend/web/public/routers` → `../../../backend/routers` son obligatorios — sin ellos las páginas y los endpoints dan 404
+- `APP_BASE_PATH=smartcset` en `.env` es obligatorio con Apache bajo `/smartcset/`
+- Todos los includes/requires deben ser relativos (nunca paths absolutos)
+
+Tras el login exitoso, la sesión redirige a `/smartcset/pages/menu/menu_principal.php`.

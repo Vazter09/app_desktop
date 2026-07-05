@@ -1,4 +1,5 @@
 -- Proceso atómico: visitante + ingreso manual (portería).
+-- La auditoría la gestiona el trigger fun_act_tabla() a través de app.usuario.
 CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wid_persona        tab_personas.id_persona%TYPE,
     wid_tipo_docum     tab_personas.id_tipo_docum%TYPE,
@@ -7,7 +8,6 @@ CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wape_persona       tab_personas.ape_persona%TYPE,
     wid_entrada_centro tab_log_ingresos.id_entrada_centro%TYPE,
     wval_observaciones tab_log_ingresos.val_observaciones%TYPE,
-    wusr               tab_usuarios.id_usuario%TYPE,
     wid_metodo_aut     tab_log_ingresos.id_metodo_aut%TYPE DEFAULT 1,
     wcaptura_pdf417    BOOLEAN DEFAULT FALSE
 ) RETURNS INTEGER AS $$
@@ -44,7 +44,7 @@ BEGIN
     END IF;
 
     PERFORM fun_upsert_persona_visitante(
-        wid_persona, wid_tipo_docum, wid_tipo_persona, wnom_persona, wape_persona, wusr
+        wid_persona, wid_tipo_docum, wid_tipo_persona, wnom_persona, wape_persona
     );
 
     wjson_origen := jsonb_build_object(
@@ -63,18 +63,16 @@ BEGIN
         wid_metodo_aut,
         wid_entrada_centro,
         wjson_origen,
-        NULLIF(TRIM(wval_observaciones), ''),
-        wusr
+        NULLIF(TRIM(wval_observaciones), '')
     );
 
-    PERFORM fun_update_persona_tras_ingreso(wid_persona, wusr);
+    PERFORM fun_update_persona_tras_ingreso(wid_persona);
 
     -- Aprendiz (id_tipo_persona = 2): registrar asistencia / retardo si aplica.
     IF wid_tipo_persona = 2 THEN
         PERFORM fun_verify_retardo_aprendiz(
             wid_persona,
-            CURRENT_TIMESTAMP,
-            wusr
+            CURRENT_TIMESTAMP
         );
     END IF;
 

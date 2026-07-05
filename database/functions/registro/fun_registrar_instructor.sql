@@ -28,6 +28,10 @@ CREATE OR REPLACE FUNCTION fun_registrar_instructor(
 ) RETURNS TEXT AS $$
 DECLARE
     wid_tipo_instructor CONSTANT DECIMAL(2,0) := 3;
+    w_exc_state         TEXT;
+    w_exc_msg           TEXT;
+    w_exc_detail        TEXT;
+    w_exc_hint          TEXT;
 BEGIN
     IF wid_persona IS NULL OR wid_persona <= 20000000 THEN
         PERFORM smartcset_raise_validacion(
@@ -205,6 +209,11 @@ EXCEPTION
     WHEN unique_violation THEN
         PERFORM smartcset_raise_negocio('Ya existe un registro con esos datos.');
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

@@ -79,6 +79,10 @@ define(
     filter_var(EnvLoader::get('SESION_TRUST_PROXY', '0'), FILTER_VALIDATE_BOOLEAN)
 );
 
+// Rate limiting de login (E3 — FASE 1)
+define('LOGIN_MAX_INTENTOS', max(1, (int) EnvLoader::get('LOGIN_MAX_INTENTOS', '5')));
+define('LOGIN_VENTANA_MINUTOS', max(1, (int) EnvLoader::get('LOGIN_VENTANA_MINUTOS', '15')));
+
 // Notación para variables globales
 $w_error_db = "Error de conexión: ";
 

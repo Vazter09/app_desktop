@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/init.php';
 
-registroRequireAccess();
+registroRequireAccess($pdo);
 
 if (isset($_GET['logout'])) {
     registroLogout();

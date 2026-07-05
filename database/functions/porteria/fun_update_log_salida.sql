@@ -1,14 +1,18 @@
 -- Registra la salida en un ingreso abierto (fec_salida = fec_ingreso).
 -- Cierra con fec_salida estrictamente posterior a fec_ingreso para no dejar visitas fantasma.
+-- La auditoría (usr_update) la gestiona el trigger fun_act_tabla().
 CREATE OR REPLACE FUNCTION fun_update_log_salida(
     wid_ingreso         tab_log_ingresos.id_ingreso%TYPE,
-    wval_observaciones  tab_log_ingresos.val_observaciones%TYPE,
-    wusr                tab_usuarios.id_usuario%TYPE
+    wval_observaciones  tab_log_ingresos.val_observaciones%TYPE
 ) RETURNS INTEGER AS $$
 DECLARE
-    wts_salida  TIMESTAMP WITHOUT TIME ZONE;
-    wts_ingreso TIMESTAMP WITHOUT TIME ZONE;
-    wrows       INTEGER;
+    wts_salida   TIMESTAMP WITHOUT TIME ZONE;
+    wts_ingreso  TIMESTAMP WITHOUT TIME ZONE;
+    wrows        INTEGER;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     SELECT fec_ingreso
       INTO wts_ingreso
@@ -36,9 +40,7 @@ BEGIN
                     ELSE TRIM(val_observaciones) || ' | Salida: ' || TRIM(wval_observaciones)
                 END
             ELSE val_observaciones
-        END,
-        usr_update = wusr,
-        fec_update = wts_salida
+        END
     WHERE id_ingreso = wid_ingreso
       AND fec_salida = fec_ingreso;
 
@@ -64,6 +66,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

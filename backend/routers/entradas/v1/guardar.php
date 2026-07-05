@@ -35,8 +35,6 @@ if (!is_array($json)) {
     $json = $_POST;
 }
 
-$usrAudit = (string) $_SESSION['id_usuario'];
-
 try {
     global $stmt_fun_upsert_entrada;
 
@@ -46,7 +44,7 @@ try {
     $nombre = trim((string) ($json['nombre'] ?? $json['txt_nom_entrada'] ?? ''));
     [$centro, $sede] = entradasParseSedeSeleccionada((string) ($json['sel_sede'] ?? ''));
 
-    $codigo = entradasGuardar($stmt_fun_upsert_entrada, $id, $nombre, $centro, $sede, $usrAudit);
+    $codigo = entradasGuardar($stmt_fun_upsert_entrada, $id, $nombre, $centro, $sede);
     RouterResponse::ok([
         'message' => $codigo !== '' ? "Entrada {$codigo} guardada correctamente." : 'Entrada guardada correctamente.',
         'codigo' => $codigo,

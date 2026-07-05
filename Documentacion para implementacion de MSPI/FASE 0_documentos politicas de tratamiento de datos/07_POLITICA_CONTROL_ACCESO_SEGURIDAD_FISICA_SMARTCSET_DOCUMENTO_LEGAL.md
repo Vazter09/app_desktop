@@ -116,7 +116,7 @@ SmartCSET implementa un modelo **RBAC de dos niveles con granularidad de menús*
 | **Usuario operativo**         | `ind_usuario = FALSE` en `tab_usuarios`. Accede solo a los menús asignados en `tab_menu_usuarios` para su cuenta específica                               | Personal de portería, operadores de registro, coordinadores con acceso limitado                            |
 | **Administrador del sistema** | `ind_usuario = TRUE` en `tab_usuarios`. Accede a todos los módulos del sistema, incluyendo gestión de usuarios, configuración, menús y reportes avanzados | Administrador técnico del sistema (Equipo de Desarrollo - SmartCSET); en producción, máximo 1-4 personas |
 
-La asignación de menús es **individual**: cada usuario operativo tiene exactamente los menús que necesita para su función, y ninguno más. El módulo `src/menu/menu_usuarios.php` permite al Administrador asignar, revocar y copiar perfiles de menú entre usuarios.
+La asignación de menús es **individual**: cada usuario operativo tiene exactamente los menús que necesita para su función, y ninguno más. El módulo `backend/routers/menus/v1/menu_usuarios.php` permite al Administrador asignar, revocar y copiar perfiles de menú entre usuarios.
 
 ### 5.2 Proceso de autenticación
 

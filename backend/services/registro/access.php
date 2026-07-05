@@ -8,8 +8,9 @@ function registroModuloHabilitado(): bool
 
 function registroUsaLoginStandalone(): bool
 {
-    // El módulo de registro opera exclusivamente con login propio (standalone).
-    return true;
+    // El módulo de registro usa la sesión principal + menú '0300' asignado por el admin,
+    // igual que el resto de módulos (portería, SIEM, usuarios...).
+    return false;
 }
 
 function registroTieneSesionPrincipal(): bool
@@ -57,13 +58,26 @@ function registroMenuUrl(): string
     return smartcsetUrl('/pages/menu/menu_principal.php');
 }
 
-function registroRequireAccess(): void
+function registroRequireAccess(PDO $pdo): void
 {
     registroRequireModuloHabilitado();
 
-    if (!registroTieneSesionStandalone()) {
-        header('Location: ' . registroLoginUrl());
+    if (registroUsaLoginStandalone()) {
+        if (!registroTieneSesionStandalone()) {
+            header('Location: ' . registroLoginUrl());
+            exit;
+        }
+        return;
+    }
+
+    if (!registroTieneSesionPrincipal()) {
+        header('Location: ' . registroMainLoginUrl());
         exit;
+    }
+
+    if (!usuarioTieneMenu($pdo, (string) $_SESSION['id_usuario'], '0300')) {
+        http_response_code(403);
+        die('Acceso denegado. No tiene el módulo de registro asignado.');
     }
 }
 
@@ -99,8 +113,11 @@ function registroLogout(): void
 
 function registroDisplayUsername(): string
 {
-    if (registroTieneSesionStandalone()) {
-        return (string) ($_SESSION['registro_username'] ?? 'registro');
+    if (registroUsaLoginStandalone()) {
+        return registroTieneSesionStandalone()
+            ? (string) ($_SESSION['registro_username'] ?? 'registro')
+            : 'registro';
     }
-    return 'registro';
+
+    return (string) ($_SESSION['id_usuario'] ?? 'registro');
 }

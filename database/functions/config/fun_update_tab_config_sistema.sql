@@ -1,3 +1,4 @@
+-- La auditoría (usr_update) la gestiona el trigger fun_act_tabla().
 CREATE OR REPLACE FUNCTION fun_update_tab_config_sistema(
     wind_modulo_registro           BOOLEAN,
     wind_login_registro_standalone BOOLEAN,
@@ -26,9 +27,13 @@ CREATE OR REPLACE FUNCTION fun_update_tab_config_sistema(
     wtheme_light_text_primary      VARCHAR,
     wtheme_light_text_muted        VARCHAR,
     wusr_registro                  VARCHAR,
-    wpass_registro_hash            VARCHAR,
-    wusr_update                    VARCHAR
+    wpass_registro_hash            VARCHAR
 ) RETURNS TEXT AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wcolor_primario !~ '^#[0-9A-Fa-f]{6}$' OR wcolor_secundario !~ '^#[0-9A-Fa-f]{6}$' THEN
         PERFORM smartcset_raise_validacion('Los colores primario y secundario deben ser hex de 6 dígitos (#RRGGBB).');
@@ -69,9 +74,7 @@ BEGIN
         pass_registro_hash            = CASE
             WHEN wpass_registro_hash IS NULL OR TRIM(wpass_registro_hash) = '' THEN pass_registro_hash
             ELSE wpass_registro_hash
-        END,
-        usr_update                    = wusr_update,
-        fec_update                    = NOW()
+        END
     WHERE id_config = 1;
 
     IF NOT FOUND THEN
@@ -83,6 +86,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

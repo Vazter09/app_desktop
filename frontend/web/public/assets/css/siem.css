@@ -1,0 +1,149 @@
+/* =====================================================
+   SIEM — Mini SIEM de Seguridad SmartCSET
+   Usa variables de theme_vars.php: var(--v-oscuro), var(--v-oliva),
+   var(--bg-card), var(--text-main), var(--surface-border), etc.
+   ===================================================== */
+
+/* --- KPI Cards --- */
+.siem-kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.5rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    cursor: default;
+}
+
+.siem-kpi-card:hover {
+    border-color: var(--v-oliva);
+    box-shadow: 0 0 0 1px var(--v-oliva), 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.siem-kpi-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.siem-kpi-value {
+    font-size: 2.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+    line-height: 1.1;
+}
+
+.siem-kpi-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted, #8899aa);
+}
+
+/* --- Tablas SIEM --- */
+.table-siem {
+    font-size: 0.83rem;
+}
+
+.table-siem td,
+.table-siem th {
+    vertical-align: middle;
+    padding: 0.45rem 0.65rem;
+}
+
+.table-siem .font-monospace {
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+}
+
+/* --- Timeline actividad física --- */
+.siem-timeline-item {
+    border-left: 3px solid var(--surface-border);
+    padding: 0.5rem 0 0.5rem 1rem;
+    margin-bottom: 0.85rem;
+    transition: border-color 150ms ease;
+}
+
+.siem-timeline-item.ingreso {
+    border-left-color: var(--v-oliva);
+}
+
+.siem-timeline-item.salida {
+    border-left-color: var(--surface-border);
+}
+
+.siem-timeline-hora {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted, #8899aa);
+    font-family: monospace;
+}
+
+.siem-timeline-nombre {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.88rem;
+}
+
+.siem-timeline-detalle {
+    font-size: 0.76rem;
+    color: var(--text-muted, #8899aa);
+}
+
+/* --- Alertas recientes panel --- */
+.siem-alert-item {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.4rem;
+    padding: 0.55rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.82rem;
+    transition: border-color 150ms ease;
+}
+
+.siem-alert-item.danger  { border-left: 3px solid #dc3545; }
+.siem-alert-item.warning { border-left: 3px solid #ffc107; }
+
+.siem-alert-desc {
+    color: var(--text-main);
+    font-size: 0.81rem;
+}
+
+.siem-alert-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted, #8899aa);
+    font-family: monospace;
+}
+
+/* --- Chart container --- */
+.siem-chart-wrap {
+    position: relative;
+    height: 240px;
+}
+
+/* --- Filtros --- */
+.siem-filtros .form-control,
+.siem-filtros .form-select {
+    font-size: 0.83rem;
+}
+
+/* --- Encabezado de sección --- */
+.siem-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.siem-section-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-main);
+}
+
+/* --- Badge IP bloqueada/expirada --- */
+.badge-bloqueada { background-color: #dc3545; }
+.badge-expirada  { background-color: #6c757d; }
+.badge-activa-ip { background-color: #ffc107; color: #000; }

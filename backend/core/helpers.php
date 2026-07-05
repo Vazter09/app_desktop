@@ -210,6 +210,32 @@ function usuarioEsAdministrador(PDO $pdo, string $idUsuario): bool
 }
 
 /**
+ * Acceso real a un menú/módulo específico (no solo visibilidad en sidebar).
+ * Administrador = acceso a todo. Usuario normal = requiere fila en tab_menu_usuarios.
+ */
+function usuarioTieneMenu(PDO $pdo, string $idUsuario, string $idMenu): bool
+{
+    if (usuarioEsAdministrador($pdo, $idUsuario)) {
+        return true;
+    }
+
+    static $cache = [];
+    $key = $idUsuario . '|' . $idMenu;
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM tab_menu_usuarios
+          WHERE id_usuario = CAST(? AS TEXT) AND id_menu = CAST(? AS TEXT)'
+    );
+    $stmt->execute([$idUsuario, $idMenu]);
+
+    $cache[$key] = (bool) $stmt->fetchColumn();
+    return $cache[$key];
+}
+
+/**
  * Menús visibles en sidebar/dashboard: administrador = catálogo completo.
  */
 function obtenerMenusUsuario(PDO $pdo, string $idUsuario): array
@@ -406,10 +432,14 @@ function smartcsetClientIp(): string
 
     $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
     if ($remote !== '' && filter_var($remote, FILTER_VALIDATE_IP)) {
+        // Normalizar IPv6 loopback a IPv4 para consistencia en BD
+        if ($remote === '::1') {
+            $remote = '127.0.0.1';
+        }
         return substr($remote, 0, 45);
     }
 
-    return '';
+    return '127.0.0.1';
 }
 
 /** true si SESION_VALIDAR_IP está activo en .env. */

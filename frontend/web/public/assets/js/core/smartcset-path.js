@@ -6,12 +6,14 @@
     'use strict';
 
     function resolveBasePath() {
-        if (typeof global.SMARTCSET_BASE_PATH === 'string' && global.SMARTCSET_BASE_PATH !== '') {
-            return global.SMARTCSET_BASE_PATH;
-        }
+        // Inline script puede estar bloqueado por CSP — leer meta tag como fuente primaria
+        // (ver HANDOFF.md: fix CSP script-src 'self' vs inline SMARTCSET_BASE_PATH)
         const meta = document.querySelector('meta[name="smartcset-base-path"]');
         const fromMeta = meta ? (meta.getAttribute('content') || '').trim() : '';
-        return fromMeta;
+        if (fromMeta !== '') {
+            return fromMeta;
+        }
+        return typeof global.SMARTCSET_BASE_PATH === 'string' ? global.SMARTCSET_BASE_PATH : '';
     }
 
     function prefixPath(path) {

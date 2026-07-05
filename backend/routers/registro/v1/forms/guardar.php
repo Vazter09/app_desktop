@@ -17,11 +17,11 @@ declare(strict_types=1);
  *   }
  * }
  */
-require_once dirname(__DIR__, 3) . '/core/prepare.php';
-require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
-require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';
-require_once dirname(__DIR__, 3) . '/middleware/require_registro_session.php';
-require_once dirname(__DIR__, 3) . '/services/registro/guardar_service.php';
+require_once dirname(__DIR__, 4) . '/core/prepare.php';
+require_once dirname(__DIR__, 4) . '/core/RouterResponse.php';
+require_once dirname(__DIR__, 4) . '/core/ErrorHandler.php';
+require_once dirname(__DIR__, 4) . '/middleware/require_registro_session.php';
+require_once dirname(__DIR__, 4) . '/services/registro/guardar_service.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     RouterResponse::fail('Método no permitido.', 405);

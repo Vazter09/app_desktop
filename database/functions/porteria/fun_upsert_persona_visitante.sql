@@ -1,12 +1,17 @@
 -- Inserta o actualiza una persona en tab_personas (registro portería).
+-- La auditoría (usr_insert/usr_update) la gestiona el trigger fun_act_tabla().
 CREATE OR REPLACE FUNCTION fun_upsert_persona_visitante(
     wid_persona        tab_personas.id_persona%TYPE,
     wid_tipo_docum     tab_personas.id_tipo_docum%TYPE,
     wid_tipo_persona   tab_personas.id_tipo_persona%TYPE,
     wnom_persona       tab_personas.nom_persona%TYPE,
-    wape_persona       tab_personas.ape_persona%TYPE,
-    wusr               tab_usuarios.id_usuario%TYPE
+    wape_persona       tab_personas.ape_persona%TYPE
 ) RETURNS VOID AS $$
+DECLARE
+    w_exc_state    TEXT;
+    w_exc_msg      TEXT;
+    w_exc_detail   TEXT;
+    w_exc_hint     TEXT;
 BEGIN
     IF wid_persona IS NULL OR wid_persona < 1 THEN
         PERFORM smartcset_raise_validacion(
@@ -50,31 +55,26 @@ BEGIN
         SET id_tipo_docum   = wid_tipo_docum,
             id_tipo_persona = wid_tipo_persona,
             nom_persona     = TRIM(wnom_persona),
-            ape_persona     = TRIM(wape_persona),
-            usr_update      = wusr,
-            fec_update      = CURRENT_TIMESTAMP
+            ape_persona     = TRIM(wape_persona)
         WHERE id_persona = wid_persona;
     ELSE
         INSERT INTO tab_personas (
-            id_persona, id_tipo_docum, id_tipo_persona, nom_persona, ape_persona,
-            mail_persona, ind_genero, fec_ultima_entrada, fec_ultima_salida,
-            id_nivel_estudio, id_profesion, id_dpto_reside, id_ciudad_reside,
-            dir_ciudad_reside, tel_persona_fijo, tel_persona_movil,
-            nom_contacto_emergencias, tel_contacto_emergencias,
-            usr_insert, fec_insert
+            id_persona, id_tipo_docum, id_tipo_persona,
+            nom_persona, ape_persona
         ) VALUES (
             wid_persona, wid_tipo_docum, wid_tipo_persona,
-            TRIM(wnom_persona), TRIM(wape_persona),
-            'sin.correo@cset.local', 99, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
-            99, '00', '00', '00000',
-            'Sin dirección', 0, 0, 0, 0,
-            wusr, CURRENT_TIMESTAMP
+            TRIM(wnom_persona), TRIM(wape_persona)
         );
     END IF;
 EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

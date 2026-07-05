@@ -143,10 +143,8 @@
         limpiarIngreso();
 
         try {
-            const res = await fetch(
-                `consultar.php?${new URLSearchParams({ documento, tipo_doc: selTipo.value })}`,
-                { headers: { Accept: 'application/json' } }
-            );
+            const url = smartcsetUrl('/routers/porteria/v1/salida/consultar.php') + '?' + new URLSearchParams({ documento, tipo_doc: selTipo.value });
+            const res = await fetch(url, { headers: { Accept: 'application/json' } });
             const data = await res.json();
 
             if (!data.ok) {

@@ -140,7 +140,7 @@ Este documento es un **anexo específico del MSPI para sistemas que incorporan I
 > **Nota crítica:** Si el módulo de "registro y seguimiento de personal" usa IA para **evaluar, clasificar o tomar decisiones sobre personas** (por ejemplo, priorizar revisiones, detectar anomalías de comportamiento, scoring de riesgo), probablemente caería en la categoría de **"Riesgo alto"** del marco europeo (análogo aplicado por MinTIC), lo que **incrementa significativamente las obligaciones de cumplimiento**.
 
 ### 5.2. Recomendación de diseño
-Dado que el módulo planeado es esencialmente de **registro y seguimiento** (CRUD + búsqueda + reportes, similar al patrón ya existente en `src/modulos/registro/`), **la recomendación es NO introducir IA** salvo que exista un caso de uso claramente justificado. Esto evita activar todo el aparato regulatorio del documento 09 y mantiene el sistema dentro del alcance "tradicional" del MSPI (mucho más simple de cumplir).
+Dado que el módulo planeado es esencialmente de **registro y seguimiento** (CRUD + búsqueda + reportes, similar al patrón ya existente en `backend/routers/registro/v1/`), **la recomendación es NO introducir IA** salvo que exista un caso de uso claramente justificado. Esto evita activar todo el aparato regulatorio del documento 09 y mantiene el sistema dentro del alcance "tradicional" del MSPI (mucho más simple de cumplir).
 
 ---
 
