@@ -1,5 +1,21 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-05] Sesión (continuación): E3 rate limiting cerrado + restauración de usuarios + justificación MSPI
+
+### 🎯 Objetivos Logrados
+- ✅ **E3 — Rate limiting + logging de autenticación CERRADO** (último entregable técnico grande de FASE 1). Enriquecido con auditoría forense: columnas `motivo_fallo` y `user_agent` en `tab_intentos_login`, función `fun_registrar_intento_login` a 5 args, motivo visible en el SIEM. Suite nueva `scripts/test_seguridad/test_e3_rate_limiting.py` — **5/5 PASS en BD local y remota**. Cierra OWASP A07.
+- ✅ **Restaurados los usuarios perdidos** en el servidor de laboratorio (habían quedado en la exclusión del `pg_dump` del Bug 15): de 2 a **15 usuarios**, todos activos, con sus menús re-asignados según la numeración nueva. Instalados en el remoto los prerequisitos `pgcrypto` y `tab_borrados`.
+- ✅ **Creada la carpeta `Documentacion para implementacion de MSPI/justificacion_MSPI/`** — fundamentación legal-estratégica para la presentación al Director Regional (29 julio): 6 documentos + README + 7 PDFs oficiales del SENA analizados. Hallazgo central: la situación actual viola la propia política del SENA (Acuerdo Consejo Directivo 2019 §15.7) y el Reglamento del Aprendiz 2024 (Art. 11 Par. 5).
+- ✅ **Fix `common.py`**: `PROJECT_ROOT` apuntaba a `scripts/` (desactualizado tras mover los tests) → `run_psql` no encontraba `.env`. Ahora localiza la raíz por marcador. Beneficia a todas las suites de seguridad.
+
+### 📋 Detalle
+Ver `HANDOFF.md` secciones 7-9 de la sesión 2026-07-05, `CLAUDE.md` (sección E3 + lecciones `DROP FUNCTION` y `search_path`), el checklist FASE1 (E3 → 100%) y `justificacion_MSPI/README.md`.
+
+### ⚠️ Estado FASE 1
+Sube de ~80% a ~85%. Restantes: **E2** (cifrado en reposo — bloqueado por rediseño de PK), **E8** (hardening red — Oficina TI), **E9** (gestión de parches), **E1 A03-A10** (auditoría OWASP restante).
+
+---
+
 ## [2026-07-05] Sesión: Merge feat/seguridad → feat/implementacion_MSPI + reinstalación limpia en servidor de laboratorio
 
 ### 🎯 Objetivos Logrados

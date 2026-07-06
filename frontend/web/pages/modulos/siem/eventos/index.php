@@ -136,12 +136,13 @@ include modulosLayout('layout/topbar.php');
                         <th>IP Cliente</th>
                         <th>Usuario</th>
                         <th class="text-center">Resultado</th>
+                        <th>Motivo</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($eventos)): ?>
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
+                            <td colspan="5" class="text-center text-muted py-4">
                                 <i class="bi bi-inbox me-1"></i>Sin eventos para los filtros aplicados.
                             </td>
                         </tr>
@@ -159,6 +160,21 @@ include modulosLayout('layout/topbar.php');
                                     <?php else: ?>
                                         <span class="badge bg-danger"><i class="bi bi-x-lg me-1"></i>Fallido</span>
                                     <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php
+                                    $motivo_labels = [
+                                        'usuario_no_existe'     => 'Usuario no existe',
+                                        'contrasena_incorrecta' => 'Contraseña incorrecta',
+                                        'usuario_inactivo'      => 'Usuario inactivo',
+                                    ];
+                                    $motivo = $ev['motivo_fallo'] ?? null;
+                                    echo $motivo !== null
+                                        ? '<span class="text-muted small">'
+                                            . htmlspecialchars($motivo_labels[$motivo] ?? $motivo)
+                                            . '</span>'
+                                        : '<span class="text-muted">—</span>';
+                                    ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

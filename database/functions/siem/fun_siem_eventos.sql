@@ -1,5 +1,11 @@
 -- Función: lista paginada de eventos de autenticación con filtros
 
+-- El RETURNS TABLE cambió (columna motivo_fallo, E3 enriquecido); PostgreSQL
+-- no permite alterar el tipo de retorno con CREATE OR REPLACE, hay que dropear.
+DROP FUNCTION IF EXISTS fun_siem_list_eventos(
+    TEXT, TEXT, DATE, DATE, TEXT, INT, INT
+);
+
 CREATE OR REPLACE FUNCTION fun_siem_list_eventos(
     wip_cliente  TEXT    DEFAULT NULL,
     wid_usuario  TEXT    DEFAULT NULL,
@@ -12,6 +18,7 @@ CREATE OR REPLACE FUNCTION fun_siem_list_eventos(
     ip_cliente   VARCHAR,
     id_usuario   VARCHAR,
     ind_exitoso  BOOLEAN,
+    motivo_fallo VARCHAR,
     fec_intento  TIMESTAMP,
     total_filas  BIGINT
 ) AS $$
@@ -26,6 +33,7 @@ BEGIN
         t.ip_cliente,
         t.id_usuario,
         t.ind_exitoso,
+        t.motivo_fallo,
         t.fec_intento,
         COUNT(*) OVER() AS total_filas
     FROM tab_intentos_login t

@@ -452,6 +452,25 @@ Sin rate limiting, un atacante puede intentar contraseñas a razón de miles por
 
 > 🔴 **Este es el control de mayor urgencia de toda la Fase 1** junto con el cifrado. La combinación "base de datos sin cifrar + login sin rate limiting" significa que los datos de miles de personas están expuestos tanto a ataques de fuerza bruta como a brechas físicas.
 
+> ✅ **ESTADO: IMPLEMENTADO (2026-07-05).** Las secciones §5.2–§5.6 de abajo son el **diseño
+> original propuesto**; la implementación real diverge en nombres y contratos (criterio Bug 15:
+> el documento sigue al código que funciona, no al revés). **Diseño real desplegado:**
+> - **Tabla `tab_intentos_login`** (migración homónima): `id_intento` (serial vía `seq_intentos_login`),
+>   `ip_cliente VARCHAR(45)`, `id_usuario VARCHAR(20)`, `ind_exitoso BOOLEAN`,
+>   `motivo_fallo VARCHAR(30)`, `user_agent VARCHAR(255)`, `fec_intento TIMESTAMP`. Índices
+>   `ix_tab_intentos_login_ip_fec` e `ix_tab_intentos_login_fec`. CHECK de longitud de IP.
+> - **`fun_registrar_intento_login(ip_cliente, id_usuario, ind_exitoso, motivo_fallo DEFAULT NULL,
+>   user_agent DEFAULT NULL) RETURNS TEXT`** — valida el dominio del motivo, fuerza `motivo_fallo`
+>   NULL en éxitos, limpia registros >90 días en cada inserción, y usa el patrón EXCEPTION estándar
+>   con `smartcset_handle_sql_error(4 args)`.
+> - **`fun_verificar_bloqueo_ip(ip_cliente, max_intentos DEFAULT 5, ventana_minutos DEFAULT 15)`** —
+>   **lanza P0001** (`smartcset_raise_negocio`) cuando se supera el umbral, en vez de retornar BOOLEAN;
+>   el endpoint captura la excepción y devuelve el mensaje de bloqueo.
+> - **Integración PHP** en `backend/routers/auth/v1/login.php` (endpoint AJAX, no el POST de `index.php`
+>   de §5.6 — el login se movió a AJAX en E4). Statements en `backend/core/prepare_login.php`.
+> - **Bonus SIEM:** `fun_siem_list_eventos` expone `motivo_fallo`; la vista SIEM muestra la columna.
+> - **Verificación:** suite `scripts/test_seguridad/test_e3_rate_limiting.py`, 5/5 PASS en BD local y remota.
+
 ### 5.2 Diseño de la tabla de intentos
 
 Crear `database/migrations/add_tab_intentos_login.sql`:

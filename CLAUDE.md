@@ -566,7 +566,7 @@ Al fusionar la rama `feat/seguridad` (blindaje Fase 1, incluye SIEM E11) con `or
 Nunca se había corrido `setup_smartcset.sh` contra una BD completamente vacía desde que el schema activo pasó a ser V.1.10 — los bugs quedaron enmascarados porque las BD reales (local y remota) venían de `pg_restore` de dumps, no del script. Al recrear desde cero la BD del servidor de laboratorio (`192.168.1.71`, no institucional SENA), aparecieron 8 errores en cadena, corregidos en orden:
 1. `CREATE EXTENSION IF NOT EXISTS PG_VECTOR;` — extensión inexistente, duplicaba la línea anterior (`vector`). Eliminada.
 2. `tab_festivos` sin `;` de cierre — rompía el parseo del siguiente `CREATE TABLE`.
-3. FK de `tab_aprendices` referenciaba columna inexistente `id_ficha` (la columna real es `id_ficha_vigente`).
+3. FK de `tab_aprendices` rota (columna `id_ficha_vigente` sin coincidir con la FK `id_ficha`). **Corrección revertida en el Bug 15** — el nombre real de la columna (el que usan los 7,369 aprendices reales y el código PHP original) es `id_ficha`, no `id_ficha_vigente`. El fix correcto fue renombrar la columna del schema de vuelta a `id_ficha`, no cambiar la FK.
 4. `tab_novedades_academicas`: coma sobrante antes del `)` + FK de `id_causa_novedad` apuntaba a `tab_causas_novedad(id_tipo_novedad)` (columna inexistente en esa tabla; corregido a `id_causa_novedad`).
 5. Tabla `tab_borrados` nunca se creaba pero `fun_act_tabla()` la usa como bitácora de DELETE — agregada.
 6. `INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777)` (dato de prueba de placa genérica) violaba la FK porque `tab_personas` está vacía en instalación limpia — convertido a `INSERT ... SELECT ... WHERE EXISTS (...)` para no bloquear el instalador; se mantiene el dato porque sí se va a implementar más adelante.
@@ -580,8 +580,75 @@ Al mergear `feat/seguridad` a la rama de trabajo actual `feat/implementacion_MSP
 
 **Reconocimiento facial excluido intencionalmente:** `feat/seguridad` también traía un módulo de biometría facial (`fun_guardar_biometria_facial`, `fun_identificar_persona_por_rostro`, tabla `tab_biometria_facial`, app desktop Python en `reconocimientio_facial/`, catálogo `tab_metodos_aut` con `id_metodo_aut=4`). Se excluyó por completo a pedido de Anderson — no está en el alcance de esta fase. Ver commit de merge en `feat/implementacion_MSPI` para el detalle completo de qué se trajo y qué no.
 
+### Bug 13: PostgreSQL remoto (192.168.1.71) aceptaba conexiones sin TLS pese a `DB_SSLMODE=require` — ✅ RESUELTO (2026-07-05)
+`DB_SSLMODE=require` en `.env` solo hace que **nuestro cliente PHP pida** TLS — no obliga al servidor a exigirlo. Verificado con `PGSSLMODE=disable psql ...`: el servidor aceptaba la conexión en texto plano sin problema. `pg_hba.conf` (`/etc/postgresql/18/main/pg_hba.conf` en el servidor) tenía las entradas de red (`192.168.1.0/24` y `10.5.213.111/32`, esta última la dirección del servidor institucional SENA) como `host` en vez de `hostssl`. Esto es un gap real de coherencia frente al objetivo de simular fielmente el hardening institucional (TLS en las dos capas: navegador↔Apache y PHP↔PostgreSQL).
+
+**Fix aplicado** (vía SSH al servidor, backup de `pg_hba.conf` creado antes de tocar nada):
+```
+host    all   all   192.168.1.0/24    scram-sha-256   →   hostssl  all  all  192.168.1.0/24    scram-sha-256
+host    all   all   10.5.213.111/32   scram-sha-256   →   hostssl  all  all  10.5.213.111/32   scram-sha-256
+```
+`systemctl reload postgresql` (no requiere restart, `pg_hba.conf` se recarga en caliente).
+
+**Verificado:**
+- `PGSSLMODE=disable` → `FATAL: no pg_hba.conf entry for host "...", no encryption` (rechazado)
+- `PGSSLMODE=require` → conecta normal, `TLSv1.3 / TLS_AES_256_GCM_SHA384`
+- Login real end-to-end contra `https://localhost/smartcset/` con la BD ya endurecida: `admin.smart` autentica correctamente (`ok: true`)
+
+Las entradas `127.0.0.1/32` y `::1/128` (loopback) se dejaron sin cambiar — es el patrón típico de hardening (exigir TLS en tráfico de red, confiar en localhost).
+
+### Bug 14: Dashboard (`menu_principal.php`) mostraba "No se pudo completar la operación" — ✅ RESUELTO, revertido y corregido de nuevo en Bug 15
+Al probar el dashboard contra la BD reinstalada limpia en el servidor de laboratorio, apareció el error genérico "No se pudo completar la operación. Contacte al administrador." con los 3 KPIs de portería en 0. Causa: `backend/core/prepare.php` (`$stmt_list_ingresos_hoy` y `$stmt_list_salidas_hoy`) hace `LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha`, y en ese momento el schema tenía la columna nombrada `id_ficha_vigente` (por el fix, equivocado, del Bug 11 punto 3).
+
+**Fix original (incorrecto, revertido):** cambiar `ap.id_ficha` → `ap.id_ficha_vigente` en PHP para que coincidiera con el schema.
+**Fix real (Bug 15):** el schema estaba mal — se revirtió la columna a `id_ficha` (el nombre real, usado por 7,369 aprendices reales) y el PHP original (`ap.id_ficha`, sin cambios) queda correcto tal cual estaba antes de este bug. Ver Bug 15 para el diagnóstico completo.
+
+**Nota:** el error no aparecía en los logs de PHP/Apache porque la excepción se captura (`catch (PDOException $e)`) y solo se traduce a mensaje de usuario vía `ErrorHandler` — para diagnosticar hay que reproducir la query directamente contra la BD, no basta con revisar logs.
+
+### Bug 15: schema V.1.10 divergió estructuralmente de la BD institucional real — parcialmente ✅ RESUELTO (2026-07-05)
+Después de instalar limpio (Bug 11) y cargar el schema+seeds al servidor de laboratorio, se restauraron los datos reales (7,384 personas, 7,369 aprendices, 12 instructores, 811 fichas, 448 programas) copiando solo los datos (`pg_dump --data-only`) desde la BD local `db_smartcset2` — que nunca se tocó con los fixes destructivos de esta sesión y conserva la data institucional real. Al cargar, aparecieron divergencias **estructurales** (no solo typos) entre el schema V.1.10 del repo y lo que la BD real espera, sin ninguna migración que documentara el cambio:
+
+1. **`tab_aprendices.id_ficha`**: el schema lo había renombrado a `id_ficha_vigente` (fix erróneo del Bug 11 punto 3) — revertido a `id_ficha`, el nombre real.
+2. **`tab_ausencias_aprendiz`**: el schema tenía `id_motivo SMALLINT` (FK a catálogo `tab_motivos`) sin `val_ruta_excusa`. La BD real usa `val_motivo TEXT` (texto libre) + `val_ruta_excusa VARCHAR` — revertido al diseño real.
+3. **`tab_llamados_atencion`**: el schema tenía `id_aprendiz`/`id_ficha`/`id_instructor`/`id_motivo`/`nom_programa` (rediseño con catálogos y relaciones normalizadas). La BD real usa `id_tercero`/`ind_tipo_tercero` (más genérico, no limitado a aprendices) — revertido al diseño real. Confirmado también por el comentario ASCII de documentación en el propio archivo de schema (líneas previas al `CREATE TABLE`), que **ya documentaba el diseño real** y no coincidía con el `CREATE TABLE` de abajo — alguien cambió el código sin actualizar la doc, o viceversa.
+4. **`tab_pmtros_grales.id_novedad_desercion` / `id_novedad_aplazamiento`**: columnas nuevas `NOT NULL` sin `DEFAULT`, ausentes en los datos reales — se les agregó `DEFAULT 1` / `DEFAULT 6` (ids reales de `tab_tipos_novedad` para Deserción/Aplazamiento).
+5. **`tab_temp_df14a.dur_maxima`**: `DECIMAL(2,0)` no alcanza para valores reales de hasta 4 dígitos (ej. `3984` horas) — ampliado a `DECIMAL(6,0)`.
+6. **`tab_temp_fichas_creadas`, `tab_temp_juicios`**: tablas temporales de carga de reportes con estructura completamente distinta a la real — **excluidas de la restauración de datos** (son transitorias, se repueblan al usar el módulo de carga; no forman parte de los datos institucionales core).
+7. **`tab_biometria_facial`**: excluida de la restauración de datos (módulo de reconocimiento facial fuera de alcance, ver Bug 12).
+
+**Criterio aplicado (decisión explícita de Anderson):** ante cualquier divergencia entre el schema del repo y la estructura real de los datos institucionales, **prioriza siempre el diseño real** — el repo debe adaptarse a lo que ya funciona en producción, no al revés.
+
+**Cómo se restauraron los datos** (para repetir en otro entorno):
+```bash
+# 1. Export solo-datos desde la BD que SÍ tiene los datos reales, excluyendo
+#    catálogos/tablas que la instalación limpia ya sembró correctamente:
+pg_dump -h <host_con_datos_reales> -U postgres -d db_smartcset2 --data-only --disable-triggers \
+  --exclude-table=tab_menus --exclude-table=tab_menu_usuarios \
+  --exclude-table=tab_config_sistema --exclude-table=tab_sesiones \
+  --exclude-table=tab_sesiones_archivo --exclude-table=tab_intentos_login \
+  --exclude-table=tab_usuarios --exclude-table=tab_biometria_facial \
+  --exclude-table=tab_borrados --exclude-table=tab_temp_fichas_creadas \
+  --exclude-table=tab_temp_juicios \
+  -f data_only.sql
+
+# 2. TRUNCATE en el destino de todas las tablas EXCEPTO las excluidas arriba
+#    (RESTART IDENTITY CASCADE), y cargar:
+psql -h <destino> -U postgres -d db_smartcset2 -v ON_ERROR_STOP=1 -f data_only.sql
+```
+`--disable-triggers` es necesario porque en PostgreSQL las FK se implementan como triggers internos — sin esto, el orden de carga de `pg_dump` (no siempre topológico) puede fallar por violación de FK temporal.
+
+**Pendiente:** aplicar la misma restauración de datos a la BD local (`localhost`) si se vuelve a reinstalar desde cero ahí también.
+
+### E3 — Rate limiting + logging de autenticación — ✅ COMPLETADO (2026-07-05)
+Bloqueo de login por IP tras N intentos fallidos (default 5) en una ventana (default 15 min), configurables por `.env` (`LOGIN_MAX_INTENTOS`, `LOGIN_VENTANA_MINUTOS`). Cada intento se audita en `tab_intentos_login` con `ip_cliente`, `id_usuario`, `ind_exitoso`, **`motivo_fallo`** (`usuario_no_existe`/`contrasena_incorrecta`/`usuario_inactivo`, NULL en éxitos) y **`user_agent`**. La lógica vive en PL/pgSQL: `fun_registrar_intento_login` (5 args, valida el motivo y limpia registros >90 días en cada inserción) y `fun_verificar_bloqueo_ip` (lanza P0001 al bloquear — el endpoint lo traduce a mensaje). Integración en `backend/routers/auth/v1/login.php` (endpoint AJAX; **no** en `index.php`, el login se movió a AJAX en E4). El SIEM (`fun_siem_list_eventos` + vista `pages/modulos/siem/eventos`) muestra el `motivo_fallo`. Suite `scripts/test_seguridad/test_e3_rate_limiting.py` — 5/5 PASS en BD local y remota.
+
+**Lección al alinear firmas de funciones PL/pgSQL:** PostgreSQL trata distinto número de argumentos como funciones **distintas**. Cambiar `fun_x(a,b,c)` a `fun_x(a,b,c,d DEFAULT NULL,e DEFAULT NULL)` con `CREATE OR REPLACE` **no reemplaza** la vieja — crea una segunda, y un llamado de 3 args queda ambiguo. Hay que `DROP FUNCTION IF EXISTS` la firma vieja explícitamente (se dejó ese DROP dentro del propio archivo `.sql` para que el despliegue sea idempotente). Lo mismo aplica al cambiar el `RETURNS TABLE` de una función (ej. `fun_siem_list_eventos`): requiere DROP previo.
+
+**Lección restaurar dumps parciales con `pg_dump` (incidente 2026-07-05, restauración de `tab_usuarios`):** `pg_dump` inserta `SELECT pg_catalog.set_config('search_path', '', false)` al inicio del archivo. Con el `search_path` vacío, los triggers de auditoría (`fun_act_tabla`) no resuelven sus tablas (`tab_borrados`) y el `COPY`/`INSERT` falla con "relation does not exist". Al cargar dumps de tablas con triggers: **quitar esa línea del dump** o usar `--disable-triggers`.
+
 ### Deuda técnica adicional
 
+- `scripts/test_seguridad/common.py`: `common.login()` postea a `/index.php` (ruta vieja); el login real es AJAX JSON a `backend/routers/auth/v1/login.php`. `test_e3_rate_limiting.py` golpea el endpoint real directamente; un futuro refactor debería alinear el helper `login()`. (El bug de `PROJECT_ROOT` que impedía a `run_psql` encontrar `.env` ya se corrigió el 2026-07-05.)
 - Modal de ingreso (`porteria-ingreso-modal.js`): auto-apertura en desktop agregada (2026-06-26); antes solo aparecía en salida, no en ingreso
 - Modal de salida (`porteria-salida-modal.js`): el botón final usaba `form.submit()` (no dispara el evento `submit`, nunca llamaba al AJAX real) — ✅ RESUELTO (2026-07-01), ahora llama directo a `SmartcsetSalidaRouter.registrar()`
 - ~~Módulo registro hace SQL directo~~ — **nota desactualizada, ya no aplica.** El módulo usa prepared statements + funciones PL/pgSQL (`fun_registrar_*`) centralizadas en `backend/core/prepare.php`, igual que el resto del sistema. Ver Bug 8 y 9 para lo que sí se arregló ahí.

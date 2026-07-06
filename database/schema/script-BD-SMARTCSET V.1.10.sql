@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   cod_ver_programa  DECIMAL(3,0),
   nom_programa      VARCHAR,
   niv_formacion     VARCHAR,
-  dur_maxima        DECIMAL(2,0),
+  dur_maxima        DECIMAL(6,0),
   dur_eta_lectiva   VARCHAR,
   dur_eta_productiv VARCHAR,
   id_ficha          DECIMAL(8,0),
@@ -1055,8 +1055,8 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     hora_salida_jornada_n       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '21:30:00',
     hora_entrada_jornada_n_sab  TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '13:00:00',
     hora_salida_jornada_n_sab   TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
-    id_novedad_desercion        SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
-    id_novedad_aplazamiento     SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    id_novedad_desercion        SMALLINT                    NOT NULL DEFAULT 1, -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 6, -- Debe ser igual al creado en la tabla tab_tipos_novedad
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1455,11 +1455,11 @@ CREATE TYPE datos_personales_aprendiz AS
 
 CREATE TABLE IF NOT EXISTS tab_instructores
 (
-    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
+    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 1000000),
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
+    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero IN (1,2,3,4)), --1=Femenino,2=Masculino,3=No binario,4=Trans
     ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
     id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
@@ -1757,7 +1757,7 @@ CREATE TABLE IF NOT EXISTS tab_certificados
 CREATE TABLE IF NOT EXISTS tab_programas
 (
     id_programa             DECIMAL(8,0)                NOT NULL,
-    nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
+    nom_programa            VARCHAR(255)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
     num_snies               VARCHAR                     NOT NULL DEFAULT 'SNIES-00000',
     num_version             DECIMAL(2,0)                NOT NULL DEFAULT 1,
     ind_tipo                VARCHAR    		            NOT NULL DEFAULT '0', -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
@@ -2651,7 +2651,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
 (
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
-    id_ficha_vigente        DECIMAL(10,0)               NOT NULL,
+    id_ficha                DECIMAL(10,0)               NOT NULL,
     ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     id_opcion_productiva    DECIMAL(2,0)                NOT NULL DEFAULT 0,
@@ -2661,7 +2661,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_aprendiz),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_personas(id_persona),
-    FOREIGN KEY(id_ficha_vigente) REFERENCES tab_fichas(id_ficha)
+    FOREIGN KEY(id_ficha) REFERENCES tab_fichas(id_ficha)
 );
 
 -- Tabla de tipos de permiso que se puede otorgar a las personas (aprendices)
@@ -2787,15 +2787,15 @@ CREATE TABLE IF NOT EXISTS tab_ausencias_aprendiz
 (
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     fec_ausencia            DATE                        NOT NULL DEFAULT '1900-01-01' CHECK (fec_ausencia <= CURRENT_DATE),
-    id_motivo               SMALLINT                    NOT NULL,
+    val_motivo              TEXT                        NOT NULL DEFAULT 'Sin Motivo Ausencia Aprendiz',
     ind_evidencia_excusa    BOOLEAN                     NOT NULL DEFAULT TRUE,   -- TRUE=Hay evidencia / FALSE=Nol hay evidencia
+    val_ruta_excusa         VARCHAR                     NOT NULL DEFAULT 'Sin ruta evidencia Aprendiz',
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_aprendiz,fec_ausencia),
-    FOREIGN KEY(id_aprendiz) REFERENCES tab_aprendices(id_aprendiz),
-    FOREIGN KEY(id_motivo)   REFERENCES tab_motivos(id_motivo)
+    FOREIGN KEY(id_aprendiz) REFERENCES tab_aprendices(id_aprendiz)
 );
 
 -- TABLA DE LLAMADOS DE ATENCIÓN
@@ -2833,21 +2833,14 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
 (
     id_llamado              SERIAL                      NOT NULL,
     ind_tipo                BOOLEAN                     NOT NULL,   -- TRUE=Académico / FALSE=Disciplinario
+    id_tercero              DECIMAL(10,0)               NOT NULL,
+    ind_tipo_tercero        BOOLEAN                     NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
     fec_llamado             DATE                        NOT NULL DEFAULT CURRENT_DATE,
-    id_aprendiz             DECIMAL(10,0)               NOT NULL,
-    id_ficha                DECIMAL(10,0)               NOT NULL,
-    nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
-    id_motivo               SMALLINT                    NOT NULL,
-    id_instructor           DECIMAL(10,0)               NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
-    PRIMARY KEY(id_llamado),
-    FOREIGN KEY(id_motivo)      REFERENCES tab_motivos(id_motivo),
-    FOREIGN KEY(id_instructor)  REFERENCES tab_instructores(id_instructor),
-    FOREIGN KEY(id_aprendiz)    REFERENCES tab_aprendices(id_aprendiz),
-    FOREIGN KEY(id_ficha)       REFERENCES tab_fichas(id_ficha)
+    PRIMARY KEY(id_llamado)
 );
 
 -- TABLA DE OFERTAS TRIMESTRALES

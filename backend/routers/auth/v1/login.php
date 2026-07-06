@@ -41,6 +41,7 @@ if ($usuario === '' || $clave === '') {
 }
 
 $ip = smartcsetClientIp();
+$userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
 
 try {
     // E3 — Verificar bloqueo por IP antes de consultar credenciales
@@ -50,21 +51,21 @@ try {
     $reg = $stmt_login->fetch();
 
     if (!$reg) {
-        $stmt_registrar_intento->execute([$ip, $usuario ?: null, 'false']);
+        $stmt_registrar_intento->execute([$ip, $usuario ?: null, 'false', 'usuario_no_existe', $userAgent]);
         RouterResponse::fail('ID de usuario o contraseña incorrectos.');
     }
 
     if ($reg['ind_estado'] == false) {
-        $stmt_registrar_intento->execute([$ip, $usuario, 'false']);
+        $stmt_registrar_intento->execute([$ip, $usuario, 'false', 'usuario_inactivo', $userAgent]);
         RouterResponse::fail('ACCESO DENEGADO: Su usuario se encuentra inhabilitado por el administrador.');
     }
 
     if (!password_verify($clave, $reg['pass_usuario'])) {
-        $stmt_registrar_intento->execute([$ip, $usuario, 'false']);
+        $stmt_registrar_intento->execute([$ip, $usuario, 'false', 'contrasena_incorrecta', $userAgent]);
         RouterResponse::fail('ID de usuario o contraseña incorrectos.');
     }
-    // E3 — Registrar intento exitoso
-    $stmt_registrar_intento->execute([$ip, $reg['id_usuario'], 'true']);
+    // E3 — Registrar intento exitoso (motivo NULL)
+    $stmt_registrar_intento->execute([$ip, $reg['id_usuario'], 'true', null, $userAgent]);
 
     $timeoutSesion = !empty($reg['ind_usuario']) ? SESSION_TIMEOUT : 0;
     $idSesion = accesoIngresoSesion(

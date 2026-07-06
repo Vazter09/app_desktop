@@ -3,15 +3,29 @@
 -- Descripción: Registra un intento de login (exitoso o fallido).
 --              Limpia automáticamente registros de más de 90 días.
 -- Parámetros:
---   wip_cliente: IP del cliente que intenta el login.
---   wid_usuario: ID del usuario (puede ser NULL si no existe).
---   wind_exitoso: TRUE si el login fue exitoso, FALSE si falló.
+--   wip_cliente:   IP del cliente que intenta el login.
+--   wid_usuario:   ID del usuario (puede ser NULL si no existe).
+--   wind_exitoso:  TRUE si el login fue exitoso, FALSE si falló.
+--   wmotivo_fallo: Motivo del fallo (NULL en intentos exitosos):
+--                  'usuario_no_existe' | 'contrasena_incorrecta' |
+--                  'usuario_inactivo'.
+--   wuser_agent:   User-Agent del navegador (auditoría forense).
 -- Retorna: TEXT 'OK'
 -- ===================================================================
+
+-- Eliminar la firma legacy de 3 argumentos (antes del enriquecimiento E3).
+-- PostgreSQL trata distinto nº de args como funciones distintas; sin este
+-- DROP quedarían dos versiones y un llamado de 3 args sería ambiguo.
+DROP FUNCTION IF EXISTS fun_registrar_intento_login(
+    character varying, character varying, boolean
+);
+
 CREATE OR REPLACE FUNCTION fun_registrar_intento_login(
-    wip_cliente  tab_intentos_login.ip_cliente%TYPE,
-    wid_usuario  tab_intentos_login.id_usuario%TYPE,
-    wind_exitoso tab_intentos_login.ind_exitoso%TYPE
+    wip_cliente   tab_intentos_login.ip_cliente%TYPE,
+    wid_usuario   tab_intentos_login.id_usuario%TYPE,
+    wind_exitoso  tab_intentos_login.ind_exitoso%TYPE,
+    wmotivo_fallo tab_intentos_login.motivo_fallo%TYPE DEFAULT NULL,
+    wuser_agent   tab_intentos_login.user_agent%TYPE   DEFAULT NULL
 ) RETURNS TEXT AS $$
 DECLARE
     w_exc_state  TEXT;
@@ -26,8 +40,27 @@ BEGIN
         );
     END IF;
 
-    INSERT INTO tab_intentos_login (ip_cliente, id_usuario, ind_exitoso)
-    VALUES (wip_cliente, wid_usuario, wind_exitoso);
+    -- Validación de dominio del motivo (solo cuando el intento falló).
+    IF NOT wind_exitoso AND wmotivo_fallo IS NOT NULL
+       AND wmotivo_fallo NOT IN (
+           'usuario_no_existe', 'contrasena_incorrecta', 'usuario_inactivo'
+       ) THEN
+        PERFORM smartcset_raise_validacion(
+            'Motivo de fallo de login no reconocido.',
+            'motivo_fallo=' || wmotivo_fallo
+        );
+    END IF;
+
+    INSERT INTO tab_intentos_login (
+        ip_cliente, id_usuario, ind_exitoso, motivo_fallo, user_agent
+    )
+    VALUES (
+        wip_cliente,
+        wid_usuario,
+        wind_exitoso,
+        CASE WHEN wind_exitoso THEN NULL ELSE wmotivo_fallo END,
+        NULLIF(TRIM(wuser_agent), '')
+    );
 
     -- Limpiar registros de más de 90 días para no crecer indefinidamente
     DELETE FROM tab_intentos_login

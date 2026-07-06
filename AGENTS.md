@@ -10,15 +10,20 @@ Este archivo describe cómo los agentes de IA (Claude Code y similares) deben op
 
 El proyecto puede ser trabajado por agentes especializados según el dominio. Se recomienda no mezclar responsabilidades: un agente que trabaja en funciones PL/pgSQL no debe tocar al mismo tiempo la capa de vistas PHP.
 
+> **Nota de rutas (actualizado 2026-07-05):** el proyecto ya no usa `src/`. La estructura real es
+> `backend/` (core, routers, services, middleware) + `frontend/web/` (layout, pages, public). El
+> document root servido por Apache es `frontend/web/public/` bajo `https://localhost/smartcset/`.
+> Las rutas de abajo se dan con la estructura actual.
+
 ### Agente: Core / Bootstrap
 
-**Responsable de:** `src/core/`, `index.php`, `.env`, `src/auth/`
+**Responsable de:** `backend/core/`, `frontend/web/public/index.php`, `.env`, `backend/routers/auth/`
 
 **Entradas:** cambios en conexión BD, configuración del sistema, autenticación
 
 **Salidas:** variables globales `$pdo`, `$stmt_*`, `AppConfig`, constantes de configuración
 
-**Cuidado:** cambios en `prepare.php` afectan TODOS los módulos; siempre verificar que los statements existentes no se rompan
+**Cuidado:** cambios en `prepare.php`/`prepare_login.php` afectan TODOS los módulos; siempre verificar que los statements existentes no se rompan
 
 ### Agente: Base de datos / Schema
 
@@ -30,9 +35,9 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 **Cuidado:** orden de despliegue crítico — `_helpers` antes que el resto
 
-### Agente: Módulo Portería
+### Agente: Módulo Portería (SGI)
 
-**Responsable de:** `src/modulos/porteria/`, funciones `database/functions/porteria/`
+**Responsable de:** `frontend/web/pages/modulos/porteria/`, `backend/routers/porteria/`, `backend/services/porteria/`, funciones `database/functions/porteria/`
 
 **Entradas:** cambios en flujo de ingreso/salida, soporte de nuevos métodos de lectura
 
@@ -42,17 +47,17 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 ### Agente: Módulo Registro
 
-**Responsable de:** `src/modulos/registro/`
+**Responsable de:** `frontend/web/pages/modulos/registro/`, `backend/routers/registro/`, `backend/services/registro/`
 
 **Entradas:** nuevos formularios de tipo de persona, cambios en catálogo de personas
 
-**Salidas:** formularios de registro standalone
+**Salidas:** formularios de registro de personas
 
-**Cuidado:** el módulo tiene autenticación propia (standalone); no mezclar con `$_SESSION['id_usuario']`
+**Cuidado:** el login standalone del módulo está **INACTIVO desde 2026-07-01** (`registroUsaLoginStandalone()` retorna `false`). El módulo usa la sesión principal (`$_SESSION['id_usuario']`) + control por menú `0300`/`20701` como el resto del sistema. Ver Bug 8 en CLAUDE.md.
 
-### Agente: Administración y Menú
+### Agente: Administración y Menú (SGA)
 
-**Responsable de:** `src/menu/`, `src/usuarios/`, `src/admin/`, `src/layout/`
+**Responsable de:** `frontend/web/pages/menu/`, `frontend/web/pages/usuarios/`, `frontend/web/pages/admin/`, `frontend/web/layout/`
 
 **Entradas:** cambios en estructura de menús, permisos, configuración visual
 
@@ -62,13 +67,13 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 ### Agente: Setup / Deploy
 
-**Responsable de:** `database/setup_smartcset.sh`, `tools/`, `SETUP_AUDIT.md`
+**Responsable de:** `database/setup_smartcset.sh`, `scripts/`, `SETUP_AUDIT.md`
 
 **Entradas:** nuevas funciones o migraciones a integrar al instalador
 
 **Salidas:** script de instalación corregido y actualizado
 
-**Cuidado:** conocer los 4 bugs documentados en `SETUP_AUDIT.md` antes de modificar el script
+**Cuidado:** conocer los bugs documentados en `CLAUDE.md` (sección "Bugs conocidos", Bugs 1-15) antes de modificar el script; `SETUP_AUDIT.md` es la auditoría histórica original
 
 ---
 
@@ -99,7 +104,7 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 - `AppConfig::colorPrimario()` / `colorSecundario()` — colores corporativos
 - `AppConfig::themeTokensDark()` / `themeTokensLight()` — tokens CSS
 - `AppConfig::moduloRegistroHabilitado()` — flag de módulo registro
-- `AppConfig::usrRegistro()` / `passRegistroHash()` — credenciales standalone registro
+- `AppConfig::usrRegistro()` / `passRegistroHash()` — credenciales del login standalone de registro (**inactivo desde 2026-07-01**; el módulo usa la sesión principal)
 
 ### PL/pgSQL → PHP (ErrorHandler)
 
@@ -113,13 +118,13 @@ Las funciones PL/pgSQL lanzan excepciones `P0001` con mensajes en español legib
 
 2. **Cambios en prepare.php requieren revisión de todos los módulos.** Si se agrega o modifica un statement, verificar que ningún módulo asuma el statement anterior.
 
-3. **Cambios en schema siempre van acompañados de migración.** No modificar el schema V.1.6 directamente; crear una nueva migración.
+3. **Cambios en schema siempre van acompañados de migración.** El schema activo es `script-BD-SMARTCSET V.1.10.sql`; para cambios estructurales crear una migración idempotente en `database/migrations/` en vez de editar el schema directamente. **Criterio ante divergencia schema-vs-datos reales: priorizar el diseño real de producción** (ver Bug 15 en CLAUDE.md).
 
 4. **Las funciones PL/pgSQL van a `database/functions/` Y al array FUNCS de `setup_smartcset.sh`.** Ambos cambios van juntos.
 
 5. **Los mensajes al usuario son responsabilidad de PL/pgSQL (RAISE) o de PHP (Exception).** No duplicar mensajes de error en ambas capas.
 
-6. **El módulo de registro standalone tiene su propia sesión.** No asumir que `$_SESSION['id_usuario']` estará disponible en el módulo registro.
+6. **El control de acceso a páginas de módulos es por menú, no solo por sesión.** Usar `usuarioTieneMenu($pdo, $idUsuario, '0XXX')` en cada página bajo `pages/modulos/` (admin pasa siempre; el resto valida `tab_menu_usuarios`). `isset($_SESSION['id_usuario'])` solo verifica que hay sesión, no el permiso. El login standalone del módulo registro está inactivo (usa la sesión principal). Ver Bugs 7 y 8 en CLAUDE.md.
 
 7. **El sidebar siempre se renderiza con `$pdo` disponible.** Cualquier página que incluya `sidebar.php` debe haber cargado `prepare.php` antes.
 
@@ -130,20 +135,21 @@ Las funciones PL/pgSQL lanzan excepciones `P0001` con mensajes en español legib
 Antes de trabajar en cualquier área, verificar:
 
 ```bash
+# La BD activa la define .env (DB_NAME=db_smartcset2, DB_HOST puede ser
+# localhost o el servidor de laboratorio 192.168.1.71). Usar las
+# credenciales de .env vía PGPASSWORD.
+
 # Estado del schema en BD:
-psql -U postgres -d db_smartcset -c "\dt tab_*"
+psql -h "$DB_HOST" -U postgres -d db_smartcset2 -c "\dt tab_*"
 
 # Funciones desplegadas:
-psql -U postgres -d db_smartcset -c "\df fun_*"
+psql -h "$DB_HOST" -U postgres -d db_smartcset2 -c "\df fun_*"
 
 # Usuarios del sistema:
-psql -U postgres -d db_smartcset -c "SELECT id_usuario, nom_usuario, ind_usuario, ind_estado FROM tab_usuarios"
+psql -h "$DB_HOST" -U postgres -d db_smartcset2 -c "SELECT id_usuario, nom_usuario, ind_usuario, ind_estado FROM tab_usuarios"
 ```
 
-Para diagnóstico rápido desde PHP:
-```
-http://localhost:8080/tools/diagnose_bd.php
-```
+Aplicación servida por Apache con HTTPS en `https://localhost/smartcset/`.
 
 ---
 
@@ -155,12 +161,7 @@ Los agentes se mapean a dominios específicos del código. Cuando un agente trab
 - Qué depende el código de áreas externas
 - Qué NO tocar sin entender primero
 
-Por ejemplo, si trabajas en `src/modulos/porteria/ingreso/`, debes consultar (en orden):
-1. `src/modulos/porteria/ingreso/AGENTS.md`
-2. `src/modulos/porteria/AGENTS.md`
-3. `src/modulos/AGENTS.md`
-4. `src/AGENTS.md`
-5. `CLAUDE.md` (este documento) para patrones generales
+Por ejemplo, si trabajas en `frontend/web/pages/modulos/porteria/ingreso/`, debes consultar (en orden) el `AGENTS.md` más cercano subiendo por el árbol hasta la raíz, y finalmente `CLAUDE.md` para patrones generales. Hay `AGENTS.md` distribuidos en `backend/`, `frontend/web/layout/`, `database/functions/` y sus subcarpetas.
 
 ---
 
@@ -193,12 +194,12 @@ smartcsetLogoUrl()      // URL del logo para <img>
 
 ## Flujo de solicitud típico
 
-1. Usuario accede a `http://localhost:8080/src/menu/menu_principal.php`
-2. PHP incluye `src/core/prepare.php` (crea `$pdo`, prepara statements, inicializa `AppConfig`)
-3. PHP incluye `src/layout/head.php` (emite `<head>` con Bootstrap, CSS, theme_vars)
-4. PHP incluye `src/layout/sidebar.php` (renderiza menú lateral dinámico via `obtenerMenusUsuario()`)
+1. Usuario accede a `https://localhost/smartcset/pages/menu/menu_principal.php`
+2. PHP incluye `backend/core/prepare.php` (crea `$pdo`, prepara statements, inicializa `AppConfig`)
+3. PHP incluye `frontend/web/layout/head.php` (emite `<head>` con Bootstrap, CSS, theme_vars)
+4. PHP incluye `frontend/web/layout/sidebar.php` (renderiza menú lateral dinámico via `obtenerMenusUsuario()`)
 5. PHP renderiza contenido principal
-6. PHP incluye `src/layout/footer.php` (cierra HTML, carga JS global)
+6. PHP incluye `frontend/web/layout/footer.php` (cierra HTML, carga JS global)
 7. En el navegador, `smartcset-toast.js` lee `#page-flash-data` y muestra notificación
 
 ---
@@ -213,7 +214,7 @@ smartcsetLogoUrl()      // URL del logo para <img>
 **Sesión no inicializada:**
 - Siempre asumir que `$_SESSION` existe si se llegó a una vista interna (post-login)
 - Si una página puede ser pública, validar `$_SESSION['id_usuario']` antes de usarla
-- `src/auth/` puede redirigir a `index.php` si la sesión no existe
+- `backend/middleware/` (`require_session.php`, `require_admin.php`, etc.) y `backend/routers/auth/` pueden redirigir al login si la sesión no existe
 
 **Variables no inicializadas:**
 - `$w_mensaje` y `$w_tipo_alerta` pueden no estar seteadas; usar `isset()` antes de leerlas

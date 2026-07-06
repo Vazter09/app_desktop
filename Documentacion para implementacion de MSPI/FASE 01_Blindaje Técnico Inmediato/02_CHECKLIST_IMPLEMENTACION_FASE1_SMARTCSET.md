@@ -27,7 +27,7 @@
 | E4 — Hardening de sesiones PHP | 🔴 | ✅ Completado y validado en servidor (23/23 tests PASS 2026-06-16) — SecurityMiddleware activo, cookies/headers/session_regenerate_id + CSP activo + refactor portería + head.php sin script inline | 100% |
 | E6 — Verificación de uploads | 🟡 | ✅ Código PHP validado (23/23 tests PASS 2026-06-16). ⚠️ Protección Apache runtime PENDIENTE — AllowOverride None en servidor impide .htaccess; requiere acción IT (VirtualHost) | 90% |
 | E5 — Tokens anti-CSRF | 🔴 | ⛔ DESCARTADO — decisión del equipo (2026-06-16): tokens CSRF fuera del alcance de Fase 1 | N/A |
-| E3 — Rate limiting + logging de autenticación | 🔴 | 🔲 Pendiente | 0% |
+| E3 — Rate limiting + logging de autenticación | 🔴 | ✅ Completado (2026-07-05) — enriquecido con `motivo_fallo`+`user_agent`, suite 5/5 PASS en local y remoto, superficie SIEM | 100% |
 | E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 ✅ remediado + validado 23/23 tests; A02 ⚠️ auditado — bcrypt ✅, HTTPS ✅ completado 2026-06-17, TLS BD pendiente E8; A07 session fixation ✅ via E4; A03-A10 pendiente) | ~40% |
 | E2 — Cifrado en reposo (pgcrypto) | 🔴 | ⛔ Bloqueado — replanteo de alcance requerido (hallazgo crítico 2026-06-12, ver §E2 abajo) | ~15% (infra pgcrypto + clave + funciones listas en local; alcance original inviable) |
 | E8 — Hardening de red y TLS | 🔴 | ⛔ Requiere Oficina TI SENA (salvo cambio DSN) | 0% |
@@ -179,27 +179,42 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 ---
 
-## E3 — RATE LIMITING + LOGGING DE AUTENTICACIÓN (§5)
+## E3 — RATE LIMITING + LOGGING DE AUTENTICACIÓN (§5) — ✅ COMPLETADO (2026-07-05)
+
+> **Nota de divergencia con §5 (criterio Bug 15 — priorizar diseño real):** la implementación
+> real usa nombres de columna `ip_cliente`/`id_usuario`/`ind_exitoso` (no `ip`/`id_usuario_int`/
+> `exitoso` de §5.2), `fun_verificar_bloqueo_ip` **lanza P0001** al bloquear en vez de retornar
+> BOOLEAN, y la integración vive en el endpoint AJAX `backend/routers/auth/v1/login.php` (no en el
+> bloque POST de `index.php` de §5.6, porque el login se refactorizó a AJAX en E4). El documento §5
+> se actualizó para reflejar esto. El **enriquecimiento de auditoría** (motivo_fallo + user_agent) sí
+> se implementó según la intención de §5.2.
 
 **Base de datos:**
-- [ ] Crear migración `database/migrations/add_tab_intentos_login.sql` (tabla + 2 índices, §5.2)
-- [ ] Crear `database/functions/acceso/usuarios/fun_registrar_intento_login.sql` (§5.3)
-- [ ] Crear `database/functions/acceso/usuarios/fun_verificar_bloqueo_ip.sql` (5 intentos / 15 min por defecto, §5.3)
-- [ ] Agregar las 2 funciones nuevas al array FUNCS de `setup_smartcset.sh` y la migración al bloque de migraciones (regla del proyecto)
-- [ ] Desplegar migración y funciones en BD de test, luego en desarrollo
+- [x] Migración `database/migrations/add_tab_intentos_login.sql` (tabla + 2 índices + columnas `motivo_fallo`/`user_agent` idempotentes)
+- [x] `database/functions/acceso/usuarios/fun_registrar_intento_login.sql` — firma de 5 args (ip, usuario, exitoso, motivo_fallo, user_agent); valida dominio del motivo; limpia registros >90 días en cada inserción
+- [x] `database/functions/acceso/usuarios/fun_verificar_bloqueo_ip.sql` — 5 intentos / 15 min por defecto (lanza P0001 al bloquear)
+- [x] Las 2 funciones ya están en el array FUNCS de `setup_smartcset.sh`; la migración se ejecuta antes de FUNCS
+- [x] Desplegado en BD local (`localhost`) y remota de laboratorio (`192.168.1.71`)
 
 **PHP:**
-- [ ] Agregar `LOGIN_MAX_INTENTOS=5` y `LOGIN_VENTANA_MINUTOS=15` a `.env.example` y `.env`
-- [ ] Definir las constantes en `backend/core/config.php` (§5.4)
-- [ ] Agregar `$stmt_registrar_intento` y `$stmt_verificar_bloqueo` a `backend/core/prepare.php` (§5.5)
-- [ ] Modificar `index.php` según §5.6: verificar bloqueo ANTES de consultar; registrar intento en los 4 caminos (exitoso / contraseña incorrecta / usuario no existe / usuario inactivo); incluir `session_regenerate_id(true)` en el camino exitoso
-- [ ] Definir mecanismo de limpieza de registros >90 días (cron o al inicio de sesión)
+- [x] `LOGIN_MAX_INTENTOS=5` y `LOGIN_VENTANA_MINUTOS=15` en `.env.example` y `.env`
+- [x] Constantes en `backend/core/config.php` con `max(1, (int) EnvLoader::get(...))` (§5.4)
+- [x] `$stmt_registrar_intento` (5 params) y `$stmt_verificar_bloqueo` en `backend/core/prepare_login.php` (§5.5)
+- [x] Integración en `backend/routers/auth/v1/login.php`: verifica bloqueo ANTES de consultar; registra intento en los 4 caminos con su `motivo_fallo` (`usuario_no_existe`/`usuario_inactivo`/`contrasena_incorrecta`/éxito=NULL) y `user_agent`; `session_regenerate_id(true)` en el camino exitoso (heredado de E4)
+- [x] Limpieza de registros >90 días: la hace `fun_registrar_intento_login` en cada inserción (no requiere cron)
 
-**Verificación (§14.1):**
-- [ ] 6 intentos fallidos seguidos → el 6° retorna mensaje de bloqueo; IP registrada en `tab_intentos_login`
-- [ ] Login con credenciales correctas → exitoso, registro con `exitoso=TRUE`
-- [ ] Tras la ventana de 15 min el bloqueo se levanta
-- [ ] Queries de auditoría del RSSI (§5.7) ejecutan correctamente
+**SIEM (bonus):**
+- [x] `fun_siem_list_eventos` extendida para exponer `motivo_fallo`; la vista `pages/modulos/siem/eventos/index.php` muestra la columna "Motivo"
+
+**Verificación (§14.1) — suite `scripts/test_seguridad/test_e3_rate_limiting.py`, 5/5 PASS en local y remoto:**
+- [x] N (=`LOGIN_MAX_INTENTOS`) intentos fallidos → el siguiente retorna mensaje de bloqueo; IP registrada en `tab_intentos_login`
+- [x] Login con credenciales correctas → exitoso, registro con `ind_exitoso=TRUE` y `motivo_fallo` NULL
+- [x] Motivo discriminado por rama (`usuario_no_existe`, `contrasena_incorrecta`) verificado en BD
+- [x] `user_agent` capturado y registrado
+- [ ] Tras la ventana de 15 min el bloqueo se levanta — verificado por diseño (la función solo cuenta intentos dentro de la ventana); no probado con espera real de 15 min
+- [x] Queries de auditoría del RSSI (§5.7) ejecutan correctamente (vía `fun_siem_*`)
+
+**Fix colateral:** se corrigió `scripts/test_seguridad/common.py` — `PROJECT_ROOT` apuntaba a `scripts/` (quedó desactualizado al mover los tests de `test_seguridad/` a `scripts/test_seguridad/`), por lo que `run_psql` no encontraba `.env`. Ahora localiza la raíz por marcador (`.env`/`CLAUDE.md`). Beneficia a todas las suites.
 
 ---
 
@@ -238,7 +253,7 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 - [ ] Revisar versiones de librerías CDN en `frontend/web/layout/head.php`
 
 **A07 — Identification and Authentication Failures:**
-- [ ] Rate limiting → se cierra con E3 (pendiente)
+- [x] Rate limiting → ✅ cerrado con E3 (2026-07-05); bloqueo por IP tras N intentos, validado por suite `test_e3_rate_limiting.py` PASS
 - [x] `session_regenerate_id(true)` tras login exitoso → ✅ cerrado en E4 (2026-06-14); validado por suite (test `test_session_id_cambia_tras_login_exitoso` PASS)
 - [x] Cookie flags `HttpOnly`+`SameSite=Strict` → ✅ cerrado en E4 (2026-06-14); validado por suite PASS
 - [ ] Auditar robustez de `backend/routers/auth/v1/recuperar.php` (¿valida identidad solo con correo?)

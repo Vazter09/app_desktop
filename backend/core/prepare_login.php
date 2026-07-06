@@ -25,7 +25,8 @@ try {
         'SELECT fun_verificar_bloqueo_ip(?::VARCHAR, ?::INTEGER, ?::INTEGER)'
     );
     $stmt_registrar_intento = $pdo->prepare(
-        'SELECT fun_registrar_intento_login(?::VARCHAR, ?::VARCHAR, ?::BOOLEAN)'
+        'SELECT fun_registrar_intento_login('
+        . '?::VARCHAR, ?::VARCHAR, ?::BOOLEAN, ?::VARCHAR, ?::VARCHAR)'
     );
 } catch (PDOException $e) {
     die('Error crítico en prepare_login.php: ' . $e->getMessage());

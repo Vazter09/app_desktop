@@ -119,7 +119,7 @@ smartcset/
 ### FASE 0 — ✅ COMPLETA
 8 documentos legales producidos y auditados (políticas de datos, inventario activos, matriz riesgos, roles, cronograma auditorías, política general seguridad, control de acceso, gestión de incidentes).
 
-### FASE 1 — Blindaje Técnico Inmediato (~75-80% implementada)
+### FASE 1 — Blindaje Técnico Inmediato (~85% implementada; E3 cerrado 2026-07-05)
 
 | ID | Entregable | Estado | Notas |
 |----|-----------|--------|-------|
@@ -130,7 +130,7 @@ smartcset/
 | **E1-A01** | Broken Access Control | ✅ 100% (real desde 2026-07-01) | require_admin.php ok desde el inicio, pero el control por menú a nivel de página (no solo sidebar) recién se implementó el 2026-07-01 con `usuarioTieneMenu()` — antes cualquier usuario logueado podía acceder a SIEM/registro por URL directa. Ver Bug 7/8 en CLAUDE.md |
 | **E1-A02** | Cryptographic Failures | ✅ 100% | HTTPS+TLS activo, bcrypt verificado, DB_SSLMODE=require |
 | **E8** | Hardening de red | ✅ 100% (local) | Apache+TLS+HSTS+5 security headers — en servidor SENA requiere Oficina TI para firewall/PostgreSQL SSL |
-| **E3** | Rate limiting + logging auth | ✅ 100% | tab_intentos_login + fun_registrar_intento_login + fun_verificar_bloqueo_ip — 5 intentos/15 min por IP |
+| **E3** | Rate limiting + logging auth | ✅ 100% (enriquecido + probado 2026-07-05) | Bloqueo por IP (5 intentos/15 min configurable en `.env`). Auditoría enriquecida: `tab_intentos_login` guarda `motivo_fallo` + `user_agent`; función a 5 args; SIEM muestra el motivo; suite `test_e3_rate_limiting.py` 5/5 PASS local+remoto. Cierra OWASP A07 |
 | **E11** | Mini SIEM Module | ✅ 100% (acceso real desde 2026-07-01) | 5 vistas + 9 funciones + 2 endpoints AJAX — el "acceso control por menú" original (2026-06-27) solo eran los 2 endpoints AJAX; las 5 páginas de vista no validaban menú hasta el fix del 2026-07-01 |
 | **E1 A03-A10** | OWASP Top 10 restantes | 🔲 Pendiente | A03 (Injection), A04-A06, A08-A10 pendientes |
 | **E2** | Cifrado en reposo (pgcrypto) | 🔲 Bloqueado | documento_identidad ES la PK — requiere rediseño de schema antes de cifrar |
@@ -780,7 +780,45 @@ Al recrear la BD del servidor de laboratorio desde cero con `setup_smartcset.sh`
 ### 4. Reparación del MCP `codebase-memory-mcp`
 El binario estaba configurado globalmente (`~/.claude.json`) apuntando a `/home/anderson/smartcset/.mcp/codebase-memory-mcp`, pero el archivo no existía ahí (copiado solo en el proyecto SysMho y en `~/.local/bin/`) — por eso las herramientas nunca cargaban en esta sesión. Se copió el binario al path correcto y se reconectó (`/mcp`). Se borró también el índice cacheado de otro proyecto (SysMho) para dejar solo `smartcset` indexado. Reindexado tras el merge: 6,690 nodos / 8,844 relaciones.
 
-**Estado al cierre:** BD del servidor de laboratorio (`192.168.1.71`) 100% coherente con el código de `feat/implementacion_MSPI`. Pendiente: decidir si se aplican las mismas correcciones de schema (Bug 11) contra la BD local (`localhost`) y si se hace commit separado de esos fixes de schema (son bugs de `main`, no parte del merge de seguridad).
+### 5. Verificación y hardening TLS (HTTPS + PostgreSQL) — ✅ RESUELTO, ver CLAUDE.md Bug 13
+A pedido de Anderson (esto debe simular fielmente el hardening institucional del SENA), se verificó de punta a punta que el cifrado no fuera solo config de papel:
+- **HTTPS Apache↔navegador:** confirmado con handshake real (`curl -v`) — TLSv1.3, `TLS_AES_256_GCM_SHA384`, HTTP→HTTPS redirige 301, 5 headers de seguridad presentes.
+- **Certificado:** verificado criptográficamente que la clave privada (`smartcset.key`, ECDSA, permisos `600` solo `www-data`) corresponde exactamente a la clave pública del certificado (`smartcset.crt`).
+- **PHP↔PostgreSQL:** conexión TLS real confirmada (TLSv1.3), **pero el servidor de laboratorio (`192.168.1.71`) aceptaba conexiones sin cifrar** — `DB_SSLMODE=require` en `.env` solo hace que el cliente lo pida, no que el servidor lo exija. `pg_hba.conf` tenía `host` (no `hostssl`) en las entradas de red `192.168.1.0/24` y `10.5.213.111/32` (esta última la IP institucional SENA referenciada en sesiones previas).
+
+**Fix aplicado por SSH al servidor** (backup de `pg_hba.conf` creado antes): ambas entradas cambiadas a `hostssl`, `systemctl reload postgresql`. Verificado: `PGSSLMODE=disable` ahora es rechazado (`FATAL: ... no encryption`), `PGSSLMODE=require` sigue funcionando normal, y login real (`admin.smart`) contra `https://localhost/smartcset/` funciona end-to-end con la BD ya endurecida.
+
+**Estado al cierre:** BD del servidor de laboratorio (`192.168.1.71`) 100% coherente con el código de `feat/implementacion_MSPI`, y ahora también exige TLS igual que se busca simular del entorno institucional. Pendiente: decidir si se aplican las mismas correcciones de schema (Bug 11) contra la BD local (`localhost`) y si se hace commit separado de esos fixes de schema (son bugs de `main`, no parte del merge de seguridad).
+
+### 6. Restauración de datos reales tras la reinstalación limpia — divergencia estructural encontrada y corregida (ver CLAUDE.md Bug 15)
+Tras el Bug 11 (instalación limpia del schema), el servidor de laboratorio quedó con el schema+catálogos correctos pero **sin los datos reales** (personas, aprendices, instructores, fichas) — ese script solo siembra catálogos base, no reinserta datos operativos. Anderson lo notó al ver el dashboard vacío pese a que "la base de datos ya venía con un montón de información".
+
+Se restauraron los datos reales copiándolos (`pg_dump --data-only`) desde la BD local `db_smartcset2` (nunca tocada por los `DROP DATABASE` de esta sesión, con toda la data institucional intacta: 7,384 personas, 7,369 aprendices, 12 instructores, 811 fichas, 448 programas). En el proceso aparecieron **divergencias estructurales reales** entre el schema V.1.10 del repo y lo que la BD real espera (no solo typos) — resueltas priorizando siempre el diseño real de producción sobre el del repo, a instrucción explícita de Anderson:
+
+- `tab_aprendices.id_ficha` — el schema lo tenía mal renombrado a `id_ficha_vigente` (esto revierte el fix incorrecto del Bug 11 punto 3 y el Bug 14)
+- `tab_ausencias_aprendiz` — revertida de `id_motivo` (catálogo) a `val_motivo`/`val_ruta_excusa` (texto libre, diseño real)
+- `tab_llamados_atencion` — revertida de `id_aprendiz`/`id_ficha`/`id_instructor`/`id_motivo`/`nom_programa` a `id_tercero`/`ind_tipo_tercero` (diseño real, más genérico)
+- `tab_pmtros_grales`, `tab_temp_df14a` — columnas nuevas sin default o con precisión insuficiente para valores reales, corregidas
+- `tab_temp_fichas_creadas`, `tab_temp_juicios`, `tab_biometria_facial` — excluidas de la restauración de datos (transitorias o fuera de alcance)
+
+**Verificado end-to-end:** dashboard real (`https://localhost/smartcset/`) muestra 7,384 personas registradas tras el fix, login funcional, sin el error "No se pudo completar la operación".
+
+**Pendiente:** aplicar la misma restauración de datos a `localhost` si se reinstala desde cero ahí también; revisar si hay más tablas con divergencias similares no descubiertas aún (solo se probaron las tablas que efectivamente tenían datos que cargar).
+
+### 7. Restauración de `tab_usuarios` en el servidor de laboratorio (usuarios perdidos en el Bug 15)
+Al restaurar los datos reales (sección 6), `tab_usuarios` había quedado en la **lista de exclusión** del `pg_dump --data-only` (junto con `tab_menus`, `tab_menu_usuarios`, `tab_config_sistema`, `tab_sesiones`, `tab_intentos_login`) — correcto para esas tablas de acceso, pero arrastró a `tab_usuarios` como efecto colateral: el remoto quedó solo con los 2 usuarios del seed (`admin.smart`, `porteria`, este último además inactivo), cuando el local tenía 14 (incluidos 10 instructores + `leidy.castro`/`dora.castro`).
+
+**Restauración (2026-07-05):** se copió `tab_usuarios` de local → remoto (`pg_dump --table` con `ON CONFLICT DO NOTHING`, conservando los hashes bcrypt originales), se re-ejecutó `fun_crear_usuarios_instructores()` (que asigna los menús instructor `20/202/20201/205/20501-20502/206/20601` alineados a la numeración nueva), se asignaron menús de registro (`20/207/20701`) a `leidy.castro`/`dora.castro`, y se reactivó `porteria`. **Estado final: 15 usuarios, todos activos.** Dos prerequisitos que faltaban en el remoto y se instalaron: extensión `pgcrypto` (además prerequisito de E2) y tabla `tab_borrados`.
+
+**Lección (en CLAUDE.md):** `pg_dump` inserta `set_config('search_path','',false)` al inicio del archivo; con search_path vacío el trigger de auditoría `fun_act_tabla` no resuelve `tab_borrados` y el INSERT falla. Al cargar dumps de tablas con triggers → quitar esa línea o usar `--disable-triggers`.
+
+### 8. E3 — Rate limiting + logging de autenticación ✅ CERRADO (enriquecido)
+Se completó el último entregable técnico grande de FASE 1. El núcleo ya estaba desplegado; se **enriqueció con auditoría forense**: `tab_intentos_login` ahora registra `motivo_fallo` (`usuario_no_existe`/`contrasena_incorrecta`/`usuario_inactivo`, NULL en éxitos) y `user_agent`. `fun_registrar_intento_login` pasó a firma de 5 args; integración en `backend/routers/auth/v1/login.php` (endpoint AJAX). El SIEM (`fun_siem_list_eventos` + vista `siem/eventos`) muestra el motivo. Suite nueva `scripts/test_seguridad/test_e3_rate_limiting.py` — **5/5 PASS en BD local y remota**. Cierra OWASP A07. Detalle en CLAUDE.md (sección E3) y checklist FASE1. **Fix colateral:** `common.py` tenía `PROJECT_ROOT` apuntando a `scripts/` (desactualizado tras mover los tests) → `run_psql` no encontraba `.env`; ahora localiza la raíz por marcador (beneficia a todas las suites).
+
+**Lección (en CLAUDE.md):** cambiar la aridad o el `RETURNS TABLE` de una función PL/pgSQL con `CREATE OR REPLACE` no reemplaza la vieja — crea una segunda (distinto nº de args = función distinta) y un llamado queda ambiguo. Hay que `DROP FUNCTION IF EXISTS` la firma vieja (se dejó el DROP dentro del propio `.sql` para despliegue idempotente).
+
+### 9. Carpeta `Documentacion para implementacion de MSPI/justificacion_MSPI/` — trazabilidad legal del proyecto
+Se creó la carpeta `justificacion_MSPI/` (dentro de `Documentacion para implementacion de MSPI/`) con la fundamentación legal-estratégica de SmartCSET para la presentación al Director Regional (29 julio 2026). Investigación de normativa externa (MSPI/MinTIC Resolución 02277/2025, Ley 1581/2012, Decreto 1377/2013, multas SIC hasta $82M) **y** descarga + análisis de 7 documentos oficiales internos del SENA (Acuerdo Consejo Directivo 2019 + Manual, Reglamento del Aprendiz 2024, Planes de Seguridad 2019/2023/2026). Hallazgo central: la situación actual (empresa de vigilancia con software propio) **viola la propia política del SENA** (Manual 2019 §15.7 "todos los datos están almacenados en un servidor del SENA en Colombia") y la autorización de datos que firma cada aprendiz solo ampara a la entidad, no a un tercero privado (Regl. Aprendiz Art. 11 Par. 5). 6 documentos + README + evidencia en `documentos_sena/`. Cubre SGI (problema vivo), SGA y SAA (doc. 06).
 
 ---
 
@@ -806,10 +844,12 @@ El binario estaba configurado globalmente (`~/.claude.json`) apuntando a `/home/
    - Problema: `tab_personas.id_persona` = documento de identidad = PK referenciada en 5+ tablas
    - Opciones discutidas: (a) nueva columna `id_persona_seq` como PK sustituta, (b) cifrar solo en capa PHP sin tocar BD
    - Requiere decisión de Anderson antes de implementar
+   - `pgcrypto` ya instalado en el remoto (prerequisito listo)
 
-4. **Suite de tests local** (los actuales corren contra servidor SENA 10.5.213.103)
-   - Actualizar `scripts/test_seguridad/common.py` para apuntar a `localhost`
-   - Agregar tests para E3 (rate limiting): 5 intentos fallidos → bloqueo
+4. ~~**E3 — Rate limiting**~~ ✅ CERRADO 2026-07-05 (suite 5/5 en local y remoto, ver sección 8)
+5. **Suite de tests local — deuda pendiente**
+   - `common.py` ya localiza `.env` correctamente (fix 2026-07-05); falta alinear el helper `login()` que aún postea a `/index.php` (el login real es AJAX a `backend/routers/auth/v1/login.php` — `test_e3` ya golpea el endpoint real)
+   - Suites E1-A02 y E6 fallan por rutas viejas (`public/uploads/`, `/src/`) y `.htaccess` gitignored — deuda pre-existente, no bloqueante
 
 ### Prioridad baja
 5. **FASE 2** (sin código aún)
