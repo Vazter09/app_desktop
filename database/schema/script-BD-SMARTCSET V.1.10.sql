@@ -1048,14 +1048,6 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3, -- Máximo # de llamados de at. a un aprendiz para enviar a comité
     nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),
     tel_administrador           DECIMAL(10,0)               NOT NULL,
-    hora_entrada_jornada_m      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '06:00:00',
-    hora_salida_jornada_m       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '11:45:00',
-    hora_entrada_jornada_t      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '12:00:00',
-    hora_salida_jornada_t       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
-    hora_entrada_jornada_n      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
-    hora_salida_jornada_n       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '21:30:00',
-    hora_entrada_jornada_n_sab  TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '13:00:00',
-    hora_salida_jornada_n_sab   TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
     id_novedad_desercion        SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
     id_novedad_aplazamiento     SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
@@ -2441,9 +2433,9 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
     nom_jornada             VARCHAR                     NOT NULL,
     hora_entrada            TIME WITHOUT TIME ZONE      NOT NULL,
     hora_salida             TIME WITHOUT TIME ZONE      NOT NULL,
-    ind_noche               BOOLEAN                     NOT NULL, -- Indicador de si es jornada nocturna
-    hora_llegada_sabado     TIME WITHOUT TIME ZONE      NOT NULL,
-    hora_salida_sabado      TIME WITHOUT TIME ZONE      NOT NULL,
+    ind_noche               BOOLEAN                     NOT NULL DEFAULT FALSE, -- Indicador de si es jornada nocturna
+    hora_llegada_sabado     TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '00:00:00',
+    hora_salida_sabado      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '00:00:00',
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2652,7 +2644,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
 (
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
-    id_ficha_vigente        DECIMAL(10,0)               NOT NULL,
+    id_ficha                DECIMAL(10,0)               NOT NULL,
     ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     id_opcion_productiva    DECIMAL(2,0)                NOT NULL DEFAULT 0,
