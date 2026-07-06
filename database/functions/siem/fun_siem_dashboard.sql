@@ -1,7 +1,11 @@
 -- Función: KPIs del dashboard SIEM
 -- Retorna conteos para las 4 tarjetas principales
+-- Parámetros configurables para coherencia con rate limiting (E3)
 
-CREATE OR REPLACE FUNCTION fun_siem_dashboard_kpis()
+CREATE OR REPLACE FUNCTION fun_siem_dashboard_kpis(
+    wmax_intentos    INTEGER DEFAULT 5,
+    wventana_minutos INTEGER DEFAULT 15
+)
 RETURNS TABLE(
     total_intentos_hoy   BIGINT,
     fallos_hoy           BIGINT,
@@ -24,10 +28,10 @@ BEGIN
            AND ind_exitoso = FALSE)::BIGINT,
 
         (SELECT COUNT(DISTINCT ip_cliente) FROM tab_intentos_login
-         WHERE fec_intento >= NOW() - INTERVAL '15 minutes'
+         WHERE fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
            AND ind_exitoso = FALSE
          GROUP BY ip_cliente
-         HAVING COUNT(*) >= 5)::BIGINT,
+         HAVING COUNT(*) >= wmax_intentos)::BIGINT,
 
         (SELECT COUNT(*) FROM tab_sesiones
          WHERE fec_fin IS NULL)::BIGINT;
@@ -80,7 +84,11 @@ $$ LANGUAGE plpgsql;
 
 
 -- Función: top 5 IPs con más fallos hoy
-CREATE OR REPLACE FUNCTION fun_siem_top_ips_fallidas()
+-- Parámetro configurable para coherencia con rate limiting (E3)
+CREATE OR REPLACE FUNCTION fun_siem_top_ips_fallidas(
+    wmax_intentos    INTEGER DEFAULT 5,
+    wventana_minutos INTEGER DEFAULT 15
+)
 RETURNS TABLE(
     ip_cliente   VARCHAR,
     total_fallos BIGINT,
@@ -99,8 +107,8 @@ BEGIN
         COUNT(*) AS total_fallos,
         MAX(t.fec_intento) AS ultimo_fallo,
         (COUNT(*) FILTER (
-            WHERE t.fec_intento >= NOW() - INTERVAL '15 minutes'
-        ) >= 5) AS bloqueada
+            WHERE t.fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
+        ) >= wmax_intentos) AS bloqueada
     FROM tab_intentos_login t
     WHERE DATE(t.fec_intento) = CURRENT_DATE
       AND t.ind_exitoso = FALSE
@@ -120,8 +128,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Función: últimas alertas (5 eventos recientes de seguridad)
-CREATE OR REPLACE FUNCTION fun_siem_alertas_recientes()
+-- Función: últimas alertas (8 eventos recientes de seguridad)
+-- Parámetro configurable para coherencia con rate limiting (E3)
+CREATE OR REPLACE FUNCTION fun_siem_alertas_recientes(
+    wmax_intentos    INTEGER DEFAULT 5,
+    wventana_minutos INTEGER DEFAULT 15
+)
 RETURNS TABLE(
     tipo        TEXT,
     descripcion TEXT,
@@ -156,10 +168,10 @@ BEGIN
     LEFT JOIN (
         SELECT il.ip_cliente, COUNT(*) AS total_fallos
         FROM tab_intentos_login il
-        WHERE il.fec_intento >= NOW() - INTERVAL '15 minutes'
+        WHERE il.fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
           AND il.ind_exitoso = FALSE
         GROUP BY il.ip_cliente
-        HAVING COUNT(*) >= 5
+        HAVING COUNT(*) >= wmax_intentos
     ) bloqueo ON bloqueo.ip_cliente = t.ip_cliente
     WHERE t.ind_exitoso = FALSE
     ORDER BY t.fec_intento DESC

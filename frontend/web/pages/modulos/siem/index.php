@@ -21,14 +21,25 @@ $w_mensaje    = '';
 $w_tipo_alerta = 'danger';
 
 try {
-    $row = $pdo->query("SELECT * FROM fun_siem_dashboard_kpis()")->fetch(PDO::FETCH_ASSOC);
+    // KPIs con parámetros de rate limiting sincronizados desde .env
+    $stmt = $pdo->prepare("SELECT * FROM fun_siem_dashboard_kpis(?, ?)");
+    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
         $kpis = $row;
     }
 
+    // Eventos por hora (sin parámetros, es solo agregación temporal)
     $eventos_hora = $pdo->query("SELECT * FROM fun_siem_eventos_por_hora()")->fetchAll(PDO::FETCH_ASSOC);
-    $top_ips      = $pdo->query("SELECT * FROM fun_siem_top_ips_fallidas()")->fetchAll(PDO::FETCH_ASSOC);
-    $alertas      = $pdo->query("SELECT * FROM fun_siem_alertas_recientes()")->fetchAll(PDO::FETCH_ASSOC);
+
+    // Top IPs y alertas con parámetros sincronizados
+    $stmt = $pdo->prepare("SELECT * FROM fun_siem_top_ips_fallidas(?, ?)");
+    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS]);
+    $top_ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $pdo->prepare("SELECT * FROM fun_siem_alertas_recientes(?, ?)");
+    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS]);
+    $alertas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $w_mensaje = ErrorHandler::userMessageFromException($e);
 }
@@ -212,7 +223,7 @@ $chart_exitosos_json = json_encode($chart_exitosos, JSON_UNESCAPED_UNICODE);
 $chart_fallidos_json = json_encode($chart_fallidos, JSON_UNESCAPED_UNICODE);
 
 $extra_js = <<<HTML
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="<?= htmlspecialchars($smartcset_asset_href) ?>js/vendor/chart-4.4.0/chart.umd.min.js"></script>
 <script>
 (function () {
     'use strict';
