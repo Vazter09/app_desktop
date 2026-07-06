@@ -21,20 +21,23 @@ $w_mensaje    = '';
 $w_tipo_alerta = 'danger';
 
 try {
-    // KPIs con parámetros de rate limiting sincronizados desde .env
-    $stmt = $pdo->prepare("SELECT * FROM fun_siem_dashboard_kpis(?, ?)");
-    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS]);
+    // Umbrales de rate limiting sincronizados desde .env (E3) y
+    // zona horaria local para "hoy" / horas de la gráfica
+    $w_tz = smartcsetAppTimezone();
+
+    $stmt = $pdo->prepare("SELECT * FROM fun_siem_dashboard_kpis(?, ?, ?)");
+    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS, $w_tz]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
         $kpis = $row;
     }
 
-    // Eventos por hora (sin parámetros, es solo agregación temporal)
-    $eventos_hora = $pdo->query("SELECT * FROM fun_siem_eventos_por_hora()")->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare("SELECT * FROM fun_siem_eventos_por_hora(?)");
+    $stmt->execute([$w_tz]);
+    $eventos_hora = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Top IPs y alertas con parámetros sincronizados
-    $stmt = $pdo->prepare("SELECT * FROM fun_siem_top_ips_fallidas(?, ?)");
-    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS]);
+    $stmt = $pdo->prepare("SELECT * FROM fun_siem_top_ips_fallidas(?, ?, ?)");
+    $stmt->execute([LOGIN_MAX_INTENTOS, LOGIN_VENTANA_MINUTOS, $w_tz]);
     $top_ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $stmt = $pdo->prepare("SELECT * FROM fun_siem_alertas_recientes(?, ?)");
@@ -49,7 +52,8 @@ $active_menu_id = '21101';
 $wnom_usuario  = $_SESSION['nom_usuario'];
 
 $_root   = modulosProjectRoot();
-$_css_v  = @filemtime($_root . '/css/siem.css') ?: time();
+$_assets = $_root . '/frontend/web/public/assets';
+$_css_v  = @filemtime($_assets . '/css/siem.css') ?: time();
 $extra_stylesheets = '<link rel="stylesheet" href="'
     . htmlspecialchars($smartcset_asset_href) . 'css/siem.css?v=' . (int) $_css_v . '">';
 
@@ -161,7 +165,7 @@ include modulosLayout('layout/topbar.php');
                             <div class="siem-alert-meta mt-1">
                                 <?= htmlspecialchars($al['ip_cliente']) ?>
                                 &nbsp;·&nbsp;
-                                <?= date('H:i:s', strtotime($al['fec_evento'])) ?>
+                                <?= smartcsetFormatDbTimestamp($al['fec_evento'], 'H:i:s') ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -197,7 +201,7 @@ include modulosLayout('layout/topbar.php');
                                     <tr>
                                         <td class="font-monospace"><?= htmlspecialchars($ip['ip_cliente']) ?></td>
                                         <td class="text-center fw-bold text-danger"><?= (int) $ip['total_fallos'] ?></td>
-                                        <td class="font-monospace"><?= date('H:i:s', strtotime($ip['ultimo_fallo'])) ?></td>
+                                        <td class="font-monospace"><?= smartcsetFormatDbTimestamp($ip['ultimo_fallo'], 'H:i:s') ?></td>
                                         <td class="text-center">
                                             <?php if ($ip['bloqueada']): ?>
                                                 <span class="badge badge-bloqueada"><i class="bi bi-shield-x me-1"></i>Bloqueada</span>
@@ -222,8 +226,12 @@ $chart_labels_json   = json_encode($chart_labels,   JSON_UNESCAPED_UNICODE);
 $chart_exitosos_json = json_encode($chart_exitosos, JSON_UNESCAPED_UNICODE);
 $chart_fallidos_json = json_encode($chart_fallidos, JSON_UNESCAPED_UNICODE);
 
+$_chart_v  = @filemtime($_assets . '/js/vendor/chart-4.4.0/chart.umd.min.js') ?: time();
+$chart_js_src = htmlspecialchars($smartcset_asset_href)
+    . 'js/vendor/chart-4.4.0/chart.umd.min.js?v=' . (int) $_chart_v;
+
 $extra_js = <<<HTML
-<script src="<?= htmlspecialchars($smartcset_asset_href) ?>js/vendor/chart-4.4.0/chart.umd.min.js"></script>
+<script src="{$chart_js_src}"></script>
 <script>
 (function () {
     'use strict';

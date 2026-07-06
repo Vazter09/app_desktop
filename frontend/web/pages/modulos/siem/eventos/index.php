@@ -31,7 +31,7 @@ $w_tipo_alerta = 'danger';
 try {
     $stmt = $pdo->prepare(
         "SELECT * FROM fun_siem_list_eventos(
-            ?::TEXT, ?::TEXT, ?::DATE, ?::DATE, ?::TEXT, ?::INT, ?::INT
+            ?::TEXT, ?::TEXT, ?::DATE, ?::DATE, ?::TEXT, ?::INT, ?::INT, ?::TEXT
         )"
     );
     $stmt->execute([
@@ -42,6 +42,7 @@ try {
         $f_resultado !== '' ? $f_resultado : null,
         $por_pagina,
         $offset,
+        smartcsetAppTimezone(),
     ]);
     $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $total_filas = !empty($eventos) ? (int) $eventos[0]['total_filas'] : 0;
@@ -56,7 +57,7 @@ $active_menu_id = '21102';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 $_root  = modulosProjectRoot();
-$_css_v = @filemtime($_root . '/css/siem.css') ?: time();
+$_css_v = @filemtime($_root . '/frontend/web/public/assets/css/siem.css') ?: time();
 $extra_stylesheets = '<link rel="stylesheet" href="'
     . htmlspecialchars($smartcset_asset_href) . 'css/siem.css?v=' . (int) $_css_v . '">';
 
@@ -150,7 +151,7 @@ include modulosLayout('layout/topbar.php');
                         <?php foreach ($eventos as $ev): ?>
                             <tr>
                                 <td class="font-monospace">
-                                    <?= date('Y-m-d H:i:s', strtotime($ev['fec_intento'])) ?>
+                                    <?= smartcsetFormatDbTimestamp($ev['fec_intento'], 'Y-m-d H:i:s') ?>
                                 </td>
                                 <td class="font-monospace"><?= htmlspecialchars($ev['ip_cliente']) ?></td>
                                 <td><?= htmlspecialchars($ev['id_usuario'] ?? '—') ?></td>

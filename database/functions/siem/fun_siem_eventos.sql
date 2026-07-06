@@ -1,19 +1,25 @@
 -- Función: lista paginada de eventos de autenticación con filtros
+-- wzona_horaria ← APP_TIMEZONE: los filtros Desde/Hasta llegan como
+-- fechas locales del usuario; fec_intento se almacena en la zona de
+-- la conexión (DB_TIMEZONE, normalmente UTC), por lo que la
+-- comparación de días se hace en la zona local.
 
--- El RETURNS TABLE cambió (columna motivo_fallo, E3 enriquecido); PostgreSQL
--- no permite alterar el tipo de retorno con CREATE OR REPLACE, hay que dropear.
+-- La firma cambió (se agregó wzona_horaria); PostgreSQL trata
+-- distinto número de argumentos como funciones distintas, hay que
+-- dropear las firmas anteriores para no dejar huérfanas (lección E3).
 DROP FUNCTION IF EXISTS fun_siem_list_eventos(
     TEXT, TEXT, DATE, DATE, TEXT, INT, INT
 );
 
 CREATE OR REPLACE FUNCTION fun_siem_list_eventos(
-    wip_cliente  TEXT    DEFAULT NULL,
-    wid_usuario  TEXT    DEFAULT NULL,
-    wfecha_desde DATE    DEFAULT NULL,
-    wfecha_hasta DATE    DEFAULT NULL,
-    wind_exitoso TEXT    DEFAULT NULL,
-    wlimit       INT     DEFAULT 50,
-    woffset      INT     DEFAULT 0
+    wip_cliente   TEXT    DEFAULT NULL,
+    wid_usuario   TEXT    DEFAULT NULL,
+    wfecha_desde  DATE    DEFAULT NULL,
+    wfecha_hasta  DATE    DEFAULT NULL,
+    wind_exitoso  TEXT    DEFAULT NULL,
+    wlimit        INT     DEFAULT 50,
+    woffset       INT     DEFAULT 0,
+    wzona_horaria TEXT    DEFAULT 'America/Bogota'
 ) RETURNS TABLE(
     ip_cliente   VARCHAR,
     id_usuario   VARCHAR,
@@ -40,8 +46,10 @@ BEGIN
     WHERE
         (wip_cliente IS NULL OR wip_cliente = ''  OR t.ip_cliente ILIKE '%' || wip_cliente || '%')
         AND (wid_usuario IS NULL OR wid_usuario = '' OR t.id_usuario ILIKE '%' || wid_usuario || '%')
-        AND (wfecha_desde IS NULL OR DATE(t.fec_intento) >= wfecha_desde)
-        AND (wfecha_hasta IS NULL OR DATE(t.fec_intento) <= wfecha_hasta)
+        AND (wfecha_desde IS NULL
+             OR (t.fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::DATE >= wfecha_desde)
+        AND (wfecha_hasta IS NULL
+             OR (t.fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::DATE <= wfecha_hasta)
         AND (wind_exitoso IS NULL OR wind_exitoso = ''
              OR (wind_exitoso = 'true'  AND t.ind_exitoso = TRUE)
              OR (wind_exitoso = 'false' AND t.ind_exitoso = FALSE))

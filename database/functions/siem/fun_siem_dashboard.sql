@@ -1,10 +1,31 @@
+-- ===================================================================
+-- Funciones del dashboard SIEM (panel de control)
+-- Parámetros configurables para coherencia con rate limiting (E3):
+--   wmax_intentos / wventana_minutos ← .env (LOGIN_MAX_INTENTOS /
+--   LOGIN_VENTANA_MINUTOS), pasados desde PHP.
+--   wzona_horaria ← APP_TIMEZONE: los timestamps se almacenan en la
+--   zona de la conexión (DB_TIMEZONE, normalmente UTC); "hoy" y las
+--   horas de la gráfica se calculan en la zona local del usuario.
+-- Las firmas cambiaron (0-arg → parametrizadas); PostgreSQL trata
+-- distinto número de argumentos como funciones distintas, hay que
+-- dropear las firmas anteriores para no dejar huérfanas (lección E3).
+-- ===================================================================
+
+DROP FUNCTION IF EXISTS fun_siem_dashboard_kpis();
+DROP FUNCTION IF EXISTS fun_siem_dashboard_kpis(INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS fun_siem_eventos_por_hora();
+DROP FUNCTION IF EXISTS fun_siem_top_ips_fallidas();
+DROP FUNCTION IF EXISTS fun_siem_top_ips_fallidas(INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS fun_siem_alertas_recientes();
+DROP FUNCTION IF EXISTS fun_siem_alertas_recientes(INTEGER, INTEGER);
+
+
 -- Función: KPIs del dashboard SIEM
 -- Retorna conteos para las 4 tarjetas principales
--- Parámetros configurables para coherencia con rate limiting (E3)
-
 CREATE OR REPLACE FUNCTION fun_siem_dashboard_kpis(
     wmax_intentos    INTEGER DEFAULT 5,
-    wventana_minutos INTEGER DEFAULT 15
+    wventana_minutos INTEGER DEFAULT 15,
+    wzona_horaria    TEXT    DEFAULT 'America/Bogota'
 )
 RETURNS TABLE(
     total_intentos_hoy   BIGINT,
@@ -13,25 +34,35 @@ RETURNS TABLE(
     sesiones_activas     BIGINT
 ) AS $$
 DECLARE
+    w_hoy_local  DATE;
     w_exc_state  TEXT;
     w_exc_msg    TEXT;
     w_exc_detail TEXT;
     w_exc_hint   TEXT;
 BEGIN
+    w_hoy_local := (NOW() AT TIME ZONE wzona_horaria)::DATE;
+
     RETURN QUERY
     SELECT
         (SELECT COUNT(*) FROM tab_intentos_login
-         WHERE DATE(fec_intento) = CURRENT_DATE)::BIGINT,
+         WHERE (fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::DATE
+               = w_hoy_local)::BIGINT,
 
         (SELECT COUNT(*) FROM tab_intentos_login
-         WHERE DATE(fec_intento) = CURRENT_DATE
+         WHERE (fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::DATE
+               = w_hoy_local
            AND ind_exitoso = FALSE)::BIGINT,
 
-        (SELECT COUNT(DISTINCT ip_cliente) FROM tab_intentos_login
-         WHERE fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
-           AND ind_exitoso = FALSE
-         GROUP BY ip_cliente
-         HAVING COUNT(*) >= wmax_intentos)::BIGINT,
+        -- Subconsulta anidada: con GROUP BY+HAVING directo, 2+ IPs
+        -- bloqueadas devolverían varias filas y el escalar fallaría.
+        (SELECT COUNT(*) FROM (
+            SELECT il.ip_cliente
+            FROM tab_intentos_login il
+            WHERE il.fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
+              AND il.ind_exitoso = FALSE
+            GROUP BY il.ip_cliente
+            HAVING COUNT(*) >= wmax_intentos
+        ) ips_bloq)::BIGINT,
 
         (SELECT COUNT(*) FROM tab_sesiones
          WHERE fec_fin IS NULL)::BIGINT;
@@ -49,7 +80,10 @@ $$ LANGUAGE plpgsql;
 
 
 -- Función: eventos por hora (últimas 24h) para gráfica Chart.js
-CREATE OR REPLACE FUNCTION fun_siem_eventos_por_hora()
+-- La hora se expresa en la zona local del usuario (wzona_horaria)
+CREATE OR REPLACE FUNCTION fun_siem_eventos_por_hora(
+    wzona_horaria TEXT DEFAULT 'America/Bogota'
+)
 RETURNS TABLE(
     hora       INT,
     exitosos   BIGINT,
@@ -63,12 +97,12 @@ DECLARE
 BEGIN
     RETURN QUERY
     SELECT
-        EXTRACT(HOUR FROM fec_intento)::INT AS hora,
+        EXTRACT(HOUR FROM fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::INT AS hora,
         COUNT(*) FILTER (WHERE ind_exitoso = TRUE)  AS exitosos,
         COUNT(*) FILTER (WHERE ind_exitoso = FALSE) AS fallidos
     FROM tab_intentos_login
     WHERE fec_intento >= NOW() - INTERVAL '24 hours'
-    GROUP BY EXTRACT(HOUR FROM fec_intento)
+    GROUP BY EXTRACT(HOUR FROM fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)
     ORDER BY hora;
 
 EXCEPTION
@@ -83,11 +117,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Función: top 5 IPs con más fallos hoy
--- Parámetro configurable para coherencia con rate limiting (E3)
+-- Función: top 5 IPs con más fallos hoy (día local del usuario)
 CREATE OR REPLACE FUNCTION fun_siem_top_ips_fallidas(
     wmax_intentos    INTEGER DEFAULT 5,
-    wventana_minutos INTEGER DEFAULT 15
+    wventana_minutos INTEGER DEFAULT 15,
+    wzona_horaria    TEXT    DEFAULT 'America/Bogota'
 )
 RETURNS TABLE(
     ip_cliente   VARCHAR,
@@ -110,7 +144,8 @@ BEGIN
             WHERE t.fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
         ) >= wmax_intentos) AS bloqueada
     FROM tab_intentos_login t
-    WHERE DATE(t.fec_intento) = CURRENT_DATE
+    WHERE (t.fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::DATE
+          = (NOW() AT TIME ZONE wzona_horaria)::DATE
       AND t.ind_exitoso = FALSE
     GROUP BY t.ip_cliente
     ORDER BY total_fallos DESC
@@ -129,7 +164,6 @@ $$ LANGUAGE plpgsql;
 
 
 -- Función: últimas alertas (8 eventos recientes de seguridad)
--- Parámetro configurable para coherencia con rate limiting (E3)
 CREATE OR REPLACE FUNCTION fun_siem_alertas_recientes(
     wmax_intentos    INTEGER DEFAULT 5,
     wventana_minutos INTEGER DEFAULT 15
