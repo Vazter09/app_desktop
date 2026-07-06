@@ -139,6 +139,86 @@ smartcset/
 
 ---
 
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-06 — Consolidación SIEM (submenús 1-3)
+
+Sesión dedicada exclusivamente al módulo SIEM. Metodología: submenú por submenú —
+analizar (con codebase-memory-mcp), corregir, desplegar en ambas BDs, probar
+end-to-end por HTTP, y solo entonces avanzar. Consolidados 3 de 5 submenús.
+Commits: `0ae2470` + `6a4c34c` (Panel de Control + Eventos) + el de Sesiones/docs.
+
+### 1. Panel de Control (21101) — `pages/modulos/siem/index.php` + `fun_siem_dashboard.sql`
+- **Crash con 2+ IPs bloqueadas (CRÍTICO, corregido):** el KPI "IPs bloqueadas" usaba
+  subconsulta escalar con `GROUP BY ip_cliente HAVING ...` — con 2+ IPs bloqueadas
+  devolvía varias filas y PostgreSQL abortaba ("more than one row returned by a
+  subquery"). El dashboard moría justo durante un ataque distribuido. Reescrito como
+  subconsulta anidada `SELECT COUNT(*) FROM (...)`.
+- **Umbral hardcodeado 3 veces (congruencia con E3):** `5 intentos/15 min` estaba
+  literal en 3 funciones SQL, duplicando `.env`. Ahora reciben
+  `wmax_intentos`/`wventana_minutos` (DEFAULT 5/15) y PHP pasa
+  `LOGIN_MAX_INTENTOS`/`LOGIN_VENTANA_MINUTOS`.
+- **Zona horaria (patrón para TODO el SIEM):** `Db.php` hace `SET TIME ZONE 'UTC'`
+  (DB_TIMEZONE) en cada conexión → los TIMESTAMP naive de BD están en UTC. Las vistas
+  mostraban horas UTC crudas (5h adelantadas) y la gráfica agrupaba por hora UTC.
+  Fix en dos capas: (a) funciones SQL reciben `wzona_horaria TEXT DEFAULT
+  'America/Bogota'` y convierten con `fec::TIMESTAMPTZ AT TIME ZONE wzona_horaria`
+  ("hoy" local, hora local en la gráfica); (b) las vistas muestran con el helper
+  existente `smartcsetFormatDbTimestamp()` — NUNCA `date('H:i:s', strtotime(...))`.
+- **Chart.js vendorizado:** cargaba de `cdn.jsdelivr.net` (rompía en intranet SENA sin
+  internet). Ahora en `frontend/web/public/assets/js/vendor/chart-4.4.0/` (commiteado
+  al repo — no requiere descarga en despliegue), incluido con el patrón concatenación +
+  versionado `filemtime` (NO `<?= ?>` dentro de heredoc: PHP no lo procesa — bug que se
+  introdujo y corrigió en esta misma sesión).
+
+### 2. Eventos (21102) — `pages/modulos/siem/eventos/index.php` + `fun_siem_eventos.sql`
+- `fun_siem_list_eventos` recibe `wzona_horaria` (8.º parámetro): los filtros
+  Desde/Hasta comparan contra el **día local** — antes un evento de las 8pm caía en el
+  día UTC siguiente. Columna Fecha/Hora vía `smartcsetFormatDbTimestamp()`.
+- `$por_pagina = 50` se queda local (aparece solo 2 veces en el módulo; regla DRY =
+  extraer a la 3.ª). Mapeo de motivos en PHP se queda (3 items fijos, YAGNI).
+
+### 3. Sesiones (21103) — `pages/modulos/siem/sesiones/index.php` + `routers/siem/v1/forzar_sesion.php`
+El botón "Forzar cierre" (función de seguridad clave) **nunca funcionó desde el
+navegador** por 3 bugs encadenados, todos corregidos:
+- `forzar_sesion.php` validaba el menú **`0603`** — numeración VIEJA de SIEM anterior
+  a la renumeración `211xx` (residuo del Bug 12); ese menú no existe en `tab_menus` →
+  todo no-admin recibía 403 aunque tuviera `21103` asignado. Ahora usa el helper
+  `usuarioTieneMenu($pdo, $id, '21103')` (admin bypass incluido) en vez de query manual.
+- La vista llamaba `SmartcsetHttp.post()` sin cargar `js/services/http-client.js`
+  (el footer NO lo carga globalmente — cada vista que lo usa lo incluye en su
+  `$extra_js`, patrón portería) y `SmartcsetToast` no existe (el global real es
+  **`SmartToast`**, API: `SmartToast.error(msg)`).
+- El `.then(res => res.ok ...)` asumía el envelope `{ok,error}`, pero `SmartcsetHttp`
+  resuelve con `payload.data` y **lanza** `Error(msg)` cuando `ok !== true` — el éxito
+  habría caído en la rama de error. Corregido al contrato real (`.then` = éxito,
+  `.catch(err)` = mensaje de negocio).
+- Protección de auto-cierre: `$_SESSION['id_sesion']` es entero — el `===` estricto
+  contra string nunca coincidía. Cast a string en la comparación.
+- Timezone + filemtime CSS igual que las otras vistas.
+
+### Pruebas ejecutadas (BD activa = laboratorio 192.168.1.71, vía HTTPS local)
+- Ataque simulado 2 IPs (10 fallos vía `fun_registrar_intento_login` real, sesión UTC
+  como la app): KPIs 12/10/**2**/2 (antes: crash), 2 badges "Bloqueada", horas locales,
+  gráfica con los fallos en la hora local correcta. Umbral configurable verificado
+  (con 10→0 bloqueadas, con 3→2).
+- Forzar cierre real: `porteria` tenía sesión colgada (id 84) que le impedía entrar
+  ("Ya tiene una sesión activa") — admin la forzó vía endpoint, auditoría correcta
+  (`cod_cierre='ADMIN'`, `usr_cierre='admin.smart'`), y portería pudo volver a entrar.
+  Guardias: no-admin sin menú → 403; auto-cierre → rechazado (400).
+- Ronda final 3 vistas: HTTP 200, 0 referencias a CDN, hora mostrada = hora real.
+- Datos de prueba (`203.0.113.*`) limpiados de ambas BDs; sesiones de prueba cerradas.
+
+### ⚠️ PENDIENTE para la próxima sesión (SIEM submenús 4-5)
+1. **IPs Bloqueadas (21104):** `desbloquear_ip.php` aún valida el menú viejo **`0604`**
+   (mismo bug que tenía forzar_sesion.php — ya identificado; corregir con
+   `usuarioTieneMenu(..., '21104')`). Revisar también timezone/filemtime/JS de la vista
+   (`fun_siem_ips.sql` probablemente hardcodea 5/15 igual que hacía el dashboard).
+2. **Actividad (21105):** mismas clases de bug esperables (filemtime CSS línea 71,
+   posibles `date(strtotime())` sin conversión de zona).
+3. Las funciones SQL nuevas ya están desplegadas en **ambas** BDs (lab + localhost) y
+   los archivos ya estaban en el array FUNCS de `setup_smartcset.sh` (sin cambios ahí).
+
+---
+
 ## LO QUE SE HIZO EN LA SESIÓN 2026-06-26 (sesión 3)
 
 ### 8. HTTPS/TLS local — Apache con Alias /smartcset

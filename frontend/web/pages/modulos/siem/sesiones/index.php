@@ -35,7 +35,7 @@ $active_menu_id = '21103';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 $_root  = modulosProjectRoot();
-$_css_v = @filemtime($_root . '/css/siem.css') ?: time();
+$_css_v = @filemtime($_root . '/frontend/web/public/assets/css/siem.css') ?: time();
 $extra_stylesheets = '<link rel="stylesheet" href="'
     . htmlspecialchars($smartcset_asset_href) . 'css/siem.css?v=' . (int) $_css_v . '">';
 
@@ -90,7 +90,7 @@ include modulosLayout('layout/topbar.php');
                                     <small class="text-muted font-monospace d-block"><?= htmlspecialchars($s['id_usuario']) ?></small>
                                 </td>
                                 <td class="font-monospace"><?= htmlspecialchars($s['ip_cliente'] ?? '—') ?></td>
-                                <td class="font-monospace"><?= date('H:i:s', strtotime($s['fec_ingreso'])) ?></td>
+                                <td class="font-monospace"><?= smartcsetFormatDbTimestamp($s['fec_ingreso'], 'H:i:s') ?></td>
                                 <td class="text-center">
                                     <?php
                                     $badge = 'bg-success';
@@ -100,7 +100,7 @@ include modulosLayout('layout/topbar.php');
                                     <span class="badge <?= $badge ?>"><?= htmlspecialchars($duracion) ?></span>
                                 </td>
                                 <td class="text-center font-monospace small">
-                                    <?= $s['fec_actividad'] ? date('H:i:s', strtotime($s['fec_actividad'])) : '—' ?>
+                                    <?= smartcsetFormatDbTimestamp($s['fec_actividad'], 'H:i:s') ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if ($propia): ?>
@@ -151,7 +151,12 @@ include modulosLayout('layout/topbar.php');
 
 <?php
 $url_forzar = smartcsetUrl('/routers/siem/v1/forzar_sesion.php');
-$extra_js = <<<HTML
+// SmartcsetHttp vive en http-client.js; el footer no lo carga
+// globalmente, cada vista que lo usa debe incluirlo (patrón portería)
+$_v_http = @filemtime($_root . '/frontend/web/public/assets/js/services/http-client.js') ?: time();
+$extra_js = '<script src="' . htmlspecialchars(smartcsetAsset('js/services/http-client.js'))
+    . '?v=' . (int) $_v_http . '"></script>'
+    . <<<HTML
 <script>
 (function () {
     'use strict';
@@ -169,17 +174,16 @@ $extra_js = <<<HTML
 
     document.getElementById('btn-confirmar-cierre').addEventListener('click', function () {
         this.disabled = true;
+        // SmartcsetHttp resuelve con payload.data y lanza Error(msg)
+        // cuando ok !== true — el mensaje de negocio llega por catch
         SmartcsetHttp.post(urlForzar, { id_sesion: idSesion })
-            .then(function (res) {
+            .then(function () {
                 modal.hide();
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    SmartcsetToast.show(res.error || 'No se pudo cerrar la sesión.', 'danger');
-                }
+                window.location.reload();
             })
-            .catch(function () {
-                SmartcsetToast.show('Error de red.', 'danger');
+            .catch(function (err) {
+                modal.hide();
+                SmartToast.error(err && err.message ? err.message : 'No se pudo cerrar la sesión.');
             })
             .finally(function () {
                 document.getElementById('btn-confirmar-cierre').disabled = false;

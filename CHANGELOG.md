@@ -1,5 +1,25 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-06] Sesión: Consolidación módulo SIEM — submenús 1-3 (Panel de Control, Eventos, Sesiones)
+
+### 🎯 Objetivos Logrados
+- ✅ **Panel de Control (21101) consolidado.** 3 bugs corregidos: (a) el KPI "IPs bloqueadas" **crasheaba la página con 2+ IPs bloqueadas simultáneas** (subconsulta escalar con GROUP BY+HAVING devolvía múltiples filas — fallaba justo durante un ataque distribuido); (b) horas mostradas 5h adelantadas (UTC crudo) y gráfica agrupando por hora UTC — nuevo parámetro `wzona_horaria` en las funciones + `smartcsetFormatDbTimestamp()`; (c) Chart.js cargaba desde CDN externo (rompía en intranet sin internet) — vendorizado en `assets/js/vendor/chart-4.4.0/`.
+- ✅ **Eventos (21102) consolidado.** Filtros Desde/Hasta ahora comparan contra el día local Colombia (antes un evento de las 8pm quedaba en el día UTC siguiente); columna Fecha/Hora en hora local.
+- ✅ **Sesiones (21103) consolidado.** El botón "Forzar cierre" **nunca había funcionado desde el navegador**: (a) `forzar_sesion.php` validaba el menú viejo `0603` (inexistente tras la renumeración del Bug 12) → 403 para no-admins con `21103` asignado; (b) la vista llamaba `SmartcsetHttp` sin cargar `http-client.js` y `SmartcsetToast` (el global real es `SmartToast`); (c) el `.then()` asumía el envelope `{ok,error}` pero `SmartcsetHttp` resuelve con `payload.data` y lanza en error. Corregido todo + cast a string en la protección de auto-cierre.
+- ✅ **Congruencia con E3:** umbral "5 intentos/15 min" ya no está hardcodeado en el SQL del SIEM — las funciones reciben `wmax_intentos`/`wventana_minutos` y PHP pasa `LOGIN_MAX_INTENTOS`/`LOGIN_VENTANA_MINUTOS` del `.env`.
+- ✅ Cache-busting de `siem.css` corregido en las 3 vistas (filemtime apuntaba a ruta inexistente → re-descarga en cada carga).
+
+### 🧪 Pruebas (BD activa 192.168.1.71)
+- Ataque simulado desde 2 IPs vía `fun_registrar_intento_login` real: KPIs correctos (2 bloqueadas, antes crash), badges, gráfica en hora local.
+- Flujo completo de forzar cierre: admin cerró sesión colgada de `porteria` (auditoría `cod_cierre='ADMIN'`, `usr_cierre='admin.smart'`) y portería pudo volver a entrar. Guardias verificados: no-admin sin menú → 403; auto-cierre → rechazado.
+- Ronda final: 3 vistas HTTP 200, 0 referencias a CDN, hora mostrada = hora real.
+
+### ⚠️ Pendiente (próxima sesión)
+- **IPs Bloqueadas (21104):** consolidar — `desbloquear_ip.php` aún valida el menú viejo `0604` (mismo bug que forzar_sesion, ya identificado).
+- **Actividad (21105):** consolidar — mismas clases de bug esperables (filemtime CSS, timezone).
+
+---
+
 ## [2026-07-05] Sesión (continuación): E3 rate limiting cerrado + restauración de usuarios + justificación MSPI
 
 ### 🎯 Objetivos Logrados

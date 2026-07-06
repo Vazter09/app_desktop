@@ -646,6 +646,15 @@ Bloqueo de login por IP tras N intentos fallidos (default 5) en una ventana (def
 
 **Lección restaurar dumps parciales con `pg_dump` (incidente 2026-07-05, restauración de `tab_usuarios`):** `pg_dump` inserta `SELECT pg_catalog.set_config('search_path', '', false)` al inicio del archivo. Con el `search_path` vacío, los triggers de auditoría (`fun_act_tabla`) no resuelven sus tablas (`tab_borrados`) y el `COPY`/`INSERT` falla con "relation does not exist". Al cargar dumps de tablas con triggers: **quitar esa línea del dump** o usar `--disable-triggers`.
 
+### Bug 16 (residuo del Bug 12): routers SIEM validaban menús con la numeración vieja `06xx` — parcialmente ✅ RESUELTO (2026-07-06)
+La renumeración del SIEM (`06/06xx` → `211/211xx`, Bug 12) actualizó las vistas pero **no los 2 endpoints AJAX**: `backend/routers/siem/v1/forzar_sesion.php` validaba el menú `0603` y `desbloquear_ip.php` el `0604` — menús que ya no existen en `tab_menus`. Todo usuario no-admin recibía 403 aunque tuviera el menú `211xx` correcto asignado. Encontrado durante la consolidación del SIEM (sesión 2026-07-06, ver HANDOFF).
+
+**Fix:** `forzar_sesion.php` → `usuarioTieneMenu($pdo, ..., '21103')` (helper existente, reemplaza la query manual a `tab_menu_usuarios` + check de `ind_usuario`). **Pendiente:** `desbloquear_ip.php` (menú `0604` → `21104`), se corrige al consolidar el submenú IPs.
+
+En la misma sesión se corrigieron en el SIEM (submenús 21101-21103): crash del KPI "IPs bloqueadas" con 2+ IPs bloqueadas (subconsulta escalar multi-fila), umbrales 5/15 hardcodeados en SQL (ahora parametrizados desde `.env`), horas mostradas en UTC (ahora `wzona_horaria` + `smartcsetFormatDbTimestamp()`), Chart.js vendorizado (sin CDN), y el botón "Forzar cierre" que nunca funcionó (`SmartcsetHttp` sin cargar, `SmartcsetToast` inexistente — el global real es `SmartToast` —, y contrato `.then/.catch` mal asumido). Detalle completo en HANDOFF sesión 2026-07-06 y CHANGELOG.
+
+**Lección (JS del proyecto):** `SmartcsetHttp` vive en `js/services/http-client.js` y el footer **no** lo carga globalmente — toda vista que lo use debe incluirlo en su `$extra_js`. Resuelve con `payload.data` y lanza `Error(msg)` si `ok !== true`. El global de toasts es `SmartToast` (`.error(msg)`, `.success(msg)`...), no "SmartcsetToast".
+
 ### Deuda técnica adicional
 
 - `scripts/test_seguridad/common.py`: `common.login()` postea a `/index.php` (ruta vieja); el login real es AJAX JSON a `backend/routers/auth/v1/login.php`. `test_e3_rate_limiting.py` golpea el endpoint real directamente; un futuro refactor debería alinear el helper `login()`. (El bug de `PROJECT_ROOT` que impedía a `run_psql` encontrar `.env` ya se corrigió el 2026-07-05.)

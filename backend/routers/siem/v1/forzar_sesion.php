@@ -6,12 +6,8 @@ require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';
 require_once dirname(__DIR__, 3) . '/middleware/require_session.php';
 
-// Acceso: admin O usuario con menú 0603 (Sesiones Activas) asignado
-$_stmt_acceso = $pdo->prepare(
-    'SELECT 1 FROM tab_menu_usuarios WHERE id_usuario = ?::VARCHAR AND id_menu = ?'
-);
-$_stmt_acceso->execute([$_SESSION['id_usuario'], '0603']);
-if (empty($_SESSION['ind_usuario']) && !$_stmt_acceso->fetch()) {
+// Acceso: admin O usuario con menú 21103 (Sesiones Activas) asignado
+if (!usuarioTieneMenu($pdo, (string) $_SESSION['id_usuario'], '21103')) {
     RouterResponse::fail('No tienes permiso para esta acción.', 403);
 }
 
@@ -30,7 +26,8 @@ if ($id_sesion === '') {
 }
 
 // No permitir cerrar la propia sesión desde aquí
-if ($id_sesion === ($_SESSION['id_sesion'] ?? '')) {
+// (cast a string: id_sesion en $_SESSION puede venir como entero)
+if ($id_sesion === (string) ($_SESSION['id_sesion'] ?? '')) {
     RouterResponse::fail('No puedes cerrar tu propia sesión desde esta herramienta.');
 }
 
