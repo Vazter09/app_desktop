@@ -42,7 +42,7 @@ $active_menu_id = '21104';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 $_root  = modulosProjectRoot();
-$_css_v = @filemtime($_root . '/css/siem.css') ?: time();
+$_css_v = @filemtime($_root . '/frontend/web/public/assets/css/siem.css') ?: time();
 $extra_stylesheets = '<link rel="stylesheet" href="'
     . htmlspecialchars($smartcset_asset_href) . 'css/siem.css?v=' . (int) $_css_v . '">';
 
@@ -108,7 +108,7 @@ include modulosLayout('layout/topbar.php');
                             <tr>
                                 <td class="font-monospace fw-bold"><?= htmlspecialchars($ip['ip_cliente']) ?></td>
                                 <td class="text-center fw-bold text-danger"><?= (int) $ip['total_intentos'] ?></td>
-                                <td class="font-monospace"><?= date('H:i:s', strtotime($ip['ultimo_intento'])) ?></td>
+                                <td class="font-monospace"><?= smartcsetFormatDbTimestamp($ip['ultimo_intento'], 'H:i:s') ?></td>
                                 <td class="text-center font-monospace">
                                     <?php if ($ip['expirada']): ?>
                                         <span class="text-muted">Expirada</span>
@@ -167,7 +167,12 @@ include modulosLayout('layout/topbar.php');
 
 <?php
 $url_desbloquear = smartcsetUrl('/routers/siem/v1/desbloquear_ip.php');
-$extra_js = <<<HTML
+// SmartcsetHttp vive en http-client.js; el footer no lo carga
+// globalmente, cada vista que lo usa debe incluirlo (patrón portería)
+$_v_http = @filemtime($_root . '/frontend/web/public/assets/js/services/http-client.js') ?: time();
+$extra_js = '<script src="' . htmlspecialchars(smartcsetAsset('js/services/http-client.js'))
+    . '?v=' . (int) $_v_http . '"></script>'
+    . <<<HTML
 <script>
 (function () {
     'use strict';
@@ -185,17 +190,16 @@ $extra_js = <<<HTML
 
     document.getElementById('btn-confirmar-desbloqueo').addEventListener('click', function () {
         this.disabled = true;
+        // SmartcsetHttp resuelve con payload.data y lanza Error(msg)
+        // cuando ok !== true — el mensaje de negocio llega por catch
         SmartcsetHttp.post(urlDes, { ip_cliente: ipSel })
-            .then(function (res) {
+            .then(function () {
                 modal.hide();
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    SmartcsetToast.show(res.error || 'No se pudo desbloquear la IP.', 'danger');
-                }
+                window.location.reload();
             })
-            .catch(function () {
-                SmartcsetToast.show('Error de red.', 'danger');
+            .catch(function (err) {
+                modal.hide();
+                SmartToast.error(err && err.message ? err.message : 'No se pudo desbloquear la IP.');
             })
             .finally(function () {
                 document.getElementById('btn-confirmar-desbloqueo').disabled = false;

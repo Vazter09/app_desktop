@@ -131,7 +131,7 @@ smartcset/
 | **E1-A02** | Cryptographic Failures | ✅ 100% | HTTPS+TLS activo, bcrypt verificado, DB_SSLMODE=require |
 | **E8** | Hardening de red | ✅ 100% (local) | Apache+TLS+HSTS+5 security headers — en servidor SENA requiere Oficina TI para firewall/PostgreSQL SSL |
 | **E3** | Rate limiting + logging auth | ✅ 100% (enriquecido + probado 2026-07-05) | Bloqueo por IP (5 intentos/15 min configurable en `.env`). Auditoría enriquecida: `tab_intentos_login` guarda `motivo_fallo` + `user_agent`; función a 5 args; SIEM muestra el motivo; suite `test_e3_rate_limiting.py` 5/5 PASS local+remoto. Cierra OWASP A07 |
-| **E11** | Mini SIEM Module | ✅ 100% (acceso real desde 2026-07-01) | 5 vistas + 9 funciones + 2 endpoints AJAX — el "acceso control por menú" original (2026-06-27) solo eran los 2 endpoints AJAX; las 5 páginas de vista no validaban menú hasta el fix del 2026-07-01 |
+| **E11** | Mini SIEM Module | ✅ 100% (consolidado 2026-07-07) | 5 vistas + 9 funciones + 2 endpoints AJAX — acceso por menú desde 2026-07-01; los 5 submenús (21101-21105) quedaron consolidados (bugs de timezone, JS, cache-busting, menú viejo en endpoints AJAX) en las sesiones 2026-07-06/07, verificados end-to-end |
 | **E1 A03-A10** | OWASP Top 10 restantes | 🔲 Pendiente | A03 (Injection), A04-A06, A08-A10 pendientes |
 | **E2** | Cifrado en reposo (pgcrypto) | 🔲 Bloqueado | documento_identidad ES la PK — requiere rediseño de schema antes de cifrar |
 | **E5** | Tokens anti-CSRF | ⛔ Descartado | SameSite=Strict mitiga la mayoría de casos; código listo en SecurityMiddleware si se necesita |
@@ -207,15 +207,79 @@ navegador** por 3 bugs encadenados, todos corregidos:
 - Ronda final 3 vistas: HTTP 200, 0 referencias a CDN, hora mostrada = hora real.
 - Datos de prueba (`203.0.113.*`) limpiados de ambas BDs; sesiones de prueba cerradas.
 
-### ⚠️ PENDIENTE para la próxima sesión (SIEM submenús 4-5)
-1. **IPs Bloqueadas (21104):** `desbloquear_ip.php` aún valida el menú viejo **`0604`**
-   (mismo bug que tenía forzar_sesion.php — ya identificado; corregir con
-   `usuarioTieneMenu(..., '21104')`). Revisar también timezone/filemtime/JS de la vista
-   (`fun_siem_ips.sql` probablemente hardcodea 5/15 igual que hacía el dashboard).
-2. **Actividad (21105):** mismas clases de bug esperables (filemtime CSS línea 71,
-   posibles `date(strtotime())` sin conversión de zona).
-3. Las funciones SQL nuevas ya están desplegadas en **ambas** BDs (lab + localhost) y
-   los archivos ya estaban en el array FUNCS de `setup_smartcset.sh` (sin cambios ahí).
+---
+
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-07 — Consolidación SIEM (submenús 4-5, módulo completo)
+
+Cierra la consolidación del SIEM iniciada el 2026-07-06 (submenús 1-3). Misma metodología:
+analizar, corregir, desplegar, probar end-to-end por HTTP contra la BD real del `.env`
+(`10.5.213.111`). Con esta sesión, **los 5 submenús del SIEM (21101-21105) quedan
+consolidados**.
+
+**Acuerdo de flujo de trabajo (vigente desde esta sesión):** desarrollo y código siempre en
+local; solo se copia al servidor (`/var/www/html/smartcset` en `10.5.213.111`, vía SSH) cuando
+algo cumple los 5 Pilares y las premisas principales. Ver memoria `workflow_local_luego_servidor`.
+**Matiz importante:** el `.env` local ya apunta la BD al servidor institucional — el
+"aislamiento local" aplica al código PHP/JS, no a la base de datos; las funciones PL/pgSQL y
+los datos de prueba de esta sesión se ejecutaron contra `db_smartcset2` en `10.5.213.111`
+directamente (con limpieza posterior de todo dato/sesión de prueba).
+
+### 4. IPs Bloqueadas (21104) — `pages/modulos/siem/ips/index.php` + `desbloquear_ip.php`
+- **Mismo bug que Sesiones (Bug 16):** `desbloquear_ip.php` validaba el menú viejo `0604`
+  (inexistente tras la renumeración) con una query manual a `tab_menu_usuarios` → 403 para
+  no-admins con `21104` asignado. Corregido a `usuarioTieneMenu($pdo, ..., '21104')`.
+- **Timezone:** hora del último intento se mostraba con `date('H:i:s', strtotime(...))` (UTC
+  crudo) → `smartcsetFormatDbTimestamp()`. `fun_siem_ips_bloqueadas` ya recibía
+  `wmax_intentos`/`wventana_minutos` correctamente parametrizados (no tenía el bug de umbral
+  hardcodeado que se sospechaba).
+- **Cache-busting:** `filemtime()` apuntaba a `/css/siem.css` (ruta relativa a
+  `modulosProjectRoot()`, inexistente) → corregido a `/frontend/web/public/assets/css/siem.css`.
+- **JS (mismos 3 bugs que tenía "Forzar cierre" antes del fix del 2026-07-06):** `SmartcsetHttp`
+  usado sin cargar `http-client.js` en `$extra_js`; `SmartcsetToast` inexistente (el global real
+  es `SmartToast`); contrato `.then(res => res.ok...)` asumía el envelope `{ok,error}` cuando
+  `SmartcsetHttp` resuelve con `payload.data` y lanza `Error(msg)` en fallo. Corregido al patrón
+  real (`.then` = éxito, `.catch(err)` = mensaje de negocio vía `SmartToast.error()`).
+
+### 5. Actividad (21105) — `pages/modulos/siem/actividad/index.php` + `fun_siem_actividad.sql`
+- **Timezone (mismo patrón que Eventos 21102 y Dashboard 21101):** los filtros Desde/Hasta y el
+  KPI "hoy" comparaban `DATE(fec_ingreso)` / `CURRENT_DATE` en UTC crudo (zona de la conexión,
+  `DB_TIMEZONE=UTC`) en vez de la zona local. `fun_siem_actividad_fisica` ahora recibe
+  `wzona_horaria TEXT DEFAULT 'America/Bogota'` (6º parámetro) y convierte con
+  `(fec_ingreso::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::DATE`. Requirió
+  `DROP FUNCTION IF EXISTS fun_siem_actividad_fisica(DATE, DATE, TEXT, INT, INT)` porque
+  PostgreSQL trata distinto número de argumentos como funciones distintas (misma lección de E3).
+  El KPI "hoy" (query inline en PHP, no en la función) se parametrizó igual con
+  `AT TIME ZONE ?::TEXT` pasando `smartcsetAppTimezone()`.
+- Mismos fixes de `filemtime()` (ruta) y `date('H:i:s'/'d/m/Y', strtotime(...))` →
+  `smartcsetFormatDbTimestamp()` en las 3 apariciones del timeline (hora/fecha de ingreso, hora
+  de salida).
+
+### Pruebas ejecutadas (BD activa = `10.5.213.111`/`db_smartcset2`, la que define el `.env`)
+- **Ciclo real ingreso→salida** vía `/routers/porteria/v1/ingreso/registrar.php` y
+  `/salida/registrar.php` (persona de prueba `900111222`): KPIs de Actividad pasaron de 0/0/0 a
+  1/1/0 (ingreso) y luego a 1/0/1 (salida); timeline mostró `07/07/2026 08:45:38` — hora local
+  correcta (13:45 UTC − 5h), badge cambió INGRESO→SALIDA con hora de salida también convertida.
+- **Ataque simulado:** 6 intentos fallidos de login (`admin.smart` + clave incorrecta) desde
+  `127.0.0.1` (el header `X-Forwarded-For` se ignora correctamente — `SESION_TRUST_PROXY=0`) →
+  IP bloqueada visible en la vista con badge y hora local correcta (08:47:09). Botón "Desbloquear"
+  probado end-to-end vía el endpoint real: `200 OK` + login con `admin.smart` volvió a funcionar
+  inmediatamente después.
+- **Control de acceso** (usuario `porteria`, sin ningún menú `211xx`): 403 en las 2 vistas nuevas
+  y en `desbloquear_ip.php`. Se le asignaron temporalmente `21104`/`21105` vía el endpoint real de
+  administración (`/routers/menus/v1/perfil/guardar.php`) → 200 en ambas vistas → menús
+  revertidos exactamente a su lista original (`10,101,102,103,104`) al terminar la prueba.
+- **Limpieza:** persona e ingreso de prueba (`900111222`) eliminados de la BD; intentos de login
+  de prueba ya se habían auto-eliminado al desbloquear la IP (`fun_siem_desbloquear_ip` borra los
+  intentos fallidos recientes de esa IP); 2 sesiones de prueba (`admin.smart`, `porteria`)
+  cerradas vía logout real — 0 sesiones colgadas al cierre de la BD.
+
+### Estado final del módulo SIEM
+Los 5 submenús (21101 Panel de Control, 21102 Eventos, 21103 Sesiones, 21104 IPs Bloqueadas,
+21105 Actividad) están consolidados: timezone local en toda vista con timestamps, sin CDN
+externo, botones de acción (forzar cierre / desbloquear IP) funcionando end-to-end, control de
+acceso real por menú (no solo sesión) verificado con usuario sin permiso y con permiso. Las
+funciones SQL modificadas ya estaban en el array `FUNCS` de `setup_smartcset.sh` (sin cambios
+necesarios ahí — mismos archivos, solo contenido actualizado).
 
 ---
 
@@ -1036,4 +1100,4 @@ PGPASSWORD=ander123 psql -h localhost -U postgres -d db_smartcset2
 
 ---
 
-*Última actualización: 2026-07-05 | Rama activa: `feat/implementacion_MSPI` | Responsable: Anderson | Modelo: Claude Sonnet 5*
+*Última actualización: 2026-07-07 | Rama activa: `feat/implementacion_MSPI` | Responsable: Anderson | Modelo: Claude Fable 5*

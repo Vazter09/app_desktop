@@ -31,7 +31,7 @@ $w_tipo_alerta = 'danger';
 
 try {
     $stmt = $pdo->prepare(
-        "SELECT * FROM fun_siem_actividad_fisica(?::DATE, ?::DATE, ?::TEXT, ?::INT, ?::INT)"
+        "SELECT * FROM fun_siem_actividad_fisica(?::DATE, ?::DATE, ?::TEXT, ?::INT, ?::INT, ?::TEXT)"
     );
     $stmt->execute([
         $f_desde !== '' ? $f_desde : null,
@@ -39,19 +39,23 @@ try {
         $f_tipo  !== '' ? $f_tipo  : null,
         $por_pagina,
         $offset,
+        smartcsetAppTimezone(),
     ]);
     $registros   = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $total_filas = !empty($registros) ? (int) $registros[0]['total_filas'] : 0;
 
-    // KPIs de hoy
-    $kpi_row = $pdo->query(
+    // KPIs de hoy (día local, no UTC — misma lógica que fun_siem_dashboard)
+    $kpi_stmt = $pdo->prepare(
         "SELECT
             COUNT(*)                                     AS ingresos,
             COUNT(*) FILTER (WHERE fec_salida=fec_ingreso) AS en_centro,
             COUNT(*) FILTER (WHERE fec_salida<>fec_ingreso) AS salidas
          FROM tab_log_ingresos
-         WHERE DATE(fec_ingreso) = CURRENT_DATE"
-    )->fetch(PDO::FETCH_ASSOC);
+         WHERE (fec_ingreso::TIMESTAMPTZ AT TIME ZONE ?::TEXT)::DATE
+             = (NOW() AT TIME ZONE ?::TEXT)::DATE"
+    );
+    $kpi_stmt->execute([smartcsetAppTimezone(), smartcsetAppTimezone()]);
+    $kpi_row = $kpi_stmt->fetch(PDO::FETCH_ASSOC);
     if ($kpi_row) {
         $kpi_ingresos  = (int) $kpi_row['ingresos'];
         $kpi_en_centro = (int) $kpi_row['en_centro'];
@@ -68,7 +72,7 @@ $active_menu_id = '21105';
 $wnom_usuario   = $_SESSION['nom_usuario'];
 
 $_root  = modulosProjectRoot();
-$_css_v = @filemtime($_root . '/css/siem.css') ?: time();
+$_css_v = @filemtime($_root . '/frontend/web/public/assets/css/siem.css') ?: time();
 $extra_stylesheets = '<link rel="stylesheet" href="'
     . htmlspecialchars($smartcset_asset_href) . 'css/siem.css?v=' . (int) $_css_v . '">';
 
@@ -154,8 +158,8 @@ include modulosLayout('layout/topbar.php');
                 <?php foreach ($registros as $r):
                     $es_abierto = (bool) $r['abierto'];
                     $tipo_cls   = $es_abierto ? 'ingreso' : 'salida';
-                    $hora       = date('H:i:s', strtotime($r['fec_ingreso']));
-                    $fecha      = date('d/m/Y', strtotime($r['fec_ingreso']));
+                    $hora       = smartcsetFormatDbTimestamp($r['fec_ingreso'], 'H:i:s');
+                    $fecha      = smartcsetFormatDbTimestamp($r['fec_ingreso'], 'd/m/Y');
                 ?>
                     <div class="siem-timeline-item <?= $tipo_cls ?>">
                         <div class="d-flex justify-content-between align-items-start">
@@ -168,7 +172,7 @@ include modulosLayout('layout/topbar.php');
                                 <?php else: ?>
                                     <span class="badge bg-secondary ms-2 small">
                                         <i class="bi bi-box-arrow-right me-1"></i>SALIDA
-                                        <span class="ms-1"><?= date('H:i', strtotime($r['fec_salida'])) ?></span>
+                                        <span class="ms-1"><?= smartcsetFormatDbTimestamp($r['fec_salida'], 'H:i') ?></span>
                                     </span>
                                 <?php endif; ?>
                             </div>

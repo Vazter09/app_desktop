@@ -1,6 +1,7 @@
 # Documentos Internos SENA — Requeridos en la Investigación MSPI
-**Documento:** JUS-DOC-004  
-**Fecha:** 2026-07-05  
+
+**Documento:** JUS-DOC-004
+**Fecha:** 2026-07-05
 **Propósito:** Identificar y recopilar políticas internas SENA relevantes para justificación de SmartCSET
 
 ---
@@ -26,6 +27,7 @@
 ## 📋 Introducción
 
 Para completar la investigación de cumplimiento legal, se requiere **mapear cómo SENA ya regula internamente** los temas de:
+
 - Protección de datos personales
 - Seguridad informática
 - Gestión de información
@@ -41,11 +43,13 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 ### CATEGORÍA 1: Políticas de Protección de Datos
 
 #### **DO-pol0006** (Mencionado por usuario)
-**Código:** DO-pol0006 (asumido: Política de Protección de Datos)  
-**Propósito esperado:** Definir cómo SENA debe proteger datos de personas  
+
+**Código:** DO-pol0006 (asumido: Política de Protección de Datos)
+**Propósito esperado:** Definir cómo SENA debe proteger datos de personas
 **Relevancia:** CRÍTICA
 
 **Qué buscar:**
+
 - [ ] Quién es responsable del tratamiento de datos en SENA
 - [ ] Qué tipos de datos se recopilan (personas, menores, académicos)
 - [ ] Cómo debe almacenarse información (geografía, servidor)
@@ -56,16 +60,19 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Delegación a terceros (si está permitida y bajo qué condiciones)
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **implementa** lo que DO-pol0006 **ordena**
 
 ---
 
 #### **DO-pol XXXX** (Política de Seguridad de la Información — MSPI)
-**Código:** TBD (buscar referencia a MSPI o seguridad informática)  
-**Propósito esperado:** Alinear SENA con MSPI obligatorio (MinTIC)  
+
+**Código:** TBD (buscar referencia a MSPI o seguridad informática)
+**Propósito esperado:** Alinear SENA con MSPI obligatorio (MinTIC)
 **Relevancia:** CRÍTICA
 
 **Qué buscar:**
+
 - [ ] Definición de SENA como entidad sujeta a MSPI
 - [ ] Responsabilidades de áreas de TI
 - [ ] Auditoría de sistemas de información
@@ -76,6 +83,7 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Control de cambios en sistemas críticos
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **cumple** requisitos MSPI que SENA ya debe tener
 
 ---
@@ -83,11 +91,13 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 ### CATEGORÍA 2: Regulación de Datos de Menores de Edad
 
 #### **DO-pol XXXX** (Protección de Menores — Derecho a la Infancia)
-**Código:** TBD (buscar: ESCNNA, protección menores, ICBF)  
-**Propósito esperado:** Cumplir normativa de protección de menores en espacios educativos  
+
+**Código:** TBD (buscar: ESCNNA, protección menores, ICBF)
+**Propósito esperado:** Cumplir normativa de protección de menores en espacios educativos
 **Relevancia:** CRÍTICA
 
 **Qué buscar:**
+
 - [ ] Consentimiento informado de padres/tutores (obligatorio <18 años)
 - [ ] Autorización para recopilar biometría (cédula, foto)
 - [ ] Restricciones en uso de datos de menores
@@ -97,17 +107,20 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Cómo se verifica cumplimiento (auditoría interna)
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **integra** workflow de consentimiento de menores
 - ✅ SmartCSET **audita** quién accede datos de menores
 
 ---
 
 #### **DO-pol XXXX** (Política de Portería / Acceso a Sedes)
-**Código:** TBD (buscar: portería, control de acceso, registro de personas)  
-**Propósito esperado:** Regular cómo portería debe registrar ingreso/salida  
+
+**Código:** TBD (buscar: portería, control de acceso, registro de personas)
+**Propósito esperado:** Regular cómo portería debe registrar ingreso/salida
 **Relevancia:** ALTA
 
 **Qué buscar:**
+
 - [ ] Quién autoriza recopilación de datos en portería
 - [ ] Qué datos pueden recolectarse (documento, foto, datos de contacto)
 - [ ] Cómo se almacenan datos de ingreso/salida
@@ -117,6 +130,7 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Procedimiento para solicitud "derecho al olvido" (ej. visitante pide eliminar su registro)
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **formaliza** proceso de portería dentro de marco legal
 
 ---
@@ -124,11 +138,13 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 ### CATEGORÍA 3: Responsabilidades de TI y Seguridad
 
 #### **DO-pol XXXX** (Política de Seguridad Física y Lógica)
-**Código:** TBD (buscar: seguridad, TI, servidores, backup)  
-**Propósito esperado:** Definir responsabilidades de Oficina TI  
+
+**Código:** TBD (buscar: seguridad, TI, servidores, backup)
+**Propósito esperado:** Definir responsabilidades de Oficina TI
 **Relevancia:** MEDIA
 
 **Qué buscar:**
+
 - [ ] Ubicación física de servidores (¿en Colombia?)
 - [ ] Responsable de seguridad de bases de datos
 - [ ] Requisitos de cifrado para datos sensibles
@@ -138,16 +154,19 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Responsable de cumplimiento MSPI
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **requiere** apoyo de TI (E8 — hardening de red)
 
 ---
 
 #### **DO-pol XXXX** (Gestión de Cambios / SDLC)
-**Código:** TBD (buscar: cambios en sistemas, desarrollo, deploy)  
-**Propósito esperado:** Formalizar cómo se hacen cambios en sistemas críticos  
+
+**Código:** TBD (buscar: cambios en sistemas, desarrollo, deploy)
+**Propósito esperado:** Formalizar cómo se hacen cambios en sistemas críticos
 **Relevancia:** MEDIA
 
 **Qué buscar:**
+
 - [ ] Quién autoriza cambios en sistemas de datos personales
 - [ ] Proceso de prueba antes de deploy
 - [ ] Rollback en caso de fallo
@@ -156,6 +175,7 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Responsable de validación
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **implementa** checklist SDLC seguro (E10)
 
 ---
@@ -163,11 +183,13 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 ### CATEGORÍA 4: Responsabilidades y Roles
 
 #### **DO-org XXXX** (Designación de Roles de Seguridad)
-**Código:** TBD (buscar: RSSI, responsables, custodios de datos)  
-**Propósito esperado:** Definir quién es responsable de qué en seguridad  
+
+**Código:** TBD (buscar: RSSI, responsables, custodios de datos)
+**Propósito esperado:** Definir quién es responsable de qué en seguridad
 **Relevancia:** ALTA
 
 **Qué buscar:**
+
 - [ ] ¿Quién es el RSSI (Responsable de Seguridad de la Información)?
 - [ ] ¿Quién es custodio de datos de menores?
 - [ ] ¿Quién es responsable de auditoría de TI?
@@ -176,16 +198,19 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Contacto para solicitudes de acceso/supresión de datos
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **clarifica** quién es responsable (SENA, no terceros)
 
 ---
 
 #### **DO-org XXXX** (Comité de Seguridad de la Información)
-**Código:** TBD (buscar: comité, gobernanza, SGSI)  
-**Propósito esperado:** Formalizar goberanza de seguridad  
+
+**Código:** TBD (buscar: comité, gobernanza, SGSI)
+**Propósito esperado:** Formalizar goberanza de seguridad
 **Relevancia:** MEDIA
 
 **Qué buscar:**
+
 - [ ] ¿Existe comité de seguridad en SENA?
 - [ ] Quiénes lo integran (Jurídica, TI, Académica)
 - [ ] Frecuencia de reuniones
@@ -193,6 +218,7 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Reporta a quién (¿Dirección General?)
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **requiere** aprobación de comité
 
 ---
@@ -200,11 +226,13 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 ### CATEGORÍA 5: Cumplimiento Normativo
 
 #### **DO-pol XXXX** (Auditorías Internas y Externas)
-**Código:** TBD (buscar: auditoría, cumplimiento, SIC)  
-**Propósito esperado:** Definir cómo SENA verifica cumplimiento de normas  
+
+**Código:** TBD (buscar: auditoría, cumplimiento, SIC)
+**Propósito esperado:** Definir cómo SENA verifica cumplimiento de normas
 **Relevancia:** MEDIA
 
 **Qué buscar:**
+
 - [ ] ¿Audita SENA sus propios sistemas?
 - [ ] ¿Auditoría externa anual?
 - [ ] ¿Cumplimiento de SIC/MinTIC verificado?
@@ -213,6 +241,7 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 - [ ] Cuánto tiempo tiene SENA para corregir (ley da 90 días típicamente)
 
 **Mapeo a SmartCSET:**
+
 - ✅ SmartCSET **proporciona evidencia** para auditoría
 
 ---
@@ -221,33 +250,37 @@ Estos documentos permitirán demostrar que SmartCSET **NO es un cambio de polít
 
 Estos documentos ya se usaron en la investigación:
 
-| Documento | Clasificación | Ubicación |
-|---|---|---|
-| Ley 1581/2012 | Legal Nacional | Función Pública |
-| Decreto 1377/2013 | Legal Nacional | Función Pública |
-| Resolución MinTIC 02277/2025 | Legal Nacional | MinTIC |
-| Sentencia Corte Constitucional T-260-12 | Legal Nacional | Corte Constitucional |
-| Marco ESCNNA (ICBF) | Legal Nacional | ICBF |
-| ISO/IEC 27001:2022 | Estándar Int'l | ISO |
+| Documento                               | Clasificación  | Ubicación           |
+| --------------------------------------- | --------------- | -------------------- |
+| Ley 1581/2012                           | Legal Nacional  | Función Pública    |
+| Decreto 1377/2013                       | Legal Nacional  | Función Pública    |
+| Resolución MinTIC 02277/2025           | Legal Nacional  | MinTIC               |
+| Sentencia Corte Constitucional T-260-12 | Legal Nacional  | Corte Constitucional |
+| Marco ESCNNA (ICBF)                     | Legal Nacional  | ICBF                 |
+| ISO/IEC 27001:2022                      | Estándar Int'l | ISO                  |
 
 ---
 
 ## 🎯 Plan de Búsqueda
 
 ### PASO 1: Localizar Documentos en Repo SENA
+
 - [ ] Buscar en `Documentacion para implementacion de MSPI/` nuevamente
 - [ ] Buscar en intranet SENA o portal de políticas
 - [ ] Contactar a Oficina Jurídica: "¿Dónde están documentos DO-pol0006, etc.?"
 - [ ] Contactar a Oficina TI: "¿Existe política de protección de datos? ¿De seguridad?"
 
 ### PASO 2: Mapeo Directo
+
 Para cada política encontrada:
+
 1. Leer el documento completo
 2. Identificar requisitos técnicos/organizacionales
 3. Mapear a cómo SmartCSET **cumple** esos requisitos
 4. Anotar en tabla
 
 ### PASO 3: Análisis de Gaps
+
 - ¿Hay políticas que SENA no tiene pero que debería tener? (ej. consentimiento de menores formalizado)
 - ¿SmartCSET supera requisitos mínimos legales?
 - ¿Qué cambios de política son necesarios además de SmartCSET?
@@ -256,19 +289,20 @@ Para cada política encontrada:
 
 ## 📊 Tabla de Mapeo (Plantilla)
 
-| Documento SENA | Requisito Clave | Cumplimiento Pre-SmartCSET | Cumplimiento Post-SmartCSET | Gap |
-|---|---|---|---|---|
-| DO-pol0006 | Datos personales en Colombia | ❌ | ✅ | Migración de datos |
-| DO-pol0006 | Auditoría de accesos | ❌ | ✅ | SIEM logging |
-| DO-pol XXXX | Consentimiento menores | ❓ | ✅ | UX workflow |
-| DO-pol XXXX | Derecho al olvido <10 días | ❌ | ✅ | Interfaz gestión |
-| ... | ... | ... | ... | ... |
+| Documento SENA | Requisito Clave              | Cumplimiento Pre-SmartCSET | Cumplimiento Post-SmartCSET | Gap                 |
+| -------------- | ---------------------------- | -------------------------- | --------------------------- | ------------------- |
+| DO-pol0006     | Datos personales en Colombia | ❌                         | ✅                          | Migración de datos |
+| DO-pol0006     | Auditoría de accesos        | ❌                         | ✅                          | SIEM logging        |
+| DO-pol XXXX    | Consentimiento menores       | ❓                         | ✅                          | UX workflow         |
+| DO-pol XXXX    | Derecho al olvido <10 días  | ❌                         | ✅                          | Interfaz gestión   |
+| ...            | ...                          | ...                        | ...                         | ...                 |
 
 ---
 
 ## 🔗 Próximos Pasos
 
 **URGENTE:**
+
 1. **Obtener DO-pol0006** y otros documentos DO-pol-XXXX de SENA
 2. **Contactar Oficina Jurídica** para obtener lista completa de políticas
 3. **Contactar Oficina TI** para políticas de seguridad/MSPI
@@ -288,8 +322,8 @@ Para cada política encontrada:
 
 ---
 
-**Documento preparado:** 2026-07-05  
-**Estado:** ✅ BÚSQUEDA EJECUTADA — resultados en `05_ANALISIS_NORMATIVA_INTERNA_SENA.md`; quedan 3 pendientes de acceso interno (CompromISO, contrato de vigilancia, RNBD)  
+**Documento preparado:** 2026-07-05
+**Estado:** ✅ BÚSQUEDA EJECUTADA — resultados en `05_ANALISIS_NORMATIVA_INTERNA_SENA.md`; quedan 3 pendientes de acceso interno (CompromISO, contrato de vigilancia, RNBD)
 **Clasificación:** CONFIDENCIAL — USO INTERNO SENA
 
 ---
@@ -297,6 +331,7 @@ Para cada política encontrada:
 ## APÉNDICE A — Preguntas para Obtener Documentos
 
 **Email a Oficina Jurídica SENA:**
+
 ```
 Asunto: Localización de Políticas Internas SENA — Datos Personales y Seguridad
 
@@ -322,6 +357,7 @@ Agradezco colaboración.
 ---
 
 **Email a Oficina TI SENA:**
+
 ```
 Asunto: Documentos MSPI y Seguridad Informática
 

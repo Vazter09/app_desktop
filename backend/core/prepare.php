@@ -7,6 +7,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/SecurityMiddleware.php';
 require_once __DIR__ . '/Db.php';
+require_once __DIR__ . '/ErrorHandler.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';
 require_once __DIR__ . '/PmtrosGralesDefaults.php';
@@ -328,6 +329,7 @@ try {
     }
 
 } catch (PDOException $e) {
-    die('Error crítico en prepare.php: ' . Db::connectionErrorMessage($e));
+    error_log('[SmartCSET] Error crítico en prepare.php: ' . $e->getMessage());
+    die('Error crítico en prepare.php: ' . ErrorHandler::userMessageFromPdo($e));
 }
 ?>

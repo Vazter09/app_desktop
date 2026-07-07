@@ -1,4 +1,7 @@
+necesito
+
 # Análisis de la Normativa Interna del SENA — Evidencia Documental
+
 **Documento:** JUS-INT-005
 **Fecha:** 2026-07-05
 **Clasificación:** Interno — Análisis Jurídico-Técnico
@@ -8,15 +11,15 @@
 
 ## 1. Documentos oficiales analizados
 
-| # | Documento | Origen | Archivo local |
-|---|---|---|---|
+| # | Documento                                                                                                                                                                                                                                              | Origen                    | Archivo local                                              |
+| - | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------- |
 | 1 | **Acuerdo del Consejo Directivo Nacional de 2019** — "Por medio del cual se aprueba la Política General de Seguridad de la Información y Protección de Datos Personales en el SENA" + su **Manual** (formato GTH-F-013 V02 / GC-F-005) | sena.edu.co/transparencia | `manual_seguridad_proteccion_datos_2019.pdf` (20 págs.) |
-| 2 | Plan de Seguridad y Privacidad de la Información SENA 2019 (GC-F-005 V.04) | sena.edu.co/transparencia | `plan_seguridad_privacidad_2019.pdf` (12 págs.) |
-| 3 | Plan de Seguridad y Privacidad de la Información SENA 2023 | sena.edu.co/transparencia | `plan_seguridad_privacidad_2023.pdf` (17 págs.) |
-| 4 | Plan de Tratamiento de Riesgos de Seguridad de la Información (dic. 2025, vigencia 2026) | sena.edu.co/transparencia | `plan_tratamiento_riesgos_2026.pdf` (8 págs.) |
-| 5 | Política de Protección de Datos Personales SENA 2016 (Acuerdo 009 de 2016) | sena.edu.co/transparencia | `proteccion_datos_personales_2016.pdf` |
-| 6 | **Reglamento del Aprendiz SENA (Acuerdo 0009 del 5-nov-2024)** — deroga Acuerdos 07/2012, 02/2014, 06/2023 y 02/2024 | sena.edu.co/transparencia | `reglamento_aprendiz_2024.pdf` (48 págs., leído) |
-| 7 | Reglamento Interno de los Centros y Programas SENA | repositorio.sena.edu.co | `reglamento_interno_centros.pdf` |
+| 2 | Plan de Seguridad y Privacidad de la Información SENA 2019 (GC-F-005 V.04)                                                                                                                                                                            | sena.edu.co/transparencia | `plan_seguridad_privacidad_2019.pdf` (12 págs.)         |
+| 3 | Plan de Seguridad y Privacidad de la Información SENA 2023                                                                                                                                                                                            | sena.edu.co/transparencia | `plan_seguridad_privacidad_2023.pdf` (17 págs.)         |
+| 4 | Plan de Tratamiento de Riesgos de Seguridad de la Información (dic. 2025, vigencia 2026)                                                                                                                                                              | sena.edu.co/transparencia | `plan_tratamiento_riesgos_2026.pdf` (8 págs.)           |
+| 5 | Política de Protección de Datos Personales SENA 2016 (Acuerdo 009 de 2016)                                                                                                                                                                           | sena.edu.co/transparencia | `proteccion_datos_personales_2016.pdf`                   |
+| 6 | **Reglamento del Aprendiz SENA (Acuerdo 0009 del 5-nov-2024)** — deroga Acuerdos 07/2012, 02/2014, 06/2023 y 02/2024                                                                                                                            | sena.edu.co/transparencia | `reglamento_aprendiz_2024.pdf` (48 págs., leído)       |
+| 7 | Reglamento Interno de los Centros y Programas SENA                                                                                                                                                                                                     | repositorio.sena.edu.co   | `reglamento_interno_centros.pdf`                         |
 
 **Sobre el código DO-pol0006:** los códigos tipo `DO-pol-XXXX` pertenecen a **CompromISO**, la plataforma del Sistema Integrado de Gestión y Autocontrol (SIGA) del SENA — el propio Plan de Seguridad 2023 la referencia como repositorio de sus documentos. CompromISO es de acceso interno (no indexado públicamente), por lo que el texto exacto de DO-pol0006 debe obtenerse desde la intranet o vía la Dirección de Planeación. **Sin embargo, su documento padre sí es público y ya lo tenemos**: el Acuerdo de 2019 (documento #1) es el acto administrativo que aprueba la Política General de la que derivan las políticas complementarias codificadas en CompromISO (Artículo 9 del Acuerdo lista las 16 políticas complementarias).
 
@@ -51,6 +54,7 @@
 ### H3. Relaciones con proveedores: requisitos que la situación actual NO cumple
 
 > **Manual 2019, §11 (Relaciones con los Proveedores):**
+>
 > - *"En todos los Acuerdos con terceras partes, que implique un intercambio, uso o procesamiento de información de la Entidad, se deben realizar **Acuerdos de Confidencialidad** sobre el manejo de la información."*
 > - *"Para la celebración de un acuerdo, convenio u contrato se requerirá la suscripción de un **anexo técnico**, donde se establecerá un protocolo de intercambio de la información y se fijarán las condiciones técnicas y controles de seguridad."*
 > - *"Se deberá realizar **de manera previa** [...] la **clasificación de la información** que se entrega y se recibe."*
@@ -60,13 +64,13 @@
 
 **Implicación — checklist de verificación para el contrato actual de vigilancia:**
 
-| Requisito §11 | ¿El contrato con la empresa de vigilancia lo cumple? |
-|---|---|
-| Acuerdo de confidencialidad sobre datos personales de la comunidad | ❓ A verificar — probablemente cubre vigilancia física, no tratamiento de datos |
-| Anexo técnico con protocolo y controles de seguridad del software usado | ❓ A verificar — el software es propio del proveedor, no evaluado por Oficina de Sistemas |
-| Clasificación previa de la información recolectada (datos de menores = sensibles) | ❓ A verificar |
-| Intervención previa del CISO y Oficina de Sistemas en la definición del sistema | ❓ A verificar — improbable si el software es unilateral del proveedor |
-| Responsabilidad civil y penal del proveedor por los datos | ❓ A verificar |
+| Requisito §11                                                                      | ¿El contrato con la empresa de vigilancia lo cumple?                                      |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Acuerdo de confidencialidad sobre datos personales de la comunidad                  | ❓ A verificar — probablemente cubre vigilancia física, no tratamiento de datos          |
+| Anexo técnico con protocolo y controles de seguridad del software usado            | ❓ A verificar — el software es propio del proveedor, no evaluado por Oficina de Sistemas |
+| Clasificación previa de la información recolectada (datos de menores = sensibles) | ❓ A verificar                                                                             |
+| Intervención previa del CISO y Oficina de Sistemas en la definición del sistema   | ❓ A verificar — improbable si el software es unilateral del proveedor                    |
+| Responsabilidad civil y penal del proveedor por los datos                           | ❓ A verificar                                                                             |
 
 **Cada "no" en esta tabla es un incumplimiento del Acuerdo de 2019.** Este checklist debe diligenciarse con el contrato real — es la acción de verificación más importante pendiente.
 
@@ -110,6 +114,7 @@
 ### H7. Deberes del SENA como Responsable que hoy no puede cumplir
 
 > **Manual 2019, §15.9 — el SENA debe:**
+>
 > - *"Conservar la información bajo las condiciones de seguridad necesarias para **impedir su adulteración, pérdida, consulta, uso o acceso no autorizado o fraudulento**."*
 > - *"**Exigir al encargado del tratamiento en todo momento**, el respeto a las condiciones de seguridad y privacidad de la información del titular."*
 > - *"**Permitir el acceso a la información únicamente a las personas que pueden tener acceso a ella**."*
@@ -117,6 +122,7 @@
 > - *"**Informar a la Superintendencia de Industria y Comercio cuando se presenten violaciones** a los códigos de seguridad."*
 
 **Implicación:** con los datos en software de un tercero, el SENA **no puede materialmente cumplir** ninguno de estos cinco deberes:
+
 1. No puede impedir adulteración (no administra la BD del tercero)
 2. No puede "exigir en todo momento" (no tiene visibilidad de la operación)
 3. No puede restringir accesos (no gestiona los usuarios del software ajeno)
@@ -152,6 +158,7 @@
 > *"Con el registro de datos básicos y la aceptación de la política de seguridad, confidencialidad, el usuario, aspirante o aprendiz autoriza y da el consentimiento para el tratamiento de datos personales y que de manera libre, previa, clara, expresa, voluntaria y debidamente informada **permite a la entidad** recolectar, recaudar, almacenar, usar, procesar, compilar, **intercambiar con otras entidades públicas**, dar tratamiento, actualizar y disponer de los datos [...] **Esta información es y será utilizada en el desarrollo de las funciones propias del SENA**."*
 
 **Implicación — este es el hallazgo jurídico más preciso de toda la investigación:**
+
 1. La autorización que firma cada aprendiz habilita **a la entidad** (el SENA) — el intercambio autorizado es solo **"con otras entidades públicas"**. Una empresa de vigilancia **privada** con software propio **no está cubierta** por esta autorización.
 2. La finalidad autorizada es "el desarrollo de las funciones propias del SENA" — un sistema comercial de un proveedor privado no es una función propia del SENA.
 3. Conclusión: **el tratamiento de datos de aprendices en el software del proveedor de vigilancia se hace SIN autorización válida del titular** → violación directa del principio de libertad (Ley 1581, art. 4.c) y de la propia autorización institucional.
@@ -180,6 +187,7 @@
 > **Parágrafo:** *"Para que los aspirantes o aprendices **menores de edad** accedan [...] uno de los padres de familia, el acudiente o el apoderado, **deben firmar el consentimiento informado** y el aprendiz firma su **asentimiento**, incluyéndolo en la documentación para legalizar y asentar la matrícula."*
 
 **Implicación:**
+
 1. Confirma normativamente que la comunidad SENA incluye **menores desde 14 años** — no es una suposición.
 2. El consentimiento informado de los padres se otorga **al SENA para la formación** — en ningún punto del proceso de matrícula se autoriza a un proveedor privado de vigilancia a tratar los datos del menor.
 3. Combinado con H6 (Manual 2019 §15.4: tratamiento de datos de menores "proscrito" fuera del marco) y H10: los datos de aprendices de 14-17 años en el software del tercero constituyen **tratamiento de datos de menores sin autorización de los representantes legales** — la infracción de mayor gravedad posible ante la SIC (agravante expreso: Ley 1581, art. 7).
@@ -188,24 +196,24 @@
 
 ## 3. Matriz consolidada: norma interna SENA vs. situación actual vs. SmartCSET
 
-| # | Requisito (fuente interna SENA) | Situación actual (software del proveedor de vigilancia) | Con SmartCSET/SGI |
-|---|---|---|---|
-| 1 | Datos en servidor del SENA en Colombia (§15.7) | ❌ Datos en sistema del tercero | ✅ PostgreSQL en servidor SENA |
-| 2 | Registrar ingresos y salidas (§7.1.1) | ⚠️ Se registra, pero fuera de custodia SENA | ✅ Registro en `tab_log_ingresos` |
-| 3 | Acuerdo de confidencialidad + anexo técnico con el tercero (§11) | ❓ A verificar contrato — probablemente ausente | ✅ N/A — no hay tercero tratando datos |
-| 4 | Clasificación previa de la información compartida (§11) | ❓ A verificar — improbable | ✅ Inventario de activos FASE 0 (FASE0-INV-002) |
-| 5 | Intervención de CISO + Oficina de Sistemas en sistemas que tratan datos (§11) | ❌ Software unilateral del proveedor | ✅ Sistema institucional, documentado |
-| 6 | Condiciones contractuales de seguridad a entidades vinculadas (§15.3.1) | ❓ A verificar | ✅ N/A |
-| 7 | Acceso solo con necesidad laboral legítima (§15.3.1) | ❌ SENA no controla usuarios del software ajeno | ✅ `tab_menu_usuarios` + `usuarioTieneMenu()` |
-| 8 | Autorización explícita para datos sensibles/biométricos (§15.3.2) | ❌ Sin gestión verificable de autorizaciones | ⚠️ Workflow de consentimiento a formalizar |
-| 9 | Protección prevalente de datos de menores (§15.4) | ❌ Datos de menores en sistema de tercero | ✅ Tratamiento interno con trazabilidad |
-| 10 | Impedir adulteración / acceso no autorizado (§15.9) | ❌ Sin capacidad material de control | ✅ Prepared statements, triggers, auditoría |
-| 11 | Informar al titular el uso dado a sus datos (§15.9) | ❌ SENA no tiene los logs del tercero | ✅ Logs con usuario real y timestamp |
-| 12 | Detectar y reportar violaciones a la SIC (§15.9) | ❌ Sin visibilidad para detectar | ✅ SIEM (E11) |
-| 13 | Activos de información inventariados y gestionados en el MSPI (Planes 2023/2026) | ❌ Sistema del tercero fuera del SGSI del SENA | ✅ Dentro del alcance MSPI (FASE 0+1 propias) |
-| 14 | Autorización del titular solo cubre a la entidad e intercambio con entidades públicas (Regl. Aprendiz Art. 11 Par. 5) | ❌ Tercero privado trata datos sin autorización válida | ✅ Amparado por la autorización de matrícula ya firmada |
-| 15 | Identificación al ingreso "según disponga la entidad" (Regl. Aprendiz Art. 8 num. 19) | ⚠️ El mecanismo lo dispone el proveedor, no la entidad | ✅ SmartCSET ES el mecanismo dispuesto por la entidad |
-| 16 | Consentimiento de padres de menores otorgado al SENA (Regl. Aprendiz Art. 10 Par.) | ❌ No cubre al tercero → datos de menores sin autorización | ✅ Cubierto por el consentimiento de matrícula |
+| #  | Requisito (fuente interna SENA)                                                                                         | Situación actual (software del proveedor de vigilancia)     | Con SmartCSET/SGI                                         |
+| -- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| 1  | Datos en servidor del SENA en Colombia (§15.7)                                                                         | ❌ Datos en sistema del tercero                              | ✅ PostgreSQL en servidor SENA                            |
+| 2  | Registrar ingresos y salidas (§7.1.1)                                                                                  | ⚠️ Se registra, pero fuera de custodia SENA                | ✅ Registro en`tab_log_ingresos`                        |
+| 3  | Acuerdo de confidencialidad + anexo técnico con el tercero (§11)                                                      | ❓ A verificar contrato — probablemente ausente             | ✅ N/A — no hay tercero tratando datos                   |
+| 4  | Clasificación previa de la información compartida (§11)                                                              | ❓ A verificar — improbable                                 | ✅ Inventario de activos FASE 0 (FASE0-INV-002)           |
+| 5  | Intervención de CISO + Oficina de Sistemas en sistemas que tratan datos (§11)                                         | ❌ Software unilateral del proveedor                         | ✅ Sistema institucional, documentado                     |
+| 6  | Condiciones contractuales de seguridad a entidades vinculadas (§15.3.1)                                                | ❓ A verificar                                               | ✅ N/A                                                    |
+| 7  | Acceso solo con necesidad laboral legítima (§15.3.1)                                                                  | ❌ SENA no controla usuarios del software ajeno              | ✅`tab_menu_usuarios` + `usuarioTieneMenu()`          |
+| 8  | Autorización explícita para datos sensibles/biométricos (§15.3.2)                                                   | ❌ Sin gestión verificable de autorizaciones                | ⚠️ Workflow de consentimiento a formalizar              |
+| 9  | Protección prevalente de datos de menores (§15.4)                                                                     | ❌ Datos de menores en sistema de tercero                    | ✅ Tratamiento interno con trazabilidad                   |
+| 10 | Impedir adulteración / acceso no autorizado (§15.9)                                                                   | ❌ Sin capacidad material de control                         | ✅ Prepared statements, triggers, auditoría              |
+| 11 | Informar al titular el uso dado a sus datos (§15.9)                                                                    | ❌ SENA no tiene los logs del tercero                        | ✅ Logs con usuario real y timestamp                      |
+| 12 | Detectar y reportar violaciones a la SIC (§15.9)                                                                       | ❌ Sin visibilidad para detectar                             | ✅ SIEM (E11)                                             |
+| 13 | Activos de información inventariados y gestionados en el MSPI (Planes 2023/2026)                                       | ❌ Sistema del tercero fuera del SGSI del SENA               | ✅ Dentro del alcance MSPI (FASE 0+1 propias)             |
+| 14 | Autorización del titular solo cubre a la entidad e intercambio con entidades públicas (Regl. Aprendiz Art. 11 Par. 5) | ❌ Tercero privado trata datos sin autorización válida     | ✅ Amparado por la autorización de matrícula ya firmada |
+| 15 | Identificación al ingreso "según disponga la entidad" (Regl. Aprendiz Art. 8 num. 19)                                 | ⚠️ El mecanismo lo dispone el proveedor, no la entidad     | ✅ SmartCSET ES el mecanismo dispuesto por la entidad     |
+| 16 | Consentimiento de padres de menores otorgado al SENA (Regl. Aprendiz Art. 10 Par.)                                      | ❌ No cubre al tercero → datos de menores sin autorización | ✅ Cubierto por el consentimiento de matrícula           |
 
 **Resumen: de 16 requisitos internos, la situación actual incumple 10 con certeza y 4 más pendientes de verificación contractual (❓). SmartCSET cumple 15 de 16 (1 en desarrollo: formalización del workflow de consentimiento para visitantes).**
 

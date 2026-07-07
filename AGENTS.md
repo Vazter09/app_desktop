@@ -55,6 +55,16 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 **Cuidado:** el login standalone del módulo está **INACTIVO desde 2026-07-01** (`registroUsaLoginStandalone()` retorna `false`). El módulo usa la sesión principal (`$_SESSION['id_usuario']`) + control por menú `0300`/`20701` como el resto del sistema. Ver Bug 8 en CLAUDE.md.
 
+### Agente: Módulo SIEM
+
+**Responsable de:** `frontend/web/pages/modulos/siem/`, `backend/routers/siem/`, `database/functions/siem/`
+
+**Entradas:** cambios en las 5 vistas (dashboard, eventos, sesiones, IPs bloqueadas, actividad), nuevos KPIs o filtros
+
+**Salidas:** vistas de auditoría/monitoreo, endpoints AJAX de acción administrativa (forzar cierre de sesión, desbloquear IP)
+
+**Cuidado:** menú `211xx` (submenú de SGA `20`), no menú raíz `06` (ver Bug 12 en CLAUDE.md). Patrones obligatorios de timezone, control de acceso, cache-busting y contrato JS documentados en `backend/routers/siem/AGENTS.md` — leer antes de tocar cualquier vista o función nueva de este módulo. Módulo consolidado end-to-end 2026-07-06/07 (ver Bug 16 en CLAUDE.md).
+
 ### Agente: Administración y Menú (SGA)
 
 **Responsable de:** `frontend/web/pages/menu/`, `frontend/web/pages/usuarios/`, `frontend/web/pages/admin/`, `frontend/web/layout/`

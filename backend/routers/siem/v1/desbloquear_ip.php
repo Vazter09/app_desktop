@@ -6,12 +6,8 @@ require_once dirname(__DIR__, 3) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 3) . '/core/ErrorHandler.php';
 require_once dirname(__DIR__, 3) . '/middleware/require_session.php';
 
-// Acceso: admin O usuario con menú 0604 (IPs Bloqueadas) asignado
-$_stmt_acceso = $pdo->prepare(
-    'SELECT 1 FROM tab_menu_usuarios WHERE id_usuario = ?::VARCHAR AND id_menu = ?'
-);
-$_stmt_acceso->execute([$_SESSION['id_usuario'], '0604']);
-if (empty($_SESSION['ind_usuario']) && !$_stmt_acceso->fetch()) {
+// Acceso: admin O usuario con menú 21104 (IPs Bloqueadas) asignado
+if (!usuarioTieneMenu($pdo, (string) $_SESSION['id_usuario'], '21104')) {
     RouterResponse::fail('No tienes permiso para esta acción.', 403);
 }
 

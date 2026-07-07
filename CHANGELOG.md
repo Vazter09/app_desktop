@@ -1,5 +1,26 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-07] Sesión: Consolidación módulo SIEM — submenús 4-5 (IPs Bloqueadas, Actividad) — módulo completo
+
+### 🎯 Objetivos Logrados
+- ✅ **IPs Bloqueadas (21104) consolidado.** `desbloquear_ip.php` validaba el menú viejo `0604` (mismo bug que tenía `forzar_sesion.php` antes del fix del 2026-07-06) → corregido a `usuarioTieneMenu($pdo, ..., '21104')`. Hora del último intento en UTC crudo → `smartcsetFormatDbTimestamp()`. Cache-busting de `siem.css` con ruta rota (`filemtime()` sin `/frontend/web/public/assets`). Botón "Desbloquear" con los mismos 3 bugs de JS que tenía "Forzar cierre": `SmartcsetHttp` sin cargar `http-client.js`, `SmartcsetToast` inexistente (global real `SmartToast`), contrato `.then/.catch` invertido.
+- ✅ **Actividad (21105) consolidado.** Filtros Desde/Hasta y KPI "hoy" comparaban en UTC crudo (mismo patrón que Eventos/Dashboard) → `fun_siem_actividad_fisica` ahora recibe `wzona_horaria` (6º parámetro, requirió `DROP FUNCTION IF EXISTS` de la firma vieja de 5 args); KPI inline en PHP parametrizado igual. Mismos fixes de `filemtime()` y `date(strtotime())` → `smartcsetFormatDbTimestamp()` en las 3 apariciones del timeline.
+- ✅ **Módulo SIEM 100% consolidado** — los 5 submenús (21101-21105) verificados end-to-end: timezone local, sin CDN externo, botones de acción funcionales, control de acceso real por menú.
+
+### 🧪 Pruebas (BD activa: `10.5.213.111`/`db_smartcset2`, la que define el `.env`)
+- Ciclo real ingreso→salida vía endpoints de portería: KPIs de Actividad 0/0/0 → 1/1/0 → 1/0/1, timeline con hora local correcta (13:45 UTC → 08:45 Bogotá), badge INGRESO→SALIDA.
+- Ataque simulado (6 intentos fallidos desde `127.0.0.1`, `X-Forwarded-For` correctamente ignorado): IP bloqueada visible, botón "Desbloquear" funcional end-to-end (login vuelve a funcionar tras desbloquear).
+- Control de acceso con `porteria` (sin menú `211xx`): 403 en las 2 vistas y el endpoint; con menú asignado temporalmente vía endpoint real de administración: 200; menús revertidos exactamente al estado original.
+- Limpieza completa: persona/ingreso de prueba eliminados, intentos de login de prueba auto-eliminados al desbloquear, 2 sesiones de prueba cerradas por logout real — 0 residuos en la BD.
+
+### 📋 Detalle
+Ver `HANDOFF.md` sección "LO QUE SE HIZO EN LA SESIÓN 2026-07-07", `CLAUDE.md` Bug 16 (ahora ✅ RESUELTO completo).
+
+### 📌 Acuerdo de flujo de trabajo (nuevo, vigente desde esta sesión)
+Desarrollo y código en local; solo se copia a `/var/www/html/smartcset` (servidor `10.5.213.111`) cuando cumple los 5 Pilares y las premisas principales. El `.env` local ya apunta la BD de trabajo a ese mismo servidor — el aislamiento local aplica al código, no a la base de datos.
+
+---
+
 ## [2026-07-06] Sesión: Consolidación módulo SIEM — submenús 1-3 (Panel de Control, Eventos, Sesiones)
 
 ### 🎯 Objetivos Logrados
