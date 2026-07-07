@@ -283,6 +283,115 @@ necesarios ahí — mismos archivos, solo contenido actualizado).
 
 ---
 
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-07 (continuación) — Migración y consolidación del servidor institucional real (10.5.213.103)
+
+Con el SIEM ya consolidado, se ejecutó el traslado de trabajo del servidor de laboratorio
+(`10.5.213.111`) al **servidor institucional real** del SENA (`10.5.213.103`, credenciales
+`adsocset`/`postgres` actualizadas en `.env`) — donde SmartCSET va a operar de verdad.
+
+### 1. Migración de la base de datos
+`db_smartcset2` en `10.5.213.103` ya tenía datos (7385 personas, 7369 aprendices) — no estaba
+vacía. Se respaldó completa antes de tocarla (`db_smartcset2_103_backup_pre_restore_20260707.dump`,
+en la raíz del repo), se generó un dump completo de la BD actualizada en `10.5.213.111`
+(`db_smartcset2.dump`), y se restauró sobre `10.5.213.103` tras cerrar 5 conexiones idle de
+pgAdmin (confirmado por Anderson que eran suyas). Verificado post-restore: 78 tablas, 59
+funciones, 6 menús SIEM (`211xx`), hash bcrypt de `admin.smart` íntegro.
+
+### 2. Código del servidor — 4 gaps encontrados y corregidos
+El copy manual que Anderson había hecho a `/var/www/html/smartcset` estaba incompleto:
+- **Symlinks públicos faltantes** (`frontend/web/public/pages`, `.../routers`) — recreados, sin
+  ellos toda la app da 404 (mismo patrón que la regresión documentada en
+  `pg_hba_tls_regresion_e2_estado` de memoria).
+- **`.env` del servidor apuntaba `DB_HOST=10.5.213.111`** (el servidor viejo) — corregido a
+  `10.5.213.103` (la propia BD ya vive ahí).
+- **Permisos**: todo el árbol era `adsocset:adsocset` sin escritura de grupo — `storage/porteria`
+  y `frontend/web/public/uploads/logos` ahora son `adsocset:www-data` modo `2775` (setgid, para
+  que los archivos nuevos hereden el grupo).
+- **Vhost `smartcset-ssl.conf` con 2 bugs reales**: el bloque `*:80` tenía
+  `Redirect permanent /` **sin scope** — secuestraba el tráfico HTTP de las **otras 8 apps** del
+  servidor compartido (`converlang`, `cset`, `dinares`, `mdavid`, `protego`, `rdwatch`,
+  `specialized`, `viva`) redirigiéndolas a `https://10.5.213.103/`. Y el bloque `*:443` tenía
+  `DocumentRoot` apuntado directo a `frontend/web/public/` con `<Directory>` de protección
+  anti-webshell (`storage/porteria`, `uploads/logos`) apuntando a rutas anidadas que **no
+  existían** — la protección nunca se aplicaba de verdad. Reescrito calcando el patrón ya probado
+  seguro de `10.5.213.111` (`DocumentRoot /var/www/html` + `Alias /smartcset` + `RedirectMatch`
+  acotado). Verificado: las 8 apps siguen funcionando por HTTP sin redirect indebido, e
+  inalcanzables por HTTPS (404) — los certificados son exclusivos de smartcset.
+
+### 3. Auditoría exhaustiva post-migración — hallazgos y fixes
+Con usuarios reales ya usando portería en producción durante la auditoría (tráfico real desde
+`10.5.211.48`/`10.5.211.16`), se encontraron y corrigieron:
+
+- **9 funciones PL/pgSQL con el patrón de manejo de errores roto** (Bug 6 de CLAUDE.md
+  reintroducido): `fun_ingreso_sesion`, `fun_salida_sesion` (corren en cada login/logout),
+  `fun_listar_fichas_admin`, `fun_listar_fichas_instructor`, `fun_listar_asistencia_ficha`,
+  `fun_listar_asistencia_ficha_admin`, `fun_guardar_asistencia_manual`,
+  `fun_marcar_ausentes_fecha`, `fun_update_tab_pmtros_grales`. **Causa raíz real**: 3 migraciones
+  (`update_fun_ingreso_sesion_cerrar_vencidas.sql`, `update_fun_salida_sesion_ip_mismatch.sql`,
+  `fix_fun_update_tab_config_sistema.sql`) se ejecutan DESPUÉS de los archivos base en
+  `setup_smartcset.sh` y tenían el patrón viejo — sobrescribían el fix cada vez que se
+  reinstalaba. Corregidas las 3 migraciones + las 7 funciones de `instructor/` en el repo, y
+  desplegadas todas a `10.5.213.103`.
+- **`expose_php=On`** en PHP-FPM y CLI → corregido a `Off` (con backup del `php.ini`).
+- **`X-Frame-Options` duplicado con valores distintos** (`SAMEORIGIN` de `SecurityMiddleware.php`
+  vs `DENY` del vhost, ya presente antes de esta sesión) → unificado a `SAMEORIGIN` en ambas
+  capas.
+- **Certificado TLS mal generado**: sin extensión SAN y con `Basic Constraints: CA:TRUE` (debía
+  ser `CA:FALSE`) — Chrome/Firefox rechazan la validación de nombre sin SAN sin importar el CN, y
+  `CA:TRUE` es estructuralmente incorrecto para un cert de servidor. Causa raíz: el script
+  `scripts/infra/generar_certificado_smartcset.sh` generaba el cert sin `-addext`. Corregido el
+  script (agrega `subjectAltName`, `basicConstraints=CA:FALSE`, `extendedKeyUsage=serverAuth`) y
+  regenerado el certificado en producción (con backup del anterior). Verificado con
+  `openssl s_client`: SAN correcto, `CA:FALSE`, `TLS Web Server Authentication`.
+
+### 4. TLS BD activado (E8, parcial)
+`pg_hba.conf` en `10.5.213.103` tenía `host all all 0.0.0.0/0 md5` — cualquier red podía
+conectarse sin cifrar. A pedido explícito de Anderson (red SENA segmentada, necesita que
+cualquier dispositivo se conecte), **no se tocó ese `0.0.0.0/0`**. En su lugar se activó TLS
+acotado por dos ejes a la vez — solo la base de smartcset, solo la subred del propio servidor:
+
+```
+hostnossl db_smartcset2 all 10.5.213.0/24 reject
+hostssl   db_smartcset2 all 10.5.213.0/24 md5
+```
+
+**Lección técnica no obvia:** una regla `hostssl` angosta por sí sola NO basta — si existe una
+regla `host` más amplia después en el archivo (como el `0.0.0.0/0` que se dejó intacto), una
+conexión sin TLS que no matchea `hostssl` simplemente sigue evaluando hacia abajo y cae en esa
+regla amplia, **sin ser rechazada**. Hubo que agregar `hostnossl ... reject` explícito ANTES de la
+regla `hostssl` para bloquear de verdad. También se acotó por nombre de base de datos
+(`db_smartcset2`, no `all`) porque el mismo PostgreSQL aloja 5 bases de datos más de otras apps
+del servidor (`db_dinares`, `db_protego`, `db_rdwatch`, `db_specialized`, `maiconnect`) — con
+`all` la regla las habría afectado también.
+
+**Verificado con evidencia real** (no solo configuración): sin TLS desde la subred → rechazado
+(`no encryption`, probado desde 2 hosts distintos: `.103` y `.111`); con TLS → aceptado; las
+otras 5 bases de datos sin cambios (fallan solo por password, no por cifrado); smartcset via
+navegador sigue funcionando normal (el TLS BD es interno app↔BD, invisible para el usuario final
+que solo habla HTTPS con Apache).
+
+### 5. Sincronización final código ↔ servidor ↔ BD
+Los 11 archivos corregidos en el punto 3 (9 `.sql` + 2 migraciones + el script de certificado) se
+habían desplegado directo a la BD/servidor vía `psql -f`/`scp` a `/tmp`, pero nunca se habían
+copiado al código persistente en `/var/www/html/smartcset`. Detectado con una comparación por
+checksum (no por fecha) contra el repo local, y corregido — verificación final: **0 diferencias**
+de checksum entre el repo local y el servidor, **0 funciones con el patrón de error roto** en la
+BD.
+
+### Estado final
+Código en `/var/www/html/smartcset` y base de datos en `10.5.213.103` coherentes entre sí y con
+el repo local. Documentado en detalle en
+`Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md`
+(sección E8, tabla histórica).
+
+### ⚠️ Pendiente explícitamente diferido (decisiones tomadas, no olvidos)
+- **`DB_ENCRYPTION_KEY` / E2 (cifrado en reposo)**: bloqueado desde 2026-07-06, se retoma solo
+  cuando el módulo de reconocimiento facial/huella esté funcional.
+- **Firewall perimetral/interno, hardening SSH**: siguen requiriendo coordinación con Oficina TI
+  SENA — fuera del alcance de lo que se puede resolver solo con acceso `sudo` al servidor.
+
+---
+
 ## LO QUE SE HIZO EN LA SESIÓN 2026-06-26 (sesión 3)
 
 ### 8. HTTPS/TLS local — Apache con Alias /smartcset
@@ -1100,4 +1209,4 @@ PGPASSWORD=ander123 psql -h localhost -U postgres -d db_smartcset2
 
 ---
 
-*Última actualización: 2026-07-07 | Rama activa: `feat/implementacion_MSPI` | Responsable: Anderson | Modelo: Claude Fable 5*
+*Última actualización: 2026-07-07 | Rama activa: `feat/implementacion_MSPI` | Responsable: Anderson | Modelo: Claude Sonnet 5 | Servidor institucional activo: `10.5.213.103` (código y BD sincronizados)*

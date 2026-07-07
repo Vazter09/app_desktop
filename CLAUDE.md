@@ -597,6 +597,8 @@ host    all   all   10.5.213.111/32   scram-sha-256   →   hostssl  all  all  1
 
 Las entradas `127.0.0.1/32` y `::1/128` (loopback) se dejaron sin cambiar — es el patrón típico de hardening (exigir TLS en tráfico de red, confiar en localhost).
 
+**Corrección de terminología (2026-07-07):** este bug llamaba a `10.5.213.111` "servidor institucional SENA" — resultó ser el servidor de **laboratorio/pruebas**. El servidor institucional real donde SmartCSET va a operar es `10.5.213.103` (ver Bug 17 y el fix de TLS BD equivalente aplicado ahí, con matices distintos: acotado por base de datos y sin tocar `0.0.0.0/0`, ver sección de servidores más abajo).
+
 ### Bug 14: Dashboard (`menu_principal.php`) mostraba "No se pudo completar la operación" — ✅ RESUELTO, revertido y corregido de nuevo en Bug 15
 Al probar el dashboard contra la BD reinstalada limpia en el servidor de laboratorio, apareció el error genérico "No se pudo completar la operación. Contacte al administrador." con los 3 KPIs de portería en 0. Causa: `backend/core/prepare.php` (`$stmt_list_ingresos_hoy` y `$stmt_list_salidas_hoy`) hace `LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha`, y en ese momento el schema tenía la columna nombrada `id_ficha_vigente` (por el fix, equivocado, del Bug 11 punto 3).
 
@@ -656,6 +658,15 @@ En las sesiones 2026-07-06 y 2026-07-07 se corrigieron los 5 submenús del SIEM 
 **Verificación end-to-end (2026-07-07):** ciclo real ingreso→salida vía endpoints de portería (KPIs y timeline con hora local correcta); ataque simulado de 6 intentos fallidos → IP bloqueada visible → desbloqueo real vía botón → login vuelve a funcionar; control de acceso probado con usuario sin menú (403 en las 2 vistas y el endpoint) y con menú asignado temporalmente (200), revertido después sin dejar residuos; 0 sesiones colgadas al cierre.
 
 **Lección (JS del proyecto):** `SmartcsetHttp` vive en `js/services/http-client.js` y el footer **no** lo carga globalmente — toda vista que lo use debe incluirlo en su `$extra_js`. Resuelve con `payload.data` y lanza `Error(msg)` si `ok !== true`. El global de toasts es `SmartToast` (`.error(msg)`, `.success(msg)`...), no "SmartcsetToast".
+
+### Bug 17: el patrón de manejo de errores del Bug 6 se reintroducía vía migraciones ejecutadas después de los archivos base — ✅ RESUELTO (2026-07-07)
+Al auditar exhaustivamente el servidor institucional real (`10.5.213.103`) tras migrar la BD desde `10.5.213.111`, se encontraron **9 funciones PL/pgSQL con el patrón de error roto documentado en Bug 6** (`PERFORM smartcset_handle_sql_error();` sin argumentos, causa el crash "GET STACKED DIAGNOSTICS fuera del bloque EXCEPTION"): `fun_ingreso_sesion` y `fun_salida_sesion` (ejecutan en **cada login/logout**), más `fun_listar_fichas_admin`, `fun_listar_fichas_instructor`, `fun_listar_asistencia_ficha`, `fun_listar_asistencia_ficha_admin`, `fun_guardar_asistencia_manual`, `fun_marcar_ausentes_fecha`, `fun_update_tab_pmtros_grales`.
+
+**Causa raíz (no era solo drift del servidor):** 3 migraciones — `database/migrations/update_fun_ingreso_sesion_cerrar_vencidas.sql`, `update_fun_salida_sesion_ip_mismatch.sql`, `fix_fun_update_tab_config_sistema.sql` — se ejecutan en `setup_smartcset.sh` **después** del archivo base de la función (`CREATE OR REPLACE`, así que la última en ejecutarse gana) y las 3 tenían el patrón viejo, aunque los archivos base en `database/functions/` ya estaban corregidos. Cualquier instalación limpia, o cualquier reinstalación sobre una BD existente, reintroducía el bug sin que nadie lo notara — hasta que se auditó `pg_proc.prosrc` directamente contra el patrón roto.
+
+**Fix:** corregidas las 7 funciones de `database/functions/instructor/` + `fun_update_tab_pmtros_grales.sql` (agregado bloque `DECLARE` con las 4 variables de diagnóstico donde faltaba) y las 3 migraciones mencionadas, desplegado todo a `10.5.213.103`. Verificado: `SELECT COUNT(*) FROM pg_proc WHERE prosrc LIKE '%smartcset_handle_sql_error()%'` retorna 0 en todo el repo y en la BD del servidor.
+
+**Lección:** cuando una migración hace `CREATE OR REPLACE FUNCTION` de algo que también existe en `database/functions/`, ambas copias deben mantenerse sincronizadas en el patrón de manejo de errores — el orden de ejecución del instalador (`FUNCS` antes que `migrations/`) hace que la migración sea la que realmente queda en producción. Al corregir un bug de este tipo, buscar con `grep -rn "smartcset_handle_sql_error()" database/` (sin argumentos) para encontrar TODAS las copias, no solo la que se estaba mirando.
 
 ### Deuda técnica adicional
 

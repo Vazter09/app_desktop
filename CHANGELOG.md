@@ -1,5 +1,31 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-07] Sesión: Migración y auditoría del servidor institucional real (10.5.213.103) + TLS BD
+
+### 🎯 Objetivos Logrados
+- ✅ **BD migrada** al servidor institucional real `10.5.213.103` (dump/restore desde `10.5.213.111`, con backup previo de los datos que ya había ahí).
+- ✅ **Código del servidor corregido**: symlinks públicos faltantes, `.env` con `DB_HOST` apuntando al servidor viejo, permisos de escritura faltantes en `uploads/logos`/`storage/porteria`.
+- ✅ **Vhost `smartcset-ssl.conf` con 2 bugs reales corregidos**: `Redirect permanent /` sin scope en `*:80` secuestraba el tráfico HTTP de las otras 8 apps del servidor compartido; `DocumentRoot` de `*:443` con reglas de protección anti-webshell apuntando a rutas que no existían. Reescrito con el patrón ya probado en `10.5.213.111` — verificado que las 8 apps siguen funcionando por HTTP e inalcanzables por HTTPS.
+- ✅ **Bug 6 (CLAUDE.md) reintroducido, encontrado y resuelto de raíz**: 9 funciones PL/pgSQL (incluye `fun_ingreso_sesion`/`fun_salida_sesion`, que corren en cada login/logout) tenían el patrón de manejo de errores roto. Causa real: 3 migraciones que se ejecutan después de los archivos base en el instalador tenían el patrón viejo. Corregidas las 3 migraciones + las 7 funciones de `instructor/`, desplegado todo.
+- ✅ **`expose_php=Off`**, **`X-Frame-Options` unificado** (`SAMEORIGIN` en Apache y PHP, antes contradictorios), **certificado TLS regenerado** (el script de origen generaba certs sin SAN y con `CA:TRUE` — corregido).
+- ✅ **TLS BD activado (E8, parcial)**: `pg_hba.conf` con `hostnossl`/`hostssl` acotados a `db_smartcset2` + subred `10.5.213.0/24`, sin tocar `0.0.0.0/0` (decisión explícita para no exigir TLS a dispositivos fuera de esa subred). Verificado con evidencia real: rechazo sin TLS, aceptación con TLS, las otras 5 bases de datos del mismo servidor sin cambios.
+- ✅ **Sincronización final verificada**: checksum idéntico entre repo local y `/var/www/html/smartcset`, 0 funciones con el patrón de error roto en la BD.
+
+### 🧪 Pruebas
+- Login/logout, dashboard, SIEM, portería (uso real de usuarios activos durante la auditoría), instructor, usuarios, menús, admin, entradas, registro — todos verificados end-to-end contra `10.5.213.103`.
+- TLS BD probado desde 2 hosts distintos de la subred (`.103` a sí mismo, `.111` hacia `.103`): sin TLS rechazado, con TLS aceptado.
+- Otras 8 apps del servidor compartido confirmadas intactas antes y después de cada cambio de infraestructura.
+
+### 📋 Detalle
+Ver `HANDOFF.md` sección "Migración y consolidación del servidor institucional real", `CLAUDE.md` Bug 17, y
+`Documentacion para implementacion de MSPI/FASE 01_Blindaje Técnico Inmediato/02_CHECKLIST_IMPLEMENTACION_FASE1_SMARTCSET.md`
+(E8 pasó de 0% a ~35%, A02/A05 actualizados).
+
+### ⚠️ Pendiente explícitamente diferido
+`DB_ENCRYPTION_KEY`/E2 (bloqueado desde 2026-07-06, atado al módulo de reconocimiento facial) y firewall perimetral/SSH hardening (requieren Oficina TI SENA).
+
+---
+
 ## [2026-07-07] Sesión: Consolidación módulo SIEM — submenús 4-5 (IPs Bloqueadas, Actividad) — módulo completo
 
 ### 🎯 Objetivos Logrados

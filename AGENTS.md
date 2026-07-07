@@ -146,8 +146,12 @@ Antes de trabajar en cualquier área, verificar:
 
 ```bash
 # La BD activa la define .env (DB_NAME=db_smartcset2, DB_HOST puede ser
-# localhost o el servidor de laboratorio 192.168.1.71). Usar las
-# credenciales de .env vía PGPASSWORD.
+# localhost, el servidor de laboratorio (192.168.1.71 / 10.5.213.111) o el
+# servidor institucional real (10.5.213.103, donde smartcset opera de
+# verdad — código y BD sincronizados desde 2026-07-07). Usar las
+# credenciales de .env vía PGPASSWORD. DB_SSLMODE=require es obligatorio
+# para conectar a la BD del servidor institucional desde su propia subred
+# (10.5.213.0/24) — ver Bug 17/E8 en CLAUDE.md.
 
 # Estado del schema en BD:
 psql -h "$DB_HOST" -U postgres -d db_smartcset2 -c "\dt tab_*"
