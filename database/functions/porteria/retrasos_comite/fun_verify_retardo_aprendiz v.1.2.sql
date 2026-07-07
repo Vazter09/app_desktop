@@ -1,12 +1,12 @@
 -- Función para los retardos del aprendiz.
 
 CREATE OR REPLACE FUNCTION fun_verify_retardo_aprendiz(
-    p_id_aprendiz   DECIMAL(10,0),   -- id del aprendiz
-    p_hora_llegada  TIMESTAMPTZ,     -- hora de llegada con zona horaria
-    p_usr_insert    VARCHAR(50),     -- usuario que registra
-    p_id_metodo_aut DECIMAL(2,0) DEFAULT 1,  -- Método de autenticación (ej: 1 = manual)
-    p_id_entrada_centro DECIMAL(1,0) DEFAULT 1, -- Entrada principal
-    p_val_observaciones TEXT DEFAULT NULL
+    p_id_aprendiz        DECIMAL(10,0),             -- id del aprendiz
+    p_hora_llegada       TIMESTAMPTZ,               -- hora de llegada con zona horaria
+    p_usr_insert         VARCHAR(50),               -- usuario que registra
+    p_id_metodo_aut      DECIMAL(2,0)   DEFAULT 1,  -- Método de autenticación (ej: 1 = manual)
+    p_id_entrada_centro  DECIMAL(1,0)   DEFAULT 1,  -- Entrada principal
+    p_val_observaciones  TEXT           DEFAULT NULL
 ) RETURNS BOOLEAN AS
 $$
 DECLARE
@@ -25,15 +25,17 @@ DECLARE
     v_motivo_llamado      TEXT;
     v_id_ingreso          INTEGER;
     v_fec_ingreso         TIMESTAMP;
+    v_fecha_asistencia    DATE;
 BEGIN
     -- Obtener usuario de sesión o usar el proporcionado
     v_usr_actual := COALESCE(p_usr_insert, current_setting('app.current_user', true), 'SISTEMA');
-    v_fec_ingreso := p_hora_llegada;  -- Usar la hora de llegada como fec_ingreso
+    v_fec_ingreso := p_hora_llegada;
+    v_fecha_asistencia := p_hora_llegada::DATE;  -- Fecha de la asistencia
 
     -- Extraer solo la hora sin fecha
     v_hora_llegada_time := p_hora_llegada::TIME;
 
-    -- 1. Obtener parámetros generales (tiempo de gracia y centro del aprendiz)
+    -- 1. Obtener parámetros generales (tiempo de gracia)
     SELECT val_tiempo_gracia_aprendiz
     INTO v_tiempo_gracia
     FROM tab_pmtros_grales
@@ -76,7 +78,7 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- 5. Calcular hora límite con gracia
+    -- 5. Calcular hora límite con gracia (hora_entrada + tiempo_gracia minutos)
     v_hora_limite_gracia := v_hora_entrada + (v_tiempo_gracia || ' minutes')::INTERVAL;
 
     -- 6. Determinar si tiene permiso activo
@@ -84,10 +86,10 @@ BEGIN
         SELECT 1
         FROM tab_permisos_aprendiz
         WHERE id_aprendiz = p_id_aprendiz
-          AND CURRENT_DATE BETWEEN fec_inicio_permiso AND fec_final_permiso
+          AND v_fecha_asistencia BETWEEN fec_inicio_permiso AND fec_final_permiso
     ) INTO v_tiene_permiso;
 
-    -- 7. Calcular estado y minutos de retraso
+    -- 7. Calcular estado y minutos de retraso (CORREGIDO: desde la hora límite de gracia)
     IF v_hora_llegada_time <= v_hora_limite_gracia THEN
         v_estado := 'Presente';
         v_minutos_retardo := 0;
@@ -97,12 +99,17 @@ BEGIN
             v_minutos_retardo := 0;
         ELSE
             v_estado := 'Tarde';
-            v_minutos_retardo := EXTRACT(EPOCH FROM (v_hora_llegada_time - v_hora_entrada)) / 60;
+            -- Calcular retraso desde la hora límite de gracia (no desde la hora de entrada)
+            v_minutos_retardo := EXTRACT(EPOCH FROM (v_hora_llegada_time - v_hora_limite_gracia)) / 60;
+            -- Asegurar que no sea negativo
+            IF v_minutos_retardo < 0 THEN
+                v_minutos_retardo := 0;
+            END IF;
         END IF;
     END IF;
 
     -- 8. Insertar en tab_log_ingresos (REGISTRO DE INGRESO)
-    -- Obtener el próximo id_ingreso (secuencia)
+    -- Obtener próximo id_ingreso (se recomienda usar una secuencia, pero por ahora se calcula)
     SELECT COALESCE(MAX(id_ingreso), 0) + 1 INTO v_id_ingreso FROM tab_log_ingresos;
 
     INSERT INTO tab_log_ingresos (
@@ -117,20 +124,20 @@ BEGIN
         fec_insert
     ) VALUES (
         v_id_ingreso,
-        p_id_aprendiz,                  -- id_visitante = id_aprendiz (porque es un aprendiz)
+        p_id_aprendiz,
         v_fec_ingreso,
-        v_fec_ingreso,                  -- fec_salida igual por ahora (se actualizará después)
+        v_fec_ingreso,  -- fec_salida igual por ahora (se actualizará después)
         p_id_metodo_aut,
         p_id_entrada_centro,
-        COALESCE(p_val_observaciones, 'Ingreso registrado automáticamente: ' || v_estado),
+        COALESCE(p_val_observaciones, 'Ingreso registrado automáticamente: ' || v_estado || ' (retraso: ' || v_minutos_retardo || ' min)'),
         v_usr_actual,
         CURRENT_TIMESTAMP
     );
 
-    RAISE NOTICE 'Registro de ingreso insertado en tab_log_ingresos. ID: %, Visitante: %, Estado: %',
-                 v_id_ingreso, p_id_aprendiz, v_estado;
+    RAISE NOTICE 'Registro de ingreso insertado en tab_log_ingresos. ID: %, Visitante: %, Estado: %, Retraso real: % min',
+                 v_id_ingreso, p_id_aprendiz, v_estado, v_minutos_retardo;
 
-    -- 9. Insertar o actualizar asistencia en tab_asistencia_aprendiz
+    -- 9. Insertar o actualizar asistencia en tab_asistencia_aprendiz (respetando PK compuesta)
     INSERT INTO tab_asistencia_aprendiz (
         id_aprendiz,
         fec_asistencia,
@@ -141,8 +148,8 @@ BEGIN
         fec_insert
     ) VALUES (
         p_id_aprendiz,
-        CURRENT_DATE,
-        p_hora_llegada,  -- timestamp completo
+        v_fecha_asistencia,   -- Fecha de la asistencia (NO CURRENT_DATE)
+        p_hora_llegada,
         v_minutos_retardo,
         v_estado,
         v_usr_actual,
@@ -155,12 +162,12 @@ BEGIN
         usr_update       = v_usr_actual,
         fec_update       = CURRENT_TIMESTAMP;
 
-    RAISE NOTICE 'Asistencia registrada en tab_asistencia_aprendiz para aprendiz %. Estado: %, Retardo: % min',
-                 p_id_aprendiz, v_estado, v_minutos_retardo;
+    RAISE NOTICE 'Asistencia registrada en tab_asistencia_aprendiz para aprendiz %. Fecha: %, Estado: %, Retardo real: % min',
+                 p_id_aprendiz, v_fecha_asistencia, v_estado, v_minutos_retardo;
 
-    -- 10. Si es Tarde y supera la gracia (más de 0 minutos de retraso), insertar llamado de atención
+    -- 10. Si es Tarde y tiene retraso > 0, insertar llamado de atención
     IF v_estado = 'Tarde' AND v_minutos_retardo > 0 THEN
-        v_motivo_llamado := 'Retardo de ' || v_minutos_retardo || ' minutos. Llegada a las ' || v_hora_llegada_time;
+        v_motivo_llamado := 'Retardo de ' || v_minutos_retardo || ' minutos (excediendo gracia de ' || v_tiempo_gracia || ' min). Llegada a las ' || v_hora_llegada_time;
 
         INSERT INTO tab_llamados_atencion (
             ind_tipo,
@@ -178,7 +185,7 @@ BEGIN
             CURRENT_TIMESTAMP
         );
 
-        RAISE NOTICE 'Se insertó llamado de atención por retardo para aprendiz %. Minutos: %',
+        RAISE NOTICE 'Se insertó llamado de atención por retardo para aprendiz %. Minutos de retraso real: %',
                      p_id_aprendiz, v_minutos_retardo;
     END IF;
 

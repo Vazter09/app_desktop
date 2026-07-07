@@ -17,8 +17,8 @@ $$
         ON CONFLICT (id_aprendiz, id_tipo_novedad, fec_novedad) DO UPDATE 
         SET fec_novedad      = EXCLUDED.fec_novedad,
             id_tipo_novedad  = EXCLUDED.id_tipo_novedad,
-            id_aprendiz      = EXCLUDED.id_ficha,
-            id_ficha         = EXCLUDED.id_ficha
+            id_aprendiz      = EXCLUDED.id_aprendiz,
+            id_ficha         = EXCLUDED.id_ficha,
             id_causa_novedad = EXCLUDED.id_causa_novedad,
             ruta_evidencia   = EXCLUDED.ruta_evidencia,
             id_instructor    = EXCLUDED.id_instructor,
