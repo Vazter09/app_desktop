@@ -7,8 +7,9 @@
 --   wid_usuario:   ID del usuario (puede ser NULL si no existe).
 --   wind_exitoso:  TRUE si el login fue exitoso, FALSE si falló.
 --   wmotivo_fallo: Motivo del fallo (NULL en intentos exitosos):
---                  'usuario_no_existe' | 'contrasena_incorrecta' |
---                  'usuario_inactivo'.
+--                  'usuario_no_existe' | 'cuenta_bloqueada' |
+--                  'contrasena_incorrecta' | 'usuario_inactivo' |
+--                  'ip_bloqueada_por_rate_limit'.
 --   wuser_agent:   User-Agent del navegador (auditoría forense).
 -- Retorna: TEXT 'OK'
 -- ===================================================================
@@ -43,7 +44,8 @@ BEGIN
     -- Validación de dominio del motivo (solo cuando el intento falló).
     IF NOT wind_exitoso AND wmotivo_fallo IS NOT NULL
        AND wmotivo_fallo NOT IN (
-           'usuario_no_existe', 'contrasena_incorrecta', 'usuario_inactivo'
+           'usuario_no_existe', 'cuenta_bloqueada', 'contrasena_incorrecta',
+           'usuario_inactivo', 'ip_bloqueada_por_rate_limit'
        ) THEN
         PERFORM smartcset_raise_validacion(
             'Motivo de fallo de login no reconocido.',

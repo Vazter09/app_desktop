@@ -106,13 +106,18 @@ include modulosLayout('layout/topbar.php');
                                     <?php if ($propia): ?>
                                         <span class="badge bg-secondary">Sesión actual</span>
                                     <?php else: ?>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-danger btn-forzar-cierre"
-                                                data-id-sesion="<?= htmlspecialchars($s['id_sesion']) ?>"
-                                                data-usuario="<?= htmlspecialchars($s['nom_usuario']) ?>"
-                                                title="Forzar cierre">
-                                            <i class="bi bi-x-circle me-1"></i>Forzar cierre
-                                        </button>
+                                        <form method="POST" class="d-inline form-cerrar-sesion" data-smart-confirm
+                                              data-smart-confirm-title="Cerrar sesión"
+                                              data-smart-confirm-message="¿Cerrar la sesión #<?= (int) $s['id_sesion'] ?> de «<?= htmlspecialchars($s['nom_usuario']) ?>»?"
+                                              data-smart-confirm-ok="Cerrar sesión"
+                                              data-smart-confirm-variant="danger">
+                                            <input type="hidden" name="hid_id_sesion" value="<?= (int) $s['id_sesion'] ?>">
+                                            <button type="submit" name="btn_cerrar_sesion"
+                                                    class="btn btn-sm btn-outline-danger border-0"
+                                                    title="Cerrar sesión">
+                                                <i class="bi bi-x-circle me-1"></i>Forzar cierre
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -150,48 +155,10 @@ include modulosLayout('layout/topbar.php');
 </div>
 
 <?php
-$url_forzar = smartcsetUrl('/routers/siem/v1/forzar_sesion.php');
-// SmartcsetHttp vive en http-client.js; el footer no lo carga
-// globalmente, cada vista que lo usa debe incluirlo (patrón portería)
-$_v_http = @filemtime($_root . '/frontend/web/public/assets/js/services/http-client.js') ?: time();
-$extra_js = '<script src="' . htmlspecialchars(smartcsetAsset('js/services/http-client.js'))
-    . '?v=' . (int) $_v_http . '"></script>'
-    . <<<HTML
-<script>
-(function () {
-    'use strict';
-    var modal       = new bootstrap.Modal(document.getElementById('modal-forzar-cierre'));
-    var idSesion    = '';
-    var urlForzar   = '{$url_forzar}';
-
-    document.getElementById('tbl-sesiones').addEventListener('click', function (e) {
-        var btn = e.target.closest('.btn-forzar-cierre');
-        if (!btn) return;
-        idSesion = btn.dataset.idSesion;
-        document.getElementById('modal-nombre-usuario').textContent = btn.dataset.usuario;
-        modal.show();
-    });
-
-    document.getElementById('btn-confirmar-cierre').addEventListener('click', function () {
-        this.disabled = true;
-        // SmartcsetHttp resuelve con payload.data y lanza Error(msg)
-        // cuando ok !== true — el mensaje de negocio llega por catch
-        SmartcsetHttp.post(urlForzar, { id_sesion: idSesion })
-            .then(function () {
-                modal.hide();
-                window.location.reload();
-            })
-            .catch(function (err) {
-                modal.hide();
-                SmartToast.error(err && err.message ? err.message : 'No se pudo cerrar la sesión.');
-            })
-            .finally(function () {
-                document.getElementById('btn-confirmar-cierre').disabled = false;
-            });
-    });
-}());
-</script>
-HTML;
+$_ar = dirname(__DIR__, 3) . '/public/assets';
+$extra_js = '<script src="' . htmlspecialchars(smartcsetAsset('js/services/http-client.js')) . '?v=' . (int) (@filemtime($_ar . '/js/services/http-client.js') ?: time()) . '"></script>'
+    . '<script src="' . htmlspecialchars(smartcsetAsset('js/services/admin-router.js')) . '?v=' . (int) (@filemtime($_ar . '/js/services/admin-router.js') ?: time()) . '"></script>'
+    . '<script src="' . htmlspecialchars(smartcsetAsset('js/core/admin_sesiones.js')) . '?v=' . (int) (@filemtime($_ar . '/js/core/admin_sesiones.js') ?: time()) . '"></script>';
 
 include modulosLayout('layout/footer.php');
 ?>

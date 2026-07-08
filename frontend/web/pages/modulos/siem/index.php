@@ -152,7 +152,10 @@ include modulosLayout('layout/topbar.php');
                 <?php if (empty($alertas)): ?>
                     <p class="text-muted small mb-0"><i class="bi bi-check-circle me-1 text-success"></i>Sin alertas activas.</p>
                 <?php else: ?>
-                    <?php foreach ($alertas as $al): ?>
+                    <?php foreach ($alertas as $al):
+                        $ua_display = trim((string) $al['user_agent']);
+                        $ua_display = !empty($ua_display) ? substr($ua_display, 0, 45) : '(desconocido)';
+                    ?>
                         <div class="siem-alert-item <?= htmlspecialchars($al['severidad']) ?>">
                             <div class="siem-alert-desc">
                                 <?php if ($al['severidad'] === 'danger'): ?>
@@ -162,10 +165,22 @@ include modulosLayout('layout/topbar.php');
                                 <?php endif; ?>
                                 <?= htmlspecialchars($al['descripcion']) ?>
                             </div>
-                            <div class="siem-alert-meta mt-1">
-                                <?= htmlspecialchars($al['ip_cliente']) ?>
-                                &nbsp;·&nbsp;
-                                <?= smartcsetFormatDbTimestamp($al['fec_evento'], 'H:i:s') ?>
+                            <div class="siem-alert-details small text-muted mt-1">
+                                <div><strong>📅 Fecha:</strong> <?= smartcsetFormatDbTimestamp($al['fec_evento'], 'd/m/Y') ?></div>
+                                <div><strong>🕐 Hora:</strong> <?= smartcsetFormatDbTimestamp($al['fec_evento'], 'H:i:s') ?></div>
+                                <div><strong>🌐 IP:</strong> <?= htmlspecialchars($al['ip_cliente']) ?></div>
+                                <?php if (!empty($al['id_usuario'])): ?>
+                                    <div><strong>👤 Usuario:</strong> <?= htmlspecialchars($al['id_usuario']) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($al['motivo_fallo'])): ?>
+                                    <div><strong>💀 Motivo:</strong> <?= htmlspecialchars($al['motivo_fallo']) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($al['user_agent'])): ?>
+                                    <div><strong>🤖 User-Agent:</strong> <span title="<?= htmlspecialchars($al['user_agent']) ?>"><?= htmlspecialchars($ua_display) ?></span></div>
+                                <?php endif; ?>
+                                <?php if ((int) $al['intentos_ventana'] > 0): ?>
+                                    <div><strong>⚠️  Intentos:</strong> <span class="badge bg-warning text-dark"><?= (int) $al['intentos_ventana'] ?> en últimos 15 min</span></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

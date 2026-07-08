@@ -164,16 +164,22 @@ $$ LANGUAGE plpgsql;
 
 
 -- Función: últimas alertas (8 eventos recientes de seguridad)
+-- Retorna información enriquecida: tipo, descripción, IP, fecha/hora, motivo,
+-- user-agent, contador de intentos en ventana y severidad
 CREATE OR REPLACE FUNCTION fun_siem_alertas_recientes(
     wmax_intentos    INTEGER DEFAULT 5,
     wventana_minutos INTEGER DEFAULT 15
 )
 RETURNS TABLE(
-    tipo        TEXT,
-    descripcion TEXT,
-    ip_cliente  VARCHAR,
-    fec_evento  TIMESTAMP,
-    severidad   TEXT
+    tipo               TEXT,
+    descripcion        TEXT,
+    ip_cliente         VARCHAR,
+    id_usuario         VARCHAR,
+    fec_evento         TIMESTAMP,
+    motivo_fallo       VARCHAR,
+    user_agent         VARCHAR,
+    intentos_ventana   BIGINT,
+    severidad          TEXT
 ) AS $$
 DECLARE
     w_exc_state  TEXT;
@@ -190,13 +196,18 @@ BEGIN
         CASE
             WHEN bloqueo.ip_cliente IS NOT NULL
                 THEN 'IP bloqueada por ' || bloqueo.total_fallos || ' intentos fallidos'
-            ELSE 'Intento fallido: usuario ' || COALESCE(t.id_usuario, '(desconocido)')
+            ELSE 'Intento fallido: ' || COALESCE(t.motivo_fallo, '(motivo desconocido)')
         END AS descripcion,
         t.ip_cliente,
+        t.id_usuario,
         t.fec_intento AS fec_evento,
+        t.motivo_fallo,
+        t.user_agent,
+        COALESCE(ventana.intentos, 0) AS intentos_ventana,
         CASE
             WHEN bloqueo.ip_cliente IS NOT NULL THEN 'danger'
-            ELSE 'warning'
+            WHEN COALESCE(ventana.intentos, 0) >= wmax_intentos THEN 'warning'
+            ELSE 'info'
         END AS severidad
     FROM tab_intentos_login t
     LEFT JOIN (
@@ -207,6 +218,13 @@ BEGIN
         GROUP BY il.ip_cliente
         HAVING COUNT(*) >= wmax_intentos
     ) bloqueo ON bloqueo.ip_cliente = t.ip_cliente
+    LEFT JOIN (
+        SELECT il2.ip_cliente, COUNT(*) AS intentos
+        FROM tab_intentos_login il2
+        WHERE il2.fec_intento >= NOW() - (wventana_minutos || ' minutes')::INTERVAL
+          AND il2.ind_exitoso = FALSE
+        GROUP BY il2.ip_cliente
+    ) ventana ON ventana.ip_cliente = t.ip_cliente
     WHERE t.ind_exitoso = FALSE
     ORDER BY t.fec_intento DESC
     LIMIT 8;
