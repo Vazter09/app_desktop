@@ -667,3 +667,49 @@ function smartcsetAttrSpaLink(?string $nomPrograma): string
 {
     return smartcsetEsEnlaceSpaInterno($nomPrograma) ? ' data-spa-link="1"' : '';
 }
+
+function smartcsetMotivoFalloAbrev(?string $motivo): string
+{
+    return match ($motivo) {
+        'usuario_no_existe'           => 'No existe',
+        'contrasena_incorrecta'       => 'Pass incorrecta',
+        'usuario_inactivo'            => 'Inactivo',
+        'cuenta_bloqueada'            => 'Cuenta bloqueada',
+        'ip_bloqueada_por_rate_limit' => 'Rate limit',
+        default                       => '—',
+    };
+}
+
+function smartcsetExtractClientFromUserAgent(?string $userAgent): string
+{
+    if (empty($userAgent)) {
+        return 'Desconocido';
+    }
+
+    $ua = strtolower($userAgent);
+
+    // Detectar SO
+    $os = 'Desconocido';
+    if (str_contains($ua, 'windows')) $os = 'Windows';
+    elseif (str_contains($ua, 'mac os')) $os = 'macOS';
+    elseif (str_contains($ua, 'linux')) $os = 'Linux';
+    elseif (str_contains($ua, 'android')) $os = 'Android';
+    elseif (str_contains($ua, 'iphone') || str_contains($ua, 'ipad')) $os = 'iOS';
+
+    // Detectar navegador/cliente
+    $browser = 'Desconocido';
+    if (str_contains($ua, 'edg/')) $browser = 'Edge';
+    elseif (str_contains($ua, 'chrome/')) $browser = 'Chrome';
+    elseif (str_contains($ua, 'firefox/')) $browser = 'Firefox';
+    elseif (str_contains($ua, 'safari/') && !str_contains($ua, 'chrome')) $browser = 'Safari';
+    elseif (str_contains($ua, 'opr/') || str_contains($ua, 'opera')) $browser = 'Opera';
+    elseif (str_contains($ua, 'curl')) $browser = 'curl';
+    elseif (str_contains($ua, 'wget')) $browser = 'wget';
+    elseif (str_contains($ua, 'python')) $browser = 'Python';
+    elseif (str_contains($ua, 'postman')) $browser = 'Postman';
+    elseif (str_contains($ua, 'bot') || str_contains($ua, 'crawler') || str_contains($ua, 'spider')) {
+        $browser = 'Bot/Crawler';
+    }
+
+    return $browser . '/' . $os;
+}

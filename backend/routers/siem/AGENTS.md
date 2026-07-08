@@ -1,19 +1,18 @@
 # AGENTS.md — SIEM routers
 
 Módulo SIEM (mini Security Information & Event Management), consolidado 2026-07-06/07 (ver
-CLAUDE.md Bug 16 y HANDOFF.md sesiones 2026-07-06/07). 5 vistas en
-`frontend/web/pages/modulos/siem/{index,eventos,sesiones,ips,actividad}/index.php`, funciones en
-`database/functions/siem/`, 2 endpoints AJAX en `backend/routers/siem/v1/`.
+CLAUDE.md Bug 16 y HANDOFF.md sesiones 2026-07-06/07). Reducido a 2 vistas el 2026-07-08
+(se eliminaron Eventos/IPs Bloqueadas/Actividad Física — quedaban redundantes con Panel de
+Control + Sesiones Activas) en
+`frontend/web/pages/modulos/siem/{index,sesiones}/index.php`, funciones en
+`database/functions/siem/`, 1 endpoint AJAX en `backend/routers/siem/v1/`.
 
 ## Menús (submenú de SGA `20`, NO menú raíz — ver Bug 12 en CLAUDE.md)
 
 | ID | Vista | Función SQL |
 |----|-------|-------------|
 | `21101` | Panel de Control (`index.php`) | `fun_siem_dashboard.sql` |
-| `21102` | Eventos | `fun_siem_list_eventos` (en `fun_siem_eventos.sql`) |
-| `21103` | Sesiones | `fun_siem_sesiones.sql` + `forzar_sesion.php` |
-| `21104` | IPs Bloqueadas | `fun_siem_ips.sql` + `desbloquear_ip.php` |
-| `21105` | Actividad | `fun_siem_actividad.sql` |
+| `21103` | Sesiones (`sesiones/index.php`) | `fun_siem_sesiones.sql` + `forzar_sesion.php` |
 
 ## Patrones obligatorios para código nuevo en este módulo
 

@@ -54,77 +54,6 @@
     letter-spacing: 0.03em;
 }
 
-/* --- Timeline actividad física --- */
-.siem-timeline-item {
-    border-left: 3px solid var(--surface-border);
-    padding: 0.5rem 0 0.5rem 1rem;
-    margin-bottom: 0.85rem;
-    transition: border-color 150ms ease;
-}
-
-.siem-timeline-item.ingreso {
-    border-left-color: var(--v-oliva);
-}
-
-.siem-timeline-item.salida {
-    border-left-color: var(--surface-border);
-}
-
-.siem-timeline-hora {
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-muted, #8899aa);
-    font-family: monospace;
-}
-
-.siem-timeline-nombre {
-    font-weight: 600;
-    color: var(--text-main);
-    font-size: 0.88rem;
-}
-
-.siem-timeline-detalle {
-    font-size: 0.76rem;
-    color: var(--text-muted, #8899aa);
-}
-
-/* --- Alertas recientes panel --- */
-.siem-alert-item {
-    background: var(--bg-card);
-    border: 1px solid var(--surface-border);
-    border-radius: 0.4rem;
-    padding: 0.55rem 0.75rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.82rem;
-    transition: border-color 150ms ease;
-}
-
-.siem-alert-item.danger  { border-left: 3px solid #dc3545; }
-.siem-alert-item.warning { border-left: 3px solid #ffc107; }
-
-.siem-alert-desc {
-    color: var(--text-main);
-    font-size: 0.81rem;
-}
-
-.siem-alert-meta {
-    font-size: 0.72rem;
-    color: var(--text-muted, #8899aa);
-    font-family: monospace;
-}
-
-/* --- Chart container --- */
-.siem-chart-wrap {
-    position: relative;
-    height: 240px;
-}
-
-/* --- Filtros --- */
-.siem-filtros .form-control,
-.siem-filtros .form-select {
-    font-size: 0.83rem;
-}
-
 /* --- Encabezado de sección --- */
 .siem-section-header {
     display: flex;
@@ -143,7 +72,15 @@
     color: var(--text-main);
 }
 
-/* --- Badge IP bloqueada/expirada --- */
+/* --- Badge IP bloqueada --- */
 .badge-bloqueada { background-color: #dc3545; }
-.badge-expirada  { background-color: #6c757d; }
 .badge-activa-ip { background-color: #ffc107; color: #000; }
+
+/* --- Tabla Alertas tipo Wireshark --- */
+#tbl-alertas-siem tbody tr {
+    transition: background-color 150ms ease;
+}
+
+#tbl-alertas-siem tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}

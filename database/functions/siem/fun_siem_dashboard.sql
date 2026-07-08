@@ -13,7 +13,7 @@
 
 DROP FUNCTION IF EXISTS fun_siem_dashboard_kpis();
 DROP FUNCTION IF EXISTS fun_siem_dashboard_kpis(INTEGER, INTEGER);
-DROP FUNCTION IF EXISTS fun_siem_eventos_por_hora();
+DROP FUNCTION IF EXISTS fun_siem_eventos_por_hora(TEXT);
 DROP FUNCTION IF EXISTS fun_siem_top_ips_fallidas();
 DROP FUNCTION IF EXISTS fun_siem_top_ips_fallidas(INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS fun_siem_alertas_recientes();
@@ -66,44 +66,6 @@ BEGIN
 
         (SELECT COUNT(*) FROM tab_sesiones
          WHERE fec_fin IS NULL)::BIGINT;
-
-EXCEPTION
-    WHEN OTHERS THEN
-        GET STACKED DIAGNOSTICS
-            w_exc_state  = RETURNED_SQLSTATE,
-            w_exc_msg    = MESSAGE_TEXT,
-            w_exc_detail = PG_EXCEPTION_DETAIL,
-            w_exc_hint   = PG_EXCEPTION_HINT;
-        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
-END;
-$$ LANGUAGE plpgsql;
-
-
--- Función: eventos por hora (últimas 24h) para gráfica Chart.js
--- La hora se expresa en la zona local del usuario (wzona_horaria)
-CREATE OR REPLACE FUNCTION fun_siem_eventos_por_hora(
-    wzona_horaria TEXT DEFAULT 'America/Bogota'
-)
-RETURNS TABLE(
-    hora       INT,
-    exitosos   BIGINT,
-    fallidos   BIGINT
-) AS $$
-DECLARE
-    w_exc_state  TEXT;
-    w_exc_msg    TEXT;
-    w_exc_detail TEXT;
-    w_exc_hint   TEXT;
-BEGIN
-    RETURN QUERY
-    SELECT
-        EXTRACT(HOUR FROM fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)::INT AS hora,
-        COUNT(*) FILTER (WHERE ind_exitoso = TRUE)  AS exitosos,
-        COUNT(*) FILTER (WHERE ind_exitoso = FALSE) AS fallidos
-    FROM tab_intentos_login
-    WHERE fec_intento >= NOW() - INTERVAL '24 hours'
-    GROUP BY EXTRACT(HOUR FROM fec_intento::TIMESTAMPTZ AT TIME ZONE wzona_horaria)
-    ORDER BY hora;
 
 EXCEPTION
     WHEN OTHERS THEN

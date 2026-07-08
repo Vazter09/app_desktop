@@ -122,10 +122,7 @@ FUNCS=(
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_instructor.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_persona_centro.sql"
   "$ROOT/database/functions/siem/fun_siem_dashboard.sql"
-  "$ROOT/database/functions/siem/fun_siem_eventos.sql"
   "$ROOT/database/functions/siem/fun_siem_sesiones.sql"
-  "$ROOT/database/functions/siem/fun_siem_ips.sql"
-  "$ROOT/database/functions/siem/fun_siem_actividad.sql"
 )
 for f in "${FUNCS[@]}"; do
   if [[ -f "$f" ]]; then
