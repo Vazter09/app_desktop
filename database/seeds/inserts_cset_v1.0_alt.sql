@@ -1,6 +1,52 @@
 -- *************************************************
--- * INSERCIONES EN LA INSTALACIÓN TABLAS MAESTRAS *
+-- * INSERCIONES EN LA INSTALACIÓN TABLAS MAESTRAS
 -- *************************************************
+
+-- INSERCIÓN DE TABLA DE MOTIVOS DE LLAMADO DE ATENCIÓN
+INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
+INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');
+INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro');
+INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación');
+INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación');
+INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación');
+INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo');
+INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado');
+
+-- INSERCIÓN TABLA DE TIPOS DE NOVEDADES
+INSERT INTO tab_tipos_novedad VALUES(1,'Deserción');
+INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión');
+INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico');
+INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico');
+INSERT INTO tab_tipos_novedad VALUES(5,'En Formación');
+INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento');
+INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario');
+INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad');
+
+-- INSERCIÓN TABLA DE CAUSAS DE NOVEDADES
+INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida');
+INSERT INTO tab_causas_novedad VALUES(1,'a) En la formación presencial, excepto la complementaria, tener tres (3) días continuos de inasistencia injustificada o acumular cinco (5) días
+ no continuos de inasistencia injustificada durante todo el proceso de formación.');
+INSERT INTO tab_causas_novedad VALUES (2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
+por el instructor o por el responsable del grupo o no ingresa a su ambiente virtual de formación (plataforma LMS) durante veinte (20) días consecutivos, sin previa justificación soportada 
+ante el sistema de gestión académico-administrativo');
+INSERT INTO tab_causas_novedad VALUES (3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
+programados para el desarrollo de sus actividades formativas.');
+INSERT INTO tab_causas_novedad VALUES (4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
+la empresa con la que desarrolla la alternativa establecida.');
+INSERT INTO tab_causas_novedad VALUES (5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
+o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.');
+INSERT INTO tab_causas_novedad VALUES (6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ');
+
+-- INSERCIÓN TABLA DE VEHÍCULOS (PLACA GENÉRICA)
+INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777);
+
+-- INSERCIÓN TABLA DE OPCIONES DE PRODUCTIVA
+INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida');
+INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral');
+INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral');
+INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía');
+INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo');
+
 
 -- INSERCIÓN EN TABLA DE JORNADAS
 INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');

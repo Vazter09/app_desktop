@@ -68,9 +68,10 @@ BEGIN
                 WHEN unaccent(lower(v_estado_aprendiz)) = 'retiro voluntario' THEN 3
                 WHEN unaccent(lower(v_estado_aprendiz)) = 'cancelado' THEN 4
                 WHEN unaccent(lower(v_estado_aprendiz)) = 'condicionado' THEN 5
-                WHEN unaccent(lower(v_estado_aprendiz)) = 'suspendido' THEN 6
-                WHEN unaccent(lower(v_estado_aprendiz)) = 'desertado' THEN 7
-                ELSE 8
+                WHEN unaccent(lower(v_estado_aprendiz)) = 'por certificar' THEN 6
+                WHEN unaccent(lower(v_estado_aprendiz)) = 'certificado' THEN 7
+                WHEN unaccent(lower(v_estado_aprendiz)) = 'trasladado' THEN 8
+                ELSE 9 -- Sin información
             END;
 
             -- 1. Insertar o actualizar tab_personas usando ON CONFLICT

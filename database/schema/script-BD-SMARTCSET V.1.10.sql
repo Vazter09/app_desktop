@@ -1,6 +1,10 @@
 -- PENDIENTE CREAR:
 -- Tab_calendario_academico
--- tab_comites
+-- tab_novedades_egreso / tab_novedades_ingreso (para las personas que no esten registrados en el sistema)
+-- tab_novedades_diarias personas que ingresaron pero no salieron.
+-- tab_equipos_entrada.
+-- En el log se debe determinar si ingresa con dispositivos electronicos. (id, nombre, id_tercero, serie) ligada a visitantes.
+
 ---------------------------
 -- *******************************************************************************************
 -- * SERVICIO NACIONAL DE APRENDIZAJE - SENA                                                 *
@@ -110,6 +114,8 @@ DROP DOMAIN IF EXISTS extension;
 CREATE EXTENSION IF NOT EXISTS PLPGSQL;
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS PG_VECTOR;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 --**********************************************************
 -- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
@@ -342,6 +348,7 @@ CREATE DOMAIN telefono_fijo AS DECIMAL(10,0) CHECK (VALUE BETWEEN 6010000000 AND
 CREATE DOMAIN telefono_movil AS DECIMAL(10,0) CHECK (VALUE BETWEEN 3000000000 AND 3519999999);
 CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 
+
 -- ***************************************************************************
 -- 1. TABLAS DE SEGURIDAD Y ACCESOS AL SISTEMA DE GESTIÓN DE USUARIOS Y MENÚS
 -- ***************************************************************************
@@ -532,7 +539,7 @@ CREATE TABLE IF NOT EXISTS tab_festivos
     usr_update              VARCHAR(50)                              CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(fec_festivo)
-)
+);
 
 
 -- TABLA DE MENÚS
@@ -2859,7 +2866,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
     id_ficha                DECIMAL(10,0)               NOT NULL,
-    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
+    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 9,   -- 1=En formación / 2=Aplazado / 3=Retiro Voluntario / 4=Cancelado / 5=Condicionado / 6=Por certificar / 7=Certificado /8=Trasladado / 9=Sin información
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     id_opcion_productiva    DECIMAL(2,0)                NOT NULL DEFAULT 0,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
@@ -3040,22 +3047,35 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
 (
     id_llamado              SERIAL                      NOT NULL,
     ind_tipo                BOOLEAN                     NOT NULL,   -- TRUE=Académico / FALSE=Disciplinario
-    fec_llamado             DATE                        NOT NULL DEFAULT CURRENT_DATE,
-    id_aprendiz             DECIMAL(10,0)               NOT NULL,
-    id_ficha                DECIMAL(10,0)               NOT NULL,
-    nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
+    id_tercero              DECIMAL(10,0)               NOT NULL,
+    ind_tipo_tercero        BOOLEAN                     NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
     id_motivo               SMALLINT                    NOT NULL,
-    id_instructor           DECIMAL(10,0)               NOT NULL,
+    usr_insert              VARCHAR(50)                 NOT NULL    CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR(50)                             CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_llamado),
+    FOREIGN KEY(id_motivo)      REFERENCES tab_motivos(id_motivo)
+);
+
+
+CREATE TABLE IF NOT EXISTS tab_comite_aprendices
+(
+    id_comite               SERIAL                      NOT NULL,
+    id_implicado            DECIMAL(10,0)               NOT NULL,            -- Numero de documento del implicado.
+    responsable_comite      DECIMAL(10,0)               NOT NULL,            -- Numero de documento del responsable que ejecuta el comité.
+    ciclo_comite            SMALLINT                    NOT NULL DEFAULT 0,  -- Número de ciclo del comité. (Cuenta el acumulado segun el umbral máximo).
+    estado_comite           DECIMAL(1,0)                NOT NULL DEFAULT 0,  -- 0: Pendiente / 1: En revisión / 2: Cerrado
+    observacion_comite      TEXT                        NOT NULL,            -- Resumen de la situación del implicado.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
-    PRIMARY KEY(id_llamado),
-    FOREIGN KEY(id_motivo)      REFERENCES tab_motivos(id_motivo),
-    FOREIGN KEY(id_instructor)  REFERENCES tab_instructores(id_instructor),
-    FOREIGN KEY(id_aprendiz)    REFERENCES tab_aprendices(id_aprendiz),
-    FOREIGN KEY(id_ficha)       REFERENCES tab_fichas(id_ficha)
+    PRIMARY KEY(id_comite)
 );
+
+CREATE INDEX idx_comite_implicado ON tab_comite_aprendices (id_implicado);
+CREATE INDEX idx_comite_estado ON tab_comite_aprendices (estado_comite);
 
 -- TABLA DE OFERTAS TRIMESTRALES
 
@@ -3377,8 +3397,8 @@ CREATE TABLE IF NOT EXISTS tab_novedades_academicas
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_aprendiz)        REFERENCES tab_aprendices(id_aprendiz),
     FOREIGN KEY(id_tipo_novedad)    REFERENCES tab_tipos_novedad(id_tipo_novedad),
-    FOREIGN KEY(id_causa_novedad)   REFERENCES tab_causas_novedad(id_tipo_novedad),
-    FOREIGN KEY(id_instructor)      REFERENCES tab_instructores(id_instructor),
+    FOREIGN KEY(id_causa_novedad)   REFERENCES tab_causas_novedad(id_causa_novedad),
+    FOREIGN KEY(id_instructor)      REFERENCES tab_instructores(id_instructor)
 );
 
 -- TABLA DE AUDITORÍA
@@ -3408,107 +3428,6 @@ CREATE TABLE IF NOT EXISTS tab_bitacora
     PRIMARY KEY(id_consecutivo)
 );
 
--- PENDIENTE MODIFICAR EL ATRIBUTO JSONB CON LOS REGISTROS CORRESPONDIENTES A LA ACTIVIDAD REALIZADA SOBRE LA TABLA
--- Stored Procedure para auditoría
-
-CREATE OR REPLACE FUNCTION fun_act_tabla() RETURNS "trigger" AS
-$$
-DECLARE 
-    wid_consec tab_borrados.id_consec%TYPE;
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        -- Solo asignar si está NULL o vacío (permite pasar usuario desde la aplicación)
-        IF NEW.usr_insert IS NULL OR NEW.usr_insert = '' THEN
-            NEW.usr_insert := CURRENT_USER;
-        END IF;
-        -- Siempre asignar fec_insert (para consistencia)
-        NEW.fec_insert := CURRENT_TIMESTAMP;
-        RETURN NEW;
-    END IF;
-    
-    IF TG_OP = 'UPDATE' THEN
-        -- Solo asignar si está NULL o vacío
-        IF NEW.usr_update IS NULL OR NEW.usr_update = '' THEN
-            NEW.usr_update := CURRENT_USER;
-        END IF;
-        NEW.fec_update := CURRENT_TIMESTAMP;
-        RETURN NEW;
-    END IF;
-    
-    -- La parte de borrados (no relevante para este caso)
-    IF TG_OP = 'INSERT OR UPDATE' THEN
-        SELECT COALESCE(MAX(a.id_consec), 0) + 1 INTO wid_consec FROM tab_borrados a;
-        INSERT INTO tab_borrados VALUES(wid_consec, TG_RELNAME, CURRENT_USER, CURRENT_TIMESTAMP);
-        RETURN OLD; 
-    END IF;
-    
-    RETURN NULL;
-END;
-$$
-LANGUAGE PLPGSQL;
-
--- **************************************************************
--- TRIGGERS DE AUDITORÍA PARA GENERAR LOS USUARIOS DE LAS TABLAS
--- **************************************************************
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_usuarios FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_menus FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_menu_usuarios FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_config_sistema FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_dptos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ciudades FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_regionales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_centros FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sedes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_areas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_entradas_centro FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_redes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_pmtros_grales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_empresas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_docum FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_profesiones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_niveles_estudio FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_persona FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_personas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_instructores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_contratos_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_adicion_contratos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_horas_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_certificados FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_compet_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_activ_proyecto FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_raps FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_evidencias FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_evidenciasXrap FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_juicios_eval FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_metodos_aut FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_vehiculos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_log_ingresos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_proyectos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ambientes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sectores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ocupaciones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_especiales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_jornadas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_permiso FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ausencias_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_asistencia_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_motivos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_llamados_atencion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ofertas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias_ficha FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_rutas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programacion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_competencia FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_novedad FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_bitacora FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_causas_novedad FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_novedades_academicas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
-CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_festivos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 
 -- INSERCIÓN DE TABLA DE MOTIVOS DE LLAMADO DE ATENCIÓN
 INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
