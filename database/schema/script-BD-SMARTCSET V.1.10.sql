@@ -1,6 +1,10 @@
 -- PENDIENTE CREAR:
 -- Tab_calendario_academico
--- tab_comites
+-- tab_novedades_egreso / tab_novedades_ingreso (para las personas que no esten registrados en el sistema)
+-- tab_novedades_diarias personas que ingresaron pero no salieron.
+-- tab_equipos_entrada.
+-- En el log se debe determinar si ingresa con dispositivos electronicos. (id, nombre, id_tercero, serie) ligada a visitantes.
+
 ---------------------------
 -- *******************************************************************************************
 -- * SERVICIO NACIONAL DE APRENDIZAJE - SENA                                                 *
@@ -109,6 +113,8 @@ DROP DOMAIN IF EXISTS extension;
 -- *****************************
 CREATE EXTENSION IF NOT EXISTS PLPGSQL;
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 --**********************************************************
 -- 0-TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
@@ -341,6 +347,7 @@ CREATE DOMAIN telefono_fijo AS DECIMAL(10,0) CHECK (VALUE BETWEEN 6010000000 AND
 CREATE DOMAIN telefono_movil AS DECIMAL(10,0) CHECK (VALUE BETWEEN 3000000000 AND 3519999999);
 CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 
+
 -- ***************************************************************************
 -- 1. TABLAS DE SEGURIDAD Y ACCESOS AL SISTEMA DE GESTIÓN DE USUARIOS Y MENÚS
 -- ***************************************************************************
@@ -397,6 +404,40 @@ CREATE TABLE IF NOT EXISTS tab_usuarios
 -- TABLA DE SESIONES DE APLICACIÓN (módulo acceso / login)
 CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
 
+
+-- TABLA DE SESIONES
+--  __________________________________________________________________________________________________________________________
+-- |    Columna   |        Tipo       |            Restricción                |                  Descripción                  |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | id_sesion    | INTEGER           | PRIMARY KEY                           | Identificador único de la sesión.             |
+-- |              |                   | NOT NULL                              |                                               |
+-- |              |                   | DEFAULT nextval('seq_sesiones')       |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | id_usuario   | VARCHAR(20)       | NOT NULL                              | Identificador del usuario al que pertenece    |
+-- |              |                   | FOREIGN KEY REFERENCES tab_usuarios   | la sesión.                                    |
+-- |              |                   |       (id_usuario)                    |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_inicio   | TIMESTAMP         | NOT NULL                              | Fecha y hora de inicio de la sesión.          |
+-- |              | WITHOUT TIME ZONE | DEFAULT CURRENT_TIMESTAMP             |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_fin      | TIMESTAMP         |                                       | Fecha y hora de finalización de la sesión,    |
+-- |              | WITHOUT TIME ZONE |                                       | si ya ha terminado.                           |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ult_actividad| TIMESTAMP         | NOT NULL                              | Fecha y hora de la última actividad           |
+-- |              | WITHOUT TIME ZONE | DEFAULT CURRENT_TIMESTAMP             | registrada en la sesión.                      |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ult_ruta     | VARCHAR(255)      |                                       | Última ruta URL visitada por el usuario.      |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ult_menu_id  | VARCHAR(20)       |                                       | Identificador del último menú accedido.       |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | cod_cierre   | VARCHAR(20)       |                                       | Código o motivo de cierre de la sesión.       |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | usr_cierre   | VARCHAR(50)       |                                       | Usuario que realizó el cierre (si aplica).    |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ip_cliente   | VARCHAR(45)       |                                       | Dirección IP del cliente desde donde se       |
+-- |              |                   |                                       | conectó el usuario.                           |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+
 CREATE TABLE IF NOT EXISTS tab_sesiones
 (
     id_sesion       INTEGER                     NOT NULL DEFAULT nextval('seq_sesiones'),
@@ -418,6 +459,38 @@ CREATE UNIQUE INDEX ux_tab_sesiones_usuario_activa
 
 CREATE INDEX ix_tab_sesiones_fec_fin ON tab_sesiones (fec_fin, fec_inicio);
 
+
+-- TABLA DE SESIONES ARCHIVO (histórico)
+--  __________________________________________________________________________________________________________________________
+-- |    Columna   |        Tipo       |            Restricción                |                  Descripción                  |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | id_sesion    | INTEGER           | PRIMARY KEY                           | Identificador único de la sesión archivada.   |
+-- |              |                   | NOT NULL                              |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | id_usuario   | VARCHAR(20)       | NOT NULL                              | Identificador del usuario asociado a la       |
+-- |              |                   |                                       | sesión (referencia histórica).                |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_inicio   | TIMESTAMP         | NOT NULL                              | Fecha y hora de inicio de la sesión.          |
+-- |              | WITHOUT TIME ZONE |                                       |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_fin      | TIMESTAMP         | NOT NULL                              | Fecha y hora de finalización de la sesión.    |
+-- |              | WITHOUT TIME ZONE |                                       | (Siempre tiene valor en el archivo).          |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ult_actividad| TIMESTAMP         | NOT NULL                              | Fecha y hora de la última actividad           |
+-- |              | WITHOUT TIME ZONE |                                       | registrada en la sesión.                      |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ult_ruta     | VARCHAR(255)      |                                       | Última ruta URL visitada por el usuario.      |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ult_menu_id  | VARCHAR(20)       |                                       | Identificador del último menú accedido.       |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | cod_cierre   | VARCHAR(20)       |                                       | Código o motivo de cierre de la sesión.       |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | usr_cierre   | VARCHAR(50)       |                                       | Usuario que realizó el cierre (si aplica).    |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | ip_cliente   | VARCHAR(45)       |                                       | Dirección IP del cliente desde donde se       |
+-- |              |                   |                                       | conectó el usuario.                           |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+
 CREATE TABLE IF NOT EXISTS tab_sesiones_archivo
 (
     id_sesion       INTEGER                     NOT NULL,
@@ -432,6 +505,28 @@ CREATE TABLE IF NOT EXISTS tab_sesiones_archivo
     ip_cliente      VARCHAR(45),
     PRIMARY KEY (id_sesion)
 );
+
+
+-- TABLA DE FESTIVOS
+--  __________________________________________________________________________________________________________________________
+-- |    Columna   |        Tipo       |            Restricción                |                  Descripción                  |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_festivo  | DECIMAL(4,0)      | PRIMARY KEY                           | Fecha del día festivo en formato MMdd (mes y  |
+-- |              |                   | NOT NULL                              | día, sin año). Ejemplo: 1225 para Navidad.    |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | nom_festivo  | VARCHAR           | NOT NULL                              | Nombre descriptivo del día festivo.           |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | usr_insert   | VARCHAR(50)       | NOT NULL                              | Usuario que creó el registro.                 |
+-- |              |                   | CHECK (LENGTH(TRIM(usr_insert)) >= 3) |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_insert   | TIMESTAMP         | NOT NULL                              | Fecha/hora de creación del registro.          |
+-- |              | WITHOUT TIME ZONE |                                       |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | usr_update   | VARCHAR(50)       | CHECK (LENGTH(TRIM(usr_update)) >= 3) | Usuario que actualizó el registro.            |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_update   | TIMESTAMP         |                                       | Fecha/hora de última actualización.           |
+-- |              | WITHOUT TIME ZONE |                                       |                                               |
+-- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
 
 -- Tabla de días festivos del año, para programación de rutas
 CREATE TABLE IF NOT EXISTS tab_festivos
@@ -489,6 +584,7 @@ CREATE TABLE IF NOT EXISTS tab_menus
     PRIMARY KEY(id_menu)
 );
 
+
 -- TABLA DE MENÚS DE USUARIOS
 -- _______________________________________________________________________________________________________________
 -- |  Columna   |       Tipo        |              Restricción             |              Descripción             |
@@ -527,6 +623,112 @@ CREATE TABLE IF NOT EXISTS tab_menu_usuarios
     FOREIGN KEY(id_usuario) REFERENCES tab_usuarios(id_usuario),
     FOREIGN KEY(id_menu)    REFERENCES tab_menus(id_menu)
 );
+
+
+-- TABLA DE CONFIGURACIÓN DEL SISTEMA
+--  _____________________________________________________________________________________________________________________________________________________________________________________________________
+-- |     Columna          |        Tipo       |            Restricción                        |                  Descripción                                        |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | id_config            | SMALLINT          | PRIMARY KEY                                   | Identificador único de la configuración (siempre 1).                |
+-- |                      |                   | NOT NULL                                      |                                                                     |
+-- |                      |                   | DEFAULT 1                                     |                                                                     |
+-- |                      |                   | CHECK (id_config = 1)                         |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | ind_modulo_registro  | BOOLEAN           | NOT NULL                                      | Habilita/deshabilita el módulo de registro de usuarios.             |
+-- |                      |                   | DEFAULT TRUE                                  |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | ind_login_registro   | BOOLEAN           | NOT NULL                                      | Permite el login de usuarios registrados en modo standalone.        |
+-- | _standalone          |                   | DEFAULT FALSE                                 |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | nom_sistema          | VARCHAR(80)       | NOT NULL                                      | Nombre del sistema (mostrado en interfaz).                          |
+-- |                      |                   | DEFAULT 'SmartCSET'                           |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | path_logo            | VARCHAR(255)      | NOT NULL                                      | Ruta del archivo de logo del sistema.                               |
+-- |                      |                   | DEFAULT 'public/uploads/logos/logo.png'       |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | color_primario       | VARCHAR(7)        | NOT NULL                                      | Color primario (hex) para la interfaz.                              |
+-- |                      |                   | DEFAULT '#2E4731'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | color_secundario     | VARCHAR(7)        | NOT NULL                                      | Color secundario (hex) para la interfaz.                            |
+-- |                      |                   | DEFAULT '#6B8E23'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_bg_deep        | VARCHAR(32)       | NOT NULL                                      | Fondo profundo del tema oscuro.                                     |
+-- |                      |                   | DEFAULT '#020917'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_bg_card        | VARCHAR(32)       | NOT NULL                                      | Fondo de tarjetas en tema oscuro.                                   |
+-- |                      |                   | DEFAULT '#060f24'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_bg_panel       | VARCHAR(64)       | NOT NULL                                      | Fondo de paneles en tema oscuro (con transparencia).                |
+-- |                      |                   | DEFAULT 'rgba(6, 15, 36, 0.85)'               |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_accent         | VARCHAR(32)       | NOT NULL                                      | Color de acento principal (verde neón).                             |
+-- |                      |                   | DEFAULT '#00e5b0'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_accent_dim     | VARCHAR(64)       | NOT NULL                                      | Acento atenuado (con transparencia).                                |
+-- |                      |                   | DEFAULT 'rgba(0, 245, 255, 0.15)'             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_blue           | VARCHAR(32)       | NOT NULL                                      | Color azul del tema.                                                |
+-- |                      |                   | DEFAULT '#4a9eff'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_purple         | VARCHAR(32)       | NOT NULL                                      | Color púrpura del tema.                                             |
+-- |                      |                   | DEFAULT '#9b6dff'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_orange         | VARCHAR(32)       | NOT NULL                                      | Color naranja del tema.                                             |
+-- |                      |                   | DEFAULT '#ff7b2e'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_text_primary   | VARCHAR(32)       | NOT NULL                                      | Color primario de texto en tema oscuro.                             |
+-- |                      |                   | DEFAULT '#e8f4ff'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_text_muted     | VARCHAR(128)      | NOT NULL                                      | Color de texto secundario/atenuado (con transparencia).             |
+-- |                      |                   | DEFAULT 'rgba(150,180,220,0.7)'               |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_border         | VARCHAR(64)       | NOT NULL                                      | Color de bordes (con transparencia).                                 |
+-- |                      |                   | DEFAULT 'rgba(0,245,255,0.2)'                 |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_error          | VARCHAR(32)       | NOT NULL                                      | Color para mensajes de error.                                       |
+-- |                      |                   | DEFAULT '#ff3c6e'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_success        | VARCHAR(32)       | NOT NULL                                      | Color para mensajes de éxito.                                       |
+-- |                      |                   | DEFAULT '#00e5b0'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_font_display   | VARCHAR(120)      | NOT NULL                                      | Fuente principal para títulos y encabezados.                        |
+-- |                      |                   | DEFAULT 'Orbitron'                            |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_font_body      | VARCHAR(120)      | NOT NULL                                      | Fuente para el cuerpo del texto.                                    |
+-- |                      |                   | DEFAULT 'Rajdhani'                            |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_light_bg_deep  | VARCHAR(32)       | NOT NULL                                      | Fondo profundo del tema claro.                                      |
+-- |                      |                   | DEFAULT '#f5f7fb'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_light_bg_card  | VARCHAR(32)       | NOT NULL                                      | Fondo de tarjetas en tema claro.                                    |
+-- |                      |                   | DEFAULT '#ffffff'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_light_accent   | VARCHAR(32)       | NOT NULL                                      | Color de acento en tema claro.                                      |
+-- |                      |                   | DEFAULT '#0b74c7'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_light_text_    | VARCHAR(32)       | NOT NULL                                      | Color primario de texto en tema claro.                              |
+-- | primary              |                   | DEFAULT '#111827'                             |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | theme_light_text_    | VARCHAR(128)      | NOT NULL                                      | Color de texto secundario en tema claro (con transparencia).        |
+-- | muted                |                   | DEFAULT 'rgba(55,65,81,0.8)'                  |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | usr_registro         | VARCHAR(40)       |                                               | Usuario registrado (opcional).                                      |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | pass_registro_hash   | VARCHAR(255)      |                                               | Hash de contraseña de registro (opcional).                          |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | usr_insert           | VARCHAR(50)       | NOT NULL                                      | Usuario que creó el registro de configuración.                      |
+-- |                      |                   | DEFAULT 'migration'                           |                                                                     |
+-- |                      |                   | CHECK (LENGTH(TRIM(usr_insert)) >= 3)         |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | fec_insert           | TIMESTAMP         | NOT NULL                                      | Fecha/hora de creación del registro.                                |
+-- |                      | WITHOUT TIME ZONE | DEFAULT NOW()                                 |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | usr_update           | VARCHAR(50)       |                                               | Usuario que actualizó el registro.                                  |
+-- |                      |                   | CHECK (LENGTH(TRIM(usr_update)) >= 3)         |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
+-- | fec_update           | TIMESTAMP         |                                               | Fecha/hora de última actualización.                                 |
+-- |                      | WITHOUT TIME ZONE |                                               |                                                                     |
+-- +----------------------+-------------------+-----------------------------------------------+---------------------------------------------------------------------+
 
 -- TABLA DE CONFIGURACIÓN DEL SISTEMA (colores, logo, tema, módulo registro)
 -- Una fila por instalación (id_config = 1). Ver database/migrations/add_tab_config_sistema.sql
@@ -970,6 +1172,24 @@ CREATE TABLE IF NOT EXISTS tab_redes
 -- **************************************
 -- TABLA PARA EL SISTEMA DE  NOVEDADES
 -- **************************************
+
+
+-- TABLA DE TIPOS DE NOVEDAD
+--  __________________________________________________________________________________________________________________________
+-- |     Columna        |        Tipo       |            Restricción                |                  Descripción                  |
+-- +--------------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | id_tipo_novedad    | SMALLINT          | PRIMARY KEY                           | Identificador único del tipo de novedad.      |
+-- |                    |                   | NOT NULL                              |                                               |
+-- +--------------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | nom_tipo_novedad   | VARCHAR           | NOT NULL                              | Nombre descriptivo del tipo de novedad.       |
+-- +--------------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | usr_insert         | VARCHAR(50)       | NOT NULL                              | Usuario que creó el registro.                 |
+-- |                    |                   | CHECK (LENGTH(TRIM(usr_insert)) >= 3) |                                               |
+-- +--------------------+-------------------+---------------------------------------+-----------------------------------------------+
+-- | fec_insert         | TIMESTAMP         | NOT NULL                              | Fecha/hora de creación del registro.          |
+-- |                    | WITHOUT TIME ZONE |                                       |                                               |
+-- +--------------------+-------------------+---------------------------------------+-----------------------------------------------+
+
 CREATE TABLE IF NOT EXISTS tab_tipos_novedad
 (
     id_tipo_novedad                 SMALLINT            NOT NULL,
@@ -980,7 +1200,7 @@ CREATE TABLE IF NOT EXISTS tab_tipos_novedad
 );
 
 -- TABLA DE PARÁMETROS GENERALES DEL SISTEMA APLICABLE A TODOS LOS PROCESOS.
-
+ 
 -- TABLA DE TAB_PMTROS_GRALES
 -- _______________________________________________________________________________________________________________________________________________________________________________________________________
 -- |          Columna           |       Tipo        |                                Restricción                                |                           Descripción                                   |
@@ -1462,6 +1682,7 @@ CREATE TABLE IF NOT EXISTS tab_instructores
     ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero IN (1,2,3,4)), --1=Femenino,2=Masculino,3=No binario,4=Trans
     ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
+    ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene vehiculo / FALSE=No tiene vehiculo.
     id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
     id_red                  DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_disponibilidad      BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Disponible / FALSE=No Disponible (Ocupado con tiempo completo)
@@ -2440,9 +2661,9 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
     nom_jornada             VARCHAR                     NOT NULL,
     hora_entrada            TIME WITHOUT TIME ZONE      NOT NULL,
     hora_salida             TIME WITHOUT TIME ZONE      NOT NULL,
-    ind_noche               BOOLEAN                     NOT NULL, -- Indicador de si es jornada nocturna
-    hora_llegada_sabado     TIME WITHOUT TIME ZONE      NOT NULL,
-    hora_salida_sabado      TIME WITHOUT TIME ZONE      NOT NULL,
+    ind_noche               BOOLEAN                     NOT NULL DEFAULT FALSE, -- Indicador de si es jornada nocturna
+    hora_llegada_sabado     TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '00:00:00',
+    hora_salida_sabado      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '00:00:00',
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2652,7 +2873,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
     id_ficha                DECIMAL(10,0)               NOT NULL,
-    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 1, -- 1=En formación / 2=Aplazado /  3=Retiro Vol. /4=Cancelado / 5=Condicionado / 6=Suspendido / 7= Desertado /8= Sin información
+    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 9,   -- 1=En formación / 2=Aplazado / 3=Retiro Voluntario / 4=Cancelado / 5=Condicionado / 6=Por certificar / 7=Certificado /8=Trasladado / 9=Sin información
     num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
     id_opcion_productiva    DECIMAL(2,0)                NOT NULL DEFAULT 0,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
@@ -2836,12 +3057,33 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
     id_tercero              DECIMAL(10,0)               NOT NULL,
     ind_tipo_tercero        BOOLEAN                     NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
     fec_llamado             DATE                        NOT NULL DEFAULT CURRENT_DATE,
+    id_motivo               SMALLINT                    NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
-    PRIMARY KEY(id_llamado)
+    PRIMARY KEY(id_llamado),
+    FOREIGN KEY(id_motivo)      REFERENCES tab_motivos(id_motivo)
 );
+
+
+CREATE TABLE IF NOT EXISTS tab_comite_aprendices
+(
+    id_comite               SERIAL                      NOT NULL,
+    id_implicado            DECIMAL(10,0)               NOT NULL,            -- Numero de documento del implicado.
+    responsable_comite      DECIMAL(10,0)               NOT NULL,            -- Numero de documento del responsable que ejecuta el comité.
+    ciclo_comite            SMALLINT                    NOT NULL DEFAULT 0,  -- Número de ciclo del comité. (Cuenta el acumulado segun el umbral máximo).
+    estado_comite           DECIMAL(1,0)                NOT NULL DEFAULT 0,  -- 0: Pendiente / 1: En revisión / 2: Cerrado
+    observacion_comite      TEXT                        NOT NULL,            -- Resumen de la situación del implicado.
+    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    PRIMARY KEY(id_comite)
+);
+
+CREATE INDEX idx_comite_implicado ON tab_comite_aprendices (id_implicado);
+CREATE INDEX idx_comite_estado ON tab_comite_aprendices (estado_comite);
 
 -- TABLA DE OFERTAS TRIMESTRALES
 
@@ -3286,6 +3528,7 @@ CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ausencias
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_asistencia_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_motivos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_llamados_atencion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_comite_aprendices FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ofertas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias_ficha FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_rutas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();

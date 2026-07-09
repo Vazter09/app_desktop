@@ -2807,7 +2807,7 @@ CREATE TABLE IF NOT EXISTS tab_comite_aprendices
     id_comite               SERIAL                      NOT NULL,
     id_implicado            DECIMAL(10,0)               NOT NULL,            -- Numero de documento del implicado.
     responsable_comite      DECIMAL(10,0)               NOT NULL,            -- Numero de documento del responsable que ejecuta el comité.
-    ciclo_comite            SMALLINT                    NOT NULL DEFAULT 0,            -- Número de ciclo del comité. (Cuenta el acumulado segun el umbral máximo).
+    ciclo_comite            SMALLINT                    NOT NULL DEFAULT 0,  -- Número de ciclo del comité. (Cuenta el acumulado segun el umbral máximo).
     estado_comite           DECIMAL(1,0)                NOT NULL DEFAULT 0,  -- 0: Pendiente / 1: En revisión / 2: Cerrado
     observacion_comite      TEXT                        NOT NULL,            -- Resumen de la situación del implicado.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
