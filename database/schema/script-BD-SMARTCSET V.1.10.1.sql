@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   cod_ver_programa  DECIMAL(3,0),
   nom_programa      VARCHAR,
   niv_formacion     VARCHAR,
-  dur_maxima        DECIMAL(2,0),
+  dur_maxima        DECIMAL(6,0),
   dur_eta_lectiva   VARCHAR,
   dur_eta_productiv VARCHAR,
   id_ficha          DECIMAL(8,0),
@@ -1274,8 +1274,8 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3, -- Máximo # de llamados de at. a un aprendiz para enviar a comité
     nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),
     tel_administrador           DECIMAL(10,0)               NOT NULL,
-    id_novedad_desercion        SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
-    id_novedad_aplazamiento     SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    id_novedad_desercion        SMALLINT                    NOT NULL DEFAULT 1, -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 2, -- Debe ser igual al creado en la tabla tab_tipos_novedad
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1678,11 +1678,11 @@ CREATE TYPE datos_personales_aprendiz AS
 
 CREATE TABLE IF NOT EXISTS tab_instructores
 (
-    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
+    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 1000000),
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
+    --ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
     ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene vehiculo / FALSE=No tiene vehiculo.
@@ -2940,11 +2940,11 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     datos_aprendiz          datos_personales_aprendiz,
     id_ficha                DECIMAL(10,0)               NOT NULL,
-    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 9,   -- 1=En formación / 2=Aplazado / 3=Retiro Voluntario / 4=Cancelado / 5=Condicionado / 6=Por certificar / 7=Certificado /8=Trasladado / 9=Sin información
-    num_llamados            SMALLINT                    NOT NULL DEFAULT 0,   -- Cantidad de llamados de atención acumulados
+    ind_etdo_formacion      DECIMAL(1,0)                NOT NULL DEFAULT 9,     -- 1=En formación / 2=Aplazado / 3=Retiro Voluntario / 4=Cancelado / 5=Condicionado / 6=Por certificar / 7=Certificado /8=Trasladado / 9=Sin información
+    num_llamados            SMALLINT                    NOT NULL DEFAULT 0,     -- Cantidad de llamados de atención acumulados
     id_opcion_productiva    DECIMAL(2,0)                NOT NULL DEFAULT 0,
     ind_discapacidad        BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Si tiene discapacidad / FALSE=No tiene discapacidad
-    id_discapacidad         DECIMAL(2,0)                NOT NULL DEFAULT 0,
+    id_discapacidad         DECIMAL(2,0),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -3124,6 +3124,7 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
 (
     id_llamado              SERIAL                      NOT NULL,
     ind_tipo                BOOLEAN                     NOT NULL,   -- TRUE=Académico / FALSE=Disciplinario
+    fec_llamado             DATE                        NOT NULL    DEFAULT CURRENT_DATE,
     id_tercero              DECIMAL(10,0)               NOT NULL,
     ind_tipo_tercero        BOOLEAN                     NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
     id_motivo               SMALLINT                    NOT NULL,
