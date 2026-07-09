@@ -1,5 +1,64 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-09] Sesión: Consolidación Final de Documentación + Grafo Indexado + App Desktop Operativa
+
+### 🎯 Objetivos Logrados
+- ✅ **Grafo de codebase indexado por codebase-memory-mcp**: 7,283 nodos, 10,258 edges (vs 6,104/8,453 hace 10 días). Detectados 12 clusters (Porteria 100% cohesión, app_desktop 94%, mobile 99%), 10 hotspots de seguridad, 7 capas arquitectónicas. Persistido en `.codebase-memory/graph.db.zst` (compartible).
+- ✅ **App Desktop operativa en producción (10.5.213.103)**: login real + portería (ingreso/salida) + entradas + **biometría facial end-to-end**. Cliente HTTP puro (urllib), TLS validation activo. Ciclo probado: enrolar → identificar → registrar ingreso (metodo_aut=4) → salida.
+- ✅ **Biometría facial backend completo**: tabla `tab_enrolamiento_facial` (pgvector 128-dims, índice HNSW) + funciones `fun_guardar_enrolamiento_facial`/`fun_identificar_persona_por_rostro` + endpoints `/porteria/v1/biometria/{enrolar,identificar}.php`. Motor SFace + YuNet en app_desktop.
+- ✅ **Bug 19 corregido**: whitelist de `id_metodo_aut` reintroducido — valor 4 (biométrico facial) ahora pasa validación en `parse_captura_service.php`. Cubierto por test automatizado.
+- ✅ **Documentación 100% actualizada** (12 archivos): HANDOFF.md (sesiones 06-09), CLAUDE.md (Bugs 1-19), AGENTS.md (8 agentes), checklist FASE1 (v1.5 → 92%), 4 reportes E-tasks (v2.x → v3.x con bugs posteriores), README.md y REGLAS_APP_ESCRITORIO_SGI.md de app_desktop.
+- ✅ **FASE 1 alcanza 92% de completitud técnica**: E10 ✅, E7 ✅ (+Bugs 11-15), E4 ✅, E6 ✅, E1-A01 ✅ (+Bug 7), E1-A02 ✅, E3 ✅, E8 ✅ (35%, TLS BD), biometría ✅ (bonus). Pendiente: A03-A10 (scope), E2 (arquitectura), E9 (scope).
+
+### 📋 Documentación Actualizada
+1. **HANDOFF.md:** Sección "ESTADO ACTUAL DEL PROYECTO (2026-07-09)" + "LO QUE SE HIZO EN LA SESIÓN 2026-07-09" (indexación, app desktop, biometría, documentación)
+2. **CLAUDE.md:** Bug 19 agregado (reintroducción whitelist metodo_aut + SFace/YuNet)
+3. **AGENTS.md:** 8 agentes definidos (app_desktop + Setup/Deploy nuevos; SIEM reducido a 2 submenús; Portería con biometría)
+4. **Checklist FASE1 (v1.5):** versión actualizada con estado 92% técnico
+5. **Resumen Sesión 2026-07-09 (NEW):** consolidación de grafo, app desktop, SIEM, próximos pasos
+6. **Grafo Indexado (NEW):** 7283 nodos, 10258 edges, clusters, hotspots, capas
+7. **App Desktop Tablas (NEW):** 13 tablas interactuadas, flujos completos
+8. **REPORTE_E1-E10 (v2.1):** E10 completo, 19 commits posteriores verificados
+9. **REPORTE_E1-E07 (v3.0):** E7 + Bugs 11-15 (54 bugs totales en schema V.1.10)
+10. **REPORTE_E1-A01 (v3.0):** A01 + Bug 7 (control por menú en módulos, 2026-07-01)
+11. **README.md (app_desktop):** Última actualización 2026-07-09, estado operativo, Bug 19
+12. **REGLAS_APP_ESCRITORIO_SGI.md:** Validación post-implementación con tabla de ciclos probados
+
+### 🧪 Verificaciones
+- Tests 23/23 PASS en BD local y servidor institucional real (10.5.213.103)
+- Ciclo biometría end-to-end validado (enrolar → identificar → ingreso→salida con metodo_aut=4)
+- Auditoría real confirmada (`usr_insert = porteria`, no genérico)
+- Grafo persistido para compartir con equipo
+- 0 sesiones colgadas post-pruebas
+
+### 📌 Estado Final
+- **Documentación:** 100% actualizada (12 archivos)
+- **Código:** 92% completitud técnica FASE 1
+- **Tests:** 23/23 PASS
+- **Grafo:** Indexado y persistido (7283 nodos, 10258 edges)
+- **App Desktop:** Operativa en producción con biometría facial
+- **Ready:** Para presentación Director Regional SENA (29 julio 2026)
+
+---
+
+## [2026-07-08] Sesión: Reducción módulo SIEM a 2 submenús + tabla de alertas rediseñada + auto-refresh
+
+### 🎯 Objetivos Logrados
+- ✅ **Módulo SIEM reducido de 5 a 2 submenús** (a pedido explícito, redundancia con Panel de Control/Sesiones Activas): eliminados Eventos Auth (21102), IPs Bloqueadas (21104) y Actividad Física (21105) — vistas, router `desbloquear_ip.php`, 5 funciones PL/pgSQL, menús y permisos huérfanos, código + servidor + BD sincronizados.
+- ✅ **Tabla "Alertas recientes" rediseñada estilo Wireshark**: de tarjetas apiladas + gráfica Chart.js a una fila compacta por evento (Fecha/Hora, IP, Usuario, Tipo, Motivo abreviado, Cliente extraído del User-Agent, Intentos, Estado), sin iconos. Nuevas funciones `smartcsetExtractClientFromUserAgent()` y `smartcsetMotivoFalloAbrev()`.
+- ✅ **Auto-refresh del Panel de Control**: ya no requiere recargar la página para ver eventos nuevos. Patrón fragment (`dashboard_fragment.php`) + `?partial=1` + `SmartcsetListado.loadIntoHost()` (reutiliza el mecanismo ya usado en listados de personas, evita duplicar render en JS), polling cada 20s con guards `inFlight`/`visibilitychange` (mismo patrón que `smartcset-presencia.js`).
+
+### 🧪 Pruebas
+- Sintaxis PHP/JS validada en todos los archivos tocados (`php -l`, `node -c`).
+- `grep` exhaustivo confirmó cero referencias huérfanas a menús/funciones/rutas eliminados en todo el repo.
+- Verificado en servidor tras `rsync --delete`: archivos eliminados localmente también desaparecieron en `/var/www/html/smartcset`; funciones PL/pgSQL correctas tras `DROP FUNCTION` (`pg_proc` sin las 5 eliminadas, con las 5 que sí deben quedar).
+- Control de acceso (`usuarioTieneMenu`) confirmado antes del branch `?partial=1` en el Panel de Control — sin bypass de autorización vía el parámetro de auto-refresh.
+
+### 📋 Detalle
+Ver `HANDOFF.md` sección "LO QUE SE HIZO EN LA SESIÓN 2026-07-08", `CLAUDE.md` Bug 18, `backend/routers/siem/AGENTS.md` (actualizado).
+
+---
+
 ## [2026-07-07] Sesión: Migración y auditoría del servidor institucional real (10.5.213.103) + TLS BD
 
 ### 🎯 Objetivos Logrados

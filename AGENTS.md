@@ -35,15 +35,25 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 **Cuidado:** orden de despliegue crítico — `_helpers` antes que el resto
 
-### Agente: Módulo Portería (SGI)
+### Agente: Módulo Portería (SGI) — Incluye Biometría (2026-07-09)
 
 **Responsable de:** `frontend/web/pages/modulos/porteria/`, `backend/routers/porteria/`, `backend/services/porteria/`, funciones `database/functions/porteria/`
 
-**Entradas:** cambios en flujo de ingreso/salida, soporte de nuevos métodos de lectura
+**Responsabilidad completa:**
+- Ingreso/salida manual por documento
+- Parseo de QR/códigos de barras
+- **Biometría facial:** enrolar + identificar (nuevo 2026-07-09)
+- Soporte de múltiples métodos de autenticación (`id_metodo_aut`: 1=manual, 2=QR, 3=barras, 4=facial)
 
-**Salidas:** vistas de portería, lógica de registro, parsers de documento
+**Entradas:** cambios en flujo de ingreso/salida, nuevos métodos de lectura, cambios en biometría
 
-**Cuidado:** no romper el constraint de ingreso único por día
+**Salidas:** vistas de portería, lógica de registro, parsers de documento, endpoints de biometría
+
+**Cuidado:** 
+- No romper el constraint de ingreso único por día
+- Whitelist de `id_metodo_aut` en `parse_captura_service.php` debe incluir `ACCESO_METODO_BIOMETRICO = 4` (ver Bug 19)
+- Biometría: vector pgvector 128 dims (SFace), índice HNSW, búsqueda por similitud cosine
+- Funciones 4-arg exception handling: `fun_guardar_enrolamiento_facial`, `fun_identificar_persona_por_rostro`
 
 ### Agente: Módulo Registro
 
@@ -55,15 +65,20 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 **Cuidado:** el login standalone del módulo está **INACTIVO desde 2026-07-01** (`registroUsaLoginStandalone()` retorna `false`). El módulo usa la sesión principal (`$_SESSION['id_usuario']`) + control por menú `0300`/`20701` como el resto del sistema. Ver Bug 8 en CLAUDE.md.
 
-### Agente: Módulo SIEM
+### Agente: Módulo SIEM (Reducido — 2026-07-08)
 
 **Responsable de:** `frontend/web/pages/modulos/siem/`, `backend/routers/siem/`, `database/functions/siem/`
 
-**Entradas:** cambios en las 5 vistas (dashboard, eventos, sesiones, IPs bloqueadas, actividad), nuevos KPIs o filtros
+**Responsabilidad actual (post-reducción):**
+- `21101` — Panel de Control (KPIs, alertas tabla Wireshark, auto-refresh 20s)
+- `21103` — Sesiones Activas (forzar cierre operativo)
+- **Eliminados 2026-07-08:** Eventos (21102), IPs Bloqueadas (21104), Actividad (21105)
 
-**Salidas:** vistas de auditoría/monitoreo, endpoints AJAX de acción administrativa (forzar cierre de sesión, desbloquear IP)
+**Entradas:** cambios en las 2 vistas (panel, sesiones), nuevos KPIs o filtros
 
-**Cuidado:** menú `211xx` (submenú de SGA `20`), no menú raíz `06` (ver Bug 12 en CLAUDE.md). Patrones obligatorios de timezone, control de acceso, cache-busting y contrato JS documentados en `backend/routers/siem/AGENTS.md` — leer antes de tocar cualquier vista o función nueva de este módulo. Módulo consolidado end-to-end 2026-07-06/07 (ver Bug 16 en CLAUDE.md).
+**Salidas:** vistas de auditoría/monitoreo, endpoints AJAX de acción administrativa (forzar cierre de sesión)
+
+**Cuidado:** menú `211xx` (submenú de SGA `20`), no menú raíz `06` (ver Bug 12 en CLAUDE.md). Patrones obligatorios de timezone (`AT TIME ZONE`), control de acceso (`usuarioTieneMenu`), cache-busting (`filemtime`), y contrato JS documentados en `backend/routers/siem/AGENTS.md` — leer antes de tocar cualquier vista o función nueva de este módulo. Módulo consolidado 2026-07-06/07, reducido 2026-07-08 (ver Bugs 16-18 en CLAUDE.md).
 
 ### Agente: Administración y Menú (SGA)
 
@@ -75,15 +90,44 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 **Cuidado:** `nom_programa` en `tab_menus` es la ruta física al archivo PHP desde la raíz del proyecto
 
-### Agente: Setup / Deploy
+### Agente: App Desktop (SGI — Escritorio Portería)
 
-**Responsable de:** `database/setup_smartcset.sh`, `scripts/`, `SETUP_AUDIT.md`
+**Responsable de:** `app_desktop/app/`, `app_desktop/app/smartcset_client.py`, `app_desktop/app/ui/`
 
-**Entradas:** nuevas funciones o migraciones a integrar al instalador
+**Responsabilidad:**
+- Cliente HTTP puro (urllib, sin `requests`)
+- Login con sesión PHP real (misma autenticación que web)
+- Módulos: dashboard, ingreso/salida, entradas (admin), biometría
 
-**Salidas:** script de instalación corregido y actualizado
+**Entradas:** cambios en endpoints portería, cambios en autenticación
 
-**Cuidado:** conocer los bugs documentados en `CLAUDE.md` (sección "Bugs conocidos", Bugs 1-15) antes de modificar el script; `SETUP_AUDIT.md` es la auditoría histórica original
+**Salidas:** ejecutable Python + Tkinter, `SmartcsetClient` (contrato HTTP)
+
+**Cuidado:** no agregar deps externas (urllib es stdlib); TLS validation `verify_tls=True` en producción (ver `smartcset_client.py` §construcción); sesión PHP es stateful — re-usar cookies entre requests. Integración completa con biometría (enrolar/identificar) — ver tabla de 13 tablas interactuadas en `app_desktop_tablas.md`.
+
+### Agente: Setup / Deploy / Infraestructura
+
+**Responsable de:** `database/setup_smartcset.sh`, `scripts/`, `.env.example`, migraciones de schema
+
+**Responsabilidad:**
+- Instalador limpio que corre sin errores
+- Despliegue seguro a producción (10.5.213.103)
+- Variables de configuración documentadas en `.env.example`
+- Todas las 23/23 tests de seguridad deben pasar post-instalación
+
+**Entradas:** nuevas funciones o migraciones a integrar al instalador, nuevas variables de configuración
+
+**Salidas:** script de instalación actualizado, .env.example documentado
+
+**Cuidado:**
+- Schema V.1.10 es el activo — nunca revert a versiones anteriores
+- Orden despliegue crítico: `_helpers/smartcset_raise.sql` → dominio específico → migraciones
+- Al agregar función PL/pgSQL: actualizar array `FUNCS` en `setup_smartcset.sh` E INCLUIR la migración si existe
+- **Nuevas variables .env (E3):** `LOGIN_MAX_INTENTOS=5`, `LOGIN_VENTANA_MINUTOS=15` (configurables)
+- **Nuevas variables .env (SIEM):** `DB_TIMEZONE=America/Bogota` (crítico para timezone local)
+- Conocer Bugs 1-19 documentados en `CLAUDE.md` antes de modificar el script
+- Instalación limpia debe pasar todas las tests (test_seguridad/test_*.py)
+- Certificado TLS: con `subjectAltName`, `basicConstraints=CA:FALSE`, `extendedKeyUsage=serverAuth`
 
 ---
 

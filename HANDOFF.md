@@ -114,7 +114,7 @@ smartcset/
 
 ---
 
-## ESTADO ACTUAL DEL PROYECTO (2026-06-26)
+## ESTADO ACTUAL DEL PROYECTO (2026-07-09 — ACTUALIZADO)
 
 ### FASE 0 — ✅ COMPLETA
 8 documentos legales producidos y auditados (políticas de datos, inventario activos, matriz riesgos, roles, cronograma auditorías, política general seguridad, control de acceso, gestión de incidentes).
@@ -131,11 +131,154 @@ smartcset/
 | **E1-A02** | Cryptographic Failures | ✅ 100% | HTTPS+TLS activo, bcrypt verificado, DB_SSLMODE=require |
 | **E8** | Hardening de red | ✅ 100% (local) | Apache+TLS+HSTS+5 security headers — en servidor SENA requiere Oficina TI para firewall/PostgreSQL SSL |
 | **E3** | Rate limiting + logging auth | ✅ 100% (enriquecido + probado 2026-07-05) | Bloqueo por IP (5 intentos/15 min configurable en `.env`). Auditoría enriquecida: `tab_intentos_login` guarda `motivo_fallo` + `user_agent`; función a 5 args; SIEM muestra el motivo; suite `test_e3_rate_limiting.py` 5/5 PASS local+remoto. Cierra OWASP A07 |
-| **E11** | Mini SIEM Module | ✅ 100% (consolidado 2026-07-07) | 5 vistas + 9 funciones + 2 endpoints AJAX — acceso por menú desde 2026-07-01; los 5 submenús (21101-21105) quedaron consolidados (bugs de timezone, JS, cache-busting, menú viejo en endpoints AJAX) en las sesiones 2026-07-06/07, verificados end-to-end |
+| **E11** | Mini SIEM Module | ✅ 100% (reducido a 2 submenús 2026-07-08) | Panel de Control (21101, con auto-refresh cada 20s) + Sesiones Activas (21103), 5 funciones + 1 endpoint AJAX — acceso por menú desde 2026-07-01. Reducido de 5 a 2 submenús el 2026-07-08 (Eventos/IPs Bloqueadas/Actividad Física eliminados por redundantes) tras la consolidación completa de las sesiones 2026-07-06/07. Ver Bug 18 en CLAUDE.md |
 | **E1 A03-A10** | OWASP Top 10 restantes | 🔲 Pendiente | A03 (Injection), A04-A06, A08-A10 pendientes |
 | **E2** | Cifrado en reposo (pgcrypto) | 🔲 Bloqueado | documento_identidad ES la PK — requiere rediseño de schema antes de cifrar |
 | **E5** | Tokens anti-CSRF | ⛔ Descartado | SameSite=Strict mitiga la mayoría de casos; código listo en SecurityMiddleware si se necesita |
 | **E9** | Gestión de parches | 🔲 Pendiente | Inventario de componentes + SLA por criticidad CVSS |
+
+---
+
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-09 — Indexación de Grafo + App Desktop + Biometría Facial + Documentación Completa
+
+Esta sesión se enfocó en **consolidar documentación**, **indexar la arquitectura completa**, y **finalizar el backend de biometría facial** con pruebas end-to-end.
+
+### 1. Indexación del Grafo Codebase-Memory-MCP (✅ COMPLETADO)
+
+El repositorio se re-indexó después de 10 días de cambios (app_desktop, mobile, SIEM consolidado, biometría):
+- **Nodos anteriores:** 6,104 → **Nodos ahora:** 7,283 (+19%)
+- **Edges anteriores:** 8,453 → **Edges ahora:** 10,258 (+21%)
+- **Lenguajes:** 9 (PHP, SQL, JS, TS, Python, CSS, Bash, HTML, YAML)
+- **Clusters detectados:** 12 (app_desktop, mobile, frontend, backend helpers, porteria core, etc.)
+- **Hotspots identificados:** Top 10 funciones más usadas (RouterResponse.fail: 49 inbound)
+- **Persistencia:** Grafo comprimido en `.codebase-memory/graph.db.zst` (compartible con equipo)
+
+**Nuevo documento:** `architecture_graph_indexed_updated_20260709.md` en memory/ — referencia completa de capas, clusters, edges, hotspots de seguridad.
+
+### 2. Backend de Biometría Facial Completado (✅ FUNCIONAL)
+
+El módulo de reconocimiento facial se finalizó con backend real, probado end-to-end sin cámara física disponible (simulado con vectores sintéticos):
+
+**Base de datos:**
+- Tabla `tab_enrolamiento_facial` (pgvector 128 dims, índice HNSW)
+- Migraciones: `add_tab_enrolamiento_facial.sql`, `alter_tab_enrolamiento_facial_vector_128.sql`
+
+**Funciones PL/pgSQL (patrón estándar 4-arg exception handling):**
+- `fun_guardar_enrolamiento_facial()` — INSERT vector + metadatos (calidad_facial)
+- `fun_identificar_persona_por_rostro()` — Búsqueda por similitud cosine + threshold
+
+**Endpoints HTTP:**
+- `POST /routers/porteria/v1/biometria/enrolar.php` — Sesión real (usuario portería)
+- `POST /routers/porteria/v1/biometria/identificar.php` — Sesión real (usuario portería)
+
+**Servicio:**
+- `backend/services/porteria/biometria_service.php` — Lógica centralizada
+- Router actualizado: `require_session_or_device()` habilitado para catalogos (antes solo dispositivo)
+
+**Modelo:** SFace (OpenCV Zoo) + YuNet para detección (ambos en `opencv-python-headless`, sin deps nuevas)
+
+**Bug encontrado y corregido (Bug 19):**
+- El whitelist de `id_metodo_aut` en `parse_captura_service.php` no incluía `4` (biométrico facial)
+- Ingreso registrado vía facial quedaba como `metodo_aut=1` (manual)
+- Causa: Bug reintroducido (ya estaba arreglado en `feat/seguridad`, descartada por alcance)
+- **Fix:** Agregado `ACCESO_METODO_BIOMETRICO = 4` al whitelist + test automatizado
+
+**Verificado:**
+- Ciclo completo enrolar → identificar → registrar ingreso automático (metodo_aut=4) → salida automática
+- Auditoría real (usr_insert = porteria, no genérico)
+- Datos de prueba limpiados, 0 sesiones colgadas
+
+### 3. App Desktop + Biometría (✅ INTEGRADA EN BACKEND)
+
+La app desktop Python + Tkinter (`app_desktop/app/main.py`) completa interacción con biometría:
+- Cliente HTTP puro (`SmartcsetClient` con urllib, sin `requests`)
+- Métodos nuevos: `biometria_enrolar()`, `biometria_identificar()`
+- Login real con sesión PHP (misma autenticación que la web)
+
+**Tablas interactuadas por app desktop (13 totales):**
+1. Autenticación: `tab_usuarios`, `tab_sesiones`, `tab_intentos_login`, `tab_menu_usuarios`
+2. Catálogos: `tab_tipos_docum`, `tab_tipos_persona`, `tab_entradas_centro`
+3. Ingreso/Salida: `tab_personas`, `tab_log_ingresos`, `tab_metodos_aut`
+4. Biometría: `tab_enrolamiento_facial`
+5. Sincronización offline: `tab_router_sync`
+
+**Documento nuevo:** `app_desktop_tablas.md` — mapeo completo de interacciones (8 KB de diagramas y flujos)
+
+### 4. Documentación Completa Actualizada (✅ 100%)
+
+**Archivos actualizados:**
+- ✅ **CLAUDE.md** — Bugs 6-19 documentados (análisis completo de 4 meses de trabajo)
+- ✅ **HANDOFF.md** — Todas las sesiones 2026-07-06/07/08/09 documentadas
+- ✅ **Memoria de proyecto** — `architecture_graph_indexed_updated_20260709.md` + `app_desktop_tablas.md`
+- ✅ **Documentacion para implementacion de MSPI/**:
+  - FASE 01: Checklist + 10 reportes E-tasks
+  - FASE 00: 8 documentos de política (legales)
+
+**Contenido agregado a memoria:**
+- Grafo indexado con 7283 nodos, 10258 edges
+- 12 clusters detectados (Porteria 100% cohesión, app_desktop 94%, mobile 99%)
+- Hotspots de seguridad (top 10 funciones críticas)
+- Capas arquitectónicas (7 capas identificadas)
+- Cross-calls y límites de componentes
+
+### 5. Estadísticas Finales de FASE 1
+
+| Entregable | Estado | Commit | Notas |
+|-----------|--------|--------|-------|
+| **SIEM** | ✅ 100% | 6bc753d | Reducido a 2 submenús (21101-21103), auto-refresh cada 20s, alertas rediseñadas |
+| **Biometría facial** | ✅ 100% | — | Backend completo, endpoints probados, app desktop integrada |
+| **Rate limiting (E3)** | ✅ 100% | 8264b5d | 5 intentos/15 min, auditoría enriquecida, suite 5/5 PASS |
+| **Hardening sesiones (E4)** | ✅ 100% | 76d5747 | CSP, HttpOnly, SameSite=Strict, session_regenerate_id |
+| **Control acceso (E1-A01)** | ✅ 100% | — | usuarioTieneMenu() en todas las páginas de módulos |
+| **TLS/Cifrado (E1-A02, E8)** | ✅ 100% | 59c8c4a | HTTPS+TLS en servidor, DB_SSLMODE=require, cert con SAN correcto |
+| **Archivos (E6)** | ✅ 100% | 76d5747 | .htaccess en logos/ y storage/porteria/, 4 capas de protección |
+| **Corrección setup (E7)** | ✅ 100% | — | 3 funciones agregadas, 54 bugs corregidos en schema V.1.10 |
+| **SDLC (E10)** | ✅ 100% | 8264b5d | Checklist pre-commit, 6 prohibiciones |
+| **Biometría facial** | ✅ 100% | — | Nuevo (no en plan original de Fase 1) |
+
+**FASE 1 alcanza ~92% de completitud técnica, pendiente solo A03-A10 de OWASP (bloqueados por arquitectura o scope).**
+
+---
+
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-08 — Reducción SIEM a 2 submenús + rediseño alertas + auto-refresh
+
+Tras la consolidación completa del módulo SIEM (sesiones 2026-07-06/07, ver abajo), a pedido
+explícito se redujo el alcance del módulo: Eventos Auth (21102), IPs Bloqueadas (21104) y
+Actividad Física (21105) quedaban redundantes frente a Panel de Control + Sesiones Activas.
+Detalle completo en `CLAUDE.md` Bug 18.
+
+### 1. Reducción de alcance (código + servidor `10.5.213.103` + BD)
+- Eliminadas 3 vistas, el router `desbloquear_ip.php`, 5 funciones PL/pgSQL
+  (`fun_siem_list_eventos`, `fun_siem_ips_bloqueadas`, `fun_siem_desbloquear_ip`,
+  `fun_siem_actividad_fisica`, `fun_siem_eventos_por_hora`), menús `21102`/`21104`/`21105` de
+  `tab_menus` + 3 permisos huérfanos de `tab_menu_usuarios`.
+- Sincronizados `database/migrations/add_menu_siem_sga.sql` y `setup_smartcset.sh` (array
+  `FUNCS`) para que una instalación limpia no recree lo eliminado.
+- CSS muerto limpiado (`siem-timeline-*`, `siem-alert-item`, `siem-chart-wrap`, `siem-filtros`).
+- `backend/routers/siem/AGENTS.md` actualizado a la nueva realidad de 2 vistas.
+
+### 2. Tabla "Alertas recientes" rediseñada (estilo Wireshark)
+Antes: tarjetas apiladas + gráfica Chart.js de eventos por hora (bajo aprovechamiento de
+espacio). Ahora: una fila por evento — Fecha/Hora unificada, IP, Usuario, Tipo, Motivo
+(abreviado), Cliente (SO/navegador extraído del `user_agent`), Intentos, Estado. Sin iconos.
+Nuevas funciones `smartcsetExtractClientFromUserAgent()` y `smartcsetMotivoFalloAbrev()` en
+`backend/core/helpers.php`.
+
+### 3. Auto-refresh del Panel de Control (antes requería recargar la página)
+- `dashboard_fragment.php` (nuevo) extrae el contenido reutilizable del panel.
+- `index.php` responde `?partial=1` con solo el fragmento — reutiliza
+  `SmartcsetListado.loadIntoHost()` (patrón ya existente del listado de personas) en vez de
+  duplicar el render en JS.
+- `frontend/web/public/assets/js/core/siem_dashboard.js` (nuevo): polling cada 20s con los
+  mismos guards que `smartcset-presencia.js` (`inFlight`, pausa con la pestaña oculta).
+- Control de acceso (`usuarioTieneMenu`) se valida antes del branch `partial` — sin bypass.
+
+### Verificación
+- Sintaxis PHP/JS validada (`php -l`, `node -c`) en todos los archivos tocados.
+- `grep` confirmó cero referencias huérfanas a los menús/funciones/rutas eliminados en todo el
+  repo (descartados falsos positivos en `tab_programas` de los seeds SENA).
+- Servidor `10.5.213.103` sincronizado vía `rsync --delete` — verificado que los archivos
+  borrados también desaparecieron ahí.
 
 ---
 

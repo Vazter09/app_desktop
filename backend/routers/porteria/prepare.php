@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/ingreso_service.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/salida_service.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/foto_service.php';
+require_once dirname(__DIR__, 2) . '/services/porteria/biometria_service.php';
 require_once __DIR__ . '/_lib/Payload.php';
 require_once __DIR__ . '/_lib/Sync.php';
 require_once __DIR__ . '/_lib/Auth.php';

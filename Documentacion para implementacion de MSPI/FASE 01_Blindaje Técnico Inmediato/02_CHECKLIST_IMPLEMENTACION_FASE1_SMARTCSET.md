@@ -6,7 +6,7 @@
 | Campo | Valor |
 |---|---|
 | **Documento N°** | FASE1-CHK-002 |
-| **Versión** | 1.4 — Actualización 2026-07-07: **E8 parcialmente desbloqueado** — TLS BD activado en `db_smartcset2` (10.5.213.103), certificado TLS regenerado con SAN/CA:FALSE/EKU correctos, `expose_php=Off` en producción. Prerrequisito 5 (topología) resuelto: PHP y PostgreSQL confirmados en la misma máquina. Ver §E8 y tabla histórica. |
+| **Versión** | 1.5 — Actualización 2026-07-09: **FASE 1 alcanza 92% de completitud técnica** — Grafo indexado (7283 nodos, 10258 edges), app desktop operativa, biometría facial completada, SIEM reducido a 2 submenús con auto-refresh, todas las sesiones 2026-07-06/07/08/09 documentadas. Pendiente: A03-A10 de OWASP (fuera de scope o bloqueados por arquitectura). |
 | **Fecha de elaboración** | 2026-06-10 |
 | **Elaborado por** | Equipo de Desarrollo - SmartCSET |
 | **Tipo** | Documento de trabajo — guía de seguimiento de implementación |
@@ -204,7 +204,10 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 - [x] Limpieza de registros >90 días: la hace `fun_registrar_intento_login` en cada inserción (no requiere cron)
 
 **SIEM (bonus):**
-- [x] `fun_siem_list_eventos` extendida para exponer `motivo_fallo`; la vista `pages/modulos/siem/eventos/index.php` muestra la columna "Motivo"
+- [x] `motivo_fallo` visible en el SIEM — Panel de Control (`pages/modulos/siem/index.php`,
+      tabla "Alertas recientes"), vía `fun_siem_alertas_recientes`. (El submenú "Eventos Auth"
+      dedicado, con `fun_siem_list_eventos`, se eliminó el 2026-07-08 por redundante — ver Bug 18
+      en CLAUDE.md; el dato de auditoría se sigue mostrando, solo cambió de vista.)
 
 **Verificación (§14.1) — suite `scripts/test_seguridad/test_e3_rate_limiting.py`, 5/5 PASS en local y remoto:**
 - [x] N (=`LOGIN_MAX_INTENTOS`) intentos fallidos → el siguiente retorna mensaje de bloqueo; IP registrada en `tab_intentos_login`

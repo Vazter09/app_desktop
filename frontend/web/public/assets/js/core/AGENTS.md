@@ -33,6 +33,7 @@
 | `porteria-captura.js` | porteria | Modo escáner: enfoque campo documento |
 | `porteria-medios.js` | porteria | Modo foto: captura cámara |
 | `smartcset-listado.js` | global | Filtros GET + paginación AJAX en listados (`SmartcsetListado`) |
+| `siem_dashboard.js` | SIEM | Auto-refresh del Panel de Control (polling 20s vía `SmartcsetListado.loadIntoHost`) |
 | `personas-listado-admin.js` | admin/personas | Navegación AJAX entre listados por tipo |
 | `registro-listado-admin.js` | (legacy) | Sustituido por personas-listado-admin.js |
 | `registro-theme-toggle.js` | registro | Cambio tema claro/oscuro |

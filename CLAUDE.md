@@ -668,6 +668,40 @@ Al auditar exhaustivamente el servidor institucional real (`10.5.213.103`) tras 
 
 **Lección:** cuando una migración hace `CREATE OR REPLACE FUNCTION` de algo que también existe en `database/functions/`, ambas copias deben mantenerse sincronizadas en el patrón de manejo de errores — el orden de ejecución del instalador (`FUNCS` antes que `migrations/`) hace que la migración sea la que realmente queda en producción. Al corregir un bug de este tipo, buscar con `grep -rn "smartcset_handle_sql_error()" database/` (sin argumentos) para encontrar TODAS las copias, no solo la que se estaba mirando.
 
+### Bug 18: módulo SIEM reducido de 5 a 2 submenús + tabla de alertas rediseñada + auto-refresh — 2026-07-08
+A pedido explícito (los submenús Eventos/IPs Bloqueadas/Actividad Física quedaban redundantes con Panel de Control + Sesiones Activas), se redujo el módulo SIEM consolidado en el Bug 16/17:
+
+**Eliminado** (código + servidor `10.5.213.103` + BD):
+- Menús `21102` (Eventos Auth), `21104` (IPs Bloqueadas), `21105` (Actividad Física) de `tab_menus`, más 3 permisos huérfanos en `tab_menu_usuarios`
+- Vistas `pages/modulos/siem/{eventos,ips,actividad}/`, router `backend/routers/siem/v1/desbloquear_ip.php`
+- Funciones PL/pgSQL: `fun_siem_list_eventos`, `fun_siem_ips_bloqueadas`, `fun_siem_desbloquear_ip`, `fun_siem_actividad_fisica`, `fun_siem_eventos_por_hora` (esta última ya había quedado huérfana al quitar la gráfica del panel en un cambio previo de la misma sesión)
+- `database/migrations/add_menu_siem_sga.sql` y `database/setup_smartcset.sh` (array `FUNCS`) actualizados para que una instalación limpia futura no recree lo eliminado — sin esto, el Bug 12/16 se habría repetido (menú fantasma reapareciendo tras reinstalar)
+
+**Se mantiene:** `211` (SIEM) → `21101` Panel de Control, `21103` Sesiones Activas. Funciones: `fun_siem_dashboard_kpis`, `fun_siem_top_ips_fallidas`, `fun_siem_alertas_recientes`, `fun_siem_sesiones_activas`, `fun_siem_forzar_cierre_sesion`. Tablas core (`tab_intentos_login`, `tab_sesiones`, `tab_log_ingresos`) intactas — son compartidas con rate limiting E3 y portería, no exclusivas del SIEM.
+
+**Tabla de Alertas recientes rediseñada** (antes: tarjetas apiladas + gráfica Chart.js de eventos por hora, ambas de bajo aprovechamiento de espacio): ahora es una tabla compacta de una sola fila por evento (estilo Wireshark) — columnas Fecha/Hora (unificada), IP, Usuario, Tipo, Motivo (abreviado), Cliente (SO/navegador extraído del `user_agent`), Intentos, Estado. Sin iconos. Nuevas funciones helper en `backend/core/helpers.php`: `smartcsetExtractClientFromUserAgent()` y `smartcsetMotivoFalloAbrev()`.
+
+**Auto-refresh del Panel de Control** (antes requería recargar la página manualmente para ver eventos nuevos): se extrajo el contenido del panel a `frontend/web/pages/modulos/siem/dashboard_fragment.php`, y `index.php` responde `?partial=1` con solo ese fragmento HTML. El JS nuevo `frontend/web/public/assets/js/core/siem_dashboard.js` hace polling cada 20s reutilizando `SmartcsetListado.loadIntoHost()` (patrón ya existente del listado de personas, evita duplicar el render en JS) con los mismos guards que `smartcset-presencia.js` (`inFlight` para no solapar requests, pausa con `document.visibilityState === 'hidden'`). El control de acceso (`usuarioTieneMenu`) se valida **antes** del branch `partial` — no hay bypass de autorización vía el parámetro.
+
+**Lección:** al reducir el alcance de un módulo, no basta con borrar las vistas — hay que rastrear también la migración de menús (o reaparecen en la próxima instalación limpia), los permisos ya asignados en `tab_menu_usuarios` (quedan huérfanos si no se limpian), el `AGENTS.md` de la carpeta (documentación que un agente futuro tomaría como verdad), y el CSS específico de las vistas eliminadas (clases muertas que nadie nota hasta que se audita).
+
+### Bug 19: backend real de biometría facial (app de escritorio SGI) + reintroducción del whitelist de `id_metodo_aut` — 2026-07-09
+Construida la app de escritorio `app_desktop/` (Python + Tkinter, ver `app_desktop/REGLAS_APP_ESCRITORIO_SGI.md`) con login real, dashboard, Registro ingreso/salida, Entradas y ahora reconocimiento facial funcional de punta a punta.
+
+**Backend nuevo, desplegado y probado end-to-end con vectores sintéticos** (no hay cámara real disponible en el entorno de desarrollo remoto — la mecánica de inferencia se validó por separado, ver abajo):
+- `database/migrations/add_tab_enrolamiento_facial.sql` + `alter_tab_enrolamiento_facial_vector_128.sql` — tabla `tab_enrolamiento_facial` (pgvector, índice HNSW, auditoría real vía `app.usuario`).
+- `database/functions/porteria/fun_guardar_enrolamiento_facial.sql` / `fun_identificar_persona_por_rostro.sql` — patrón estándar del proyecto (excepción 4-arg).
+- `backend/services/porteria/biometria_service.php` + `backend/routers/porteria/v1/biometria/{enrolar,identificar}.php` — sesión web real (no token de dispositivo), mismo esqueleto que `ingreso/registrar.php`.
+- `backend/routers/porteria/v1/catalogos.php` ampliado de solo-dispositivo a sesión-o-dispositivo (`porteriaRequireSessionOrDevice()`) — la app de escritorio lo necesita para tipos de documento/persona/entradas y no usa tokens de dispositivo.
+
+**Dimensión del vector: 512 → 128 (corregido antes de tener datos reales).** El diseño original asumía 512 dims sin haber elegido modelo todavía; al integrar el modelo real (SFace + YuNet, `opencv_zoo`, incluidos en `opencv-python-headless` sin dependencia nueva) resultó que SFace entrega 128 floats. Migración aplicada con la tabla vacía — sin costo real.
+
+**Bug reintroducido y corregido: `parse_captura_service.php::accesoDocumentoDesdePost()`** — el whitelist de `id_metodo_aut` solo aceptaba `1` (manual) o `3` (barras); cualquier otro valor, incluido el `4` (biométrico facial, ya sembrado en `tab_metodos_aut` desde antes) caía silenciosamente a manual. **Este es el mismo fix que ya existía en la rama excluida `feat/seguridad` (commit `3cd1de1`, ver Bug 12)** — al construir el backend de biometría desde cero en esta sesión (sin retomar esa rama, por decisión explícita), el bug volvió a aparecer porque nadie sabía que ya había sido resuelto ahí. Encontrado por prueba real: un ingreso registrado vía identificación facial (`metodo_aut=4`) quedó guardado en BD como `metodo_aut=1`. Agregada la constante `ACCESO_METODO_BIOMETRICO = 4` a la whitelist. Cubierto por test automatizado (`test_ingreso_por_identificacion_usa_metodo_aut_biometrico`) para que no se pierda una tercera vez.
+
+**Lección:** cuando se descarta una rama completa por alcance (Bug 12), los fixes reales que traía se pierden con ella — no solo el código nuevo. Antes de reconstruir algo similar desde cero, vale la pena revisar el diff completo de la rama descartada por fixes colaterales, no solo por el feature principal.
+
+**Verificado en vivo:** ciclo completo enrolar → identificar → registrar ingreso automático (`metodo_aut=4`) → identificar de nuevo → registrar salida automática, con vector fijo simulando una captura real (sin cámara física con rostro disponible en este entorno). Auditoría real confirmada (`usr_insert = porteria`, no genérico). Datos de prueba limpiados, 0 sesiones colgadas.
+
 ### Deuda técnica adicional
 
 - `scripts/test_seguridad/common.py`: `common.login()` postea a `/index.php` (ruta vieja); el login real es AJAX JSON a `backend/routers/auth/v1/login.php`. `test_e3_rate_limiting.py` golpea el endpoint real directamente; un futuro refactor debería alinear el helper `login()`. (El bug de `PROJECT_ROOT` que impedía a `run_psql` encontrar `.env` ya se corrigió el 2026-07-05.)

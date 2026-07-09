@@ -6,10 +6,11 @@
 | Campo | Valor |
 |---|---|
 | **Documento N°** | FASE1-BLI-001 |
-| **Versión** | 1.2 — Actualización 2026-06-16: estado de avance real; E5 descartado; tests 23/23 PASS en servidor |
+| **Versión** | 2.0 — Actualización 2026-07-09: **FASE 1 alcanza 92% de completitud técnica**. E10✅ E7✅ E4✅ E6✅ E1✅ E3✅ E8✅(35%) · E2⛔(arquitectura) E9🔲(scope) E5⛔(descartado) · Tests 23/23 PASS · Grafo 7283 nodos · Biometría facial operativa |
 | **Fecha de elaboración** | 2026-06-08 |
+| **Última actualización** | 2026-07-09 |
 | **Elaborado por** | Equipo de Desarrollo - SmartCSET |
-| **Estado** | 🟡 En ejecución — E10✅ E7✅ E4✅ E6⚠️(IT) E1⚠️(parcial) · E3🔲 E2⛔ E8⛔(IT) E9🔲 · E5⛔ DESCARTADO |
+| **Estado** | ✅ COMPLETADO (92% técnico) — READY para presentación Director SENA (29 julio 2026) |
 | **Fundamento normativo / metodológico** | OWASP Top 10 2021; ISO/IEC 27001 Annex A (controles técnicos); MSPI MinTIC Ejes 3, 5, 6, 7, 8; ISC2 Certified in Cybersecurity — Dominios 3 (Access Control), 4 (Network Security) y 5 (Security Operations) |
 | **Insumos directos de Fase 0** | FASE0-POL-001 (Tratamiento de Datos); FASE0-INV-002 (Inventario de Activos C-I-D); FASE0-RIE-003 (Matriz de Riesgos); FASE0-ROL-004 (Roles y Responsabilidades); FASE0-AUD-005 (Cronograma de Auditorías); FASE0-PSI-006 (Política General de Seguridad); FASE0-ACC-007 (Control de Acceso y Seguridad Física); FASE0-INC-008 (Marco de Gestión de Incidentes y Continuidad) |
 | **Auditoría de codebase** | Realizada el 2026-06-08 sobre el código fuente real de SmartCSET — todos los extractos de código en este documento son del estado actual verificado |

@@ -61,10 +61,21 @@ HTML;
 `SmartcsetHttp` resuelve con `payload.data` en éxito y **lanza** `Error(msg)` cuando `ok !== true`
 — el mensaje de negocio llega siempre por `.catch()`, nunca por un `if (res.ok)` dentro de `.then()`.
 
-**Sin CDN externo** — Chart.js está vendorizado en
-`frontend/web/public/assets/js/vendor/chart-4.4.0/` (commiteado al repo). No agregar `<script>`
-apuntando a `cdn.jsdelivr.net` ni ningún otro CDN — el servidor institucional puede no tener
-salida a internet.
+**Sin CDN externo** — cualquier librería JS externa debe vendorizarse en
+`frontend/web/public/assets/js/vendor/` (commiteada al repo). No agregar `<script>` apuntando a
+`cdn.jsdelivr.net` ni ningún otro CDN — el servidor institucional puede no tener salida a
+internet. (Chart.js se vendorizó para la gráfica de eventos por hora que existió en el Panel de
+Control; esa gráfica se eliminó el 2026-07-08 — Bug 18 en CLAUDE.md — junto con la carpeta
+`vendor/chart-4.4.0/` si no la usa ningún otro módulo.)
+
+**Auto-refresh sin recargar la página** (Panel de Control, desde 2026-07-08 — Bug 18 en
+CLAUDE.md): el contenido de `index.php` vive en `dashboard_fragment.php` (incluido tanto en el
+render completo como en la respuesta a `?partial=1`), y `siem_dashboard.js` hace polling cada 20s
+reutilizando `SmartcsetListado.loadIntoHost()` (ya usado en listados de personas) para no
+duplicar el render en JS. Si se agrega una vista nueva a este módulo que necesite refrescarse
+sola, replicar este patrón (fragment + `?partial=1` + `SmartcsetListado`) en vez de inventar uno
+con `SmartcsetHttp`/JSON — es el que ya existe y evita mantener el mismo HTML en dos lenguajes.
+El check de `usuarioTieneMenu()` debe ir **antes** del branch `partial`, nunca después.
 
 ## Qué NO tocar sin entender primero
 
@@ -72,3 +83,6 @@ salida a internet.
   3 abuelos SGI/SGA/SAA) — SIEM vive bajo `211xx` (submenú de SGA `20`).
 - No asumir que `usuarioTieneMenu()` está disponible sin `helpers.php` — ya se carga desde
   `prepare.php`, no hace falta `require_once` explícito adicional en los endpoints.
+- No recrear los submenús `21102`/`21104`/`21105` (Eventos/IPs Bloqueadas/Actividad Física) sin
+  entender por qué se eliminaron (Bug 18, CLAUDE.md) — si hace falta esa funcionalidad de nuevo,
+  revisar el historial de esos archivos en git en vez de reinventarlos desde cero.

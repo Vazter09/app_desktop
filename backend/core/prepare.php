@@ -207,6 +207,17 @@ try {
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
+    // --- 6c-bis. BIOMETRÍA FACIAL (app de escritorio SGI → tab_enrolamiento_facial) ---
+    $sql_fun_guardar_enrolamiento_facial = "SELECT fun_guardar_enrolamiento_facial(
+        ?::NUMERIC, ?::VECTOR, ?::NUMERIC
+    )";
+    $stmt_fun_guardar_enrolamiento_facial = $pdo->prepare($sql_fun_guardar_enrolamiento_facial);
+
+    $sql_fun_identificar_persona_por_rostro = "SELECT fun_identificar_persona_por_rostro(
+        ?::VECTOR, ?::NUMERIC
+    )";
+    $stmt_fun_identificar_persona_por_rostro = $pdo->prepare($sql_fun_identificar_persona_por_rostro);
+
     // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
     $sql_fun_registrar_persona = "SELECT fun_registrar_persona(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
