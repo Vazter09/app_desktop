@@ -27,6 +27,19 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+import urllib3
+
+# Los entornos reales de SmartCSET (local y servidor institucional) usan
+# HTTPS con certificado autofirmado (ver CLAUDE.md: "El certificado es
+# autofirmado"). Esta suite corre DENTRO de la red de confianza (mismo
+# equipo o misma intranet SENA) contra hosts conocidos de antemano — no
+# es una verificación de cadena de confianza pública (eso ya lo cubre
+# la suite dedicada de TLS, ver Bug 13/17 en CLAUDE.md). Deshabilitar
+# la verificación aquí es equivalente a los `curl -sk` / `psql
+# sslmode=require` ya usados en el resto del proyecto para estos mismos
+# hosts, no una relajación nueva de seguridad.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+VERIFY_TLS = False
 
 def _find_project_root(start: Path) -> Path:
     """Sube por el árbol hasta el directorio que contiene ``.env``.
@@ -92,7 +105,7 @@ def server_is_up(base_url: str = BASE_URL) -> bool:
     rechazada.
     """
     try:
-        requests.get(base_url, timeout=HTTP_TIMEOUT)
+        requests.get(base_url, timeout=HTTP_TIMEOUT, verify=VERIFY_TLS)
         return True
     except requests.exceptions.ConnectionError:
         return False
@@ -148,6 +161,7 @@ def login(username: str, password: str) -> requests.Session:
     close_stale_session(username)
 
     session = requests.Session()
+    session.verify = VERIFY_TLS
     session.post(
         f"{BASE_URL}/index.php",
         data={"txt_usuario": username, "txt_clave": password},

@@ -1,17 +1,28 @@
 """Tests del informe REPORTE_E1-E06_VERIFICACION_SUBIDA_ARCHIVOS_SMARTCSET.md.
 
+Nota (2026-07-09): rutas actualizadas de la estructura vieja ``src/``
+a la actual ``backend/``/``frontend/web/`` (ver AGENTS.md "Nota de
+rutas"). El archivo llevaba desactualizado desde esa reorganización —
+todos los tests fallaban con ``FileNotFoundError``/rutas inexistentes
+sin que nadie lo notara, hasta la auditoría de esta sesión.
+
 Premisas principales del informe:
 
-1. ``src/core/LogoUpload.php`` valida el tipo MIME real del archivo
-   (con ``finfo``, no por la extensión declarada por el navegador),
-   usa una whitelist de tipos de imagen, limita el tamaño a 5MB, exige
-   ``is_uploaded_file()`` y genera un nombre de archivo aleatorio.
-2. ``src/modulos/porteria/lib/porteria_foto.php`` valida estrictamente
-   el formato ``data:`` URL en base64 y recomprime la imagen como JPEG
-   (lo que destruye cualquier payload que no sea una imagen válida).
+1. ``backend/core/LogoUpload.php`` valida el tipo MIME real del
+   archivo (con ``finfo``, no por la extensión declarada por el
+   navegador), usa una whitelist de tipos de imagen, limita el tamaño
+   a 5MB, exige ``is_uploaded_file()`` y genera un nombre de archivo
+   aleatorio.
+2. ``backend/services/porteria/foto_service.php`` valida
+   estrictamente el formato ``data:`` URL en base64 y recomprime la
+   imagen como JPEG (lo que destruye cualquier payload que no sea una
+   imagen válida). ``backend/services/porteria/
+   biometria_photo_service.php`` (2026-07-09, foto de enrolamiento
+   facial) sigue el mismo patrón de validación MIME real.
 3. Los directorios donde se guardan archivos subidos por usuarios
-   (``public/uploads/logos/`` y ``storage/porteria/``) tienen un
-   ``.htaccess`` que:
+   (``frontend/web/public/uploads/logos/``,
+   ``frontend/web/public/uploads/biometria/`` y ``storage/porteria/``)
+   tienen un ``.htaccess`` que:
        - Bloquea la ejecución de PHP y otros scripts.
        - Fuerza ``Content-Type`` de imagen.
        - Bloquea el acceso directo al propio ``.htaccess``.
@@ -41,7 +52,8 @@ from common import PROJECT_ROOT
 EXTENSIONES_BLOQUEADAS = ["php", "phtml", "phar", "pl", "py", "cgi", "sh"]
 
 DIRECTORIOS_CON_HTACCESS = [
-    PROJECT_ROOT / "public" / "uploads" / "logos",
+    PROJECT_ROOT / "frontend" / "web" / "public" / "uploads" / "logos",
+    PROJECT_ROOT / "frontend" / "web" / "public" / "uploads" / "biometria",
     PROJECT_ROOT / "storage" / "porteria",
 ]
 
@@ -90,7 +102,7 @@ class TestE6VerificacionUploads(unittest.TestCase):
     def test_logo_upload_valida_mime_real_y_tamano(self) -> None:
         """LogoUpload.php debe usar finfo, whitelist, límite de tamaño y
         nombre de archivo aleatorio (no el nombre original del usuario)."""
-        archivo = PROJECT_ROOT / "src" / "core" / "LogoUpload.php"
+        archivo = PROJECT_ROOT / "backend" / "core" / "LogoUpload.php"
         codigo = archivo.read_text(encoding="utf-8")
 
         # finfo: detección de MIME real (no confiar en la extensión).
@@ -108,14 +120,14 @@ class TestE6VerificacionUploads(unittest.TestCase):
         self.assertIn("5 * 1024 * 1024", codigo)
 
     def test_porteria_foto_recomprime_y_valida_data_url(self) -> None:
-        """porteria_foto.php debe validar el data: URL y recomprimir a JPEG."""
+        """foto_service.php debe validar el data: URL y recomprimir a
+        JPEG."""
         archivo = (
             PROJECT_ROOT
-            / "src"
-            / "modulos"
+            / "backend"
+            / "services"
             / "porteria"
-            / "lib"
-            / "porteria_foto.php"
+            / "foto_service.php"
         )
         codigo = archivo.read_text(encoding="utf-8")
 
@@ -127,6 +139,29 @@ class TestE6VerificacionUploads(unittest.TestCase):
         # válida no sobrevive al paso por imagecreatefromstring +
         # imagejpeg.
         self.assertIn("imagejpeg", codigo)
+
+    def test_biometria_foto_valida_mime_real(self) -> None:
+        """biometria_photo_service.php (2026-07-09, foto de
+        enrolamiento facial) debe validar el MIME real con finfo antes
+        de guardar en frontend/web/public/uploads/biometria/ — mismo
+        estándar que LogoUpload.php, dato más sensible aún (biométrico,
+        no solo una imagen corporativa)."""
+        archivo = (
+            PROJECT_ROOT
+            / "backend"
+            / "services"
+            / "porteria"
+            / "biometria_photo_service.php"
+        )
+        codigo = archivo.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "finfo",
+            codigo,
+            "biometria_photo_service.php debería usar finfo para "
+            "detectar el MIME real (E6)",
+        )
+        self.assertIn("base64", codigo)
 
 
 if __name__ == "__main__":
