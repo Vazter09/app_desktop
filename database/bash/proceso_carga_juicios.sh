@@ -6,10 +6,10 @@ readonly DIR1="/home/adsocset/carga_planos/juicios"
 readonly DIR2="/home/adsocset/carga_planos/juicios_old"
 readonly DB_HOST="localhost"
 readonly DB_USER="postgres"
-readonly DB_NAME="db_smartcset2"
+readonly DB_NAME="db_smartcset3"
 readonly DB_TABLE="tab_temp_juicios"
 readonly LOG_ERRORES="$DIR1/errores_juicios.log"
-export PGPASSWORD="cset2026*"
+export PGPASSWORD="postgresdev2026*"
 
 # Verificar herramientas
 for cmd in ssconvert psql; do
@@ -18,7 +18,7 @@ done
 
 mkdir -p "$DIR1" "$DIR2"
 
-# Limpiar archivos temporales al salir
+# Limpiar archivos temporales al salir (solo por seguridad)
 cleanup() { rm -f "$archivo_csv" "$archivo_limpio" 2>/dev/null; }
 trap cleanup EXIT
 
@@ -42,7 +42,7 @@ for archivo_excel in "${archivos[@]}"; do
         continue
     fi
 
-    # 2. Procesar con AWK (usando FPAT)
+    # 2. Procesar con AWK (saltando columna 9 oculta)
     awk -v fecha_reporte="$(date +%Y-%m-%d)" '
     BEGIN { FPAT = "([^;]*)|(\"[^\"]*\")"; OFS = ";" }
 
@@ -81,9 +81,9 @@ for archivo_excel in "${archivos[@]}"; do
         }
         if (NR == 13) next
         if (NR >= 14) {
-            if (NF < 10) { for (i=NF+1; i<=10; i++) $i = ""; NF = 10 }
+            # Asegurar al menos 11 columnas (por la columna oculta)
+            if (NF < 11) { for (i=NF+1; i<=11; i++) $i = ""; NF = 11 }
 
-            # Columnas 1-8
             id_tipodoc = $1
             num_docume = clean_num($2)
             nom_aprendiz = $3
@@ -93,11 +93,12 @@ for archivo_excel in "${archivos[@]}"; do
             split(split_code($7), a, "|"); cod_rap = clean_num(a[1]); nom_rap = a[2]
             val_juicio = $8
 
-            # Columna 9: fec_juicio (todo el dato)
-            fec_juicio = $9
+            # Columna 9: OCULTA → se ignora
+            # $9 no se usa
 
-            # Columna 10: instructor
-            instr = $10
+            fec_juicio = $10      # antes era $9
+            instr = $11           # antes era $10
+
             tip_doc_instructor = ""; num_doc_instructor = ""; nom_instructor = ""
             if (instr != "" && instr != "-") {
                 gsub(/^[[:space:]]+|[[:space:]]+$/, "", instr)
@@ -133,17 +134,19 @@ for archivo_excel in "${archivos[@]}"; do
     if [ ! -s "$archivo_limpio" ]; then
         echo "Archivo limpio vacío: $archivo_limpio" >&2
         echo "[$(date)] Archivo vacío: $nombre_base" >> "$LOG_ERRORES"
-        continue
+        continue   # No se borran los CSVs para depuración
     fi
 
     # 4. Cargar a PostgreSQL
     if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -c "\copy $DB_TABLE (fecha_reporte, id_ficha, id_programa, id_version, nom_ficha, ind_estado, fec_inicio, fec_fin, id_modalidad, cod_regional, nom_regional, cod_centro, nom_centro, id_tipodoc, num_docume, nom_aprendiz, ape_aprendiz, ind_est_aprendiz, cod_competencia, nom_competencia, cod_rap, nom_rap, val_juicio, fec_juicio, tip_doc_instructor, num_doc_instructor, nom_instructor) FROM '$archivo_limpio' WITH (FORMAT csv, DELIMITER ';', ENCODING 'UTF8');" 2>&1; then
         echo "Carga exitosa: $nombre_base ($(wc -l < "$archivo_limpio") líneas)"
         mv "$archivo_excel" "$DIR2/"
-        rm -f "$archivo_csv" "$archivo_limpio"   # Eliminar CSVs temporales
+        # 🔽 Solo se borran los CSVs si la carga fue exitosa
+        rm -f "$archivo_csv" "$archivo_limpio"
     else
         echo "[$(date)] Error al cargar: $archivo_limpio" >> "$LOG_ERRORES"
         echo "Error en la carga. Revisa $LOG_ERRORES" >&2
+        # Los CSVs se conservan para depuración (no se borran)
     fi
 done
 

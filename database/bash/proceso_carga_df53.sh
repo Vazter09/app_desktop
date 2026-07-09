@@ -8,10 +8,10 @@ readonly DIR1="/home/adsocset/carga_planos/DF53"
 readonly DIR2="/home/adsocset/carga_planos/DF53_old"
 readonly DB_HOST="localhost"
 readonly DB_USER="postgres"
-readonly DB_NAME="db_smartcset2"
+readonly DB_NAME="db_smartcset3"
 readonly DB_TABLE="tab_temp_df53"
 readonly LOG_ERRORES="$DIR1/errores_df53.log"
-export PGPASSWORD="cset2026*"
+export PGPASSWORD="postgresdev2026*"
 
 # Verificar comandos
 for cmd in ssconvert psql; do

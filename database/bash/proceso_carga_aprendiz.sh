@@ -11,10 +11,10 @@ readonly DIR1="/home/adsocset/carga_planos/matriculados"
 readonly DIR2="/home/adsocset/carga_planos/matriculados_old"
 readonly DB_HOST="localhost"
 readonly DB_USER="postgres"
-readonly DB_NAME="db_smartcset2"
+readonly DB_NAME="db_smartcset3"
 readonly DB_TABLE="tab_temp_aprendices"
 readonly LOG_ERRORES="$DIR1/errores_matriculados.log"
-export PGPASSWORD="cset2026*"
+export PGPASSWORD="postgresdev2026*"
 
 # Verificar comandos necesarios
 for cmd in ssconvert psql; do
