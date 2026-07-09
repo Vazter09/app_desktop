@@ -473,7 +473,7 @@ PASO 4 — CONFIGURAR EL ENTORNO (primera parte de la hora 4)
    documento custodiado por la Dirección — ver Sección 6.4 de
    la Política de Control de Acceso, FASE0-ACC-007).
    Verificar permisos del directorio de la aplicación.
-   Verificar acceso a public/uploads/ y storage/.
+   Verificar acceso a frontend/web/public/uploads/ y storage/.
         ↓
 PASO 5 — VERIFICACIÓN FUNCIONAL (última parte de la hora 4)
    Acceder al sistema con credenciales de administrador.

@@ -2,6 +2,11 @@ CREATE OR REPLACE FUNCTION fun_actualizar_password(
     wid_usuario TEXT,
     wpass_nuevo TEXT
 ) RETURNS TEXT AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_usuario IS NULL OR TRIM(wid_usuario) = '' THEN
         PERFORM smartcset_raise_validacion('El usuario es obligatorio.');
@@ -31,6 +36,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

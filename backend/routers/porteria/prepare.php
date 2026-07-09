@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/core/RouterResponse.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/ingreso_service.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/salida_service.php';
 require_once dirname(__DIR__, 2) . '/services/porteria/foto_service.php';
+require_once dirname(__DIR__, 2) . '/services/porteria/biometria_service.php';
 require_once __DIR__ . '/_lib/Payload.php';
 require_once __DIR__ . '/_lib/Sync.php';
 require_once __DIR__ . '/_lib/Auth.php';
@@ -84,11 +85,11 @@ function porteriaApiRegistrarIngreso(array $device, array $json): array
     }
 
     $usrAudit = (string) ($device['id_usuario_audit'] ?? $device['usr_audit'] ?? 'system');
+    $pdo->exec("SET app.usuario = " . $pdo->quote($usrAudit));
     $idIngreso = ingresoRegistrarManual(
         $stmt_fun_registrar_ingreso,
         $stmt_buscar_ingreso_abierto,
-        $post,
-        $usrAudit
+        $post
     );
 
     $foto = trim((string) ($json['foto_base64'] ?? $post['hid_foto_data'] ?? ''));
@@ -134,11 +135,11 @@ function porteriaApiRegistrarSalida(array $device, array $json): array
 
     $post = PorteriaRouterPayload::salidaToPost($json);
     $usrAudit = (string) ($device['id_usuario_audit'] ?? $device['usr_audit'] ?? 'system');
+    $pdo->exec("SET app.usuario = " . $pdo->quote($usrAudit));
     $idIngreso = salidaRegistrarManual(
         $stmt_fun_registrar_salida,
         $stmt_buscar_ingreso_abierto,
-        $post,
-        $usrAudit
+        $post
     );
 
     $foto = trim((string) ($json['foto_base64'] ?? $post['hid_foto_data'] ?? ''));

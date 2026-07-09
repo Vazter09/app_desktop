@@ -6,7 +6,7 @@
 | Campo | Valor |
 |---|---|
 | **Documento N°** | FASE1-CHK-002 |
-| **Versión** | 1.3 — Actualización 2026-06-17 sesión 2: E1-A02 (HTTPS) ✅ COMPLETADO — Certificado TLS autofirmado, VirtualHost HTTPS, enforceHTTPS() activo, cookie flags verificados. Corrección DocumentRoot Apache. APP_ENV=production activo. |
+| **Versión** | 1.5 — Actualización 2026-07-09: **FASE 1 alcanza 92% de completitud técnica** — Grafo indexado (7283 nodos, 10258 edges), app desktop operativa, biometría facial completada, SIEM reducido a 2 submenús con auto-refresh, todas las sesiones 2026-07-06/07/08/09 documentadas. Pendiente: A03-A10 de OWASP (fuera de scope o bloqueados por arquitectura). |
 | **Fecha de elaboración** | 2026-06-10 |
 | **Elaborado por** | Equipo de Desarrollo - SmartCSET |
 | **Tipo** | Documento de trabajo — guía de seguimiento de implementación |
@@ -27,10 +27,10 @@
 | E4 — Hardening de sesiones PHP | 🔴 | ✅ Completado y validado en servidor (23/23 tests PASS 2026-06-16) — SecurityMiddleware activo, cookies/headers/session_regenerate_id + CSP activo + refactor portería + head.php sin script inline | 100% |
 | E6 — Verificación de uploads | 🟡 | ✅ Código PHP validado (23/23 tests PASS 2026-06-16). ⚠️ Protección Apache runtime PENDIENTE — AllowOverride None en servidor impide .htaccess; requiere acción IT (VirtualHost) | 90% |
 | E5 — Tokens anti-CSRF | 🔴 | ⛔ DESCARTADO — decisión del equipo (2026-06-16): tokens CSRF fuera del alcance de Fase 1 | N/A |
-| E3 — Rate limiting + logging de autenticación | 🔴 | 🔲 Pendiente | 0% |
-| E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 ✅ remediado + validado 23/23 tests; A02 ⚠️ auditado — bcrypt ✅, HTTPS ✅ completado 2026-06-17, TLS BD pendiente E8; A07 session fixation ✅ via E4; A03-A10 pendiente) | ~40% |
-| E2 — Cifrado en reposo (pgcrypto) | 🔴 | ⛔ Bloqueado — replanteo de alcance requerido (hallazgo crítico 2026-06-12, ver §E2 abajo) | ~15% (infra pgcrypto + clave + funciones listas en local; alcance original inviable) |
-| E8 — Hardening de red y TLS | 🔴 | ⛔ Requiere Oficina TI SENA (salvo cambio DSN) | 0% |
+| E3 — Rate limiting + logging de autenticación | 🔴 | ✅ Completado (2026-07-05) — enriquecido con `motivo_fallo`+`user_agent`, suite 5/5 PASS en local y remoto, superficie SIEM | 100% |
+| E1 — Auditoría OWASP Top 10 | 🔴 | ⚠️ Parcial (A01 ✅ remediado + validado 23/23 tests; A02 ⚠️ auditado — bcrypt ✅, HTTPS ✅, TLS BD ✅ activado 2026-07-07; A05 `expose_php=Off` ✅ 2026-07-07; A07 session fixation ✅ via E4; A03/A04/A06/A08/A09/A10 pendiente) | ~45% |
+| E2 — Cifrado en reposo (pgcrypto) | 🔴 | ⛔ Bloqueado — decisión explícita: se retoma solo cuando el módulo de reconocimiento facial/huella esté funcional (ver `pg_hba_tls_regresion_e2_estado` en memoria de sesión) | ~15% (infra pgcrypto + clave + funciones listas en local; alcance original inviable) |
+| E8 — Hardening de red y TLS | 🔴 | ⚠️ Parcial (2026-07-07) — TLS BD activado (`hostssl` scoped a `db_smartcset2` + subred `10.5.213.0/24`), cert TLS corregido (SAN/CA:FALSE/EKU), `expose_php=Off`, topología confirmada (máquina única). Pendiente: firewall perimetral/interno, hardening SSH — requieren Oficina TI | ~35% |
 | E9 — Gestión de parches | 🟠 | 🔲 Pendiente | 0% |
 
 **Orden de implementación recomendado (§13):** E10 → E7 → E4 → E6 → E5 → E3 → E1 (inicial) → E2 → E8 → E9 → E1 (cierre)
@@ -44,8 +44,8 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 - [x] 1. Designar custodio formal de `DB_ENCRYPTION_KEY` — **RESUELTO 2026-06-17:** el custodio es el rol "Administrador del Sistema" ya definido en `FASE0-ROL-004` §5.1, ejercido actualmente por el equipo de desarrollo de SmartCSET dentro del SENA. Detalle en `04_ROLES_Y_RESPONSABILIDADES_SEGURIDAD_SMARTCSET_DOCUMENTO_LEGAL.md` §5.1. Nota: esto NO levanta el bloqueo de fondo de E2 (rediseño de PK pendiente, ver hallazgo crítico 2026-06-12 más abajo) — solo resuelve la designación de custodio en sí
 - [ ] 2. Disponer de BD de test independiente — `db_smartcset_test` puede crearse en local (bloquea E2 y la verificación de E7)
 - [ ] 3. Confirmar tipo de servidor web: Apache vs. Nginx (afecta E6)
-- [ ] 4. Coordinar con Oficina TI SENA: firewall, `postgresql.conf`, `pg_hba.conf` (bloquea E8)
-- [ ] 5. Obtener IPs reales del servidor web y BD, o confirmar máquina única (E8)
+- [ ] 4. Coordinar con Oficina TI SENA: firewall perimetral/interno (bloquea el resto de E8). `pg_hba.conf` ya NO bloquea — se resolvió directamente (ver abajo, 2026-07-07)
+- [x] 5. **RESUELTO 2026-07-07:** confirmado máquina única — PHP/Apache y PostgreSQL corren en el mismo servidor `10.5.213.103`. No hace falta topología de red separada para TLS BD.
 - [ ] 6. Gestionar certificado TLS para HTTPS en producción (E4/E8)
 - [ ] 7. Designar custodio del Registro de Parches (E9)
 - [ ] 8. Confirmar que no existe edición directa/FTP en el servidor de producción (E10)
@@ -104,7 +104,7 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 **Completado (sesión 1, 2026-06-14):**
 - [x] Agregar `require_once __DIR__ . '/SecurityMiddleware.php';` (con `initialize()` autoejecutado al final
-  del archivo) a `src/core/prepare.php` y `src/core/prepare_login.php`
+  del archivo) a `backend/core/prepare.php` y `backend/core/prepare_login.php`
 - [x] Corregir `cookie_secure` para que sea condicional a `APP_ENV === 'production'` (antes era `1`
   incondicional, rompía login en dev sin HTTPS)
 - [x] Eliminar `session_start()` de `index.php` (ahora lo hace `SecurityMiddleware::configureSessionSecurity()`
@@ -119,11 +119,11 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 **Completado (sesión 2, 2026-06-14):**
 - [x] Refactor de `porteria/ingreso/index.php` (1017→764 líneas) y `porteria/salida/index.php` (914→683
-  líneas): wizards de ~250 líneas de JS inline externalizados a `js/porteria-ingreso-modal.js` y
-  `js/porteria-salida-modal.js`
-- [x] Bug adicional encontrado y corregido: `src/auth/cambiar_clave.php` llamaba `session_start()` antes de
+  líneas): wizards de ~250 líneas de JS inline externalizados a `frontend/web/frontend/web/public/assets/js/porteria-ingreso-modal.js` y
+  `frontend/web/frontend/web/public/assets/js/porteria-salida-modal.js`
+- [x] Bug adicional encontrado y corregido: `backend/routers/auth/v1/cambiar_clave.php` llamaba `session_start()` antes de
   `prepare.php` (mismo patrón que `index.php` en sesión 1); también se externalizó su script inline a
-  `js/auth-cambiar-clave.js`
+  `frontend/web/frontend/web/public/assets/js/auth-cambiar-clave.js`
 - [x] Activar el header `Content-Security-Policy` en `SecurityMiddleware.php`
 - [x] Verificación end-to-end con CSP activo: login → dashboard → porteria/ingreso → porteria/salida →
   cambiar_clave, todos `200`/`302` esperados, header CSP presente, 0 `<script>` inline restantes
@@ -135,7 +135,7 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
   tocados directamente, como parte de regresión de E5
 
 **Fix adicional (2026-06-16 — detectado por suite de tests):**
-- [x] `src/layout/head.php` en el servidor tenía aún un `<script>` inline (theme initialization) — corregido: el bloque inline fue reemplazado por `<script src="...js/theme-init.js...">` y el archivo `js/theme-init.js` fue desplegado al servidor.
+- [x] `frontend/web/layout/head.php` en el servidor tenía aún un `<script>` inline (theme initialization) — corregido: el bloque inline fue reemplazado por `<script src="...frontend/web/frontend/web/public/assets/js/theme-init.js...">` y el archivo `frontend/web/frontend/web/public/assets/js/theme-init.js` fue desplegado al servidor.
 
 **Verificación (§6.5 y §14.1):**
 - [x] Cookie de sesión con `HttpOnly`, `SameSite=Strict` (sin `Secure` en dev, correcto sin HTTPS) — verificado vía `curl -I`
@@ -153,11 +153,11 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 ## E6 — VERIFICACIÓN DE SUBIDA DE ARCHIVOS (§8)
 
 **Ya implementado correctamente (auditado 2026-06-08):**
-- [x] `src/core/LogoUpload.php` — finfo MIME real, whitelist, límite 5MB, `is_uploaded_file()`, nombre aleatorio, permisos 0644
-- [x] `src/modulos/porteria/lib/porteria_foto.php` — base64 estricto, regex de data URL, recompresión JPEG que destruye payloads
+- [x] `backend/core/LogoUpload.php` — finfo MIME real, whitelist, límite 5MB, `is_uploaded_file()`, nombre aleatorio, permisos 0644
+- [x] `backend/routers/porteria/v1/lib/porteria_foto.php` — base64 estricto, regex de data URL, recompresión JPEG que destruye payloads
 
 **Completado (2026-06-13):**
-- [x] Crear `.htaccess` en `public/uploads/logos/` que bloquee ejecución de PHP/scripts y fuerce Content-Type de imagen (§8.3) — implementado con 4 capas de protección
+- [x] Crear `.htaccess` en `frontend/web/public/uploads/logos/` que bloquee ejecución de PHP/scripts y fuerce Content-Type de imagen (§8.3) — implementado con 4 capas de protección
 - [x] Crear `.htaccess` en `storage/porteria/` con el mismo contenido — implementado
 - [x] Servidor confirmado: **Apache 2.4.58** — los `.htaccess` aplican en Apache
 
@@ -166,7 +166,7 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 **Verificación (§8.2 y §14.1):**
 - [ ] `curl http://10.5.213.103/smartcset/storage/porteria/test.php` → 403, nunca ejecuta PHP — **PENDIENTE** (requiere IT activar VirtualHost config)
-- [ ] Mismo test en `public/uploads/logos/`
+- [ ] Mismo test en `frontend/web/public/uploads/logos/`
 - [x] Intento de subir `.php` como logo → rechazado por validación MIME — verificado por test estático (5/5 tests PASS)
 - [x] Suite automatizada `test_seguridad/` — 5/5 tests de E6 (código PHP) PASS contra servidor (2026-06-16)
 - [x] Reporte formal creado: `REPORTE_E1-E06_VERIFICACION_SUBIDA_ARCHIVOS_SMARTCSET.md` (FASE1-REP-E06 v2.0, 2026-06-13)
@@ -179,27 +179,45 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 ---
 
-## E3 — RATE LIMITING + LOGGING DE AUTENTICACIÓN (§5)
+## E3 — RATE LIMITING + LOGGING DE AUTENTICACIÓN (§5) — ✅ COMPLETADO (2026-07-05)
+
+> **Nota de divergencia con §5 (criterio Bug 15 — priorizar diseño real):** la implementación
+> real usa nombres de columna `ip_cliente`/`id_usuario`/`ind_exitoso` (no `ip`/`id_usuario_int`/
+> `exitoso` de §5.2), `fun_verificar_bloqueo_ip` **lanza P0001** al bloquear en vez de retornar
+> BOOLEAN, y la integración vive en el endpoint AJAX `backend/routers/auth/v1/login.php` (no en el
+> bloque POST de `index.php` de §5.6, porque el login se refactorizó a AJAX en E4). El documento §5
+> se actualizó para reflejar esto. El **enriquecimiento de auditoría** (motivo_fallo + user_agent) sí
+> se implementó según la intención de §5.2.
 
 **Base de datos:**
-- [ ] Crear migración `database/migrations/add_tab_intentos_login.sql` (tabla + 2 índices, §5.2)
-- [ ] Crear `database/functions/acceso/usuarios/fun_registrar_intento_login.sql` (§5.3)
-- [ ] Crear `database/functions/acceso/usuarios/fun_verificar_bloqueo_ip.sql` (5 intentos / 15 min por defecto, §5.3)
-- [ ] Agregar las 2 funciones nuevas al array FUNCS de `setup_smartcset.sh` y la migración al bloque de migraciones (regla del proyecto)
-- [ ] Desplegar migración y funciones en BD de test, luego en desarrollo
+- [x] Migración `database/migrations/add_tab_intentos_login.sql` (tabla + 2 índices + columnas `motivo_fallo`/`user_agent` idempotentes)
+- [x] `database/functions/acceso/usuarios/fun_registrar_intento_login.sql` — firma de 5 args (ip, usuario, exitoso, motivo_fallo, user_agent); valida dominio del motivo; limpia registros >90 días en cada inserción
+- [x] `database/functions/acceso/usuarios/fun_verificar_bloqueo_ip.sql` — 5 intentos / 15 min por defecto (lanza P0001 al bloquear)
+- [x] Las 2 funciones ya están en el array FUNCS de `setup_smartcset.sh`; la migración se ejecuta antes de FUNCS
+- [x] Desplegado en BD local (`localhost`) y remota de laboratorio (`192.168.1.71`)
 
 **PHP:**
-- [ ] Agregar `LOGIN_MAX_INTENTOS=5` y `LOGIN_VENTANA_MINUTOS=15` a `.env.example` y `.env`
-- [ ] Definir las constantes en `src/core/config.php` (§5.4)
-- [ ] Agregar `$stmt_registrar_intento` y `$stmt_verificar_bloqueo` a `src/core/prepare.php` (§5.5)
-- [ ] Modificar `index.php` según §5.6: verificar bloqueo ANTES de consultar; registrar intento en los 4 caminos (exitoso / contraseña incorrecta / usuario no existe / usuario inactivo); incluir `session_regenerate_id(true)` en el camino exitoso
-- [ ] Definir mecanismo de limpieza de registros >90 días (cron o al inicio de sesión)
+- [x] `LOGIN_MAX_INTENTOS=5` y `LOGIN_VENTANA_MINUTOS=15` en `.env.example` y `.env`
+- [x] Constantes en `backend/core/config.php` con `max(1, (int) EnvLoader::get(...))` (§5.4)
+- [x] `$stmt_registrar_intento` (5 params) y `$stmt_verificar_bloqueo` en `backend/core/prepare_login.php` (§5.5)
+- [x] Integración en `backend/routers/auth/v1/login.php`: verifica bloqueo ANTES de consultar; registra intento en los 4 caminos con su `motivo_fallo` (`usuario_no_existe`/`usuario_inactivo`/`contrasena_incorrecta`/éxito=NULL) y `user_agent`; `session_regenerate_id(true)` en el camino exitoso (heredado de E4)
+- [x] Limpieza de registros >90 días: la hace `fun_registrar_intento_login` en cada inserción (no requiere cron)
 
-**Verificación (§14.1):**
-- [ ] 6 intentos fallidos seguidos → el 6° retorna mensaje de bloqueo; IP registrada en `tab_intentos_login`
-- [ ] Login con credenciales correctas → exitoso, registro con `exitoso=TRUE`
-- [ ] Tras la ventana de 15 min el bloqueo se levanta
-- [ ] Queries de auditoría del RSSI (§5.7) ejecutan correctamente
+**SIEM (bonus):**
+- [x] `motivo_fallo` visible en el SIEM — Panel de Control (`pages/modulos/siem/index.php`,
+      tabla "Alertas recientes"), vía `fun_siem_alertas_recientes`. (El submenú "Eventos Auth"
+      dedicado, con `fun_siem_list_eventos`, se eliminó el 2026-07-08 por redundante — ver Bug 18
+      en CLAUDE.md; el dato de auditoría se sigue mostrando, solo cambió de vista.)
+
+**Verificación (§14.1) — suite `scripts/test_seguridad/test_e3_rate_limiting.py`, 5/5 PASS en local y remoto:**
+- [x] N (=`LOGIN_MAX_INTENTOS`) intentos fallidos → el siguiente retorna mensaje de bloqueo; IP registrada en `tab_intentos_login`
+- [x] Login con credenciales correctas → exitoso, registro con `ind_exitoso=TRUE` y `motivo_fallo` NULL
+- [x] Motivo discriminado por rama (`usuario_no_existe`, `contrasena_incorrecta`) verificado en BD
+- [x] `user_agent` capturado y registrado
+- [ ] Tras la ventana de 15 min el bloqueo se levanta — verificado por diseño (la función solo cuenta intentos dentro de la ventana); no probado con espera real de 15 min
+- [x] Queries de auditoría del RSSI (§5.7) ejecutan correctamente (vía `fun_siem_*`)
+
+**Fix colateral:** se corrigió `scripts/test_seguridad/common.py` — `PROJECT_ROOT` apuntaba a `scripts/` (quedó desactualizado al mover los tests de `test_seguridad/` a `scripts/test_seguridad/`), por lo que `run_psql` no encontraba `.env`. Ahora localiza la raíz por marcador (`.env`/`CLAUDE.md`). Beneficia a todas las suites.
 
 ---
 
@@ -208,15 +226,15 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 **A01 — Broken Access Control:** ✅ Auditado, remediado y validado en producción (2026-06-10 / 2026-06-11) — ver `REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md`
 - [x] Verificar guard de `ind_usuario`/admin al inicio de páginas y endpoints de administración — se encontraron 8 endpoints sin verificación de privilegio admin (`menus.php`, `usuarios.php`, `menu_usuarios.php`, `copiar_menu_usuarios.php`, `procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php`, `obtener_menus_usuario.php`) y se corrigieron con `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])`
 - [x] Auditar IDOR en `porteria/ingreso/consultar.php` y `porteria/salida/consultar.php` (scope de datos) — ambos exigen sesión; sin scoping por centro porque el modelo actual es mono-centro (revisar si se vuelve multi-centro)
-- [x] Ejecutar `grep -rL "id_usuario" src/modulos/` — los 4 archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o pertenecen al módulo `registro` (control de acceso propio `registroRequireAccess()`)
+- [x] Ejecutar `grep -rL "id_usuario" backend/routers/` — los 4 archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o pertenecen al módulo `registro` (control de acceso propio `registroRequireAccess()`)
 - [x] Prueba manual con BD: usuario no-admin accediendo directo a páginas/endpoints admin → 403 — ejecutadas las 11 pruebas de §6.2 contra el servidor de producción el 2026-06-11, todas **PASS** (ver §6.4 del reporte A01). Los 8 archivos corregidos quedaron desplegados en producción.
 - [x] Suite automatizada `test_seguridad/test_e1_a01_broken_access_control.py` — **6/6 PASS** contra servidor `10.5.213.103` (2026-06-16)
 
 **A02 — Cryptographic Failures:** ⚠️ Auditado (2026-06-11) — ver `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`
 - [x] Contraseñas con bcrypt (`password_verify`) — verificado: todos los hashes en BD son `$2y$12$`; suite automatizada **3/3 PASS** (2026-06-16)
 - [ ] Cifrado en reposo → se cierra con E2 (bloqueado: prereq. 1 y 2)
-- [x] TLS BD — infraestructura de código (`DB_SSLMODE` en `config.php`/`Db.php`) lista (2026-06-11); activación → se cierra con E8 (bloqueado: Oficina TI — PHP y PostgreSQL en mismo servidor, bajo impacto inmediato)
-- [ ] HTTPS forzado en producción → depende de certificado TLS (prerreq. 6, Oficina TI)
+- [x] TLS BD — **ACTIVADO 2026-07-07** en `db_smartcset2` (servidor `10.5.213.103`): `pg_hba.conf` con `hostnossl ... reject` + `hostssl ... md5` acotados a `db_smartcset2` y a la subred `10.5.213.0/24` (no se tocó `0.0.0.0/0`, a pedido explícito, para no exigir TLS a otras redes/dispositivos). Verificado: conexión sin TLS desde la subred → rechazada; con TLS → aceptada; las otras 5 bases de datos del mismo servidor (`db_dinares`, `db_protego`, `db_rdwatch`, `db_specialized`, `maiconnect`) no se ven afectadas. Detalle en tabla histórica.
+- [x] HTTPS forzado en producción — ✅ completado 2026-06-17, certificado regenerado 2026-07-07 (ver A05/E8)
 
 **A03 — Injection:**
 - [x] Prepared statements reales (`EMULATE_PREPARES=false`) y casting `?::TEXT` — ya verificado
@@ -227,21 +245,21 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 - [ ] Verificar mínimo privilegio del usuario de BD de PHP (`role_table_grants` — sin DROP/TRUNCATE en tablas de auditoría)
 
 **A05 — Security Misconfiguration:**
-- [ ] Headers HTTP en todo el sistema → se cierra con E4
+- [x] Headers HTTP en todo el sistema → cerrado con E4; **2026-07-07:** unificado `X-Frame-Options` (Apache tenía `DENY` duplicando/contradiciendo el `SAMEORIGIN` de `SecurityMiddleware.php` — corregido a `SAMEORIGIN` en ambas capas)
 - [x] `ErrorHandler::userMessageFromException()` no expone SQL — ya verificado
-- [ ] Verificar `php.ini` producción (`display_errors=Off`, `log_errors=On`, `expose_php=Off`)
+- [x] `php.ini` producción — **verificado y corregido 2026-07-07** en `10.5.213.103`: `display_errors=Off` ✅ (ya estaba), `expose_php=Off` ✅ (estaba en `On`, corregido en FPM y CLI). `log_errors` pendiente de verificar explícitamente.
 - [ ] Verificar que `storage/` no ejecuta PHP → se cierra con E6
 
 **A06 — Vulnerable and Outdated Components:**
 - [ ] Verificar versión de PHP (8.1+ parcheado)
 - [ ] Verificar versión de PostgreSQL (14+ parcheado)
-- [ ] Revisar versiones de librerías CDN en `src/layout/head.php`
+- [ ] Revisar versiones de librerías CDN en `frontend/web/layout/head.php`
 
 **A07 — Identification and Authentication Failures:**
-- [ ] Rate limiting → se cierra con E3 (pendiente)
+- [x] Rate limiting → ✅ cerrado con E3 (2026-07-05); bloqueo por IP tras N intentos, validado por suite `test_e3_rate_limiting.py` PASS
 - [x] `session_regenerate_id(true)` tras login exitoso → ✅ cerrado en E4 (2026-06-14); validado por suite (test `test_session_id_cambia_tras_login_exitoso` PASS)
 - [x] Cookie flags `HttpOnly`+`SameSite=Strict` → ✅ cerrado en E4 (2026-06-14); validado por suite PASS
-- [ ] Auditar robustez de `src/auth/recuperar.php` (¿valida identidad solo con correo?)
+- [ ] Auditar robustez de `backend/routers/auth/v1/recuperar.php` (¿valida identidad solo con correo?)
 
 **A08 — Software and Data Integrity Failures:**
 - [ ] Agregar atributos `integrity="sha384-..."` + `crossorigin="anonymous"` a recursos CDN en `head.php`
@@ -286,25 +304,25 @@ No bloquean el arranque de E10/E7/E4/E6/E5/E3, pero deben resolverse antes de E2
 
 ---
 
-## E8 — HARDENING DE RED Y ARQUITECTURA (§10) — ⛔ coordinación Oficina TI SENA
+## E8 — HARDENING DE RED Y ARQUITECTURA (§10) — ⚠️ parcial, resto requiere Oficina TI SENA
 
-**Lo que puede hacer el desarrollador:**
-- [x] Modificar DSN en `src/core/Db.php`: agregar `;sslmode=<DB_SSLMODE>` vía variable de entorno (`config.php` + `.env.example`), vacía por defecto — (§10.3, completado 2026-06-11). Falta: setear `DB_SSLMODE=require`/`verify-full` en `.env` cuando Oficina TI habilite SSL en PostgreSQL
+**Resuelto directamente (2026-07-07, sin esperar Oficina TI):**
+- [x] Modificar DSN en `backend/core/Db.php`: agregar `;sslmode=<DB_SSLMODE>` vía variable de entorno (§10.3, completado 2026-06-11)
+- [x] Topología confirmada: PHP/Apache y PostgreSQL corren en la **misma máquina** (`10.5.213.103`) — resuelve prerrequisito 5, no bloqueaba realmente a Oficina TI
+- [x] PostgreSQL — `hostssl` en `pg_hba.conf` **activado**, acotado a `db_smartcset2` + subred `10.5.213.0/24` (no se aplicó a `0.0.0.0/0` a pedido explícito, para no exigir TLS a dispositivos fuera de esa subred). Requirió agregar también `hostnossl ... reject` ANTES de la regla `hostssl` — de lo contrario las conexiones sin TLS caían igual en la regla catch-all `host all all 0.0.0.0/0` de más abajo y NUNCA se rechazaban (lección de la sesión, ver tabla histórica). `DB_SSLMODE=require` ya estaba activo en `.env` del servidor.
+- [x] `php.ini` FPM de producción: `expose_php=Off` corregido (estaba en `On`), `display_errors=Off` ya estaba correcto
+- [x] Certificado TLS del servidor web — **regenerado 2026-07-07**: el script `scripts/infra/generar_certificado_smartcset.sh` generaba certificados sin SAN y con `CA:TRUE` (en vez de `CA:FALSE`) — corregido el script (agrega `subjectAltName`, `basicConstraints=CA:FALSE`, `extendedKeyUsage=serverAuth`) y regenerado el certificado en producción con backup del anterior
 
-**Lo que requiere Oficina TI:**
-- [ ] Obtener topología real: IPs de servidor web y BD, o confirmar máquina única (prerrequisito 5)
+**Sigue requiriendo Oficina TI SENA:**
 - [ ] Firewall perimetral: DENY all; ALLOW 443; 80 solo redirect; 22 solo IPs administrativas (§10.2)
-- [ ] Firewall interno/host: 5432 solo desde IP del servidor web (`ufw`, §10.2)
-- [ ] PostgreSQL: `ssl=on` + certificados en `postgresql.conf`; `hostssl` en `pg_hba.conf` (§10.3)
+- [ ] Firewall interno/host: 5432 solo desde IP del servidor web (`ufw`, §10.2) — hoy el puerto 5432 acepta conexiones de red amplias (`0.0.0.0/0`), decisión explícita de Anderson para no romper conectividad de dispositivos variados en la red segmentada del SENA
 - [ ] SSH: solo clave pública, `PermitRootLogin no`, `AllowUsers` (verificar `authorized_keys` ANTES de reiniciar sshd) (§10.4)
-- [ ] `php.ini` FPM de producción: `display_errors=Off`, `log_errors=On`, `expose_php=Off`
-- [ ] Certificado TLS para HTTPS del servidor web (prerrequisito 6)
 
 **Verificación (§10.3-10.4 y §14.1):**
-- [ ] `pg_stat_ssl` muestra `ssl=TRUE` para todas las conexiones del servidor web
-- [ ] `nmap -p 5432 IP_SERVIDOR_WEB` → puerto cerrado/filtrado desde el exterior
-- [ ] `openssl s_client -connect host:443 -brief` → TLSv1.2+ con verificación OK
-- [ ] `psql "host=... sslmode=require ..."` conecta desde el servidor web
+- [x] Conexión sin TLS a `db_smartcset2` desde la subred `10.5.213.0/24` → **rechazada** (`FATAL: pg_hba.conf rejects connection ... no encryption`); con TLS → **aceptada**. Probado desde 2 hosts distintos de esa subred (`.103` y `.111`).
+- [x] Las otras 5 bases de datos del mismo PostgreSQL (`db_dinares`, `db_protego`, `db_rdwatch`, `db_specialized`, `maiconnect`) siguen aceptando conexiones sin TLS — confirmado que la regla no las afecta (fallan solo por password, no por cifrado)
+- [x] `openssl s_client -connect 10.5.213.103:443 -servername 10.5.213.103` → certificado con SAN correcto (`DNS:smartcset.local, IP:10.5.213.103`), `CA:FALSE`, `TLS Web Server Authentication`
+- [ ] `nmap -p 5432 IP_SERVIDOR_WEB` → puerto cerrado/filtrado desde el exterior (pendiente, requiere firewall — Oficina TI)
 
 ---
 
@@ -345,9 +363,10 @@ Si algún paso falla tras los cambios, es una regresión a resolver antes de dar
 | 2026-06-11 | E1 (A02), E8 (parcial) | Auditoría A02 — Cryptographic Failures: 3 hallazgos (cifrado en reposo, TLS BD, HTTPS forzado). Preparada infraestructura de código para TLS BD: constante `DB_SSLMODE` (vacía por defecto, sin regresión) en `config.php`/`Db.php`/`.env.example`; activación pendiente de Oficina TI (E8). Cifrado en reposo (E2) y HTTPS (E4) quedan bloqueados por prerrequisitos institucionales. Reporte: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` | |
 | 2026-06-11 | E1 (A01) | Desplegados los 8 archivos corregidos de A01 en el servidor de producción y ejecutado el procedimiento completo de §6.2 del reporte A01 (11 pruebas: acceso no-admin, POST sin sesión/no-admin, regresión admin con escritura real revertida). Resultado: **PASS** en todas — subcontrol 1 de A01 cerrado. Resultados documentados en §6.4 del reporte A01. | |
 | 2026-06-14 | E1 (A01), E1 (A02), E4, E6, E7 | Creada suite de tests automatizados en `test_seguridad/` (Python `unittest` + `requests`, un archivo por informe, PEP8 + docstrings) que verifica las premisas principales de los 5 entregables ya cerrados/con infraestructura lista. Resultado: **23/23 PASS**. Fixes de entorno de desarrollo necesarios (no afectan producto): helper `close_stale_session()` para la sesión activa única de `tab_sesiones`, y regeneración del hash bcrypt de `porteria` para que coincida con la credencial documentada en `CLAUDE.md`. Detalle en `handoff.txt`. | |
-| 2026-06-16 | E4, E5, E6, validación servidor | **Suite `test_seguridad/` ejecutada contra servidor real `10.5.213.103`: 23/23 PASS.** Correcciones de entorno: (1) contraseña del usuario `porteria` reseteada a `Porteria2026!` en BD del servidor (había sido cambiada manualmente); (2) `src/layout/head.php` con `<script>` inline de theme-init detectado y corregido — reemplazado por `<script src="js/theme-init.js">` + `js/theme-init.js` desplegado al servidor. Hallazgo de infraestructura E6: Apache tiene `AllowOverride None` globalmente → `.htaccess` de uploads completamente ignorados en servidor; requiere acción de IT en VirtualHost. **E5 (tokens CSRF) descartado** por decisión del equipo: `SameSite=Strict` (activo via E4) mitiga el escenario principal; esfuerzo redirigido a E3. | feat/implementacion-MSPI-SEGURIDAD |
+| 2026-06-16 | E4, E5, E6, validación servidor | **Suite `test_seguridad/` ejecutada contra servidor real `10.5.213.103`: 23/23 PASS.** Correcciones de entorno: (1) contraseña del usuario `porteria` reseteada a `Porteria2026!` en BD del servidor (había sido cambiada manualmente); (2) `frontend/web/layout/head.php` con `<script>` inline de theme-init detectado y corregido — reemplazado por `<script src="frontend/web/frontend/web/public/assets/js/theme-init.js">` + `frontend/web/frontend/web/public/assets/js/theme-init.js` desplegado al servidor. Hallazgo de infraestructura E6: Apache tiene `AllowOverride None` globalmente → `.htaccess` de uploads completamente ignorados en servidor; requiere acción de IT en VirtualHost. **E5 (tokens CSRF) descartado** por decisión del equipo: `SameSite=Strict` (activo via E4) mitiga el escenario principal; esfuerzo redirigido a E3. | feat/implementacion-MSPI-SEGURIDAD |
 | 2026-06-17 | Prerrequisito 1 (custodio `DB_ENCRYPTION_KEY`) | **Custodio formal designado.** Decisión de Anderson: el custodio de `DB_ENCRYPTION_KEY` es el rol "Administrador del Sistema" (`FASE0-ROL-004` §5.1), ejercido actualmente por el equipo de desarrollo de SmartCSET dentro del SENA. Se actualizó `04_ROLES_Y_RESPONSABILIDADES_SEGURIDAD_SMARTCSET_DOCUMENTO_LEGAL.md` §5.1 (Asignación + Responsabilidades + nota de Formalización) y el prerrequisito 1 de este checklist. **No levanta** el bloqueador de fondo de E2 (rediseño de PK pendiente, hallazgo 2026-06-12) — solo resuelve la designación de custodio. | |
 | 2026-06-17 (sesión 2) | E1-A02 (HTTPS), E4 (cierre) | **E1-A02 (HTTPS) COMPLETADO ✅** — Generado certificado TLS autofirmado ECDSA P-256 en `/etc/apache2/certs/`, configurado VirtualHost HTTPS en `/etc/apache2/sites-available/smartcset-ssl.conf`, agregado `enforceHTTPS()` en `index.php` líneas 11-15, corregido DocumentRoot Apache para servir desde `/var/www/html`. APP_ENV cambiado a `production` en `.env` para activar flag Secure en cookies automáticamente. Pruebas manuales en navegador exitosas: (1) certificado autofirmado mostrado y aceptado; (2) página de login cargó en HTTPS; (3) login exitoso con usuario admin.smart; (4) dashboard accesible; (5) cookie PHPSESSID verificada con flags Secure ✅, HttpOnly ✅, SameSite=Strict ✅, Max-Age=1800 ✅. Verificación con curl confirma TLS 1.3 y cipher suite TLS_AES_256_GCM_SHA384. Reporte actualizado: `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md` v3.0. | |
+| 2026-07-07 | E8 (parcial), E1-A02 (TLS BD), E1-A05, migración BD servidor institucional | **Migración completa de `db_smartcset2` al servidor institucional real `10.5.213.103`** (dump/restore desde `10.5.213.111`, con backup previo de los datos que ya había en 103). **Auditoría exhaustiva post-migración** encontró y corrigió: (1) vhost `smartcset-ssl.conf` con `Redirect permanent /` sin scope en el `*:80` que secuestraba el tráfico HTTP de las otras 8 apps del servidor compartido — corregido a `RedirectMatch` acotado solo a `/smartcset`, y `DocumentRoot` del `*:443` restringido exclusivamente a smartcset (certificados NO alcanzan a otras apps); (2) symlinks públicos (`pages`, `routers`) faltantes; (3) `.env` del servidor apuntaba `DB_HOST` al servidor viejo; (4) permisos de escritura faltantes en `uploads/logos`/`storage/porteria`; (5) **9 funciones PL/pgSQL con el patrón de manejo de errores roto** (Bug 6 reintroducido) — incluye `fun_ingreso_sesion`/`fun_salida_sesion` (ejecutan en cada login/logout); causa raíz: 3 migraciones (`update_fun_ingreso_sesion_cerrar_vencidas.sql`, `update_fun_salida_sesion_ip_mismatch.sql`, `fix_fun_update_tab_config_sistema.sql`) que se ejecutan DESPUÉS del archivo base en el instalador y reintroducían el patrón viejo — corregidas las 3 migraciones + las 7 funciones de `instructor/` y `fun_update_tab_pmtros_grales`, desplegado todo; (6) `expose_php=On` → `Off`; (7) `X-Frame-Options` duplicado con valores distintos (Apache `DENY` vs PHP `SAMEORIGIN`) → unificado; (8) certificado TLS generado sin SAN y con `CA:TRUE` (script de origen `scripts/infra/generar_certificado_smartcset.sh` sin `-addext`) → script corregido y certificado regenerado. **E8/TLS BD activado**: `pg_hba.conf` con `hostnossl db_smartcset2 ... reject` + `hostssl db_smartcset2 ... md5` acotados a `db_smartcset2` y a la subred `10.5.213.0/24`, sin tocar `0.0.0.0/0` (decisión explícita: la red SENA está segmentada y se requiere que cualquier dispositivo pueda conectarse). Lección técnica: una regla `hostssl` angosta es inefectiva si existe una regla `host` más amplia después en el archivo — las conexiones sin TLS simplemente caen en el catch-all; hubo que agregar `hostnossl ... reject` explícito antes. Verificado que las otras 5 bases de datos del mismo PostgreSQL no se ven afectadas. **Verificación final:** checksum idéntico entre código local y `/var/www/html/smartcset` del servidor (0 diferencias), 0 funciones con patrón de error roto en la BD, login/logout/SIEM/portería/instructor funcionando end-to-end, las 8 apps del servidor compartido intactas. | |
 
 ---
 

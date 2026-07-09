@@ -13,6 +13,10 @@ DECLARE
     v_hora TIME;
     v_minutos INTEGER := 0;
     v_existe BOOLEAN;
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wid_instructor IS NULL OR wid_ficha IS NULL OR wid_aprendiz IS NULL THEN
         PERFORM smartcset_raise_validacion('Datos incompletos para registrar asistencia.');
@@ -130,6 +134,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

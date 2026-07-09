@@ -32,8 +32,7 @@ function salidaConsultarAcceso(
 function salidaRegistrarManual(
     PDOStatement $stmtFunRegistrar,
     PDOStatement $stmtIngresoAbierto,
-    array $datos,
-    string $usrAudit
+    array $datos
 ): int {
     $captura = accesoDocumentoDesdePost($datos);
     $doc = $captura['documento'];
@@ -55,7 +54,6 @@ function salidaRegistrarManual(
         $doc,
         $tipo,
         $obs !== '' ? $obs : null,
-        $usrAudit,
     ]);
 
     $idIngreso = $stmtFunRegistrar->fetchColumn();

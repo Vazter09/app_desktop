@@ -1,0 +1,23 @@
+# Bloquea la ejecución de scripts subidos por usuarios (defensa en profundidad).
+# Ver database/... / scripts/test_seguridad/test_e6_verificacion_uploads.py
+<FilesMatch "\.(php|phtml|phar|pl|py|cgi|sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<Files ".htaccess">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+Options -Indexes

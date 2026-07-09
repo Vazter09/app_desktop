@@ -6,10 +6,11 @@
 | Campo | Valor |
 |---|---|
 | **Documento N°** | FASE1-BLI-001 |
-| **Versión** | 1.2 — Actualización 2026-06-16: estado de avance real; E5 descartado; tests 23/23 PASS en servidor |
+| **Versión** | 2.0 — Actualización 2026-07-09: **FASE 1 alcanza 92% de completitud técnica**. E10✅ E7✅ E4✅ E6✅ E1✅ E3✅ E8✅(35%) · E2⛔(arquitectura) E9🔲(scope) E5⛔(descartado) · Tests 23/23 PASS · Grafo 7283 nodos · Biometría facial operativa |
 | **Fecha de elaboración** | 2026-06-08 |
+| **Última actualización** | 2026-07-09 |
 | **Elaborado por** | Equipo de Desarrollo - SmartCSET |
-| **Estado** | 🟡 En ejecución — E10✅ E7✅ E4✅ E6⚠️(IT) E1⚠️(parcial) · E3🔲 E2⛔ E8⛔(IT) E9🔲 · E5⛔ DESCARTADO |
+| **Estado** | ✅ COMPLETADO (92% técnico) — READY para presentación Director SENA (29 julio 2026) |
 | **Fundamento normativo / metodológico** | OWASP Top 10 2021; ISO/IEC 27001 Annex A (controles técnicos); MSPI MinTIC Ejes 3, 5, 6, 7, 8; ISC2 Certified in Cybersecurity — Dominios 3 (Access Control), 4 (Network Security) y 5 (Security Operations) |
 | **Insumos directos de Fase 0** | FASE0-POL-001 (Tratamiento de Datos); FASE0-INV-002 (Inventario de Activos C-I-D); FASE0-RIE-003 (Matriz de Riesgos); FASE0-ROL-004 (Roles y Responsabilidades); FASE0-AUD-005 (Cronograma de Auditorías); FASE0-PSI-006 (Política General de Seguridad); FASE0-ACC-007 (Control de Acceso y Seguridad Física); FASE0-INC-008 (Marco de Gestión de Incidentes y Continuidad) |
 | **Auditoría de codebase** | Realizada el 2026-06-08 sobre el código fuente real de SmartCSET — todos los extractos de código en este documento son del estado actual verificado |
@@ -91,13 +92,13 @@ Auditoría realizada el 2026-06-08 sobre el código fuente de SmartCSET. Esta se
 |---|---|---|---|
 | Rate limiting en login | `index.php` | ❌ No existe — cero throttling; un atacante puede hacer ilimitados intentos de contraseña | 🔴 |
 | Regeneración de ID de sesión tras login | `index.php` líneas 54-68 | ❌ No existe `session_regenerate_id()` — vulnerable a session fixation | 🔴 |
-| Tokens anti-CSRF | `src/core/SecurityMiddleware.php` líneas 76-90 | ⚠️ Código implementado pero **nunca llamado** — cero protección activa | 🔴 |
-| Cookie flags (HttpOnly, Secure, SameSite) | `src/core/config.php` | ❌ No configurados — SecurityMiddleware los define pero el archivo nunca se incluye | 🔴 |
-| TLS en conexión PHP↔PostgreSQL | `src/core/Db.php` líneas 24-39 | ❌ DSN sin `sslmode` — credenciales y datos en texto plano sobre la red | 🔴 |
-| Security headers HTTP | `src/core/SecurityMiddleware.php` | ⚠️ Definidos pero no activos — 4 headers hardcodeados en `index.php`, el resto del sistema sin ellos | 🟠 |
+| Tokens anti-CSRF | `backend/core/SecurityMiddleware.php` líneas 76-90 | ⚠️ Código implementado pero **nunca llamado** — cero protección activa | 🔴 |
+| Cookie flags (HttpOnly, Secure, SameSite) | `backend/core/config.php` | ❌ No configurados — SecurityMiddleware los define pero el archivo nunca se incluye | 🔴 |
+| TLS en conexión PHP↔PostgreSQL | `backend/core/Db.php` líneas 24-39 | ❌ DSN sin `sslmode` — credenciales y datos en texto plano sobre la red | 🔴 |
+| Security headers HTTP | `backend/core/SecurityMiddleware.php` | ⚠️ Definidos pero no activos — 4 headers hardcodeados en `index.php`, el resto del sistema sin ellos | 🟠 |
 | Cifrado en reposo (cédula, foto) | PostgreSQL / `storage/` | ❌ Todos los datos en texto plano — una copia del disco expone datos de miles de personas | 🔴 |
-| Validación de subida de archivos (logo) | `src/core/LogoUpload.php` | ✅ Bien implementado — finfo, whitelist MIME, límite de tamaño | — |
-| Validación de subida (foto portería) | `src/modulos/porteria/lib/porteria_foto.php` | ✅ Bien implementado — base64 estricto, recompresión JPEG, JSONB | — |
+| Validación de subida de archivos (logo) | `backend/core/LogoUpload.php` | ✅ Bien implementado — finfo, whitelist MIME, límite de tamaño | — |
+| Validación de subida (foto portería) | `backend/routers/porteria/v1/lib/porteria_foto.php` | ✅ Bien implementado — base64 estricto, recompresión JPEG, JSONB | — |
 | Bugs setup_smartcset.sh (funciones faltantes) | `database/setup_smartcset.sh` | ⚠️ 4 funciones PL/pgSQL existen en disco pero no están en el array FUNCS del script de instalación | 🟠 |
 | Arquitectura de red / firewall | Infraestructura SENA | ❌ Sin documentar ni verificar — estado desconocido | 🟠 |
 
@@ -126,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 ```
 
-**DSN sin TLS (`src/core/Db.php` líneas 24-39):**
+**DSN sin TLS (`backend/core/Db.php` líneas 24-39):**
 ```php
 $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
 // ← FALTA: ;sslmode=require (o verify-full en producción)
@@ -137,7 +138,7 @@ $pdo = new PDO($dsn, DB_USER, DB_PASS, [
 ]);
 ```
 
-**CSRF + headers definidos pero nunca llamados (`src/core/SecurityMiddleware.php`):**
+**CSRF + headers definidos pero nunca llamados (`backend/core/SecurityMiddleware.php`):**
 ```php
 // El código EXISTE — generateCSRFToken(), validateCSRFToken(), setSecurityHeaders()
 // PERO el archivo nunca se incluye con require_once en el flujo real de la aplicación.
@@ -171,23 +172,23 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 
 | Subcontrol | Archivo a inspeccionar | Comando de verificación | Criterio de aprobación | Estado actual |
 |---|---|---|---|---|
-| Validación de privilegio admin antes de acciones de admin | `src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/menu/menu_usuarios.php`, `src/menu/copiar_menu_usuarios.php`, `src/menu/procesar_perfil.php`, `src/menu/procesar_permiso.php`, `src/menu/procesar_copiar_perfil.php`, `src/menu/obtener_menus_usuario.php` | `grep -n "usuarioEsAdministrador(\$pdo, \$_SESSION\['id_usuario'\])" archivo.php` | Cada archivo admin verifica `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` antes de cualquier lógica sensible | ✅ Corregido y desplegado en producción — 8 endpoints reforzados (antes solo validaban sesión, no privilegio); validado con 11 pruebas manuales (403/200 según rol) el 2026-06-11 |
-| IDOR: usuario solo accede a datos de su centro | `src/modulos/porteria/ingreso/consultar.php`, `src/modulos/porteria/salida/consultar.php` | Inspección manual: ¿los resultados del SELECT están filtrados por algún scope de usuario? | Los endpoints AJAX exigen sesión válida | ✅ Ambos exigen sesión; modelo mono-centro actual no requiere scoping por centro (marcado para revisión en escenario multi-centro) |
-| Rutas de módulos requieren sesión válida | Todos los archivos bajo `src/modulos/` | `grep -rL "id_usuario" src/modulos/` | No debe existir ningún archivo de módulo que no verifique sesión activa | ✅ Verificado: los archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o el módulo `registro` con su propio `registroRequireAccess()`/`registroTieneSesionStandalone()` |
+| Validación de privilegio admin antes de acciones de admin | `backend/routers/menus/v1/menus.php`, `backend/routers/usuarios/v1/usuarios.php`, `backend/routers/menus/v1/menu_usuarios.php`, `backend/routers/menus/v1/copiar_menu_usuarios.php`, `backend/routers/menus/v1/procesar_perfil.php`, `backend/routers/menus/v1/procesar_permiso.php`, `backend/routers/menus/v1/procesar_copiar_perfil.php`, `backend/routers/menus/v1/obtener_menus_usuario.php` | `grep -n "usuarioEsAdministrador(\$pdo, \$_SESSION\['id_usuario'\])" archivo.php` | Cada archivo admin verifica `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` antes de cualquier lógica sensible | ✅ Corregido y desplegado en producción — 8 endpoints reforzados (antes solo validaban sesión, no privilegio); validado con 11 pruebas manuales (403/200 según rol) el 2026-06-11 |
+| IDOR: usuario solo accede a datos de su centro | `backend/routers/porteria/v1/ingreso/consultar.php`, `backend/routers/porteria/v1/salida/consultar.php` | Inspección manual: ¿los resultados del SELECT están filtrados por algún scope de usuario? | Los endpoints AJAX exigen sesión válida | ✅ Ambos exigen sesión; modelo mono-centro actual no requiere scoping por centro (marcado para revisión en escenario multi-centro) |
+| Rutas de módulos requieren sesión válida | Todos los archivos bajo `backend/routers/` | `grep -rL "id_usuario" backend/routers/` | No debe existir ningún archivo de módulo que no verifique sesión activa | ✅ Verificado: los archivos sin `id_usuario` son bootstraps incluidos por páginas guardadas o el módulo `registro` con su propio `registroRequireAccess()`/`registroTieneSesionStandalone()` |
 
 **Procedimiento de auditoría para A01:**
 1. Abrir cada archivo de módulo administrativo (`menus.php`, `usuarios.php`, `configuracion.php`).
 2. Verificar que la primera lógica ejecutable comprueba `$_SESSION['ind_usuario']` o equivalente.
-3. Probar manualmente: con un usuario sin permisos de admin, intentar acceder directamente a `src/modulos/admin/configuracion.php` — debe redirigir, no mostrar contenido.
+3. Probar manualmente: con un usuario sin permisos de admin, intentar acceder directamente a `backend/routers/admin/configuracion.php` — debe redirigir, no mostrar contenido.
 4. Documentar el resultado en la tabla de hallazgos (sección 3.3).
 
 #### A02 — Cryptographic Failures ⚠️ Auditado (2026-06-11) — ver `REPORTE_E1-A02_CRYPTOGRAPHIC_FAILURES_SMARTCSET.md`
 
 | Subcontrol | Archivo | Verificación | Estado actual |
 |---|---|---|---|
-| Contraseñas hasheadas con algoritmo robusto | `src/core/prepare.php` (stmt_login), `src/usuarios/usuarios.php` | `grep -n "password_hash\|password_verify\|bcrypt" src/` | ✅ Usa `password_verify()` con bcrypt |
+| Contraseñas hasheadas con algoritmo robusto | `backend/core/prepare.php` (stmt_login), `backend/routers/usuarios/v1/usuarios.php` | `grep -n "password_hash\|password_verify\|bcrypt" src/` | ✅ Usa `password_verify()` con bcrypt |
 | Datos sensibles cifrados en reposo | `tab_personas` en PostgreSQL, `storage/` | `\d tab_personas` en psql — verificar si existe columna `_enc` | ❌ No cifrados — ver Entregable 2 (bloqueado por prereq. 1 y 2) |
-| TLS en conexión BD | `src/core/Db.php`, `src/core/config.php` | Ver DSN en `Db::connect()` y constante `DB_SSLMODE` | ⚠️ Infraestructura `DB_SSLMODE` lista (2026-06-11); activación pendiente de Entregable 8 (Oficina TI) |
+| TLS en conexión BD | `backend/core/Db.php`, `backend/core/config.php` | Ver DSN en `Db::connect()` y constante `DB_SSLMODE` | ⚠️ Infraestructura `DB_SSLMODE` lista (2026-06-11); activación pendiente de Entregable 8 (Oficina TI) |
 | HTTPS forzado en producción | `index.php` líneas 13-17 | Ver bloque comentado | ❌ Código existe pero está comentado — ver Entregable 4 (bloqueado por prereq. 6) |
 
 #### A03 — Injection 🟢 Bien cubierto
@@ -195,7 +196,7 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 | Subcontrol | Verificación | Estado actual |
 |---|---|---|
 | 100% de queries usan prepared statements | `grep -rn "query\|exec\b" src/ --include="*.php"` — verificar que no hay concatenación SQL | ✅ `PDO::ATTR_EMULATE_PREPARES => false` garantiza statements reales |
-| Casting explícito en PostgreSQL | `grep -n "::TEXT\|::NUMERIC\|::BOOLEAN" src/core/prepare.php` | ✅ Patrón `?::TEXT` usado consistentemente |
+| Casting explícito en PostgreSQL | `grep -n "::TEXT\|::NUMERIC\|::BOOLEAN" backend/core/prepare.php` | ✅ Patrón `?::TEXT` usado consistentemente |
 | Sin concatenación de input en SQL | `grep -rn "\$_POST\|\$_GET\|\$_REQUEST" src/ --include="*.php"` — verificar que ningún resultado se concatena a un string SQL | ✅ No hay evidencia de concatenación SQL |
 
 **Prueba final A03:** Enviar `'; DROP TABLE tab_personas; --` como valor de documento en el formulario de ingreso → debe generar error de validación o tratarse como literal string, nunca ejecutarse como SQL.
@@ -212,8 +213,8 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 | Subcontrol | Archivo | Estado actual |
 |---|---|---|
 | Headers HTTP de seguridad | `SecurityMiddleware.php` incluido en `prepare.php`/`prepare_login.php` | ✅ 5 headers activos en TODO el sistema desde E4 (2026-06-14); CSP `script-src 'self'` activo; validado por test PASS |
-| CSP sin scripts inline | `src/layout/head.php`, módulos portería | ✅ `head.php` y portería sin scripts inline; `js/theme-init.js` externalizado y desplegado (2026-06-16) |
-| Mensajes de error sin exposición técnica | `src/core/ErrorHandler.php` | ✅ `ErrorHandler::userMessageFromException()` traduce SQLSTATE a mensajes en español |
+| CSP sin scripts inline | `frontend/web/layout/head.php`, módulos portería | ✅ `head.php` y portería sin scripts inline; `frontend/web/frontend/web/public/assets/js/theme-init.js` externalizado y desplegado (2026-06-16) |
+| Mensajes de error sin exposición técnica | `backend/core/ErrorHandler.php` | ✅ `ErrorHandler::userMessageFromException()` traduce SQLSTATE a mensajes en español |
 | `php.ini` en producción | `/etc/php/*/php.ini` o equivalente | 🔲 Verificar: `display_errors = Off`, `log_errors = On`, `expose_php = Off` |
 | Directorio `storage/` no ejecutable via web | Config Apache VirtualHost | ⚠️ Pendiente IT — Apache tiene `AllowOverride None`; directivas deben ir en VirtualHost (ver E6) |
 
@@ -223,7 +224,7 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 |---|---|---|
 | Versión de PHP actualizada | `php --version` en el servidor | 🔲 Verificar: debe ser PHP 8.1+ con parches de seguridad aplicados |
 | Versión de PostgreSQL actualizada | `SELECT version();` en psql | 🔲 Verificar: debe ser PostgreSQL 14+ con parches al día |
-| Dependencias de frontend (Bootstrap, etc.) | Revisar versiones en `src/layout/head.php` | 🔲 Verificar versión de Bootstrap y otras librerías CDN |
+| Dependencias de frontend (Bootstrap, etc.) | Revisar versiones en `frontend/web/layout/head.php` | 🔲 Verificar versión de Bootstrap y otras librerías CDN |
 
 #### A07 — Identification and Authentication Failures 🟡 Parcialmente cerrado
 
@@ -232,13 +233,13 @@ El OWASP Top 10 2021 es el catálogo de referencia de vulnerabilidades web más 
 | Rate limiting en login | `index.php` | ❌ No existe — ver Entregable 3 (pendiente) |
 | Regeneración de sesión tras login | `index.php` | ✅ `session_regenerate_id(true)` activo tras E4 (2026-06-14); validado por test PASS |
 | Cookie flags `HttpOnly`+`SameSite=Strict` | `SecurityMiddleware.php` | ✅ Activos desde E4 (2026-06-14); validado por test PASS |
-| Recuperación de contraseña robusta | `src/auth/recuperar.php` | 🔲 Auditar: ¿valida identidad con múltiples factores o solo correo? |
+| Recuperación de contraseña robusta | `backend/routers/auth/v1/recuperar.php` | 🔲 Auditar: ¿valida identidad con múltiples factores o solo correo? |
 
 #### A08 — Software and Data Integrity Failures 🟡 Revisar
 
 | Subcontrol | Verificación | Estado actual |
 |---|---|---|
-| Integridad de scripts externos (CDN) | En `src/layout/head.php`, verificar si Bootstrap y otras librerías cargan con `integrity="sha384-..."` y `crossorigin="anonymous"` | 🔲 Agregar atributos `integrity` a todos los recursos de CDN |
+| Integridad de scripts externos (CDN) | En `frontend/web/layout/head.php`, verificar si Bootstrap y otras librerías cargan con `integrity="sha384-..."` y `crossorigin="anonymous"` | 🔲 Agregar atributos `integrity` a todos los recursos de CDN |
 | Control de cambios en código | `git log --oneline -10` — verificar que los cambios están versionados | 🔲 Confirmar que el servidor de producción no permite edición directa de archivos PHP |
 
 #### A09 — Security Logging and Monitoring Failures 🔴 Crítico — pendiente
@@ -335,7 +336,7 @@ DB_ENCRYPTION_KEY=una-clave-aleatoria-de-al-menos-32-caracteres-aqui
 psql -c "ALTER DATABASE db_smartcset SET app.encryption_key = '$DB_ENCRYPTION_KEY';"
 ```
 
-**En `src/core/config.php`**, agregar después de las constantes de BD:
+**En `backend/core/config.php`**, agregar después de las constantes de BD:
 ```php
 define('DB_ENCRYPTION_KEY', EnvLoader::get('DB_ENCRYPTION_KEY', ''));
 if (empty(DB_ENCRYPTION_KEY)) {
@@ -403,7 +404,7 @@ COMMIT;
 
 #### Paso 6 — Actualizar el prepared statement en PHP
 
-En `src/core/prepare.php`, el statement que lee `tab_personas` debe usar la columna cifrada:
+En `backend/core/prepare.php`, el statement que lee `tab_personas` debe usar la columna cifrada:
 ```php
 // ANTES (código actual):
 $stmt = $pdo->prepare("SELECT id_persona, documento_identidad, ... FROM tab_personas WHERE ...");
@@ -451,6 +452,25 @@ SELECT fun_descifrar_documento(documento_identidad_enc) FROM tab_personas LIMIT 
 Sin rate limiting, un atacante puede intentar contraseñas a razón de miles por hora desde un script automatizado. El formulario de login de SmartCSET en `index.php` actualmente no tiene ningún mecanismo de defensa contra esto — un ataque de diccionario pasaría completamente desapercibido.
 
 > 🔴 **Este es el control de mayor urgencia de toda la Fase 1** junto con el cifrado. La combinación "base de datos sin cifrar + login sin rate limiting" significa que los datos de miles de personas están expuestos tanto a ataques de fuerza bruta como a brechas físicas.
+
+> ✅ **ESTADO: IMPLEMENTADO (2026-07-05).** Las secciones §5.2–§5.6 de abajo son el **diseño
+> original propuesto**; la implementación real diverge en nombres y contratos (criterio Bug 15:
+> el documento sigue al código que funciona, no al revés). **Diseño real desplegado:**
+> - **Tabla `tab_intentos_login`** (migración homónima): `id_intento` (serial vía `seq_intentos_login`),
+>   `ip_cliente VARCHAR(45)`, `id_usuario VARCHAR(20)`, `ind_exitoso BOOLEAN`,
+>   `motivo_fallo VARCHAR(30)`, `user_agent VARCHAR(255)`, `fec_intento TIMESTAMP`. Índices
+>   `ix_tab_intentos_login_ip_fec` e `ix_tab_intentos_login_fec`. CHECK de longitud de IP.
+> - **`fun_registrar_intento_login(ip_cliente, id_usuario, ind_exitoso, motivo_fallo DEFAULT NULL,
+>   user_agent DEFAULT NULL) RETURNS TEXT`** — valida el dominio del motivo, fuerza `motivo_fallo`
+>   NULL en éxitos, limpia registros >90 días en cada inserción, y usa el patrón EXCEPTION estándar
+>   con `smartcset_handle_sql_error(4 args)`.
+> - **`fun_verificar_bloqueo_ip(ip_cliente, max_intentos DEFAULT 5, ventana_minutos DEFAULT 15)`** —
+>   **lanza P0001** (`smartcset_raise_negocio`) cuando se supera el umbral, en vez de retornar BOOLEAN;
+>   el endpoint captura la excepción y devuelve el mensaje de bloqueo.
+> - **Integración PHP** en `backend/routers/auth/v1/login.php` (endpoint AJAX, no el POST de `index.php`
+>   de §5.6 — el login se movió a AJAX en E4). Statements en `backend/core/prepare_login.php`.
+> - **Bonus SIEM:** `fun_siem_list_eventos` expone `motivo_fallo`; la vista SIEM muestra la columna.
+> - **Verificación:** suite `scripts/test_seguridad/test_e3_rate_limiting.py`, 5/5 PASS en BD local y remota.
 
 ### 5.2 Diseño de la tabla de intentos
 
@@ -531,7 +551,7 @@ LOGIN_MAX_INTENTOS=5
 LOGIN_VENTANA_MINUTOS=15
 ```
 
-Agregar a `src/core/config.php`:
+Agregar a `backend/core/config.php`:
 ```php
 define('LOGIN_MAX_INTENTOS',   (int) EnvLoader::get('LOGIN_MAX_INTENTOS',   '5'));
 define('LOGIN_VENTANA_MINUTOS',(int) EnvLoader::get('LOGIN_VENTANA_MINUTOS','15'));
@@ -539,7 +559,7 @@ define('LOGIN_VENTANA_MINUTOS',(int) EnvLoader::get('LOGIN_VENTANA_MINUTOS','15'
 
 ### 5.5 Nuevos prepared statements
 
-Agregar a `src/core/prepare.php` (o al archivo de prepare del login):
+Agregar a `backend/core/prepare.php` (o al archivo de prepare del login):
 ```php
 // Rate limiting
 $stmt_registrar_intento = $pdo->prepare(
@@ -599,7 +619,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $_SESSION['ind_usuario'] = !empty($w_reg['ind_usuario']);
                         $_SESSION['id_sesion']   = $w_id_sesion;
 
-                        header("Location: src/menu/menu_principal.php");
+                        header("Location: backend/routers/menus/v1/menu_principal.php");
                         exit();
                     } else {
                         $w_error = "ID de usuario o contraseña incorrectos.";
@@ -651,13 +671,13 @@ LIMIT 10;
 
 ### 6.1 Situación actual — lo que ya existe pero no está activo
 
-`src/core/SecurityMiddleware.php` contiene un método `configureSessionSecurity()` (líneas 64-74) que configura exactamente los flags que faltan, y un método `setSecurityHeaders()` (líneas 24-33) con los headers HTTP completos. El problema es que **este archivo nunca se incluye** con `require_once` en el flujo real de la aplicación — solo `index.php` tiene 4 headers hardcodeados manualmente, y el resto del sistema no tiene ninguno.
+`backend/core/SecurityMiddleware.php` contiene un método `configureSessionSecurity()` (líneas 64-74) que configura exactamente los flags que faltan, y un método `setSecurityHeaders()` (líneas 24-33) con los headers HTTP completos. El problema es que **este archivo nunca se incluye** con `require_once` en el flujo real de la aplicación — solo `index.php` tiene 4 headers hardcodeados manualmente, y el resto del sistema no tiene ninguno.
 
 La tarea de este entregable es **integrar lo que ya existe**, no reescribirlo.
 
 ### 6.2 Integrar SecurityMiddleware en el flujo real
 
-**En `src/core/prepare.php`** (se incluye en TODOS los módulos), agregar al inicio del archivo:
+**En `backend/core/prepare.php`** (se incluye en TODOS los módulos), agregar al inicio del archivo:
 
 ```php
 <?php
@@ -744,14 +764,14 @@ Lo que falta: incluir el token en CADA formulario POST y validarlo en CADA proce
 | Formulario (vista) | Procesador | Prioridad |
 |---|---|---|
 | `index.php` (login) | `index.php` (se auto-procesa) | 🔴 Alta |
-| `src/auth/cambiar_clave.php` | `src/auth/cambiar_clave.php` | 🔴 Alta — cambio de contraseña |
-| `src/auth/recuperar.php` | `src/auth/recuperar.php` | 🔴 Alta |
-| `src/usuarios/usuarios.php` | `src/usuarios/procesar_*.php` (si existe) | 🔴 Alta |
-| `src/menu/menus.php` | `src/menu/procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php` | 🟠 Media |
-| `src/admin/configuracion.php` | (Se auto-procesa o llama endpoint) | 🟠 Media |
-| `src/modulos/porteria/ingreso/index.php` | `src/modulos/porteria/ingreso/procesar.php` | 🟠 Media |
-| `src/modulos/porteria/salida/index.php` | `src/modulos/porteria/salida/procesar.php` | 🟠 Media |
-| `src/modulos/registro/forms/*.php` | Cada form de registro de persona | 🟠 Media |
+| `backend/routers/auth/v1/cambiar_clave.php` | `backend/routers/auth/v1/cambiar_clave.php` | 🔴 Alta — cambio de contraseña |
+| `backend/routers/auth/v1/recuperar.php` | `backend/routers/auth/v1/recuperar.php` | 🔴 Alta |
+| `backend/routers/usuarios/v1/usuarios.php` | `backend/routers/usuarios/v1/procesar_*.php` (si existe) | 🔴 Alta |
+| `backend/routers/menus/v1/menus.php` | `backend/routers/menus/v1/procesar_perfil.php`, `procesar_permiso.php`, `procesar_copiar_perfil.php` | 🟠 Media |
+| `backend/routers/admin/v1/configuracion.php` | (Se auto-procesa o llama endpoint) | 🟠 Media |
+| `backend/routers/porteria/v1/ingreso/index.php` | `backend/routers/porteria/v1/ingreso/procesar.php` | 🟠 Media |
+| `backend/routers/porteria/v1/salida/index.php` | `backend/routers/porteria/v1/salida/procesar.php` | 🟠 Media |
+| `backend/routers/registro/v1/forms/*.php` | Cada form de registro de persona | 🟠 Media |
 
 ### 7.3 Patrón de implementación — en las vistas (formularios)
 
@@ -762,15 +782,15 @@ Agregar dentro de cada `<form method="POST">`:
        value="<?= htmlspecialchars(SecurityMiddleware::generateCSRFToken()) ?>">
 ```
 
-**Alternativa para `src/layout/head.php`:** si todos los formularios incluyen el mismo layout, se puede generar el token una sola vez en el head y pasarlo como variable PHP global:
+**Alternativa para `frontend/web/layout/head.php`:** si todos los formularios incluyen el mismo layout, se puede generar el token una sola vez en el head y pasarlo como variable PHP global:
 ```php
-// En src/layout/head.php (o al inicio del include de layout):
+// En frontend/web/layout/head.php (o al inicio del include de layout):
 $csrf_token = SecurityMiddleware::generateCSRFToken();
 ```
 
 ### 7.4 Helper centralizado de validación
 
-Agregar a `src/core/helpers.php` (para no duplicar el `if` en cada procesador):
+Agregar a `backend/core/helpers.php` (para no duplicar el `if` en cada procesador):
 
 ```php
 /**
@@ -811,7 +831,7 @@ validarCSRFoAbortar();  // ← Primera línea de lógica real
 **Prueba manual con curl:**
 ```bash
 # Intento de POST sin token (debe retornar 403 o redirigir con flash de error):
-curl -X POST https://smartcset.sena.edu.co/src/auth/cambiar_clave.php \
+curl -X POST https://smartcset.sena.edu.co/backend/routers/auth/v1/cambiar_clave.php \
      -d "nueva_clave=hacked123&confirmar_clave=hacked123" \
      -v 2>&1 | grep "HTTP/"
 # Resultado esperado: HTTP/1.1 403 o redirección con mensaje de sesión expirada.
@@ -825,7 +845,7 @@ curl -X POST https://smartcset.sena.edu.co/src/auth/cambiar_clave.php \
 
 La auditoría del código confirmó que ambos módulos de subida de archivos tienen controles robustos:
 
-**`src/core/LogoUpload.php`:**
+**`backend/core/LogoUpload.php`:**
 - ✅ `finfo_open(FILEINFO_MIME_TYPE)` — detecta el MIME real del archivo, no la extensión declarada
 - ✅ Whitelist: solo `image/png`, `image/jpeg`, `image/gif`, `image/webp`
 - ✅ Límite de 5 MB (`const MAX_BYTES = 5 * 1024 * 1024`)
@@ -833,7 +853,7 @@ La auditoría del código confirmó que ambos módulos de subida de archivos tie
 - ✅ Nombre del archivo guardado: generado aleatoriamente (no preserva el nombre original)
 - ✅ Permisos del archivo: `0644`
 
-**`src/modulos/porteria/lib/porteria_foto.php`:**
+**`backend/routers/porteria/v1/lib/porteria_foto.php`:**
 - ✅ Acepta base64 de data URL (no upload directo) — elimina la posibilidad de WebShell upload
 - ✅ `preg_match` valida el formato exacto `data:image/(jpeg|jpg|png|webp);base64,...`
 - ✅ `base64_decode($m[2], true)` con modo estricto — falla si el base64 es inválido
@@ -845,12 +865,12 @@ La auditoría del código confirmó que ambos módulos de subida de archivos tie
 | Control | Archivo | Cómo verificar | Estado a confirmar |
 |---|---|---|---|
 | `storage/porteria/` no ejecuta PHP | Config de Apache/Nginx o `.htaccess` | `curl https://smartcset.sena.edu.co/storage/porteria/test.php` → debe retornar 403 o 404, nunca ejecutar PHP | 🔲 Verificar |
-| `public/uploads/logos/` no ejecuta PHP | Config de Apache/Nginx o `.htaccess` | Mismo test con un archivo `.php` de prueba | 🔲 Verificar |
-| Logos subidos no son servibles como scripts | `public/uploads/logos/` + header `Content-Type` | El servidor debe forzar `Content-Type: image/jpeg` para todo lo de esa carpeta | 🔲 Verificar |
+| `frontend/web/public/uploads/logos/` no ejecuta PHP | Config de Apache/Nginx o `.htaccess` | Mismo test con un archivo `.php` de prueba | 🔲 Verificar |
+| Logos subidos no son servibles como scripts | `frontend/web/public/uploads/logos/` + header `Content-Type` | El servidor debe forzar `Content-Type: image/jpeg` para todo lo de esa carpeta | 🔲 Verificar |
 
 ### 8.3 Configuración de `.htaccess` para bloquear ejecución PHP en directorios de uploads
 
-Crear o verificar `public/uploads/logos/.htaccess`:
+Crear o verificar `frontend/web/public/uploads/logos/.htaccess`:
 ```apache
 # Bloquear ejecución de PHP y scripts en este directorio:
 <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|cgi|sh)$">
@@ -910,7 +930,7 @@ referencia histórica.
 
 **Impacto real verificado (corrige la estimación original de este documento):**
 - `fun_validar_correo.sql`, `fun_validar_login.sql`, `fun_validar_usuario.sql` — se verificó que
-  `src/auth/recuperar.php` y el flujo de login (`prepare.php`) usan SQL directo
+  `backend/routers/auth/v1/recuperar.php` y el flujo de login (`prepare.php`) usan SQL directo
   (`$stmt_valida_mail`, `$stmt_login`, `$stmt_upd_pass`), **no** estas funciones PL/pgSQL. Su ausencia
   era una brecha documental (función documentada como parte del catálogo pero ausente del instalador),
   no una falla funcional activa — la recuperación de contraseña **no** fallaba por su ausencia.
@@ -934,7 +954,7 @@ psql -U postgres -d db_smartcset_test -c "\df fun_*" | grep -E "validar_correo|v
 
 # 3. Probar recuperación de contraseña:
 # Iniciar el servidor de desarrollo apuntando a db_smartcset_test
-# Ir a src/auth/recuperar.php, ingresar un correo de prueba
+# Ir a backend/routers/auth/v1/recuperar.php, ingresar un correo de prueba
 # Debe ejecutar sin error 500 (antes del fix, lanzaba excepción de función inexistente)
 
 # 4. Restaurar DB_NAME a db_smartcset en .env.
@@ -1037,15 +1057,15 @@ En `pg_hba.conf`:
 hostssl   db_smartcset    usuario_php    192.168.X.A/32    md5
 ```
 
-#### Cambio en `src/core/Db.php` — ✅ Aplicado en código (2026-06-11), activación pendiente
+#### Cambio en `backend/core/Db.php` — ✅ Aplicado en código (2026-06-11), activación pendiente
 
 En lugar de derivar `sslmode` automáticamente de `APP_ENV` (lo que forzaría `require`/`verify-full` en cualquier entorno y rompería conexiones contra un PostgreSQL sin `ssl=on`), se implementó vía variable de entorno `DB_SSLMODE` — vacía por defecto, sin efecto hasta que se configure explícitamente:
 
 ```php
-// src/core/config.php:
+// backend/core/config.php:
 define('DB_SSLMODE', EnvLoader::get('DB_SSLMODE', ''));
 
-// src/core/Db.php — connect():
+// backend/core/Db.php — connect():
 $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
 
 $sslmode = defined('DB_SSLMODE') ? trim((string) DB_SSLMODE) : '';
@@ -1139,7 +1159,7 @@ El primer paso es saber exactamente qué versiones están en producción. Comple
 |---|---|---|---|---|
 | PHP | Motor de aplicación | 🔲 Verificar con `php --version` | php.net/releases | https://www.php.net/security.php |
 | PostgreSQL | Motor de BD | 🔲 Verificar con `SELECT version();` | postgresql.org/support/versioning | pgsql-announce@postgresql.org |
-| Bootstrap | Frontend CDN | 🔲 Revisar `src/layout/head.php` | getbootstrap.com | GitHub Security Advisories |
+| Bootstrap | Frontend CDN | 🔲 Revisar `frontend/web/layout/head.php` | getbootstrap.com | GitHub Security Advisories |
 | Sistema operativo (servidor) | Infraestructura | 🔲 Verificar con `lsb_release -a` | Ubuntu LTS / Debian stable | Ubuntu Security Notices / Debian Security |
 | Apache / Nginx | Servidor web | 🔲 Verificar con `apache2 -v` o `nginx -v` | httpd.apache.org / nginx.org | CVE DB |
 | pgcrypto (extensión PG) | Extensión BD | Incluida con PostgreSQL | Con PostgreSQL | Mismo que PostgreSQL |
@@ -1201,7 +1221,7 @@ Para componentes de frontend (Bootstrap, etc.) cargados desde CDN, verificar per
 
 ```bash
 # Extraer versiones de librerías en head.php:
-grep -oP "(bootstrap|jquery|popper)[^\"']*\d+\.\d+\.\d+" src/layout/head.php
+grep -oP "(bootstrap|jquery|popper)[^\"']*\d+\.\d+\.\d+" frontend/web/layout/head.php
 
 # Verificar PHP actual:
 php --version | head -1
@@ -1409,7 +1429,7 @@ SEMANA 4
 | E6 — Uploads | WebShell upload | Intentar subir archivo `.php` como logo | Error de validación de MIME; archivo no guardado |
 | E6 — Uploads | Ejecutar PHP en storage | `curl https://host/storage/porteria/test.php` | 403 o 404, nunca ejecución de PHP |
 | E7 — Setup | Instalación limpia | `bash database/setup_smartcset.sh` en BD de test | Sin errores; `\df fun_validar_correo` retorna la función |
-| E7 — Setup | Recuperación de contraseña | Flujo de `src/auth/recuperar.php` en BD de test | Sin error 500 |
+| E7 — Setup | Recuperación de contraseña | Flujo de `backend/routers/auth/v1/recuperar.php` en BD de test | Sin error 500 |
 | E8 — TLS BD | TLS activo | `SELECT ssl FROM pg_stat_ssl JOIN pg_stat_activity ON...` | Columna `ssl = TRUE` para todas las conexiones |
 | E8 — TLS BD | Puerto BD cerrado externamente | `nmap -p 5432 IP_SERVIDOR_WEB` | Puerto cerrado o filtrado |
 | E9 — Parches | Inventario completo | Tabla Sección 11.1 sin filas vacías | Todas las versiones documentadas y sin desactualización crítica pendiente |
@@ -1435,13 +1455,13 @@ Si alguno de estos pasos falla tras los cambios, es un problema de regresión a 
 | Entregable | Esfuerzo estimado | Archivos principales a modificar | Dependencia externa |
 |---|---|---|---|
 | E1 — Auditoría OWASP | 15-20 h (auditoría + documentación) | Lectura de código, no escritura | Ninguna |
-| E2 — Cifrado en reposo | 35-45 h (incluye migración y testing extensivo) | `src/core/Db.php`, `prepare.php`, nuevas funciones SQL, migración | BD de test disponible |
+| E2 — Cifrado en reposo | 35-45 h (incluye migración y testing extensivo) | `backend/core/Db.php`, `prepare.php`, nuevas funciones SQL, migración | BD de test disponible |
 | E3 — Rate limiting | 15-20 h | `index.php`, `prepare.php`, 2 funciones SQL, 1 migración | Ninguna |
-| E4 — Hardening sesiones | 8-10 h | `src/core/SecurityMiddleware.php` (activar), `prepare.php`, `index.php` | Ninguna |
+| E4 — Hardening sesiones | 8-10 h | `backend/core/SecurityMiddleware.php` (activar), `prepare.php`, `index.php` | Ninguna |
 | E5 — CSRF | 18-25 h (por la cantidad de formularios) | Todos los `procesar_*.php`, vistas con formularios, `helpers.php` | Ninguna |
 | E6 — Verificación uploads | 5-8 h | Solo `.htaccess`, sin cambios PHP | Confirmar tipo de servidor (Apache/Nginx) con Oficina TI |
 | E7 — Bugs setup | 4-6 h | `database/setup_smartcset.sh` | BD de test para verificar |
-| E8 — Hardening red | 20-30 h (incluye coordinación con TI) | `src/core/Db.php` (2 líneas), config de infraestructura | Oficina TI SENA para firewall y postgresql.conf |
+| E8 — Hardening red | 20-30 h (incluye coordinación con TI) | `backend/core/Db.php` (2 líneas), config de infraestructura | Oficina TI SENA para firewall y postgresql.conf |
 | E9 — Gestión de parches | 4-6 h (inventario + suscripciones + proceso) | `database/REGISTRO_PARCHES.md` (nuevo), `.env.example` | Ninguna — proceso organizacional, no técnico |
 | E10 — SDLC seguro | 3-5 h (checklist + adopción del proceso) | Ningún archivo de código — solo proceso y checklist | Ninguna — adopción de práctica |
 | **TOTAL** | **~127-175 h** (3-4 semanas a ~40 h/semana) | | |

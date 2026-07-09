@@ -174,7 +174,7 @@ class ConfigSistemaDefaults
      * @param array<string, mixed> $row
      * @return list<mixed>
      */
-    public static function toUpdateParamsFromRow(array $row, string $usrUpdate, ?string $passRegistroHash = null): array
+    public static function toUpdateParamsFromRow(array $row, ?string $passRegistroHash = null): array
     {
         $bool = static function ($v): string {
             return ($v === true || $v === 't' || $v === '1' || $v === 1) ? 'true' : 'false';
@@ -209,15 +209,14 @@ class ConfigSistemaDefaults
             (string) ($row['theme_light_text_muted'] ?? 'rgba(55,65,81,0.8)'),
             (string) ($row['usr_registro'] ?? 'usuariocset'),
             $passRegistroHash,
-            $usrUpdate,
         ];
     }
 
     /**
      * @return list<mixed>
      */
-    public static function toUpdateParams(string $usrUpdate, ?string $passRegistroHash = null): array
+    public static function toUpdateParams(?string $passRegistroHash = null): array
     {
-        return self::toUpdateParamsFromRow(self::values(), $usrUpdate, $passRegistroHash);
+        return self::toUpdateParamsFromRow(self::values(), $passRegistroHash);
     }
 }

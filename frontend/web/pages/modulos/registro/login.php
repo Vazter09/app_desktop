@@ -3,6 +3,12 @@ require_once __DIR__ . '/init.php';
 
 registroRequireModuloHabilitado();
 
+if (!registroUsaLoginStandalone()) {
+    // El módulo usa la sesión principal + menú asignado — este login separado ya no aplica.
+    header('Location: ' . (registroTieneSesionPrincipal() ? registroIndexUrl() : registroMainLoginUrl()));
+    exit;
+}
+
 if (registroTieneSesionStandalone()) {
     header('Location: ' . registroIndexUrl());
     exit;

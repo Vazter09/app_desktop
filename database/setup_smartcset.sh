@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.8.sql + funciones/seeds
+# Instala db_smartcset y aplica script-BD-SMARTCSET V.1.10.sql + funciones/seeds
 # Uso: ./database/setup_smartcset.sh
 # ATENCIÓN: Si la BD ya existe, el paso de esquema BORRA todas las tablas (DROP).
 #           Solo usar en instalación nueva o cuando quiera resetear por completo.
@@ -34,7 +34,7 @@ do
 done
 [[ -n "$PSQL" ]] || { echo "psql no encontrado. Instale PostgreSQL." >&2; exit 1; }
 
-SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.8.sql"
+SCHEMA="$ROOT/database/schema/script-BD-SMARTCSET V.1.10.sql"
 [[ -f "$SCHEMA" ]] || { echo "No existe: $SCHEMA" >&2; exit 1; }
 
 echo "==> Base de datos $DB_NAME"
@@ -47,7 +47,7 @@ else
   echo "    Ya existe."
 fi
 
-echo "==> Esquema V.1.8"
+echo "==> Esquema V.1.10"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$SCHEMA"
 
 run_sql() {
@@ -59,6 +59,14 @@ run_sql() {
 echo "==> Migración tab_sesiones (auditoría)"
 run_sql "$ROOT/database/migrations/add_tab_sesiones.sql"
 run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
+
+echo "==> Migración tab_intentos_login (E3 — rate limiting)"
+run_sql "$ROOT/database/migrations/add_tab_intentos_login.sql"
+
+echo "==> Migración tab_enrolamiento_facial (biometría facial — app escritorio SGI)"
+run_sql "$ROOT/database/migrations/add_tab_enrolamiento_facial.sql"
+run_sql "$ROOT/database/migrations/alter_tab_enrolamiento_facial_vector_128.sql"
+run_sql "$ROOT/database/migrations/add_ruta_foto_enrolamiento.sql"
 
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
@@ -74,6 +82,8 @@ FUNCS=(
   "$ROOT/database/functions/acceso/usuarios/fun_validar_login.sql"
   "$ROOT/database/functions/acceso/usuarios/fun_validar_correo.sql"
   "$ROOT/database/functions/acceso/usuarios/fun_validar_usuario.sql"
+  "$ROOT/database/functions/acceso/usuarios/fun_registrar_intento_login.sql"
+  "$ROOT/database/functions/acceso/usuarios/fun_verificar_bloqueo_ip.sql"
   "$ROOT/database/functions/acceso/menus/fun_insert_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_update_tab_menus.sql"
   "$ROOT/database/functions/acceso/menus/fun_trigger_menu.sql"
@@ -98,6 +108,8 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/porteria/fun_guardar_enrolamiento_facial.sql"
+  "$ROOT/database/functions/porteria/fun_identificar_persona_por_rostro.sql"
   "$ROOT/database/functions/instructor/fun_marcar_ausentes_fecha.sql"
   "$ROOT/database/functions/instructor/fun_listar_fichas_instructor.sql"
   "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha.sql"
@@ -116,9 +128,15 @@ FUNCS=(
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_funcionario.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_instructor.sql"
   "$ROOT/database/functions/actualizar_datos/fun_actualizar_persona_centro.sql"
+  "$ROOT/database/functions/siem/fun_siem_dashboard.sql"
+  "$ROOT/database/functions/siem/fun_siem_sesiones.sql"
 )
 for f in "${FUNCS[@]}"; do
-  run_sql "$f"
+  if [[ -f "$f" ]]; then
+    run_sql "$f"
+  else
+    echo "AVISO: función omitida, archivo no encontrado: $f"
+  fi
 done
 run_sql "$ROOT/database/migrations/drop_fun_registrar_sesion.sql"
 "$PSQL" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
@@ -161,8 +179,11 @@ for f in \
   "$ROOT/database/migrations/sync_instructor_menus_sga_operativo.sql" \
   "$ROOT/database/migrations/update_menu_en_construccion_pages.sql" \
   "$ROOT/database/migrations/separar_juicios_ruta_de_reportes_sga.sql" \
+  "$ROOT/database/migrations/add_menu_siem_sga.sql" \
   "$ROOT/database/migrations/ensure_admin_acceso_total.sql" \
-  "$ROOT/database/migrations/fix_dark_theme_contrast.sql"
+  "$ROOT/database/migrations/fix_dark_theme_contrast.sql" \
+  "$ROOT/database/migrations/fix_auditoria_app_usuario.sql" \
+  "$ROOT/database/migrations/fix_auditoria_eliminar_wusr.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done
@@ -181,5 +202,5 @@ fi
 
 unset PGPASSWORD
 echo ""
-echo "Listo. Base: $DB_NAME | Esquema V.1.8"
+echo "Listo. Base: $DB_NAME | Esquema V.1.10"
 echo "Login: admin.smart / AdminSmart2026! | porteria / Porteria2026!"

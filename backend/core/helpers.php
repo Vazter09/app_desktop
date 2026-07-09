@@ -210,6 +210,32 @@ function usuarioEsAdministrador(PDO $pdo, string $idUsuario): bool
 }
 
 /**
+ * Acceso real a un menú/módulo específico (no solo visibilidad en sidebar).
+ * Administrador = acceso a todo. Usuario normal = requiere fila en tab_menu_usuarios.
+ */
+function usuarioTieneMenu(PDO $pdo, string $idUsuario, string $idMenu): bool
+{
+    if (usuarioEsAdministrador($pdo, $idUsuario)) {
+        return true;
+    }
+
+    static $cache = [];
+    $key = $idUsuario . '|' . $idMenu;
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM tab_menu_usuarios
+          WHERE id_usuario = CAST(? AS TEXT) AND id_menu = CAST(? AS TEXT)'
+    );
+    $stmt->execute([$idUsuario, $idMenu]);
+
+    $cache[$key] = (bool) $stmt->fetchColumn();
+    return $cache[$key];
+}
+
+/**
  * Menús visibles en sidebar/dashboard: administrador = catálogo completo.
  */
 function obtenerMenusUsuario(PDO $pdo, string $idUsuario): array
@@ -406,10 +432,14 @@ function smartcsetClientIp(): string
 
     $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
     if ($remote !== '' && filter_var($remote, FILTER_VALIDATE_IP)) {
+        // Normalizar IPv6 loopback a IPv4 para consistencia en BD
+        if ($remote === '::1') {
+            $remote = '127.0.0.1';
+        }
         return substr($remote, 0, 45);
     }
 
-    return '';
+    return '127.0.0.1';
 }
 
 /** true si SESION_VALIDAR_IP está activo en .env. */
@@ -636,4 +666,50 @@ function smartcsetEsEnlaceSpaInterno(?string $nomPrograma): bool
 function smartcsetAttrSpaLink(?string $nomPrograma): string
 {
     return smartcsetEsEnlaceSpaInterno($nomPrograma) ? ' data-spa-link="1"' : '';
+}
+
+function smartcsetMotivoFalloAbrev(?string $motivo): string
+{
+    return match ($motivo) {
+        'usuario_no_existe'           => 'No existe',
+        'contrasena_incorrecta'       => 'Pass incorrecta',
+        'usuario_inactivo'            => 'Inactivo',
+        'cuenta_bloqueada'            => 'Cuenta bloqueada',
+        'ip_bloqueada_por_rate_limit' => 'Rate limit',
+        default                       => '—',
+    };
+}
+
+function smartcsetExtractClientFromUserAgent(?string $userAgent): string
+{
+    if (empty($userAgent)) {
+        return 'Desconocido';
+    }
+
+    $ua = strtolower($userAgent);
+
+    // Detectar SO
+    $os = 'Desconocido';
+    if (str_contains($ua, 'windows')) $os = 'Windows';
+    elseif (str_contains($ua, 'mac os')) $os = 'macOS';
+    elseif (str_contains($ua, 'linux')) $os = 'Linux';
+    elseif (str_contains($ua, 'android')) $os = 'Android';
+    elseif (str_contains($ua, 'iphone') || str_contains($ua, 'ipad')) $os = 'iOS';
+
+    // Detectar navegador/cliente
+    $browser = 'Desconocido';
+    if (str_contains($ua, 'edg/')) $browser = 'Edge';
+    elseif (str_contains($ua, 'chrome/')) $browser = 'Chrome';
+    elseif (str_contains($ua, 'firefox/')) $browser = 'Firefox';
+    elseif (str_contains($ua, 'safari/') && !str_contains($ua, 'chrome')) $browser = 'Safari';
+    elseif (str_contains($ua, 'opr/') || str_contains($ua, 'opera')) $browser = 'Opera';
+    elseif (str_contains($ua, 'curl')) $browser = 'curl';
+    elseif (str_contains($ua, 'wget')) $browser = 'wget';
+    elseif (str_contains($ua, 'python')) $browser = 'Python';
+    elseif (str_contains($ua, 'postman')) $browser = 'Postman';
+    elseif (str_contains($ua, 'bot') || str_contains($ua, 'crawler') || str_contains($ua, 'spider')) {
+        $browser = 'Bot/Crawler';
+    }
+
+    return $browser . '/' . $os;
 }

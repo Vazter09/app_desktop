@@ -13,7 +13,7 @@
 
 ## Resumen ejecutivo
 
-E6 verifica que `public/uploads/logos/` y `storage/porteria/` están protegidos contra ejecución de código.
+E6 verifica que `frontend/web/public/uploads/logos/` y `storage/porteria/` están protegidos contra ejecución de código.
 La auditoría de código (2026-06-08) confirmó que `LogoUpload.php` y `porteria_foto.php` ya validan
 correctamente (finfo MIME, recompresión, base64 estricto). Faltaba la **protección a nivel servidor web**:
 si la validación PHP fallara y un `.php` llegara al disco, Apache lo ejecutaría como `www-data`
@@ -22,7 +22,7 @@ si la validación PHP fallara y un `.php` llegara al disco, Apache lo ejecutarí
 ## Solución implementada
 
 2 archivos `.htaccess` idénticos (20 líneas, permisos 644), uno por directorio:
-`public/uploads/logos/.htaccess` y `storage/porteria/.htaccess`. 4 capas de protección:
+`frontend/web/public/uploads/logos/.htaccess` y `storage/porteria/.htaccess`. 4 capas de protección:
 
 1. **Bloqueo de ejecución de scripts** (`.php`, `.phtml`, `.phar`, `.pl`, `.py`, `.cgi`, `.sh`, `.asp`,
    `.aspx`, `.jsp`) → `403 Forbidden` sin ejecutar.
@@ -40,10 +40,10 @@ Un `.htaccess` global en la raíz del proyecto bloquearía PHP en **TODOS** los 
 `index.php`, y el módulo `registro/` — romperíaría completamente el sistema. La mejor práctica es **defensa
 en profundidad en los directorios específicos de riesgo**:
 
-- `public/uploads/logos/` — único punto de subida controlado de logos (vía `LogoUpload.php`)
+- `frontend/web/public/uploads/logos/` — único punto de subida controlado de logos (vía `LogoUpload.php`)
 - `storage/porteria/` — único punto de subida controlado de fotos (vía `porteria_foto.php`)
 
-Otros directorios (`/css/`, `/js/`, `/img/`) contienen assets estáticos no controlados por usuarios y no son
+Otros directorios (`/frontend/web/frontend/web/public/assets/css/`, `/frontend/web/frontend/web/public/assets/js/`, `/frontend/web/frontend/web/public/assets/img/`) contienen assets estáticos no controlados por usuarios y no son
 puntos de riesgo del mismo nivel.
 
 ## Nota sobre Nginx

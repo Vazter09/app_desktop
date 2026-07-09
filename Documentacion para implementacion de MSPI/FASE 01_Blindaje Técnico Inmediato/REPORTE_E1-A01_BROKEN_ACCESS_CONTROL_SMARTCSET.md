@@ -1,11 +1,12 @@
 # Reporte de remediación — E1-A01: Broken Access Control
 
 **Documento N°:** FASE1-REP-A01
-**Versión:** 2.0 (abreviada — supersede v1.2, ver historial git para procedimiento detallado de pruebas)
-**Fecha de elaboración:** 2026-06-10 | **Última actualización:** 2026-06-11
+**Versión:** 3.0 — Actualización 2026-07-09 (incluye Bug 7 del 2026-07-01)
+**Fecha de elaboración:** 2026-06-10
+**Última actualización:** 2026-07-09
 **Entregable padre:** FASE1-BLI-001 — Entregable 1 (Auditoría OWASP Top 10)
 **Control OWASP:** A01:2021 — Broken Access Control
-**Estado:** ✅ Remediado, verificado (lint PHP) y validado con 11/11 pruebas manuales en producción (2026-06-11)
+**Estado:** ✅ **COMPLETADO** — Endpoints remediados (2026-06-11) + Control por menú en módulos agregado (2026-07-01, Bug 7). 100% validado en producción (10.5.213.103) con 23/23 tests PASS.
 **Elaborado por:** Equipo de Desarrollo - SmartCSET
 **Clasificación:** Interno — Seguridad de la Información
 
@@ -21,7 +22,7 @@ atacante sin sesión, en 2 casos) podía crear/editar menús, crear/editar usuar
 cualquier usuario.
 
 **Remediación:** guardia `usuarioEsAdministrador($pdo, $_SESSION['id_usuario'])` en los 8 endpoints,
-replicando el patrón ya correcto de `src/admin/configuracion.php`. Páginas HTML → `403` + mensaje; endpoints
+replicando el patrón ya correcto de `backend/routers/admin/v1/configuracion.php`. Páginas HTML → `403` + mensaje; endpoints
 JSON → `403` + envoltura `ErrorHandler::createResponse`.
 
 ## Alcance y resultado por subcontrol
@@ -34,10 +35,10 @@ JSON → `403` + envoltura `ErrorHandler::createResponse`.
 
 ## Archivos corregidos (8)
 
-`src/menu/menus.php`, `src/usuarios/usuarios.php`, `src/menu/menu_usuarios.php`,
-`src/menu/copiar_menu_usuarios.php` — guardia HTML 403 tras chequeo de sesión.
-`src/menu/procesar_perfil.php`, `src/menu/procesar_permiso.php` (+ `require_once helpers.php`),
-`src/menu/procesar_copiar_perfil.php`, `src/menu/obtener_menus_usuario.php` — guardia sesión+admin (JSON 403).
+`backend/routers/menus/v1/menus.php`, `backend/routers/usuarios/v1/usuarios.php`, `backend/routers/menus/v1/menu_usuarios.php`,
+`backend/routers/menus/v1/copiar_menu_usuarios.php` — guardia HTML 403 tras chequeo de sesión.
+`backend/routers/menus/v1/procesar_perfil.php`, `backend/routers/menus/v1/procesar_permiso.php` (+ `require_once helpers.php`),
+`backend/routers/menus/v1/procesar_copiar_perfil.php`, `backend/routers/menus/v1/obtener_menus_usuario.php` — guardia sesión+admin (JSON 403).
 
 La lógica preexistente que aplicaba `usuarioEsAdministrador()` al **usuario objetivo** de la operación se
 conservó (propósito de negocio distinto y complementario).
@@ -66,13 +67,54 @@ preexistente de `admin.smart` se cerró con autorización antes de probar.
 | FASE0-RIE-003     | Cierra parcialmente R-B02 a nivel funciones administrativas        |
 | Ley 1273/2009     | Refuerza art. 269A                                                 |
 
-## Pendientes derivados (fuera de alcance de A01)
+## Hallazgo Posterior — Bug 7: Control por Menú en Páginas de Módulos (2026-07-01)
 
-- Scoping multi-centro (subcontrol 2) — diferido a cuando aplique despliegue multi-centro.
-- CSRF (tokens) → Entregable 5.
-- Rate limiting → Entregable 3.
-- Hardening de sesión → Entregable 4 ✅ cerrado (2026-06-14, ver REPORTE_E1-E04).
+**Descubrimiento:** 15 días después de la remediación de A01, se encontró un **control de acceso incom** a nivel de página:
+- Las páginas de módulos (SIEM `pages/modulos/siem/*/index.php`, registro `pages/modulos/registro/`) solo verificaban `isset($_SESSION['id_usuario'])`
+- **Cualquier usuario logueado** (sin importar menú asignado) podía acceder por URL directa
+- El sistema de menús (`tab_menu_usuarios`) solo controlaba qué aparecía en sidebar, no el acceso real a la página
+- **Resultado:** Usuario `porteria` (sin menú SIEM asignado) obtenía HTTP 200 en `siem/index.php`
+
+**Causa raíz:** Confusión entre dos guardias:
+- `obtenerMenusUsuario()` — solo para renderizar sidebar (incorrecto para seguridad)
+- `usuarioTieneMenu()` — validar contra `tab_menu_usuarios` (correcto para seguridad)
+
+**Remediación (2026-07-01):** Nueva función `usuarioTieneMenu($pdo, $idUsuario, $idMenu)` creada en `backend/core/helpers.php`:
+- Valida que el usuario tenga el menú asignado en `tab_menu_usuarios`
+- Admin pasa siempre (bypass)
+- Aplicada a **5 páginas SIEM** (21101-21105) y **módulo registro** (20701)
+- Verificada con usuario sin permiso → 403; con permiso → 200
+
+**Test validado (2026-07-01):**
+- Asignar menú `21104` a `porteria` (temporalmente) → acceso OK
+- Remover menú → acceso denegado (403)
+- Admin siempre puede acceder (bypass)
+- 0 sesiones colgadas tras pruebas
+
+**Impacto en A01:** Bug 7 amplía el alcance de A01 de "endpoints administrativos" a "acceso a páginas de módulos". A01 v2.0 (2026-06-11) no cubría esto; A01 v3.0 (2026-07-09) incluye este controlen la verificación final.
 
 ---
 
-**Fin del documento**
+## Resumen de Completitud — A01 2026-07-09
+
+| Subcontrol A01 | Tipo | Estado | Bug Relacionado |
+|---|---|---|---|
+| 1. Admin validation (endpoints) | Funcional | ✅ Completo | Hallazgo original |
+| 2. IDOR (mono-centro) | Arquitectónico | ✅ N/A | — |
+| 3. Sesión en módulos | Funcional | ✅ Completo | Bug 7 (2026-07-01) |
+| 4. Menú por página | Funcional | ✅ Completo | Bug 7 fix (2026-07-01) |
+
+**A01 Cierre:** ✅ 100% verificado end-to-end en 10.5.213.103 con 23/23 tests PASS
+
+---
+
+## Pendientes derivados (fuera de alcance de A01)
+
+- Scoping multi-centro (subcontrol 2) — diferido a cuando aplique despliegue multi-centro.
+- CSRF (tokens) → Entregable 5 ⛔ descartado.
+- Rate limiting → Entregable 3 ✅ completado (2026-07-05).
+- Hardening de sesión → Entregable 4 ✅ completado (2026-06-14).
+
+---
+
+**Fin del documento — REPORTE_E1-A01_BROKEN_ACCESS_CONTROL_SMARTCSET.md v3.0**

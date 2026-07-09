@@ -7,6 +7,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/SecurityMiddleware.php';
 require_once __DIR__ . '/Db.php';
+require_once __DIR__ . '/ErrorHandler.php';
 require_once __DIR__ . '/AppConfig.php';
 require_once __DIR__ . '/ConfigSistemaDefaults.php';
 require_once __DIR__ . '/PmtrosGralesDefaults.php';
@@ -24,7 +25,7 @@ try {
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
-        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR
+        ?::VARCHAR, ?::VARCHAR, ?::VARCHAR, ?::VARCHAR
     )";
     $stmt_fun_upd_config = $pdo->prepare($sql_fun_upd_config);
 
@@ -122,7 +123,7 @@ try {
                           ORDER BY e.id_entrada_centro ASC";
     $stmt_list_entradas = $pdo->prepare($sql_list_entradas);
 
-    $sql_fun_upsert_entrada = 'SELECT fun_upsert_tab_entradas_centro(?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC, ?::TEXT)';
+    $sql_fun_upsert_entrada = 'SELECT fun_upsert_tab_entradas_centro(?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::NUMERIC)';
     $stmt_fun_upsert_entrada = $pdo->prepare($sql_fun_upsert_entrada);
 
     $sql_fun_delete_entrada = 'SELECT fun_delete_tab_entradas_centro(?::NUMERIC)';
@@ -166,7 +167,7 @@ try {
 
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
-        ?::NUMERIC, ?::TEXT, ?::VARCHAR, ?::DECIMAL, ?::BOOLEAN
+        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
 
@@ -202,9 +203,21 @@ try {
          LIMIT 1"
     );
     $sql_fun_registrar_salida = "SELECT fun_registrar_salida_manual(
-        ?::NUMERIC, ?::VARCHAR, ?::TEXT, ?::VARCHAR
+        ?::NUMERIC, ?::VARCHAR, ?::TEXT
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
+
+    // --- 6c-bis. BIOMETRÍA FACIAL (app de escritorio SGI → tab_enrolamiento_facial) ---
+    // 2026-07-09: Agregado parámetro 4 (ruta_foto_enrolamiento)
+    $sql_fun_guardar_enrolamiento_facial = "SELECT fun_guardar_enrolamiento_facial(
+        ?::NUMERIC, ?::VECTOR, ?::NUMERIC, ?::VARCHAR
+    )";
+    $stmt_fun_guardar_enrolamiento_facial = $pdo->prepare($sql_fun_guardar_enrolamiento_facial);
+
+    $sql_fun_identificar_persona_por_rostro = "SELECT fun_identificar_persona_por_rostro(
+        ?::VECTOR, ?::NUMERIC
+    )";
+    $stmt_fun_identificar_persona_por_rostro = $pdo->prepare($sql_fun_identificar_persona_por_rostro);
 
     // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
     $sql_fun_registrar_persona = "SELECT fun_registrar_persona(
@@ -302,6 +315,8 @@ try {
     }
 
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
+        $pdo->exec("SET app.usuario = " . $pdo->quote((string) $_SESSION['id_usuario']));
+
         require_once __DIR__ . '/helpers.php';
 
         $estadoSesion = Db::gestionarSesionEnRequest(
@@ -326,6 +341,7 @@ try {
     }
 
 } catch (PDOException $e) {
-    die('Error crítico en prepare.php: ' . Db::connectionErrorMessage($e));
+    error_log('[SmartCSET] Error crítico en prepare.php: ' . $e->getMessage());
+    die('Error crítico en prepare.php: ' . ErrorHandler::userMessageFromPdo($e));
 }
 ?>

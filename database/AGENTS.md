@@ -100,6 +100,28 @@ Migraciones ausentes:
 
 Consultar `SETUP_AUDIT.md` en la raíz para detalles completos.
 
+> **Actualizado (2026-07-02):** en `main`, el schema activo pasó a ser **V.1.9/V.1.10**
+> (la rama `feat/seguridad`, ya fusionada dentro de esta nota histórica, seguía en V.1.8 —
+> desde el merge del 2026-07-05 con la rama de trabajo `feat/implementacion_MSPI`, **V.1.10
+> es la versión activa real**, ver más abajo). Además, 4 archivos referenciados en `FUNCS`
+> nunca se crearon:
+> `database/functions/actualizar_datos/fun_actualizar_{contratista,funcionario,instructor,persona_centro}.sql`
+> — el instalador ya no aborta por su ausencia (guarda `[[ -f "$f" ]]` agregada), pero la
+> funcionalidad que dependa de ellas sigue sin implementar (confirmado aún ausentes al 2026-07-05).
+> Ver `CLAUDE.md` Bug 10 sobre colisiones de `id_menu` entre módulos que agregan su propio menú
+> (SIEM vs instructores, ambos usaron `06`/`0601` de forma independiente en su momento) —
+> verificar siempre contra la BD real antes de elegir un `id_menu` nuevo, no asumir que un ID
+> está libre.
+>
+> **Actualizado (2026-07-05):** schema activo confirmado **V.1.10**
+> (`database/schema/script-BD-SMARTCSET V.1.10.sql`). Se corrigieron 8 bugs de sintaxis/datos
+> que impedían una instalación limpia desde cero (nunca se había probado `setup_smartcset.sh`
+> contra una BD vacía en esta versión del schema) — ver `CLAUDE.md` Bug 11 para el detalle
+> completo. También se trajo el módulo SIEM y rate limiting de login desde `feat/seguridad`
+> hacia `feat/implementacion_MSPI`, reubicando SIEM como submenú `211` bajo SGA (`20`) en vez
+> de menú raíz — ver `CLAUDE.md` Bug 12. El módulo de reconocimiento facial/biometría de esa
+> misma rama se excluyó intencionalmente, no forma parte de esta fase.
+
 ---
 
 ## Dependencias

@@ -231,11 +231,11 @@ Auditoría realizada el 2026-06-08 sobre el código fuente real de SmartCSET:
 |---|---|---|
 | `index.php` líneas 54-68 | Sin `session_regenerate_id(true)` tras login exitoso — vulnerable a session fixation | 🔴 |
 | `index.php` (todo el archivo) | Sin rate limiting — ilimitados intentos de contraseña posibles | 🔴 |
-| `src/core/SecurityMiddleware.php` | Código de CSRF, headers HTTP y cookie flags bien escritos pero el archivo **nunca se incluye** (`require_once`) en el flujo real — todo es código muerto | 🔴 |
-| `src/core/Db.php` líneas 24-39 | DSN de PostgreSQL sin `sslmode` — conexión PHP↔BD sin cifrar. ⚠️ Infraestructura `DB_SSLMODE` agregada en código (2026-06-11, vacía por defecto, sin regresión); activación pendiente de Oficina TI (E8) | 🟠 |
-| `src/core/config.php` | `session.cookie_httponly`, `session.cookie_secure`, `session.cookie_samesite` no configurados | 🔴 |
-| `src/core/LogoUpload.php` | ✅ Bien implementado — finfo, whitelist MIME, límite 5MB, nombre aleatorio | — |
-| `src/modulos/porteria/lib/porteria_foto.php` | ✅ Bien implementado — base64 estricto, recompresión JPEG, JSONB | — |
+| `backend/core/SecurityMiddleware.php` | Código de CSRF, headers HTTP y cookie flags bien escritos pero el archivo **nunca se incluye** (`require_once`) en el flujo real — todo es código muerto | 🔴 |
+| `backend/core/Db.php` líneas 24-39 | DSN de PostgreSQL sin `sslmode` — conexión PHP↔BD sin cifrar. ⚠️ Infraestructura `DB_SSLMODE` agregada en código (2026-06-11, vacía por defecto, sin regresión); activación pendiente de Oficina TI (E8) | 🟠 |
+| `backend/core/config.php` | `session.cookie_httponly`, `session.cookie_secure`, `session.cookie_samesite` no configurados | 🔴 |
+| `backend/core/LogoUpload.php` | ✅ Bien implementado — finfo, whitelist MIME, límite 5MB, nombre aleatorio | — |
+| `backend/routers/porteria/v1/lib/porteria_foto.php` | ✅ Bien implementado — base64 estricto, recompresión JPEG, JSONB | — |
 | `database/setup_smartcset.sh` | Bugs 1 y 3 del SETUP_AUDIT.md ya corregidos (schema V.1.7, migraciones presentes). Bug 2 resuelto en su mayoría (E7, 2026-06-13): 3/4 funciones agregadas a FUNCS; la 4ª se excluye deliberadamente (riesgo de regresión) | ✅ |
 
 ### Funciones PL/pgSQL — estado tras E7 (2026-06-13)
@@ -383,6 +383,6 @@ ya desplegadas con validaciones de seguridad. Se verificó que las 3 funciones a
 desde PHP (login/recuperación usan SQL directo), por lo que su ausencia era una brecha documental, no
 una falla funcional activa — se corrige la afirmación previa de que "la recuperación de contraseña
 falla sin `fun_validar_correo`" en `AGENTS.md` de `database/`, `database/functions/`,
-`database/functions/acceso/usuarios/`, `database/functions/acceso/menus/`, `src/auth/` y en
+`database/functions/acceso/usuarios/`, `database/functions/acceso/menus/`, `backend/routers/auth/v1/` y en
 `CLAUDE.md` (sección "Bugs conocidos"). Ver `REPORTE_E1-E07_CORRECCION_SETUP_SMARTCSET.md`. Siguiente
 paso: E4 (Hardening de sesiones PHP).

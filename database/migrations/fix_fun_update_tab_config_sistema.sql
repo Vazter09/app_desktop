@@ -33,6 +33,11 @@ CREATE OR REPLACE FUNCTION fun_update_tab_config_sistema(
     wpass_registro_hash            VARCHAR,
     wusr_update                    VARCHAR
 ) RETURNS TEXT AS $$
+DECLARE
+    w_exc_state  TEXT;
+    w_exc_msg    TEXT;
+    w_exc_detail TEXT;
+    w_exc_hint   TEXT;
 BEGIN
     IF wcolor_primario !~ '^#[0-9A-Fa-f]{6}$' OR wcolor_secundario !~ '^#[0-9A-Fa-f]{6}$' THEN
         PERFORM smartcset_raise_validacion('Los colores primario y secundario deben ser hex de 6 dígitos (#RRGGBB).');
@@ -87,6 +92,11 @@ EXCEPTION
     WHEN SQLSTATE 'P0001' THEN
         RAISE;
     WHEN OTHERS THEN
-        PERFORM smartcset_handle_sql_error();
+        GET STACKED DIAGNOSTICS
+            w_exc_state  = RETURNED_SQLSTATE,
+            w_exc_msg    = MESSAGE_TEXT,
+            w_exc_detail = PG_EXCEPTION_DETAIL,
+            w_exc_hint   = PG_EXCEPTION_HINT;
+        PERFORM smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint);
 END;
 $$ LANGUAGE plpgsql;

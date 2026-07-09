@@ -21,6 +21,16 @@ Premisa que SÍ se puede verificar en código (informe §hallazgo 2):
 No se verifica aquí ninguna conexión TLS real: eso depende de que la
 Oficina TI del SENA habilite TLS en PostgreSQL (E8), fuera del alcance
 de esta suite.
+
+Nota (2026-07-09): rutas actualizadas de ``src/core/`` a
+``backend/core/`` (ver AGENTS.md "Nota de rutas") — el archivo llevaba
+desactualizado desde esa reorganización, con las 2 primeras
+verificaciones fallando con FileNotFoundError sin que nadie lo
+notara. El estado de TLS BD en sí mismo también avanzó desde que se
+escribió el informe original (ver Bug 13/17 en CLAUDE.md: TLS BD ya
+está activo en el servidor institucional, no solo "código listo en
+espera de Oficina TI") — actualizar REPORTE_E1-A02 si se retoma ese
+informe formalmente.
 """
 
 from __future__ import annotations
@@ -35,7 +45,7 @@ class TestE1A02CryptographicFailures(unittest.TestCase):
 
     def test_db_sslmode_definida_con_default_vacio(self) -> None:
         """config.php debe definir DB_SSLMODE con default vacío."""
-        archivo = PROJECT_ROOT / "src" / "core" / "config.php"
+        archivo = PROJECT_ROOT / "backend" / "core" / "config.php"
         codigo = archivo.read_text(encoding="utf-8")
 
         self.assertIn("DB_SSLMODE", codigo)
@@ -49,7 +59,7 @@ class TestE1A02CryptographicFailures(unittest.TestCase):
 
     def test_db_php_solo_agrega_sslmode_si_no_esta_vacio(self) -> None:
         """Db.php debe agregar sslmode al DSN solo si DB_SSLMODE != ''."""
-        archivo = PROJECT_ROOT / "src" / "core" / "Db.php"
+        archivo = PROJECT_ROOT / "backend" / "core" / "Db.php"
         codigo = archivo.read_text(encoding="utf-8")
 
         self.assertIn("DB_SSLMODE", codigo)

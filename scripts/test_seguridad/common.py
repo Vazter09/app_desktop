@@ -27,9 +27,37 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+import urllib3
 
-# Raíz del proyecto: este archivo vive en <raiz>/test_seguridad/common.py
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Los entornos reales de SmartCSET (local y servidor institucional) usan
+# HTTPS con certificado autofirmado (ver CLAUDE.md: "El certificado es
+# autofirmado"). Esta suite corre DENTRO de la red de confianza (mismo
+# equipo o misma intranet SENA) contra hosts conocidos de antemano — no
+# es una verificación de cadena de confianza pública (eso ya lo cubre
+# la suite dedicada de TLS, ver Bug 13/17 en CLAUDE.md). Deshabilitar
+# la verificación aquí es equivalente a los `curl -sk` / `psql
+# sslmode=require` ya usados en el resto del proyecto para estos mismos
+# hosts, no una relajación nueva de seguridad.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+VERIFY_TLS = False
+
+def _find_project_root(start: Path) -> Path:
+    """Sube por el árbol hasta el directorio que contiene ``.env``.
+
+    Este archivo vive en ``<raiz>/scripts/test_seguridad/common.py``, pero
+    históricamente estuvo en ``<raiz>/test_seguridad/``. En vez de fijar un
+    número de niveles (frágil ante movimientos de carpeta), localizamos la
+    raíz por el marcador ``.env`` (o, en su defecto, ``CLAUDE.md``).
+    """
+    for candidate in (start, *start.parents):
+        if (candidate / ".env").exists() or (candidate / "CLAUDE.md").exists():
+            return candidate
+    # Respaldo: la raíz asumida por la estructura scripts/test_seguridad/.
+    return start.parent.parent
+
+
+# Raíz del proyecto (contiene ``.env`` y ``CLAUDE.md``).
+PROJECT_ROOT = _find_project_root(Path(__file__).resolve().parent)
 
 # URL base del servidor de desarrollo PHP (tools/start_dev.ps1 / php -S).
 BASE_URL = os.environ.get("SMARTCSET_BASE_URL", "http://localhost:8080")
@@ -77,7 +105,7 @@ def server_is_up(base_url: str = BASE_URL) -> bool:
     rechazada.
     """
     try:
-        requests.get(base_url, timeout=HTTP_TIMEOUT)
+        requests.get(base_url, timeout=HTTP_TIMEOUT, verify=VERIFY_TLS)
         return True
     except requests.exceptions.ConnectionError:
         return False
@@ -133,6 +161,7 @@ def login(username: str, password: str) -> requests.Session:
     close_stale_session(username)
 
     session = requests.Session()
+    session.verify = VERIFY_TLS
     session.post(
         f"{BASE_URL}/index.php",
         data={"txt_usuario": username, "txt_clave": password},

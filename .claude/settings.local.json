@@ -7,7 +7,15 @@
       "Bash(Format-Table -AutoSize)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Recurse -Force | Select-Object @{Name=\"Path\"; Expression={$_.FullName.Replace\\(\"C:\\\\Apache24\\\\htdocs\\\\smartcset\\\\\", \"\"\\)}} | Sort-Object Path)",
       "PowerShell(Get-ChildItem *)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Force | ForEach-Object { $_.FullName })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Apache24\\\\htdocs\\\\smartcset\" -Force | ForEach-Object { $_.FullName })",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(PGPASSWORD='ander123' PGSSLMODE=require psql -h 192.168.1.71 -p 5432 -U postgres -d postgres -c \"DROP DATABASE IF EXISTS db_smartcset2;\")",
+      "Bash(PGSSLMODE=require bash database/setup_smartcset.sh)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(PGPASSWORD=ander123 PGSSLMODE=require psql -h 192.168.1.71 -p 5432 -U postgres -d db_smartcset2 -c ' *)",
+      "Bash(PGPASSWORD=ander123 PGSSLMODE=require psql -h 192.168.1.71 -p 5432 -U postgres -d db_smartcset2 -c 'TRUNCATE TABLE __TRACKED_VAR__ RESTART IDENTITY CASCADE;')",
+      "Bash(PGPASSWORD='ander123' PGSSLMODE=require psql -h 192.168.1.71 -p 5432 -U postgres -d db_smartcset2 -v ON_ERROR_STOP=1 -f /tmp/claude-1000/-home-anderson-smartcset/0ef98eeb-bf89-49cd-8b88-58d41cb6b5a3/scratchpad/data_only3.sql)"
     ]
   }
 }

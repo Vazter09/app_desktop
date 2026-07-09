@@ -23,6 +23,12 @@ KEY_FILE="$CERT_DIR/smartcset.key"
 DAYS_VALID=365
 SUBJECT="/C=CO/ST=Cundinamarca/L=Bogota/O=SENA/CN=smartcset.local"
 
+# IP real del servidor (ajustar si se reutiliza este script en otro host).
+# Sin esto en el SAN, Chrome/Firefox rechazan la validación de nombre sin
+# importar lo que diga el CN — desde ~2017 el CN solo ya no es suficiente.
+SERVER_IP="${SERVER_IP:-10.5.213.103}"
+SAN_EXT="subjectAltName=DNS:smartcset.local,IP:${SERVER_IP}"
+
 if [ "$EUID" -ne 0 ]; then
     echo "[!] Este script debe ejecutarse con sudo: sudo $0"
     exit 1
@@ -45,11 +51,16 @@ echo "[*] Generando clave privada ECDSA P-256..."
 openssl ecparam -name prime256v1 -genkey -noout -out "$KEY_FILE"
 
 echo "[*] Generando certificado X.509 autofirmado (válido $DAYS_VALID días)..."
+echo "    SAN: $SAN_EXT"
 openssl req -new -x509 \
     -key "$KEY_FILE" \
     -out "$CERT_FILE" \
     -days "$DAYS_VALID" \
-    -subj "$SUBJECT"
+    -subj "$SUBJECT" \
+    -addext "$SAN_EXT" \
+    -addext "basicConstraints=critical,CA:FALSE" \
+    -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+    -addext "extendedKeyUsage=serverAuth"
 
 echo "[*] Fijando permisos..."
 chmod 644 "$CERT_FILE"
@@ -61,7 +72,7 @@ echo "    Certificado: $CERT_FILE"
 echo "    Clave privada: $KEY_FILE"
 echo "    Válido por: $DAYS_VALID días"
 echo ""
-openssl x509 -in "$CERT_FILE" -noout -dates -subject
+openssl x509 -in "$CERT_FILE" -noout -dates -subject -ext subjectAltName,basicConstraints,extendedKeyUsage
 
 echo ""
 echo "[!] PRÓXIMOS PASOS (si es la primera instalación):"

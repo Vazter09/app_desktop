@@ -113,7 +113,6 @@ DROP DOMAIN IF EXISTS extension;
 -- *****************************
 CREATE EXTENSION IF NOT EXISTS PLPGSQL;
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS PG_VECTOR;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
@@ -241,7 +240,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df14A
   cod_ver_programa  DECIMAL(3,0),
   nom_programa      VARCHAR,
   niv_formacion     VARCHAR,
-  dur_maxima        DECIMAL(2,0),
+  dur_maxima        DECIMAL(6,0),
   dur_eta_lectiva   VARCHAR,
   dur_eta_productiv VARCHAR,
   id_ficha          DECIMAL(8,0),
@@ -1268,8 +1267,16 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3, -- Máximo # de llamados de at. a un aprendiz para enviar a comité
     nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),
     tel_administrador           DECIMAL(10,0)               NOT NULL,
-    id_novedad_desercion        SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
-    id_novedad_aplazamiento     SMALLINT                    NOT NULL, -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    hora_entrada_jornada_m      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '06:00:00',
+    hora_salida_jornada_m       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '11:45:00',
+    hora_entrada_jornada_t      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '12:00:00',
+    hora_salida_jornada_t       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
+    hora_entrada_jornada_n      TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
+    hora_salida_jornada_n       TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '21:30:00',
+    hora_entrada_jornada_n_sab  TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '13:00:00',
+    hora_salida_jornada_n_sab   TIME WITHOUT TIME ZONE      NOT NULL DEFAULT '18:00:00',
+    id_novedad_desercion        SMALLINT                    NOT NULL DEFAULT 1, -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 6, -- Debe ser igual al creado en la tabla tab_tipos_novedad
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1668,11 +1675,11 @@ CREATE TYPE datos_personales_aprendiz AS
 
 CREATE TABLE IF NOT EXISTS tab_instructores
 (
-    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 20000000),
+    id_instructor           DECIMAL(10,0)               NOT NULL CHECK(id_instructor > 1000000),
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
+    ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero IN (1,2,3,4)), --1=Femenino,2=Masculino,3=No binario,4=Trans
     ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene vehiculo / FALSE=No tiene vehiculo.
@@ -1971,7 +1978,7 @@ CREATE TABLE IF NOT EXISTS tab_certificados
 CREATE TABLE IF NOT EXISTS tab_programas
 (
     id_programa             DECIMAL(8,0)                NOT NULL,
-    nom_programa            VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
+    nom_programa            VARCHAR(255)                NOT NULL CHECK(LENGTH(nom_programa) >= 5),
     num_snies               VARCHAR                     NOT NULL DEFAULT 'SNIES-00000',
     num_version             DECIMAL(2,0)                NOT NULL DEFAULT 1,
     ind_tipo                VARCHAR    		            NOT NULL DEFAULT '0', -- 1=Auxiliar (AX) / 2=Operario (OE) / 3= Ocupación/Oficio (OC) / 4=Técnica (TN) / 5=Tecnología (TO) / 6=Especialización Tecnológica (EG)
@@ -2395,7 +2402,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
---    val_datos_origen        JSONB,
+    val_datos_origen        JSONB,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
     val_observaciones       TEXT,
@@ -2875,7 +2882,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_aprendiz),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_personas(id_persona),
-    FOREIGN KEY(id_ficha)       REFERENCES tab_fichas(id_ficha)
+    FOREIGN KEY(id_ficha) REFERENCES tab_fichas(id_ficha)
 );
 
 -- Tabla de tipos de permiso que se puede otorgar a las personas (aprendices)
@@ -3001,15 +3008,15 @@ CREATE TABLE IF NOT EXISTS tab_ausencias_aprendiz
 (
     id_aprendiz             DECIMAL(10,0)               NOT NULL,
     fec_ausencia            DATE                        NOT NULL DEFAULT '1900-01-01' CHECK (fec_ausencia <= CURRENT_DATE),
-    id_motivo               SMALLINT                    NOT NULL,
+    val_motivo              TEXT                        NOT NULL DEFAULT 'Sin Motivo Ausencia Aprendiz',
     ind_evidencia_excusa    BOOLEAN                     NOT NULL DEFAULT TRUE,   -- TRUE=Hay evidencia / FALSE=Nol hay evidencia
+    val_ruta_excusa         VARCHAR                     NOT NULL DEFAULT 'Sin ruta evidencia Aprendiz',
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_aprendiz,fec_ausencia),
-    FOREIGN KEY(id_aprendiz) REFERENCES tab_aprendices(id_aprendiz),
-    FOREIGN KEY(id_motivo)   REFERENCES tab_motivos(id_motivo)
+    FOREIGN KEY(id_aprendiz) REFERENCES tab_aprendices(id_aprendiz)
 );
 
 -- TABLA DE LLAMADOS DE ATENCIÓN
@@ -3049,10 +3056,11 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
     ind_tipo                BOOLEAN                     NOT NULL,   -- TRUE=Académico / FALSE=Disciplinario
     id_tercero              DECIMAL(10,0)               NOT NULL,
     ind_tipo_tercero        BOOLEAN                     NOT NULL,   -- TRUE=Aprendiz / FALSE=No es aprendiz
+    fec_llamado             DATE                        NOT NULL DEFAULT CURRENT_DATE,
     id_motivo               SMALLINT                    NOT NULL,
-    usr_insert              VARCHAR(50)                 NOT NULL    CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update              VARCHAR(50)                             CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY(id_llamado),
     FOREIGN KEY(id_motivo)      REFERENCES tab_motivos(id_motivo)
@@ -3428,69 +3436,177 @@ CREATE TABLE IF NOT EXISTS tab_bitacora
     PRIMARY KEY(id_consecutivo)
 );
 
+-- TABLA DE REGISTROS BORRADOS (usada por fun_act_tabla para auditar DELETE)
+CREATE TABLE IF NOT EXISTS tab_borrados
+(
+    id_consec               BIGINT                      NOT NULL,
+    nom_tabla               VARCHAR                     NOT NULL,
+    usr_borrado             VARCHAR                     NOT NULL,
+    fec_borrado             TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY(id_consec, nom_tabla)
+);
+
+-- PENDIENTE MODIFICAR EL ATRIBUTO JSONB CON LOS REGISTROS CORRESPONDIENTES A LA ACTIVIDAD REALIZADA SOBRE LA TABLA
+-- Stored Procedure para auditoría
+CREATE OR REPLACE FUNCTION fun_act_tabla() RETURNS "trigger" AS
+$$
+    DECLARE wid_consec tab_borrados.id_consec%TYPE;
+    BEGIN
+        IF TG_OP = 'INSERT' THEN
+           NEW.usr_insert = CURRENT_USER;
+           NEW.fec_insert = CURRENT_TIMESTAMP;
+           RETURN NEW;
+        END IF;
+        IF TG_OP = 'UPDATE' THEN
+           NEW.usr_update = CURRENT_USER;
+           NEW.fec_update = CURRENT_TIMESTAMP;
+           RETURN NEW;
+        END IF;
+        IF TG_OP = 'INSERT OR UPDATE' THEN
+            SELECT MAX(a.id_consec) INTO wid_consec FROM tab_borrados a;
+            IF wid_consec IS NULL THEN
+                wid_consec = 1;
+            ELSE
+                wid_consec = wid_consec + 1;
+            END IF;
+            INSERT INTO tab_borrados VALUES(wid_consec,TG_RELNAME,CURRENT_USER,CURRENT_TIMESTAMP);
+            RETURN OLD; 
+        END IF;
+    END;
+$$
+LANGUAGE PLPGSQL;
+
+-- **************************************************************
+-- TRIGGERS DE AUDITORÍA PARA GENERAR LOS USUARIOS DE LAS TABLAS
+-- **************************************************************
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_usuarios FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_menus FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_menu_usuarios FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_config_sistema FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_dptos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ciudades FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_regionales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_centros FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sedes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_areas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_entradas_centro FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_redes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_pmtros_grales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_empresas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_docum FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_profesiones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_niveles_estudio FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_persona FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_personas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_instructores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_contratos_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_adicion_contratos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_horas_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_certificados FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_compet_instructor FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_activ_proyecto FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_raps FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_evidencias FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_evidenciasXrap FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_juicios_eval FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_metodos_aut FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_vehiculos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_log_ingresos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_proyectos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ambientes FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_sectores FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ocupaciones FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_especiales FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_jornadas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_permiso FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_aprendices_fichas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ausencias_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_asistencia_aprendiz FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_motivos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_llamados_atencion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_comite_aprendices FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_ofertas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_competencias_ficha FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_rutas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_programacion FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_prog_competencia FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_tipos_novedad FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_bitacora FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_causas_novedad FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_novedades_academicas FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
+CREATE OR REPLACE TRIGGER tri_act_tabla BEFORE INSERT OR UPDATE ON tab_festivos FOR EACH ROW EXECUTE PROCEDURE fun_act_tabla();
 
 -- INSERCIÓN DE TABLA DE MOTIVOS DE LLAMADO DE ATENCIÓN
-INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
-INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');
-INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro');
-INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación');
-INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación');
-INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación');
-INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo');
-INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado');
+INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN TABLA DE TIPOS DE NOVEDADES
-INSERT INTO tab_tipos_novedad VALUES(1,'Deserción');
-INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión');
-INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico');
-INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico');
-INSERT INTO tab_tipos_novedad VALUES(5,'En Formación');
-INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento');
-INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario');
-INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad');
+INSERT INTO tab_tipos_novedad VALUES(1,'Deserción','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(5,'En Formación','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN TABLA DE CAUSAS DE NOVEDADES
-INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida');
+INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida','seed',CURRENT_TIMESTAMP);
 INSERT INTO tab_causas_novedad VALUES(1,'a) En la formación presencial, excepto la complementaria, tener tres (3) días continuos de inasistencia injustificada o acumular cinco (5) días
- no continuos de inasistencia injustificada durante todo el proceso de formación.');
-INSERT INTO tab_causas_novedad VALUES (2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
+ no continuos de inasistencia injustificada durante todo el proceso de formación.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
 por el instructor o por el responsable del grupo o no ingresa a su ambiente virtual de formación (plataforma LMS) durante veinte (20) días consecutivos, sin previa justificación soportada 
-ante el sistema de gestión académico-administrativo');
-INSERT INTO tab_causas_novedad VALUES (3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
-programados para el desarrollo de sus actividades formativas.');
-INSERT INTO tab_causas_novedad VALUES (4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
-la empresa con la que desarrolla la alternativa establecida.');
-INSERT INTO tab_causas_novedad VALUES (5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
-o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.');
-INSERT INTO tab_causas_novedad VALUES (6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ');
+ante el sistema de gestión académico-administrativo','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
+programados para el desarrollo de sus actividades formativas.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
+la empresa con la que desarrolla la alternativa establecida.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
+o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_causas_novedad VALUES(6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN TABLA DE VEHÍCULOS (PLACA GENÉRICA)
-INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777);
+-- Dato de prueba: solo se inserta si ya existe la persona propietaria (evita
+-- romper instalaciones limpias, donde tab_personas aún está vacía).
+INSERT INTO tab_vehiculos (id_vehiculo, ind_tipovehiculo, id_propietario, usr_insert, fec_insert)
+SELECT 'AAA000', 1, 77777777, 'seed', CURRENT_TIMESTAMP
+WHERE EXISTS (SELECT 1 FROM tab_personas WHERE id_persona = 77777777)
+ON CONFLICT (id_vehiculo) DO NOTHING;
 
 -- INSERCIÓN TABLA DE OPCIONES DE PRODUCTIVA
-INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida');
-INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral');
-INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral');
-INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía');
-INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo');
+INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN EN TABLA DE JORNADAS
-INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
-INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
+INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00','seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00','seed',CURRENT_TIMESTAMP);
 
 -- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
-INSERT INTO tab_tipos_permiso VALUES(1,'Consulta Médica',0,3);
-INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
-INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
-INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
-INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
-INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
-INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
-INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
-INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
-INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
-INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
-INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
-INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
+INSERT INTO tab_tipos_permiso VALUES(1,'Consulta Médica',0,3,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1,'seed',CURRENT_TIMESTAMP);
+INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0,'seed',CURRENT_TIMESTAMP);

@@ -32,8 +32,8 @@ cualquier PostgreSQL local sin `ssl=on`):
 
 | Archivo                 | Cambio                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------- |
-| `src/core/config.php` | +`DB_SSLMODE` vía `EnvLoader::get('DB_SSLMODE', '')` — vacío por defecto |
-| `src/core/Db.php`     | DSN agrega `;sslmode=<DB_SSLMODE>` solo si la variable no está vacía        |
+| `backend/core/config.php` | +`DB_SSLMODE` vía `EnvLoader::get('DB_SSLMODE', '')` — vacío por defecto |
+| `backend/core/Db.php`     | DSN agrega `;sslmode=<DB_SSLMODE>` solo si la variable no está vacía        |
 | `.env.example`        | +`DB_SSLMODE=` documentada                                                    |
 
 Con `DB_SSLMODE` vacío (estado actual), el comportamiento es idéntico al previo — sin riesgo de regresión.
