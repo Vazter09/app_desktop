@@ -16,6 +16,7 @@ ejercite exactamente el código de producción.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -110,10 +111,14 @@ def close_stale_session(username: str) -> None:
 def delete_test_persona(documento: str) -> None:
     """Limpia el registro de ingreso + enrolamiento facial + persona de
     prueba creados por un test (orden importa: FK de enrolamiento/ingreso
-    hacia persona)."""
+    hacia persona), más la carpeta de fotos de enrolamiento en filesystem
+    (2026-07-09 — Opción A: servidor guarda uploads/biometria/{id}/)."""
     try:
         run_psql(f"DELETE FROM tab_enrolamiento_facial WHERE id_persona = '{documento}';")
         run_psql(f"DELETE FROM tab_log_ingresos WHERE id_visitante = '{documento}';")
         run_psql(f"DELETE FROM tab_personas WHERE id_persona = '{documento}';")
     except RuntimeError:
         pass
+
+    carpeta_fotos = PROJECT_ROOT / "frontend" / "web" / "public" / "uploads" / "biometria" / documento
+    shutil.rmtree(carpeta_fotos, ignore_errors=True)

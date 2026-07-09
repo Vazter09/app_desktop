@@ -208,8 +208,9 @@ try {
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
     // --- 6c-bis. BIOMETRÍA FACIAL (app de escritorio SGI → tab_enrolamiento_facial) ---
+    // 2026-07-09: Agregado parámetro 4 (ruta_foto_enrolamiento)
     $sql_fun_guardar_enrolamiento_facial = "SELECT fun_guardar_enrolamiento_facial(
-        ?::NUMERIC, ?::VECTOR, ?::NUMERIC
+        ?::NUMERIC, ?::VECTOR, ?::NUMERIC, ?::VARCHAR
     )";
     $stmt_fun_guardar_enrolamiento_facial = $pdo->prepare($sql_fun_guardar_enrolamiento_facial);
 

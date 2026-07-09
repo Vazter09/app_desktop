@@ -1,5 +1,41 @@
 # CLAUDE.md — SmartCSET
 
+---
+
+## 🔐 PREMISAS PRINCIPALES & CONSIGNA OBLIGATORIA (DESDE 2026-07-09)
+
+### Premisas Fundamentales
+- **Sistema:** Control de acceso y registro de personas en centros de formación SENA
+- **Datos sensibles:** Identidad (cédula, foto), patrones de asistencia de aprendices/instructores/visitantes
+- **Amenaza principal:** Fuga de identificación + análisis de patrones de movimiento
+- **Principio rector:** **Seguridad Total** — Coherencia + Congruencia + Funcionalidad + Estabilidad + Seguridad en CADA línea de código
+- **Stack:** PHP 8+ (sin framework) + PostgreSQL 14+ + React web + Tkinter desktop (app_desktop)
+
+### ⚠️ CONSIGNA OBLIGATORIA: MSPI + FASE 0 + FASE 1 (GATE DE ENTRADA A TODO DESARROLLO)
+**A partir del 2026-07-09, CUALQUIER código nuevo debe:**
+
+1. **✅ Cumplir MSPI (MinTIC)** — Mapeo explícito a uno de los 8 ejes (3, 5, 6, 7, 8)
+2. **✅ Aprobar FASE 0** — Alineado con política, inventario de activos, matriz de riesgos (FASE0-*)
+3. **✅ Aprobar FASE 1** — Cumple entregables E1-E10 relevantes (Blindaje Técnico Inmediato)
+4. **✅ Auditoría de 5 Pilares** — Coherencia/Congruencia/Funcionalidad/Estabilidad/Seguridad
+
+**DESARROLLO SIN CUMPLIMIENTO = RECHAZO DE PR. No es "deuda diferida" — es scope incorrectamente definido.**
+
+### Checklist Obligatorio (TODO COMMIT)
+Antes de `git commit` de cualquier código nuevo:
+
+- [ ] MSPI: ¿A qué eje(s)? Documentado en PR o ADR
+- [ ] OWASP: ¿Vulnerabilidades? ¿Mitigadas?
+- [ ] Tests: ¿Pasa `scripts/test_seguridad/`? Tests nuevos si feature nueva
+- [ ] Fase 1: ¿Qué E-tasks aplican? (ej. "E1 + E3 + E6")
+- [ ] Datos sensibles: ¿Cifrado reposo (E2)? ¿TLS tránsito (E8)?
+- [ ] Autenticación: ¿Sesión + rate limiting (E3) + hardening (E4)?
+- [ ] Formularios: ¿CSRF (E5)? ¿Validación input?
+
+**APP_DESKTOP (desde 2026-07-09):** Toda funcionalidad nueva sigue las MISMAS reglas que backend/frontend. No hay excepción "porque es desktop". Biometría, endpoints, criptografía, TLS — TODO cumple MSPI + Fase 0-1.
+
+---
+
 ## Qué es SmartCSET
 
 SmartCSET es un sistema de control de acceso y registro de personas para el SENA (Servicio Nacional de Aprendizaje de Colombia). Permite a la portería de un centro de formación SENA registrar el ingreso y la salida de visitantes, aprendices, instructores, funcionarios y contratistas. Además administra usuarios del sistema, menús de navegación con permisos por usuario, configuración visual corporativa y un módulo de registro de personas standalone.
@@ -702,6 +738,24 @@ Construida la app de escritorio `app_desktop/` (Python + Tkinter, ver `app_deskt
 
 **Verificado en vivo:** ciclo completo enrolar → identificar → registrar ingreso automático (`metodo_aut=4`) → identificar de nuevo → registrar salida automática, con vector fijo simulando una captura real (sin cámara física con rostro disponible en este entorno). Auditoría real confirmada (`usr_insert = porteria`, no genérico). Datos de prueba limpiados, 0 sesiones colgadas.
 
+### Bug 20: foto de enrolamiento facial (app de escritorio) — firma PL/pgSQL sobrecargada por segunda vez en el proyecto — 2026-07-09 (tarde)
+Continuación directa del Bug 19: se agregó captura y almacenamiento de la foto tomada durante el enrolamiento (decisión de Anderson: **Opción A** — el servidor guarda el archivo en filesystem, la app de escritorio lo cachea localmente; nada de `BYTEA` en BD). Requirió agregar un 4º parámetro (`ruta_foto_enrolamiento`) a `fun_guardar_enrolamiento_facial`.
+
+**Error en cadena al desplegar (mismo patrón que el Bug de aridad ya documentado para `smartcset_handle_sql_error` en la sección "Bug 6" y para `fun_registrar_intento_login`/`fun_siem_list_eventos` en E3):**
+1. `prepare.php` seguía preparando el statement con 3 placeholders (`?::NUMERIC, ?::VECTOR, ?::NUMERIC`) — corregido a 4.
+2. La función en BD real no tenía la firma nueva desplegada todavía (`function ... does not exist`) — desplegada manualmente.
+3. **Al desplegar el `CREATE OR REPLACE` con distinta aridad, PostgreSQL no reemplazó la función de 3 args — creó una segunda función sobrecargada.** `SELECT p.oid::regprocedure FROM pg_proc WHERE p.proname = 'fun_guardar_enrolamiento_facial'` devolvía 2 filas. Exactamente la lección ya escrita en este documento (ver Bug 6 / lección de E3): un cambio de aridad con `CREATE OR REPLACE` no basta, hace falta `DROP FUNCTION IF EXISTS` explícito de la firma vieja. Agregado dentro del propio archivo `.sql` (idempotente — no falla si la firma vieja nunca existió, como en una instalación limpia nueva), ejecutado en BD real, verificado que queda 1 sola firma.
+
+**Segundo hallazgo, encontrado por auditoría explícita pedida por Anderson** (no por prueba de usuario): la migración `add_ruta_foto_enrolamiento.sql` no estaba en el array de migraciones de `database/setup_smartcset.sh` — una instalación limpia nueva no habría tenido la columna. Agregada en el punto correcto (junto a las otras 2 migraciones de `tab_enrolamiento_facial`, antes del array `FUNCS`).
+
+**Tercer hallazgo, misma auditoría:** la feature se había implementado sin ningún test nuevo, pese a que el checklist de `AGENTS.md`/`CLAUDE.md` (agregado esa misma mañana a pedido de Anderson) exige tests reales para toda feature nueva. Corregido: 3 tests agregados a `app_desktop/app/tests/test_smartcset_client.py` cubriendo ciclo completo con foto, ausencia de foto (no debe romper nada), y foto inválida (debe ser rechazada por `BiometriaPhotoService`, E6). Suite completa: 13/13 PASS.
+
+**Bug de UX relacionado, mismo bloque de trabajo:** el modal de confirmación mostraba el frame capturado en vivo en lugar de la foto real guardada del enrolamiento — prioridad invertida en `facial_modal.py::_identificar()`. Corregido: la foto que devuelve el servidor (la real, guardada) tiene prioridad siempre; el frame local es solo fallback si el servidor no devolvió ninguna.
+
+**Alcance de la validación:** todo lo anterior se probó contra el servidor de laboratorio (`192.168.1.71`, el de `.env` en este entorno), no contra el servidor institucional real (`10.5.213.103`). Pendiente repetir el despliegue y la validación ahí.
+
+**Lección (aplicable a cualquier función PL/pgSQL futura, no solo biometría):** cambiar la aridad de una función existente **siempre** requiere `DROP FUNCTION IF EXISTS <firma vieja exacta>` explícito en el mismo archivo `.sql`, antes del `CREATE OR REPLACE` nuevo. Verificar con `SELECT oid::regprocedure FROM pg_proc WHERE proname = '...'` que solo quede 1 firma tras desplegar — no asumirlo.
+
 ### Deuda técnica adicional
 
 - `scripts/test_seguridad/common.py`: `common.login()` postea a `/index.php` (ruta vieja); el login real es AJAX JSON a `backend/routers/auth/v1/login.php`. `test_e3_rate_limiting.py` golpea el endpoint real directamente; un futuro refactor debería alinear el helper `login()`. (El bug de `PROJECT_ROOT` que impedía a `run_psql` encontrar `.env` ya se corrigió el 2026-07-05.)
@@ -723,6 +777,7 @@ Construida la app de escritorio `app_desktop/` (Python + Tkinter, ver `app_deskt
 - **No codear colores corporativos directamente en CSS/HTML.** Usar las variables CSS `var(--v-oscuro)`, `var(--v-oliva)`, o las variables del sistema de temas desde `frontend/web/layout/theme_vars.php`.
 - **No crear nuevas tablas sin migración SQL.** Cualquier cambio de schema va en `database/migrations/` o en `database/schema/`.
 - **No desplegar funciones PL/pgSQL sin actualizar el array FUNCS de `database/setup_smartcset.sh`.**
+- **No cambiar la aridad (cantidad de parámetros) de una función PL/pgSQL existente sin `DROP FUNCTION IF EXISTS <firma vieja exacta>` explícito antes del `CREATE OR REPLACE`.** Un `CREATE OR REPLACE` con distinta aridad no reemplaza — crea una función sobrecargada nueva y dos quedan viviendo a la vez. Verificar con `SELECT oid::regprocedure FROM pg_proc WHERE proname = '...'` que solo quede 1 firma tras desplegar. Ver Bug 6, E3 y Bug 20 en este documento — mismo error, tres veces.
 - **No olvidar el EXCEPTION block** en funciones PL/pgSQL nuevas: siempre re-lanzar P0001 y llamar `smartcset_handle_sql_error(w_exc_state, w_exc_msg, w_exc_detail, w_exc_hint)` para OTHERS — nunca sin argumentos. Los 4 valores se capturan con `GET STACKED DIAGNOSTICS` dentro del mismo bloque EXCEPTION.
 - **No commitear `.env`.** Está en `.gitignore`; usar `.env.example` para documentar variables.
 - **No usar `exit` dentro de funciones de librería** salvo en middleware y guardianes de acceso que son parte del contrato de la función.

@@ -1,0 +1,12 @@
+# Cachè local de imágenes biométricas
+# Las imágenes se descargan desde el servidor cuando se identifican
+# y se cachean aquí para reutilizar sin descargar nuevamente
+
+# Ignorar todas las imágenes
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# Pero mantener esta carpeta en el repo
+!.gitignore

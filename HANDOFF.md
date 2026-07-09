@@ -240,6 +240,51 @@ La app desktop Python + Tkinter (`app_desktop/app/main.py`) completa interacció
 
 ---
 
+## LO QUE SE HIZO EN LA SESIÓN 2026-07-09 (tarde) — Foto de enrolamiento + modal de confirmación + auditoría de cumplimiento MSPI
+
+Continuación directa de la sesión de la mañana. Foco: cerrar el hueco de UX detectado por Anderson en el flujo de biometría (identificar no mostraba nada visual antes de registrar) y, a mitad de sesión, una **auditoría explícita pedida por Anderson** sobre si el propio desarrollo de esta tarde estaba cumpliendo las premisas de MSPI + Fase 0-1 que él mismo había mandado formalizar en AGENTS.md/CLAUDE.md horas antes — la respuesta honesta fue que no del todo, y se corrigió en la misma sesión.
+
+### 1. Foto de enrolamiento — Opción A (servidor guarda, app cachea)
+
+Decisión de Anderson: NO guardar la foto como `BYTEA` en BD — guardarla como archivo en filesystem, con nomenclatura por persona, y que la app de escritorio la cachee localmente.
+
+- **Servidor:** `backend/services/porteria/biometria_photo_service.php` (nuevo) — valida MIME real con `finfo` (whitelist JPEG/PNG/WebP), guarda en `frontend/web/public/uploads/biometria/{id_persona}/{id_persona}_{primer_nombre}.jpg`, lee y devuelve en base64.
+- **BD:** columna nueva `tab_enrolamiento_facial.ruta_foto_enrolamiento VARCHAR(500)` (migración `add_ruta_foto_enrolamiento.sql`).
+- **`enrolar.php`** recibe `foto_base64`, guarda el archivo, pasa la ruta a la función PL/pgSQL.
+- **`identificar.php`** lee la ruta guardada y devuelve `foto_base64` de la foto **real de enrolamiento**, no una captura nueva.
+- **App:** `smartcset_client.py` descarga y cachea en `app_desktop/app/images/{id}_{nombre}.jpg` (no versionado).
+
+### 2. Modal de confirmación de identificación (nuevo componente)
+
+A pedido de Anderson (con referencia visual tipo "expediente de investigación": foto a la izquierda, datos al centro, huella a la derecha), se creó `app_desktop/app/ui/identification_confirmation_modal.py`. Se abre automáticamente al identificar con éxito — el operario ve foto + datos personales completos y debe confirmar antes de que se registre el ingreso/salida. Columna de huella dactilar es placeholder explícito (feature no desarrollada, planeada a futuro). Integrado en `facial_modal.py`: `_identificar()` ya no registra directo, abre el modal; el registro real ocurre en el callback de confirmación.
+
+### 3. Bugs encontrados y corregidos en el camino
+
+1. `parameter was not defined` al enrolar — `backend/core/prepare.php` seguía preparando el statement con 3 placeholders, no 4. Corregido.
+2. `function ... does not exist` tras el fix anterior — la función en BD real no tenía la firma nueva desplegada. Desplegada manualmente.
+3. **Firma duplicada en BD** — al desplegar el `CREATE OR REPLACE` con distinta aridad (3→4 args), PostgreSQL no reemplazó la función vieja, creó una sobrecarga nueva. Es la misma lección ya documentada en `CLAUDE.md` para `smartcset_handle_sql_error` (ver "Bugs conocidos" punto 2, y también el patrón de E3 con `fun_registrar_intento_login`/`fun_siem_list_eventos`). Se agregó `DROP FUNCTION IF EXISTS` explícito de la firma de 3 args dentro del propio archivo `.sql`, se ejecutó en BD real, y se verificó que solo queda 1 firma. La migración de la columna también **faltaba** en `database/setup_smartcset.sh` — agregada en el punto correcto.
+4. El modal mostraba el frame capturado en vivo en lugar de la foto real guardada del enrolamiento — prioridad invertida en `facial_modal.py::_identificar()`, corregida (servidor gana siempre; frame local solo como fallback).
+5. Cámara no detectada al abrir el modal de biometría en Salida — reportado y confirmado resuelto por Anderson tras los cambios de feedback visual, pero **sin causa raíz identificada con certeza**. Queda como posible recurrencia a vigilar, no como bug cerrado con explicación.
+
+### 4. Auditoría de cumplimiento MSPI + Fase 0-1 sobre el propio trabajo de la sesión (pedida explícitamente por Anderson)
+
+Antes de seguir, Anderson preguntó directamente si el desarrollo de app_desktop estaba cumpliendo las premisas que él mismo había mandado agregar a AGENTS.md/CLAUDE.md esa misma mañana. Auditoría honesta encontró **3 violaciones reales**, no solo teóricas:
+- Función PL/pgSQL sobrecargada sin `DROP` — ya cubierto en el punto 3 arriba.
+- Migración nueva no registrada en `setup_smartcset.sh` — ya cubierto en el punto 3 arriba.
+- **Cero tests nuevos** para la funcionalidad de fotos, pese a que el checklist propio exige tests reales (sin mocks) para toda feature nueva.
+
+Corregido en la misma sesión: se agregaron 3 tests nuevos a `app_desktop/app/tests/test_smartcset_client.py` (`test_enrolar_con_foto_guarda_ruta_y_se_recupera_al_identificar`, `test_enrolar_sin_foto_no_rompe_identificacion`, `test_enrolar_foto_invalida_es_rechazada`), y `tests/common.py::delete_test_persona()` se extendió para limpiar también la carpeta de fotos en filesystem entre corridas. Suite completa verificada: **13/13 PASS**.
+
+**E2 (cifrado en reposo) — decisión explícita de Anderson:** queda diferido, se resuelve del lado del SENA, no en este ciclo de desarrollo. Documentado como tal (no como "cumplido") en `app_desktop/HANDOFF.md`.
+
+### 5. Alcance de la validación — importante para la próxima sesión
+
+Todo lo de esta tarde (foto + modal + fix de aridad + tests) se probó y desplegó contra el **servidor de laboratorio** (`192.168.1.71`, el que usa `.env` en este entorno), **no** contra el servidor institucional real (`10.5.213.103`) donde sí se había validado el ciclo de biometría sin foto en la sesión de la mañana. Pendiente: repetir el despliegue (migración + función + servicio PHP) y la validación en `10.5.213.103` antes de dar esto por cerrado en producción real.
+
+**Documentos actualizados:** `app_desktop/README.md`, `app_desktop/HANDOFF.md` (ambos con la salvedad explícita de "probado en laboratorio, no reconfirmado en institucional").
+
+---
+
 ## LO QUE SE HIZO EN LA SESIÓN 2026-07-08 — Reducción SIEM a 2 submenús + rediseño alertas + auto-refresh
 
 Tras la consolidación completa del módulo SIEM (sesiones 2026-07-06/07, ver abajo), a pedido
@@ -1300,7 +1345,9 @@ Symlinks requeridos (en `frontend/web/public/`):
 
 6. **Suite de tests** — apunta al servidor SENA (`10.5.213.103`). Pendiente actualizar `common.py` para apuntar a `10.5.213.111` o `localhost`.
 
-7. **`DB_ENCRYPTION_KEY` vacía** — genera advertencia en logs de Apache. Esperado hasta implementar E2 (cifrado en reposo).
+7. **`DB_ENCRYPTION_KEY` vacía** — genera advertencia en logs de Apache. Esperado hasta implementar E2 (cifrado en reposo). Extiende también a fotos de enrolamiento facial (`uploads/biometria/`) — decisión explícita de diferir a resolución del lado del SENA (2026-07-09).
+
+8. **Ciclo de biometría con foto (Opción A, 2026-07-09) — validado solo en laboratorio.** Probado y corregido contra `192.168.1.71` (servidor de `.env` en este entorno de desarrollo). Pendiente repetir despliegue (migración `add_ruta_foto_enrolamiento.sql` + función `fun_guardar_enrolamiento_facial` 4-arg + `biometria_photo_service.php`) y validación contra el servidor institucional real (`10.5.213.103`).
 
 ---
 

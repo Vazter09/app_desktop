@@ -1,11 +1,16 @@
 # Dependencias de terceros de la app de escritorio SGI.
 #
 # Única categoría permitida (ver REGLAS_APP_ESCRITORIO_SGI.md, sección 4/5.1):
-# captura de cámara, compartida entre la app principal y el futuro motor
-# biométrico. Versión exacta fijada (==, no >=) — un entorno sin internet
-# constante no puede arriesgarse a que dos PCs resuelvan versiones distintas.
+# captura de cámara + procesamiento de imágenes para biometría.
+# Versión exacta fijada (==, no >=) — un entorno sin internet constante
+# no puede arriesgarse a que dos PCs resuelvan versiones distintas.
 #
-# NO incluye todavía la librería de extracción de embeddings faciales
-# (eso va en el motor biométrico aislado, sección 5.2 — pendiente).
+# - opencv-python-headless: captura de cámara + motor YuNet+SFace
+# - numpy: operaciones numéricas para vectores de embeddings
+# - Pillow: conversión frame OpenCV ↔ base64 (2026-07-09)
+#
+# NO incluye la librería de extracción de embeddings faciales aislada
+# (eso va en el motor biométrico aparte, sección 5.2 — pendiente Fase 2).
 opencv-python-headless==4.10.0.84
 numpy==1.26.4
+Pillow==10.0.0

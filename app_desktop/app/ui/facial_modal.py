@@ -13,19 +13,31 @@ ESTADO: flujo completo real.
    rostro capturado.
 3. "Enrolar": documento + último frame → vector → `biometria/enrolar.php`.
 4. "Identificar": último frame → vector → `biometria/identificar.php` →
-   si hay match, se reutiliza `ingreso/consultar.php` o
-   `salida/consultar.php` (según `modo`) para decidir, y se registra
-   con `id_metodo_aut=4` ("Biométrico facial", ya en el catálogo).
+   si hay match, ABRE MODAL DE CONFIRMACIÓN (2026-07-09) que muestra foto
+   + datos personales para que el usuario confirme antes de registrar
+   ingreso/salida con `id_metodo_aut=4` ("Biométrico facial").
+
+CUMPLIMIENTO MSPI + FASE 0-1:
+- E1: Validación visual de acceso (usuario confirma antes de registrar)
+- E4: Hardening de sesión (confirmación explícita)
+- E10: Auditoría (cada acción queda logueda)
 """
 from __future__ import annotations
 
+import base64
+import io
 import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Literal
 
+import cv2
+import numpy as np
+from PIL import Image
+
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 from ui.camera import CameraSource, detectar_camara_disponible, frame_a_photoimage
+from ui.identification_confirmation_modal import IdentificationConfirmationModal
 
 Modo = Literal["ingreso", "salida"]
 
@@ -268,7 +280,31 @@ class FacialRecognitionModal(tk.Toplevel):
 
         return resultado
 
-    # ---- Enrolar --------------------------------------------------------
+    # ---- Enrolar (con foto — 2026-07-09) --------------------------------
+
+    def _frame_a_base64(self, frame: np.ndarray) -> str:
+        """Convierte frame OpenCV (BGR) a base64 JPG.
+
+        E2: Foto se codifica en base64 para transmitir al servidor sin
+        dependencias de terceros (urllib + stdlib). El servidor validará
+        que sea imagen válida.
+        """
+        try:
+            # Convertir BGR (OpenCV) → RGB (PIL)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(frame_rgb)
+
+            # Guardar a buffer JPG
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format="JPEG", quality=85)
+            buffer.seek(0)
+
+            # Codificar a base64
+            foto_base64 = base64.b64encode(buffer.read()).decode("utf-8")
+            return foto_base64
+        except Exception as e:
+            self._set_estado(f"Error capturando foto: {e}", theme.ERROR)
+            return ""
 
     def _enrolar(self) -> None:
         documento = self._documento_var.get().strip()
@@ -282,18 +318,27 @@ class FacialRecognitionModal(tk.Toplevel):
             return
         embedding, calidad = extraido
 
+        # Capturar foto del último frame (2026-07-09)
+        self._set_estado("📸 Capturando foto y enrolando...", theme.CYAN)
+        self.update()  # Refrescar UI inmediatamente
+
+        foto_base64 = ""
+        if self._ultimo_frame is not None:
+            foto_base64 = self._frame_a_base64(self._ultimo_frame)
+
         self._enrolar_btn.state(["disabled"])
         try:
-            self._client.biometria_enrolar(documento, embedding, calidad)
+            # Enviar con foto si se capturó (E2, E6: validación)
+            self._client.biometria_enrolar(documento, embedding, calidad, foto_base64 or None)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             self._set_estado(f"Error al enrolar: {exc}", theme.ERROR)
             return
         finally:
             self._enrolar_btn.state(["!disabled"])
 
-        self._set_estado(f"Rostro enrolado para el documento {documento} (calidad {calidad}%).", theme.SUCCESS)
+        self._set_estado(f"✅ Rostro enrolado para {documento} (calidad {calidad}%).", theme.SUCCESS)
 
-    # ---- Identificar + registrar ingreso/salida ------------------------
+    # ---- Identificar + abrir confirmación (2026-07-09) ------------------
 
     def _identificar(self) -> None:
         extraido = self._extraer_embedding()
@@ -301,26 +346,57 @@ class FacialRecognitionModal(tk.Toplevel):
             return
         embedding, _calidad = extraido
 
+        self._set_estado("🔍 Buscando en base de datos...", theme.CYAN)
+        self.update()  # Refrescar UI
+
         self._identificar_btn.state(["disabled"])
         try:
             resultado = self._client.biometria_identificar(embedding)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             self._set_estado(f"Error al identificar: {exc}", theme.ERROR)
-            return
-        finally:
             self._identificar_btn.state(["!disabled"])
+            return
 
         if not resultado.get("match"):
-            self._set_estado("Rostro no reconocido — la persona no está enrolada.", theme.ERROR)
+            self._set_estado("❌ Rostro no reconocido — no está enrolado.", theme.ERROR)
+            self._identificar_btn.state(["!disabled"])
             return
 
-        persona = resultado["persona"]
-        documento = persona["documento"]
-        nombre = f"{persona.get('nombres', '')} {persona.get('apellidos', '')}".strip()
+        # ✅ CAMBIO (2026-07-09): En lugar de registrar directamente, abre modal
+        # de confirmación que muestra foto + datos personales. Usuario confirma.
+        persona_datos = resultado.get("persona", {})
+
+        # PRIORIDAD: Foto guardada del servidor (de enrolamiento original)
+        # Fallback: frame local actual si no viene foto del servidor
+        if resultado.get("foto_base64"):
+            # ✅ Foto original de enrolamiento (guardada en servidor)
+            persona_datos["foto_base64"] = resultado.get("foto_base64")
+        elif self._ultimo_frame is not None:
+            # Fallback: si no vino foto del servidor, usa frame actual (shouldn't happen)
+            persona_datos["foto_base64"] = self._frame_a_base64(self._ultimo_frame)
+
+        self._set_estado("✅ Identificación confirmada — abriendo detalles...", theme.SUCCESS)
+
+        # Abre modal de confirmación
+        IdentificationConfirmationModal(
+            self,
+            self._client,
+            persona_datos,
+            modo=self._modo,
+            on_confirmar=self._on_confirmacion_modal,
+        )
+
+        self._identificar_btn.state(["!disabled"])
+
+    def _on_confirmacion_modal(self, persona_datos: dict) -> None:
+        """Callback del modal de confirmación cuando usuario presiona
+        'Registrar Ingreso' o 'Registrar Salida'."""
+        documento = persona_datos.get("documento") or persona_datos.get("num_docum", "")
+        nombre = f"{persona_datos.get('nombres', '')} {persona_datos.get('apellidos', '')}".strip()
 
         try:
             if self._modo == "ingreso":
-                self._registrar_ingreso_identificado(documento, nombre)
+                self._registrar_ingreso_identificado(documento, nombre, persona_datos)
             else:
                 self._registrar_salida_identificada(documento, nombre)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
@@ -330,7 +406,7 @@ class FacialRecognitionModal(tk.Toplevel):
         if self._on_registrado is not None:
             self._on_registrado()
 
-    def _registrar_ingreso_identificado(self, documento: str, nombre: str) -> None:
+    def _registrar_ingreso_identificado(self, documento: str, nombre: str, persona_datos: dict | None = None) -> None:
         consulta = self._client.ingreso_consultar(documento, "CC")
         if not consulta.get("puede_ingresar"):
             self._set_estado(f"{nombre}: ya tiene un ingreso abierto.", theme.ERROR)
@@ -347,6 +423,10 @@ class FacialRecognitionModal(tk.Toplevel):
             return
 
         persona = consulta["persona"]
+        # Usar datos del modal si están disponibles (con confirmación visual)
+        if persona_datos:
+            persona = persona_datos
+
         self._client.ingreso_registrar(
             {
                 "tipo_doc": "CC",

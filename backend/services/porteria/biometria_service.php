@@ -54,17 +54,19 @@ function biometriaEmbeddingATexto(array $embedding): string
  * Enrola un rostro para una persona ya registrada.
  *
  * @param array<int, mixed> $embedding
+ * @param string|null $rutaFoto Ruta relativa a la foto de enrolamiento (2026-07-09)
  * @return int id_enrolamiento creado
  */
 function biometriaGuardarEnrolamiento(
     PDOStatement $stmtGuardar,
     int $idPersona,
     array $embedding,
-    ?float $calidadFacial = null
+    ?float $calidadFacial = null,
+    ?string $rutaFoto = null
 ): int {
     $vectorTexto = biometriaEmbeddingATexto($embedding);
 
-    $stmtGuardar->execute([$idPersona, $vectorTexto, $calidadFacial]);
+    $stmtGuardar->execute([$idPersona, $vectorTexto, $calidadFacial, $rutaFoto]);
 
     return (int) $stmtGuardar->fetchColumn();
 }

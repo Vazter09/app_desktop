@@ -66,6 +66,7 @@ run_sql "$ROOT/database/migrations/add_tab_intentos_login.sql"
 echo "==> Migración tab_enrolamiento_facial (biometría facial — app escritorio SGI)"
 run_sql "$ROOT/database/migrations/add_tab_enrolamiento_facial.sql"
 run_sql "$ROOT/database/migrations/alter_tab_enrolamiento_facial_vector_128.sql"
+run_sql "$ROOT/database/migrations/add_ruta_foto_enrolamiento.sql"
 
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"

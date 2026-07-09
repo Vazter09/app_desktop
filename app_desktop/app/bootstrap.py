@@ -13,17 +13,22 @@ reejecutarse en bucle.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
 
 _ENV_FLAG = "SMARTCSET_VENV_ACTIVE"
+_REQUIREMENTS_HASH_FILE = ".requirements.hash"
 
 
 def ensure_venv() -> None:
     """Garantiza que el proceso actual corre con el Python del `.venv`
     local. Si no es así, lo crea/instala si hace falta y se re-ejecuta.
-    Debe llamarse ANTES de importar cualquier módulo que use `cv2`."""
+    Debe llamarse ANTES de importar cualquier módulo que use `cv2`.
+
+    2026-07-09: Detecta cambios en requirements.txt y reinstala si es necesario.
+    """
     if os.environ.get(_ENV_FLAG) == "1":
         return  # ya estamos dentro del venv correcto, no hacer nada más
 
@@ -33,18 +38,47 @@ def ensure_venv() -> None:
     venv_python = os.path.join(venv_dir, "Scripts", "python.exe") if is_windows \
         else os.path.join(venv_dir, "bin", "python3")
 
-    if not os.path.isfile(venv_python):
-        print("Primer arranque: creando entorno virtual local (.venv)...")
-        import venv as venv_module
+    requirements_file = os.path.join(app_dir, "requirements.txt")
+    hash_file = os.path.join(app_dir, _REQUIREMENTS_HASH_FILE)
 
-        venv_module.create(venv_dir, with_pip=True)
+    # Calcular hash de requirements.txt (2026-07-09)
+    try:
+        with open(requirements_file, "rb") as f:
+            requirements_hash = hashlib.md5(f.read()).hexdigest()
+    except FileNotFoundError:
+        requirements_hash = ""
+
+    # Detectar si requirements cambió
+    requirements_changed = False
+    if os.path.isfile(hash_file):
+        try:
+            with open(hash_file, "r") as f:
+                old_hash = f.read().strip()
+                requirements_changed = old_hash != requirements_hash
+        except Exception:
+            requirements_changed = True
+
+    if not os.path.isfile(venv_python) or requirements_changed:
+        if not os.path.isfile(venv_python):
+            print("Primer arranque: creando entorno virtual local (.venv)...")
+            import venv as venv_module
+            venv_module.create(venv_dir, with_pip=True)
+        elif requirements_changed:
+            print("Dependencias actualizadas: reinstalando...")
 
         venv_pip = os.path.join(venv_dir, "Scripts", "pip.exe") if is_windows \
             else os.path.join(venv_dir, "bin", "pip")
-        requirements = os.path.join(app_dir, "requirements.txt")
 
-        print("Instalando dependencias (opencv-python-headless, numpy)...")
-        subprocess.run([venv_pip, "install", "--quiet", "-r", requirements], check=True)
+        print("Instalando dependencias desde requirements.txt...")
+        subprocess.run([venv_pip, "install", "--quiet", "-r", requirements_file], check=True)
+
+        # Guardar hash (2026-07-09)
+        try:
+            with open(hash_file, "w") as f:
+                f.write(requirements_hash)
+        except Exception:
+            pass
+
         print("Entorno listo.")
 
     env = os.environ.copy()

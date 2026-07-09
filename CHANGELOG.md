@@ -1,5 +1,42 @@
 # CHANGELOG — SmartCSET
 
+## [2026-07-09 tarde] Sesión: Foto de enrolamiento facial (Opción A) + Modal de confirmación + auditoría de cumplimiento MSPI propia
+
+### 🎯 Objetivos Logrados
+- ✅ **Consigna formal MSPI + Fase 0-1 obligatoria para todo desarrollo nuevo**: a pedido explícito de Anderson, se agregó una sección "PREMISAS PRINCIPALES & CONSIGNA" al inicio de `CLAUDE.md` y `AGENTS.md` — todo código nuevo (incluyendo app_desktop, sin excepción) debe mapear a un eje MSPI, cumplir E-tasks de Fase 1 relevantes, y pasar un checklist de 8 puntos antes de commitear. Memoria persistida (`consigna_mspi_fase01_obligatoria.md`).
+- ✅ **Foto de enrolamiento facial, Opción A**: el servidor guarda el archivo en filesystem (`frontend/web/public/uploads/biometria/{id}/{id}_{nombre}.jpg`, con validación MIME real vía `finfo`), la app de escritorio lo cachea localmente (`app_desktop/app/images/`). Nueva columna `tab_enrolamiento_facial.ruta_foto_enrolamiento`, nuevo servicio `BiometriaPhotoService`.
+- ✅ **Modal de confirmación de identificación** (`identification_confirmation_modal.py`, nuevo): se abre automáticamente al identificar con éxito, muestra foto real de enrolamiento + datos personales + placeholder de huella dactilar (feature futura), y exige confirmación explícita del operario antes de registrar ingreso/salida.
+- ✅ **Auditoría de cumplimiento MSPI pedida explícitamente por Anderson sobre el propio trabajo de la sesión**: encontró 3 violaciones reales (función PL/pgSQL sobrecargada sin `DROP`, migración no registrada en el instalador, cero tests nuevos) — las 3 corregidas en la misma sesión, no diferidas.
+- ✅ **Bug 20 (CLAUDE.md)**: firma de `fun_guardar_enrolamiento_facial` quedó duplicada en BD tras cambiar de 3 a 4 parámetros (mismo error ya documentado en Bug 6 y en la lección de E3 — tercera vez que ocurre en el proyecto). Corregido con `DROP FUNCTION IF EXISTS` explícito en el archivo `.sql`; nueva regla agregada a "Lo que NO hacer" en `CLAUDE.md`.
+- ✅ **13/13 tests PASS** en `app_desktop/app/tests/test_smartcset_client.py` (3 nuevos: enrolar-con-foto end-to-end, enrolar-sin-foto no rompe nada, foto inválida rechazada por E6).
+
+### 📋 Documentación Actualizada
+1. **CLAUDE.md:** sección "PREMISAS PRINCIPALES" nueva + Bug 20 + regla nueva en "Lo que NO hacer" sobre aridad de funciones PL/pgSQL
+2. **AGENTS.md:** sección "PREMISAS PRINCIPALES" nueva + agente Portería (biometría con foto) + agente App Desktop (modal, cache, checklist de tests) actualizados
+3. **HANDOFF.md (raíz):** nueva sección "LO QUE SE HIZO EN LA SESIÓN 2026-07-09 (tarde)" + punto 8 agregado a "Bugs conocidos" (validación pendiente contra servidor institucional)
+4. **app_desktop/HANDOFF.md:** nota de precisión sobre alcance real de validación (laboratorio `192.168.1.71`, no institucional `10.5.213.103` todavía), sección de bugs de la sesión, E2 marcado explícitamente como diferido (no cumplido)
+5. **app_desktop/README.md:** estado de biometría con foto, lección sobre aridad PL/pgSQL, estructura de carpetas actualizada (`images/`, `identification_confirmation_modal.py`), sección de tests con detalle de los 3 nuevos
+6. **Memoria de proyecto:** `consigna_mspi_fase01_obligatoria.md` (nueva), `MEMORY.md` actualizado con índice "Governance & Gates"
+
+### 🧪 Verificaciones
+- 13/13 tests PASS contra servidor de laboratorio (`192.168.1.71`, el de `.env` en este entorno)
+- Verificado en BD real: `SELECT oid::regprocedure FROM pg_proc WHERE proname = 'fun_guardar_enrolamiento_facial'` devuelve 1 sola fila tras el fix
+- `add_ruta_foto_enrolamiento.sql` agregada a `database/setup_smartcset.sh` en el punto correcto
+- Ciclo real probado por Anderson: enrolar con foto → identificar → modal muestra foto real de enrolamiento (no captura en vivo) → confirmar → registrar
+- Bug de cámara no detectada en Salida — reportado y confirmado resuelto por Anderson, **sin causa raíz identificada con certeza** (documentado como tal, no cerrado con explicación falsa)
+
+### ⚠️ Pendiente explícito
+- **E2 (cifrado en reposo) de fotos de enrolamiento:** decisión explícita de Anderson — se resuelve del lado del SENA, no en este ciclo. Documentado como diferido, no como cumplido.
+- **Validación contra servidor institucional real (10.5.213.103):** todo lo de esta sesión se probó en laboratorio. Repetir despliegue (migración + función + servicio PHP) y validar ahí antes de dar por cerrado en producción real.
+
+### 📌 Estado Final
+- **Documentación:** actualizada con precisión (sin sobre-reclamar validaciones no ocurridas)
+- **Tests:** 13/13 PASS (laboratorio)
+- **Deuda técnica nueva documentada:** 1 (validación pendiente en institucional)
+- **Deuda técnica corregida:** 3 (aridad PL/pgSQL, migración faltante en instalador, tests faltantes)
+
+---
+
 ## [2026-07-09] Sesión: Consolidación Final de Documentación + Grafo Indexado + App Desktop Operativa
 
 ### 🎯 Objetivos Logrados

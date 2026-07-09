@@ -12,9 +12,13 @@ Ejecutar:
 """
 from __future__ import annotations
 
+import base64
+import io
 import unittest
 import uuid
 from urllib.parse import urlparse
+
+from PIL import Image
 
 from common import (
     BASE_URL,
@@ -175,6 +179,16 @@ class TestBiometriaFacial(unittest.TestCase):
         rng = random.Random(seed)
         return [round(rng.uniform(-1, 1), 4) for _ in range(TestBiometriaFacial.VECTOR_DIM)]
 
+    @staticmethod
+    def _foto_base64_sintetica(color: tuple[int, int, int] = (10, 20, 30)) -> str:
+        """Imagen JPG mínima válida (1x1 px) — mismo propósito que
+        `_vector()`: no depende de cámara real, pero sí pasa la
+        validación real del servidor (finfo/MIME en
+        BiometriaPhotoService::guardarFoto)."""
+        buffer = io.BytesIO()
+        Image.new("RGB", (1, 1), color=color).save(buffer, format="JPEG")
+        return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
     def test_enrolar_e_identificar_mismo_vector(self) -> None:
         vector = self._vector(1)
 
@@ -224,6 +238,55 @@ class TestBiometriaFacial(unittest.TestCase):
             f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
         )
         self.assertEqual(metodo_real, "4")
+
+    def test_enrolar_con_foto_guarda_ruta_y_se_recupera_al_identificar(self) -> None:
+        """2026-07-09: Opción A (servidor guarda el archivo, la app cachea).
+        Verifica de punta a punta: enrolar con foto -> ruta_foto_enrolamiento
+        queda NOT NULL en BD -> identificar devuelve foto_base64 no vacío
+        (la misma que se guardó, no una recién capturada — ver bug reportado
+        donde el modal mostraba el frame en vivo en lugar de la foto real
+        de enrolamiento)."""
+        vector = self._vector(42)
+        foto = self._foto_base64_sintetica()
+
+        self.client.biometria_enrolar(self.documento, vector, calidad_facial=88.0, foto_base64=foto)
+
+        ruta_en_bd = run_psql(
+            "SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial ef "
+            "JOIN tab_personas p ON p.id_persona = ef.id_persona "
+            f"WHERE p.id_persona = '{self.documento}' "
+            "ORDER BY ef.fec_insert DESC LIMIT 1;"
+        )
+        self.assertTrue(ruta_en_bd, "ruta_foto_enrolamiento no debe quedar NULL tras enrolar con foto")
+        self.assertIn(f"{self.documento}", ruta_en_bd)
+
+        identificado = self.client.biometria_identificar(vector)
+        self.assertTrue(identificado["match"])
+        self.assertTrue(
+            identificado.get("foto_base64"),
+            "identificar.php debe devolver la foto guardada en el enrolamiento",
+        )
+
+    def test_enrolar_sin_foto_no_rompe_identificacion(self) -> None:
+        """Congruencia: el flujo debe seguir funcionando si no hay foto
+        (ej. cámara sin frame válido al enrolar) — foto_base64 debe venir
+        None, no lanzar excepción."""
+        vector = self._vector(43)
+        self.client.biometria_enrolar(self.documento, vector, calidad_facial=70.0)
+
+        identificado = self.client.biometria_identificar(vector)
+        self.assertTrue(identificado["match"])
+        self.assertIsNone(identificado.get("foto_base64"))
+
+    def test_enrolar_foto_invalida_es_rechazada(self) -> None:
+        """E6 (validación de uploads): base64 que no decodifica a una
+        imagen real debe ser rechazado por BiometriaPhotoService, no
+        guardado silenciosamente."""
+        vector = self._vector(44)
+        foto_invalida = base64.b64encode(b"esto no es una imagen").decode("utf-8")
+
+        with self.assertRaises(SmartcsetApiError):
+            self.client.biometria_enrolar(self.documento, vector, foto_base64=foto_invalida)
 
 
 if __name__ == "__main__":

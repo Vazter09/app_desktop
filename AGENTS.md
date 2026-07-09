@@ -1,5 +1,52 @@
 # AGENTS.md — SmartCSET
 
+---
+
+## 🔐 PREMISAS PRINCIPALES & CONSIGNA OBLIGATORIA (DESDE 2026-07-09)
+
+### Premisas Fundamentales
+- **Sistema:** Control de acceso y registro de personas en centros de formación SENA
+- **Datos sensibles:** Identidad (cédula, foto), patrones de asistencia de aprendices/instructores/visitantes
+- **Amenaza principal:** Fuga de identificación + análisis de patrones de movimiento
+- **Principio rector:** **Seguridad Total** — Coherencia + Congruencia + Funcionalidad + Estabilidad + Seguridad en CADA línea de código
+- **Stack:** PHP 8+ (sin framework) + PostgreSQL 14+ + React web + Tkinter desktop (app_desktop)
+
+### ⚠️ CONSIGNA OBLIGATORIA: MSPI + FASE 0 + FASE 1 (GATE DE ENTRADA A TODO DESARROLLO)
+**A partir del 2026-07-09, CUALQUIER código nuevo DEBE:**
+
+| Requisito | Prueba | Owner |
+|-----------|--------|-------|
+| ✅ **Cumplir MSPI (MinTIC)** | Mapeo explícito a Ejes 3, 5, 6, 7, 8 | Agente que implementa |
+| ✅ **Aprobar FASE 0** | Alineado con FASE0-POL-001, FASE0-RIE-003 | Documentación previa |
+| ✅ **Aprobar FASE 1** | Cumple E1-E10 relevantes (E-tasks) | Tests de seguridad suite |
+| ✅ **5 Pilares** | Coherencia/Congruencia/Funcionalidad/Estabilidad/Seguridad | Code review pre-commit |
+
+**COROLARIO:** Una funcionalidad que no pueda certificarse contra MSPI + Fase 0-1 **NO se implementa**. No es "deuda diferida" — es scope mal definido.
+
+### Checklist Obligatorio (TODO DESARROLLO)
+Antes de **cualquier** `git commit` que incluya código nuevo:
+
+- [ ] **MSPI:** ¿A qué eje(s)? Documentado en PR/ADR/comment
+- [ ] **Vulnerabilidades OWASP:** ¿Cuáles podría introducir? Mitigadas explícitamente
+- [ ] **Tests:** ¿Pasa `scripts/test_seguridad/`? Tests nuevos si feature nueva
+- [ ] **Fase 1 E-tasks:** ¿Qué entregables aplican? (ej. "E1 + E3 + E6" → validado)
+- [ ] **Datos sensibles:** Si toca personas → Cifrado reposo (E2) + TLS tránsito (E8)
+- [ ] **Autenticación/Sesión:** Sesión (E4) + rate limiting (E3) si toca login
+- [ ] **Formularios:** CSRF tokens (E5) si hay POST; validación de input (OWASP A03)
+- [ ] **Auditoría de 5 Pilares:** Coherencia con CLAUDE.md, congruencia con política, funciona, estable, seguro
+
+**SIN ESTE CHECKLIST CUMPLIDO: RECHAZO DE PR. No es sugerencia — es gate.**
+
+### APP_DESKTOP (Desde 2026-07-09)
+**Regla crítica:** Toda funcionalidad nueva en `app_desktop/` sigue las MISMAS reglas que backend/frontend. **No hay excepción por ser desktop.**
+- Biometría facial: E1 (validación), E2 (vectores cifrados), E3 (rate limit si aplica), E8 (TLS a backend)
+- Nuevos endpoints: E1 (acceso), E6 (validación upload si aplica), E10 (tests automatizados)
+- Cliente HTTP: E8 (TLS validation `verify_tls=True` siempre), E3 (rate limit respetado del servidor)
+
+**Ejemplo:** Feature "enrolar rostro" → requiere E1 (¿quién puede?) + E2 (vector cifrado) + E6 (foto validada) + E8 (TLS al backend). Si alguno falta, el feature no se implementa hasta cumplir.
+
+---
+
 ## Propósito de este archivo
 
 Este archivo describe cómo los agentes de IA (Claude Code y similares) deben operar dentro del proyecto SmartCSET. Define zonas de responsabilidad, contratos entre subsistemas, y lineamientos de colaboración entre múltiples agentes concurrentes.
@@ -35,14 +82,14 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 
 **Cuidado:** orden de despliegue crítico — `_helpers` antes que el resto
 
-### Agente: Módulo Portería (SGI) — Incluye Biometría (2026-07-09)
+### Agente: Módulo Portería (SGI) — Incluye Biometría con Foto (2026-07-09)
 
 **Responsable de:** `frontend/web/pages/modulos/porteria/`, `backend/routers/porteria/`, `backend/services/porteria/`, funciones `database/functions/porteria/`
 
 **Responsabilidad completa:**
 - Ingreso/salida manual por documento
 - Parseo de QR/códigos de barras
-- **Biometría facial:** enrolar + identificar (nuevo 2026-07-09)
+- **Biometría facial:** enrolar + identificar, con foto de enrolamiento (2026-07-09, tarde — Opción A)
 - Soporte de múltiples métodos de autenticación (`id_metodo_aut`: 1=manual, 2=QR, 3=barras, 4=facial)
 
 **Entradas:** cambios en flujo de ingreso/salida, nuevos métodos de lectura, cambios en biometría
@@ -53,7 +100,9 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 - No romper el constraint de ingreso único por día
 - Whitelist de `id_metodo_aut` en `parse_captura_service.php` debe incluir `ACCESO_METODO_BIOMETRICO = 4` (ver Bug 19)
 - Biometría: vector pgvector 128 dims (SFace), índice HNSW, búsqueda por similitud cosine
-- Funciones 4-arg exception handling: `fun_guardar_enrolamiento_facial`, `fun_identificar_persona_por_rostro`
+- Funciones 4-arg exception handling: `fun_guardar_enrolamiento_facial` (ahora 4 params: +`ruta_foto_enrolamiento`), `fun_identificar_persona_por_rostro`
+- **Fotos de enrolamiento (Opción A, 2026-07-09):** NO se guardan como `BYTEA`. `backend/services/porteria/biometria_photo_service.php` las guarda en filesystem (`frontend/web/public/uploads/biometria/{id_persona}/{id_persona}_{primer_nombre}.jpg`, valida MIME real con `finfo`); la ruta relativa vive en `tab_enrolamiento_facial.ruta_foto_enrolamiento`. `identificar.php` siempre debe devolver la foto real guardada, nunca una nueva — el cliente no debe sustituirla por una captura en vivo salvo fallback explícito. Cifrado en reposo de estas fotos (E2) queda diferido por decisión de Anderson (resolución del lado del SENA), no confundir con "cumplido".
+- **Cambiar la aridad de estas funciones SIEMPRE requiere `DROP FUNCTION IF EXISTS` de la firma vieja** en el propio `.sql` — ver Bug 20 en CLAUDE.md (mismo error que Bug 6/E3, tercera vez que ocurre en el proyecto).
 
 ### Agente: Módulo Registro
 
@@ -97,13 +146,19 @@ El proyecto puede ser trabajado por agentes especializados según el dominio. Se
 **Responsabilidad:**
 - Cliente HTTP puro (urllib, sin `requests`)
 - Login con sesión PHP real (misma autenticación que web)
-- Módulos: dashboard, ingreso/salida, entradas (admin), biometría
+- Módulos: dashboard, ingreso/salida, entradas (admin), biometría con foto + modal de confirmación (2026-07-09)
 
 **Entradas:** cambios en endpoints portería, cambios en autenticación
 
 **Salidas:** ejecutable Python + Tkinter, `SmartcsetClient` (contrato HTTP)
 
-**Cuidado:** no agregar deps externas (urllib es stdlib); TLS validation `verify_tls=True` en producción (ver `smartcset_client.py` §construcción); sesión PHP es stateful — re-usar cookies entre requests. Integración completa con biometría (enrolar/identificar) — ver tabla de 13 tablas interactuadas en `app_desktop_tablas.md`.
+**Cuidado:** 
+- No agregar deps externas sin necesidad real — solo 3 permitidas hoy: `opencv-python-headless`, `numpy` (cámara/motor), `Pillow` (conversión frame↔base64, agregada 2026-07-09). `bootstrap.py` detecta cambios en `requirements.txt` por hash y reinstala solo — no basta con editar el archivo si `.venv/` ya existe y el hash no cambió realmente.
+- TLS validation `verify_tls=True` en producción (ver `smartcset_client.py` §construcción); sesión PHP es stateful — re-usar cookies entre requests
+- **Modal de confirmación (`ui/identification_confirmation_modal.py`, nuevo 2026-07-09):** se abre automáticamente al identificar con éxito, antes de registrar. La foto que muestra debe ser la que devuelve el servidor (real, de enrolamiento) — nunca el frame en vivo salvo que el servidor no haya devuelto ninguna (fallback explícito, no comportamiento por defecto). Columna de huella dactilar es placeholder — no implementar sin que se pida explícitamente.
+- **Cache local de fotos:** `app_desktop/app/images/{id}_{nombre}.jpg`, no versionado (`.gitignore` propio de esa carpeta) — es cache, no fuente de verdad; la fuente de verdad es siempre el servidor.
+- Toda feature nueva de esta app requiere tests reales (sin mocks) en `app_desktop/app/tests/` antes de darse por terminada — ver checklist obligatorio de la sección "PREMISAS PRINCIPALES" arriba. No es opcional; se auditó explícitamente y se encontraron 3 violaciones propias en la sesión del 2026-07-09 (ver Bug 20 en CLAUDE.md).
+- Integración completa con biometría (enrolar/identificar) — ver tabla de 13 tablas interactuadas en `app_desktop_tablas.md` (nota: esa tabla no incluye todavía la columna `ruta_foto_enrolamiento`, actualizar si se vuelve a generar el documento).
 
 ### Agente: Setup / Deploy / Infraestructura
 

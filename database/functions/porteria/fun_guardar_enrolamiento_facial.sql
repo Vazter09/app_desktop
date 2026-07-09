@@ -2,10 +2,22 @@
 -- No reemplaza enrolamientos previos (se permiten varias tomas activas
 -- por persona — REGLAS_APP_ESCRITORIO_SGI.md sección 10.4 — la
 -- identificación compara contra todas y toma la de menor distancia).
+-- 2026-07-09: Agregado parámetro ruta_foto_enrolamiento para auditoría.
+-- Firma vieja de 3 args (sin ruta_foto) eliminada explícitamente: un
+-- CREATE OR REPLACE con distinta aridad NO reemplaza, crea una función
+-- sobrecargada nueva y dos quedan viviendo a la vez (lección ya
+-- documentada en CLAUDE.md — Bug/E3: alineación de firmas PL/pgSQL).
+DROP FUNCTION IF EXISTS fun_guardar_enrolamiento_facial(
+    tab_enrolamiento_facial.id_persona%TYPE,
+    tab_enrolamiento_facial.facial_embedding%TYPE,
+    tab_enrolamiento_facial.calidad_facial%TYPE
+);
+
 CREATE OR REPLACE FUNCTION fun_guardar_enrolamiento_facial(
-    wid_persona        tab_enrolamiento_facial.id_persona%TYPE,
-    wfacial_embedding  tab_enrolamiento_facial.facial_embedding%TYPE,
-    wcalidad_facial    tab_enrolamiento_facial.calidad_facial%TYPE DEFAULT NULL
+    wid_persona            tab_enrolamiento_facial.id_persona%TYPE,
+    wfacial_embedding      tab_enrolamiento_facial.facial_embedding%TYPE,
+    wcalidad_facial        tab_enrolamiento_facial.calidad_facial%TYPE DEFAULT NULL,
+    wruta_foto_enrolamiento VARCHAR(500) DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
     wid_enrolamiento  INTEGER;
@@ -26,9 +38,17 @@ BEGIN
     END IF;
 
     INSERT INTO tab_enrolamiento_facial (
-        id_persona, facial_embedding, calidad_facial, ind_activo
+        id_persona,
+        facial_embedding,
+        calidad_facial,
+        ruta_foto_enrolamiento,
+        ind_activo
     ) VALUES (
-        wid_persona, wfacial_embedding, wcalidad_facial, TRUE
+        wid_persona,
+        wfacial_embedding,
+        wcalidad_facial,
+        wruta_foto_enrolamiento,
+        TRUE
     ) RETURNING id_enrolamiento INTO wid_enrolamiento;
 
     RETURN wid_enrolamiento;
