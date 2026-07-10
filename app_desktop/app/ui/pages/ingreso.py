@@ -34,20 +34,22 @@ class IngresoPage(ttk.Frame):
         head = ttk.Frame(self, style="App.TFrame")
         head.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         head.columnconfigure(0, weight=1)
-        ttk.Label(head, text="⏱ Ingresos de hoy", style="Title.TLabel").grid(
-            row=0, column=0, sticky="w"
-        )
+        ttk.Label(
+            head,
+            text="⏱ Accesos de hoy (ingreso / salida por cámara)",
+            style="Title.TLabel",
+        ).grid(row=0, column=0, sticky="w")
         ttk.Button(
             head, text="⟳ Refrescar", style="Nav.TButton", command=self.refresh
         ).grid(row=0, column=1, sticky="e", padx=(0, 8))
         ttk.Button(
             head,
-            text="📷 Reconocimiento facial",
-            style="Nav.TButton",
+            text="📷 Cámara (ingreso/salida)",
+            style="Primary.TButton",
             command=self._abrir_reconocimiento,
         ).grid(row=0, column=2, sticky="e", padx=(0, 8))
         ttk.Button(
-            head, text="+ Nuevo ingreso", style="Primary.TButton", command=self._abrir_dialogo
+            head, text="+ Ingreso manual", style="Nav.TButton", command=self._abrir_dialogo
         ).grid(row=0, column=3, sticky="e")
 
         columns = ("hora", "persona", "tipo", "ficha", "programa", "entrada")

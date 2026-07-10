@@ -74,7 +74,7 @@ try {
         $rutaFoto  // Nuevo parámetro
     );
 
-    RouterResponse::ok(['id_enrolamiento' => $idEnrolamiento]);
+    RouterResponse::ok(['id_enrolamiento' => $idEnrolamiento, 'id_persona' => $idEnrolamiento]);
 } catch (InvalidArgumentException $e) {
     RouterResponse::fail($e->getMessage());
 } catch (Throwable $e) {

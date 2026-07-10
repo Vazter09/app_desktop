@@ -1,26 +1,24 @@
 """
-Modal "Reconocimiento Facial" — compartido entre Registro de ingreso y
-Registro de salida (mismo componente, la página que lo abre decide el
-`modo`; la decisión real de si corresponde ingreso o salida la hacen
-los endpoints reales `ingreso/consultar.php` / `salida/consultar.php`,
-igual que con captura manual — no se reinventa esa lógica aquí).
+Modal "Reconocimiento Facial" — flujo único de portería.
+
+Tras identificar un rostro, consulta `ingreso/consultar.php`:
+  - si puede ingresar → registra ingreso
+  - si ya tiene ingreso abierto → registra salida (sin mensaje de error)
+
+No hace falta un botón aparte de "salida" en la UI: el segundo pase
+por la cámara cierra el ciclo.
 
 ESTADO: flujo completo real.
-1. Cámara en vivo (`ui/camera.py`, OpenCV — única dependencia de
-   terceros de la app principal).
-2. Motor de embeddings (`motor/embeddings.py`, SFace + YuNet,
-   vendorizados, mismo OpenCV) — calcula el vector de 128 dims del
-   rostro capturado.
-3. "Enrolar": documento + último frame → vector → `biometria/enrolar.php`.
-4. "Identificar": último frame → vector → `biometria/identificar.php` →
-   si hay match, ABRE MODAL DE CONFIRMACIÓN (2026-07-09) que muestra foto
-   + datos personales para que el usuario confirme antes de registrar
-   ingreso/salida con `id_metodo_aut=4` ("Biométrico facial").
+1. Cámara en vivo (`ui/camera.py`, OpenCV).
+2. Motor de embeddings (`motor/embeddings.py`, SFace + YuNet).
+3. "Enrolar": documento + frame → `biometria/enrolar.php`.
+4. "Identificar": frame → `biometria/identificar.php` → modal de
+   confirmación → ingreso o salida según estado en BD (`metodo_aut=4`).
 
 CUMPLIMIENTO MSPI + FASE 0-1:
 - E1: Validación visual de acceso (usuario confirma antes de registrar)
 - E4: Hardening de sesión (confirmación explícita)
-- E10: Auditoría (cada acción queda logueda)
+- E10: Auditoría (cada acción queda logueada)
 """
 from __future__ import annotations
 
@@ -116,8 +114,9 @@ class FacialRecognitionModal(tk.Toplevel):
         self._cooldown_hasta_ms = 0.0
         self._confirmacion_modal: IdentificationConfirmationModal | None = None
         self._motor_listo = False
+        self._ultimo_embedding: list[float] | None = None
 
-        titulo = "Identificar rostro — Ingreso" if modo == "ingreso" else "Identificar rostro — Salida"
+        titulo = "Identificar rostro — Portería (ingreso / salida)"
         self.title(titulo)
         self.configure(bg=theme.BG_CARD)
         self.geometry(f"{MODAL_ANCHO}x{MODAL_ALTO}")
@@ -614,6 +613,7 @@ class FacialRecognitionModal(tk.Toplevel):
         embedding, _calidad = extraido
         self._identificando = True
         self._rostro_consecutivos = 0
+        self._ultimo_embedding = list(embedding)
 
         self._set_estado("🔍 Buscando en base de datos...", theme.CYAN)
         self.update()  # Refrescar UI
@@ -632,20 +632,35 @@ class FacialRecognitionModal(tk.Toplevel):
             self._cooldown_hasta_ms = time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
             return
 
-        # ✅ CAMBIO (2026-07-09): En lugar de registrar directamente, abre modal
-        # de confirmación que muestra foto + datos personales. Usuario confirma.
-        persona_datos = resultado.get("persona", {})
+        # Modal de confirmación: foto + datos. El modo (ingreso/salida)
+        # se decide con el estado real en BD, no con el botón del sidebar.
+        persona_datos = dict(resultado.get("persona") or {})
+        documento = str(
+            persona_datos.get("documento")
+            or persona_datos.get("num_docum")
+            or persona_datos.get("id_persona")
+            or ""
+        )
 
-        # PRIORIDAD: Foto guardada del servidor (de enrolamiento original)
-        # Fallback: frame local actual si no viene foto del servidor
+        try:
+            modo_efectivo = self._resolver_modo_acceso(documento)
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            self._set_estado(f"Error al consultar acceso: {exc}", theme.ERROR)
+            self._identificando = False
+            self._cooldown_hasta_ms = time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
+            return
+
         if resultado.get("foto_base64"):
-            # ✅ Foto original de enrolamiento (guardada en servidor)
             persona_datos["foto_base64"] = resultado.get("foto_base64")
         elif self._ultimo_frame is not None:
-            # Fallback: si no vino foto del servidor, usa frame actual (shouldn't happen)
             persona_datos["foto_base64"] = self._frame_a_base64(self._ultimo_frame)
 
-        self._set_estado("✅ Identificación confirmada — abriendo detalles...", theme.SUCCESS)
+        persona_datos["_modo_acceso"] = modo_efectivo
+        accion = "ingreso" if modo_efectivo == "ingreso" else "salida"
+        self._set_estado(
+            f"✅ Identificado — se registrará {accion}...",
+            theme.SUCCESS,
+        )
 
         self._confirmacion_abierta = True
         self._identificando = False
@@ -653,7 +668,7 @@ class FacialRecognitionModal(tk.Toplevel):
             self,
             self._client,
             persona_datos,
-            modo=self._modo,
+            modo=modo_efectivo,
             on_confirmar=self._on_confirmacion_modal,
         )
         self._confirmacion_modal = modal
@@ -677,12 +692,27 @@ class FacialRecognitionModal(tk.Toplevel):
                 theme.CYAN,
             )
 
-    def _on_confirmacion_modal(self, persona_datos: dict) -> None:
-        """Callback del modal de confirmación al registrar ingreso/salida."""
-        documento = persona_datos.get("documento") or persona_datos.get("num_docum", "")
-        nombre = f"{persona_datos.get('nombres', '')} {persona_datos.get('apellidos', '')}".strip()
+    def _resolver_modo_acceso(self, documento: str) -> Modo:
+        """Ingreso si no hay abierto; salida si ya está dentro."""
+        if not documento:
+            raise SmartcsetApiError("Documento vacío tras la identificación.")
+        consulta = self._client.ingreso_consultar(documento, "CC")
+        if consulta.get("puede_ingresar"):
+            return "ingreso"
+        return "salida"
 
-        if self._modo == "ingreso":
+    def _on_confirmacion_modal(self, persona_datos: dict) -> None:
+        """Registra ingreso o salida según el estado actual en BD."""
+        documento = str(
+            persona_datos.get("documento") or persona_datos.get("num_docum") or ""
+        )
+        nombre = (
+            f"{persona_datos.get('nombres', '')} {persona_datos.get('apellidos', '')}"
+        ).strip()
+
+        # Reconsultar al confirmar (evita carrera si el estado cambió).
+        modo = self._resolver_modo_acceso(documento)
+        if modo == "ingreso":
             self._registrar_ingreso_identificado(documento, nombre, persona_datos)
         else:
             self._registrar_salida_identificada(documento, nombre)
@@ -690,26 +720,22 @@ class FacialRecognitionModal(tk.Toplevel):
         if self._on_registrado is not None:
             self._on_registrado()
 
-    def _registrar_ingreso_identificado(self, documento: str, nombre: str, persona_datos: dict | None = None) -> None:
+    def _registrar_ingreso_identificado(
+        self, documento: str, nombre: str, persona_datos: dict | None = None
+    ) -> None:
         consulta = self._client.ingreso_consultar(documento, "CC")
         if not consulta.get("puede_ingresar"):
-            self._set_estado(f"{nombre}: ya tiene un ingreso abierto.", theme.ERROR)
-            raise SmartcsetApiError(f"{nombre}: ya tiene un ingreso abierto.")
+            # Ya dentro → salida (no mostrar "ya tiene ingreso abierto").
+            self._registrar_salida_identificada(documento, nombre)
+            return
 
-        # La puerta física no la elige el operador aquí (a diferencia del
-        # diálogo manual) — se usa la primera entrada real del catálogo.
-        # Pendiente real: cuando cada PC quede fijo en una puerta, esto
-        # debe leerse de configuración local, no de "la primera de la
-        # lista" (ver REGLAS_APP_ESCRITORIO_SGI.md, pendiente de diseño).
+        # Puerta: primera del catálogo hasta config local por PC.
         entradas = self._client.catalogos().get("entradas", [])
         if not entradas:
             self._set_estado("No hay puertas configuradas en el catálogo.", theme.ERROR)
             raise SmartcsetApiError("No hay puertas configuradas en el catálogo.")
 
-        persona = consulta["persona"]
-        # Usar datos del modal si están disponibles (con confirmación visual)
-        if persona_datos:
-            persona = persona_datos
+        persona = persona_datos or consulta.get("persona") or {}
 
         self._client.ingreso_registrar(
             {
@@ -721,6 +747,7 @@ class FacialRecognitionModal(tk.Toplevel):
                 "id_entrada": entradas[0]["id"],
                 "observaciones": "Identificado por reconocimiento facial.",
                 "metodo_aut": 4,
+                "embedding": self._ultimo_embedding,
             }
         )
         self._set_estado(f"Ingreso registrado: {nombre}.", theme.SUCCESS)

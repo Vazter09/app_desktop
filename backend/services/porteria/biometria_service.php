@@ -16,10 +16,8 @@
 const BIOMETRIA_UMBRAL_DISTANCIA_DEFAULT = 0.35;
 
 /**
- * Dimensión esperada del vector facial (tab_enrolamiento_facial.facial_embedding).
- * 128 = salida real del modelo SFace (opencv_zoo, vía cv2.FaceRecognizerSF,
- * ya incluido en opencv-python-headless — sin dependencia nueva). No 512:
- * ese era un valor de diseño provisional antes de elegir el modelo real.
+ * Dimensión esperada del vector facial (tab_personas.val_patron_facial /
+ * tab_log_ingresos.facial_embedding). 128 = SFace (opencv_zoo).
  */
 const BIOMETRIA_VECTOR_DIMENSION = 128;
 
@@ -54,8 +52,8 @@ function biometriaEmbeddingATexto(array $embedding): string
  * Enrola un rostro para una persona ya registrada.
  *
  * @param array<int, mixed> $embedding
- * @param string|null $rutaFoto Ruta relativa a la foto de enrolamiento (2026-07-09)
- * @return int id_enrolamiento creado
+ * @param string|null $rutaFoto Ruta relativa a la foto de enrolamiento
+ * @return int id_persona actualizado (compat: antes id_enrolamiento)
  */
 function biometriaGuardarEnrolamiento(
     PDOStatement $stmtGuardar,
@@ -68,7 +66,9 @@ function biometriaGuardarEnrolamiento(
 
     $stmtGuardar->execute([$idPersona, $vectorTexto, $calidadFacial, $rutaFoto]);
 
-    return (int) $stmtGuardar->fetchColumn();
+    $id = $stmtGuardar->fetchColumn();
+
+    return $id !== false ? (int) $id : $idPersona;
 }
 
 /**

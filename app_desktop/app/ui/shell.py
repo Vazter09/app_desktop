@@ -1,15 +1,10 @@
 """
-Shell autenticado — sidebar + topbar reales + área de contenido
-intercambiable. Réplica funcional de `frontend/web/layout/{sidebar,
-topbar}.php`: navegar entre "páginas" aquí reemplaza al SPA real
-(`smartcset-spa.js`) que intercepta `data-spa-link` en la web — mismo
-resultado (cambiar el contenido sin recargar toda la ventana), sin
-necesitar navegador.
+Shell autenticado — sidebar + topbar + área de contenido intercambiable.
 
-Páginas registradas (submenú "SGI - Ingresos" visible en sidebar):
-  - Inicio              -> pages.inicio.InicioPage
-  - Registro ingreso(102)-> pages.ingreso.IngresoPage
-  - Registro salida (103)-> pages.salida.SalidaPage
+Tras el login, la app entra directo al flujo facial (IngresoPage + modal
+de cámara). "Registro ingreso/salida" no aparecen en el sidebar, pero las
+páginas siguen registradas para no romper el flujo biométrico ni la
+navegación interna.
 """
 from __future__ import annotations
 
@@ -22,6 +17,7 @@ from ui import theme
 from ui.pages.inicio import InicioPage
 from ui.pages.ingreso import IngresoPage
 from ui.pages.salida import SalidaPage
+
 
 class AppShell(ttk.Frame):
     def __init__(
@@ -36,9 +32,10 @@ class AppShell(ttk.Frame):
         self._usuario = usuario
         self._on_logout = on_logout
 
+        # Páginas internas (no todas se listan en el sidebar).
         self._pages = {
             "inicio": ("Inicio", InicioPage),
-            "ingreso": ("Registro ingreso", IngresoPage),
+            "ingreso": ("Reconocimiento facial", IngresoPage),
             "salida": ("Registro salida", SalidaPage),
         }
 
@@ -63,7 +60,8 @@ class AppShell(ttk.Frame):
         self._content.rowconfigure(0, weight=1)
 
         self._current_page: tk.Widget | None = None
-        self.navigate("inicio")
+        # Portería: al autenticarse, cámara facial de inmediato.
+        self.navigate("ingreso")
 
     # ---- Sidebar ------------------------------------------------------
 
@@ -85,23 +83,8 @@ class AppShell(ttk.Frame):
 
         tk.Frame(sidebar, bg=theme.BORDER, height=1).pack(fill="x")
 
+        # Solo Inicio en el menú; ingreso/salida se abren por flujo facial.
         self._add_nav_item(sidebar, "inicio", "⌂  Inicio", top=True)
-
-        tk.Frame(sidebar, bg=theme.BORDER, height=1).pack(fill="x", pady=6)
-
-        tk.Label(
-            sidebar,
-            text="  →  SGI - Ingresos",
-            bg=theme.SIDEBAR_BG,
-            fg=theme.TEXT_PRIMARY,
-            font=theme.FONT_BODY,
-            anchor="w",
-            padx=8,
-            pady=8,
-        ).pack(fill="x")
-
-        self._add_nav_item(sidebar, "ingreso", "        Registro ingreso")
-        self._add_nav_item(sidebar, "salida", "        Registro salida")
 
     def _add_nav_item(
         self, sidebar: tk.Frame, key: str, text: str, top: bool = False
@@ -174,8 +157,20 @@ class AppShell(ttk.Frame):
 
     def navigate(self, key: str) -> None:
         title, page_cls = self._pages[key]
-        self._breadcrumb_var.set(f"⌂ Inicio  ›  {title}" if key != "inicio" else "⌂ Inicio")
-        self._set_active_nav(key)
+        if key == "inicio":
+            self._breadcrumb_var.set("⌂ Inicio")
+        elif key == "ingreso":
+            self._breadcrumb_var.set("⌂ Portería  ›  Reconocimiento facial")
+        else:
+            self._breadcrumb_var.set(f"⌂ Inicio  ›  {title}")
+
+        # Solo resalta ítems que existen en el sidebar (Inicio).
+        if key in self._nav_labels:
+            self._set_active_nav(key)
+        else:
+            self._active_key = key
+            for lbl in self._nav_labels.values():
+                lbl.configure(bg=theme.SIDEBAR_BG, fg=theme.TEXT_PRIMARY)
 
         if self._current_page is not None:
             self._current_page.destroy()

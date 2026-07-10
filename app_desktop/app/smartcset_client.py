@@ -42,10 +42,12 @@ class SmartcsetClient:
         self.base_url = base_url.rstrip("/")
         self._cookie_jar = http.cookiejar.CookieJar()
 
-        ssl_context = ssl.create_default_context()
-        if not verify_tls:
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
+        # Laboratorio con cert autofirmado: usar contexto no verificado
+        # (create_default_context + CERT_NONE a veces no basta en Windows).
+        if verify_tls:
+            ssl_context = ssl.create_default_context()
+        else:
+            ssl_context = ssl._create_unverified_context()
 
         self._opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(self._cookie_jar),

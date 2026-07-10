@@ -41,9 +41,8 @@ class BiometriaPhotoService
         }
 
         // 2. Validar que sea imagen (usar finfo)
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_buffer($finfo, $fotoBinaria);
-        finfo_close($finfo);
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->buffer($fotoBinaria);
 
         $mimeValido = in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true);
         if (!$mimeValido) {

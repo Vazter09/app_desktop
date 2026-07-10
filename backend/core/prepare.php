@@ -179,6 +179,7 @@ try {
                 p.nom_contacto_emergencias, p.tel_contacto_emergencias,
                 p.num_visitas, p.fec_ultima_entrada, p.fec_ultima_salida,
                 p.ind_estado, p.id_tipo_persona, tp.nom_tipo_persona,
+                p.ruta_foto_facial,
                 ap.id_ficha, ap.ind_etdo_formacion, ap.num_llamados,
                 f.id_jornada, f.ind_modalidad,
                 pr.id_programa, pr.nom_programa
@@ -196,9 +197,14 @@ try {
 
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
-        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN
+        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
+
+    $sql_fun_insert_novedad_ingreso = "SELECT fun_insert_novedad_ingreso(
+        ?::VARCHAR, ?::VARCHAR, ?::NUMERIC, ?::VECTOR, ?::VARCHAR
+    )";
+    $stmt_fun_insert_novedad_ingreso = $pdo->prepare($sql_fun_insert_novedad_ingreso);
 
     // --- 6c. REGISTRO DE SALIDAS (portería → tab_log_ingresos.fec_salida) ---
     $stmt_list_salidas_hoy = $pdo->prepare(
@@ -236,8 +242,7 @@ try {
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
-    // --- 6c-bis. BIOMETRÍA FACIAL (app de escritorio SGI → tab_enrolamiento_facial) ---
-    // 2026-07-09: Agregado parámetro 4 (ruta_foto_enrolamiento)
+    // --- 6c-bis. BIOMETRÍA FACIAL (app escritorio → tab_personas.val_patron_facial) ---
     $sql_fun_guardar_enrolamiento_facial = "SELECT fun_guardar_enrolamiento_facial(
         ?::NUMERIC, ?::VECTOR, ?::NUMERIC, ?::VARCHAR
     )";

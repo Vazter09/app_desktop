@@ -71,6 +71,9 @@ run_sql "$ROOT/database/migrations/add_tab_enrolamiento_facial.sql"
 run_sql "$ROOT/database/migrations/alter_tab_enrolamiento_facial_vector_128.sql"
 run_sql "$ROOT/database/migrations/add_ruta_foto_enrolamiento.sql"
 
+echo "==> Migración biometría → tab_personas + tab_novedades_ingreso"
+run_sql "$ROOT/database/migrations/migrate_biometria_a_tab_personas.sql"
+
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
 
@@ -111,6 +114,7 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/porteria/fun_insert_novedad_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_guardar_enrolamiento_facial.sql"
   "$ROOT/database/functions/porteria/fun_identificar_persona_por_rostro.sql"
   "$ROOT/database/functions/instructor/fun_marcar_ausentes_fecha.sql"
