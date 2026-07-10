@@ -46,13 +46,50 @@ from PIL import Image, ImageTk
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 from ui.format_utils import format_db_timestamp
+from ui.window_utils import centrar_ventana_al_mostrar
+
+# Catálogos alineados con los mismos códigos usados en
+# frontend/web/pages/modulos/registro/forms/*.php (Pilar 1: Coherencia,
+# no inventar una numeración nueva para lo mismo).
+GENERO_LABELS = {
+    1: "Femenino",
+    2: "Masculino",
+    3: "No Binario",
+    4: "Trans",
+    99: "No Definido",
+}
+
+# database/schema/script-BD-SMARTCSET V.1.10.sql, columna
+# tab_aprendices.ind_etdo_formacion.
+ESTADO_FORMACION_LABELS = {
+    1: "En formación",
+    2: "Aplazado",
+    3: "Retiro Voluntario",
+    4: "Cancelado",
+    5: "Condicionado",
+    6: "Por certificar",
+    7: "Certificado",
+    8: "Trasladado",
+    9: "Sin información",
+}
+
+JORNADA_LABELS = {1: "Mañana", 2: "Tarde", 3: "Noche", 4: "Mixta"}
+MODALIDAD_LABELS = {1: "Presencial", 2: "Virtual", 3: "A Distancia"}
+
+# Tiempo visible con los datos antes de registrar sin intervención humana.
+AUTO_REGISTRO_MS = 2500
+AUTO_CIERRE_ERROR_MS = 2500
+
+MODAL_ANCHO = 1080
+MODAL_ALTO = 640
 
 
 class IdentificationConfirmationModal(tk.Toplevel):
     """Modal que se abre tras identificar exitosamente a una persona por
     biometría facial. Muestra foto + datos personales + placeholder huella.
 
-    Usuario confirma con "Registrar Ingreso" o cancela.
+    Usuario puede cancelar; si no interviene, el registro ocurre solo
+    tras ``AUTO_REGISTRO_MS`` (confirmación visual breve).
     """
 
     def __init__(
@@ -62,6 +99,7 @@ class IdentificationConfirmationModal(tk.Toplevel):
         persona_datos: dict[str, Any],
         modo: str = "ingreso",  # "ingreso" o "salida"
         on_confirmar: Callable[[dict[str, Any]], None] | None = None,
+        auto_registro: bool = True,
     ) -> None:
         """
         `persona_datos`: dict con datos del resultado de `biometria/identificar.php`
@@ -88,18 +126,25 @@ class IdentificationConfirmationModal(tk.Toplevel):
         self._persona_datos = persona_datos
         self._modo = modo
         self._on_confirmar = on_confirmar
+        self._auto_registro = auto_registro
+        self._auto_after_id: str | None = None
+        self._registro_en_curso = False
         self._foto_image: ImageTk.PhotoImage | None = None
+        self._subtitulo_label: tk.Label | None = None
 
         titulo = "Identificación Confirmada — Ingreso" if modo == "ingreso" else "Identificación Confirmada — Salida"
         self.title(titulo)
         self.configure(bg=theme.BG_CARD)
-        self.geometry("900x520")
-        self.resizable(False, False)
+        self.geometry(f"{MODAL_ANCHO}x{MODAL_ALTO}")
+        self.resizable(True, True)
         self.transient(master)
         self.grab_set()
         self.protocol("WM_DELETE_WINDOW", self._cancelar)
 
         self._build()
+        centrar_ventana_al_mostrar(self, MODAL_ANCHO, MODAL_ALTO)
+        if self._auto_registro:
+            self._programar_auto_registro()
 
     # ---- UI ---------------------------------------------------------
 
@@ -115,10 +160,25 @@ class IdentificationConfirmationModal(tk.Toplevel):
             style="Card.TLabel",
             font=theme.FONT_TITLE,
         ).pack(anchor="w")
-        subtitulo = "Por favor confirme para registrar ingreso" if self._modo == "ingreso" else "Por favor confirme para registrar salida"
-        ttk.Label(header, text=subtitulo, style="CardMuted.TLabel").pack(
-            anchor="w", pady=(2, 0)
+        subtitulo_base = (
+            "Registrando ingreso automáticamente"
+            if self._modo == "ingreso"
+            else "Registrando salida automáticamente"
         )
+        self._subtitulo_var = tk.StringVar(
+            value=f"{subtitulo_base} en {AUTO_REGISTRO_MS // 1000} s..."
+        )
+        self._subtitulo_label = tk.Label(
+            header,
+            textvariable=self._subtitulo_var,
+            bg=theme.BG_CARD,
+            fg=theme.TEXT_MUTED,
+            font=theme.FONT_BODY,
+            anchor="w",
+            justify="left",
+            wraplength=900,
+        )
+        self._subtitulo_label.pack(anchor="w", pady=(2, 0))
 
         # Contenedor principal (3 columnas)
         content = ttk.Frame(self, style="App.TFrame", padding=(20, 12, 20, 12))
@@ -149,33 +209,63 @@ class IdentificationConfirmationModal(tk.Toplevel):
         # ---- COLUMNA 2: INFORMACIÓN (Centro) ----
         info_frame = ttk.Frame(content, style="App.TFrame")
         info_frame.grid(row=0, column=1, sticky="nsew", padx=15)
-        info_frame.columnconfigure(1, weight=1)
+        info_frame.columnconfigure(0, weight=1)
 
-        ttk.Label(
-            info_frame,
-            text="INFORMACIÓN PERSONAL",
-            style="Title.TLabel",
-        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        d = self._persona_datos
+        nombres = d.get("nombres", "")
+        apellidos = d.get("apellidos", "")
+        nombre_completo = f"{nombres} {apellidos}".strip() or "—"
+        genero = GENERO_LABELS.get(d.get("genero"), "—")
+        activo = "Activo" if d.get("activo", True) else "Inactivo"
+        tipo_doc = d.get("nom_tipo_docum") or d.get("tipo_doc", "—")
+        ciudad = d.get("ciudad") or "—"
+        depto = d.get("departamento") or "—"
+        fec_nac = format_db_timestamp(d.get("fec_nacimiento")) or "—"
+        fec_entrada = format_db_timestamp(d.get("fec_ultima_entrada"))
+        fec_salida = format_db_timestamp(d.get("fec_ultima_salida"))
 
-        # Datos
-        datos = [
-            ("ID Persona", str(self._persona_datos.get("id_persona", "—"))),
-            ("Nombre Completo", f"{self._persona_datos.get('nombres', '')} {self._persona_datos.get('apellidos', '')}".strip() or "—"),
-            ("Tipo Documento", self._persona_datos.get("id_tipo_docum", "—")),
-            ("Número Documento", self._persona_datos.get("num_docum", "—")),
-            ("Tipo Persona", self._persona_datos.get("nom_tipo_persona", "—")),
-            ("Fecha Nacimiento", format_db_timestamp(self._persona_datos.get("fec_nacimiento")) or "—"),
-            ("Ficha", str(self._persona_datos.get("id_ficha") or "—")),
-            ("Programa", self._persona_datos.get("nom_programa", "—")),
-            ("Entrada/Puerta", self._persona_datos.get("nom_entrada", "—")),
+        datos_personales = [
+            ("Documento", f"{tipo_doc} {d.get('documento', '—')}"),
+            ("Nombre completo", nombre_completo),
+            ("Tipo de persona", d.get("nom_tipo_persona") or "—"),
+            ("Estado", activo),
+            ("Correo", d.get("correo") or "—"),
+            ("Fecha nacimiento", fec_nac),
+            ("Género", genero),
+            ("Teléfono fijo", d.get("tel_fijo") or "—"),
+            ("Teléfono móvil", d.get("tel_movil") or "—"),
+            ("Dirección", d.get("direccion") or "—"),
+            ("Ciudad / Depto.", f"{ciudad} / {depto}"),
+            ("Contacto emergencia", d.get("contacto_emergencia") or "—"),
+            ("Tel. emergencia", d.get("tel_contacto_emergencia") or "—"),
+            ("N.° visitas", str(d.get("num_visitas", 0))),
+            ("Última entrada", fec_entrada or "—"),
+            ("Última salida", fec_salida or "—"),
         ]
 
-        for idx, (label, valor) in enumerate(datos, start=1):
-            ttk.Label(info_frame, text=f"{label}:", style="Muted.TLabel").grid(
-                row=idx, column=0, sticky="w", pady=3
+        self._agregar_seccion(
+            info_frame, 0, "DATOS PERSONALES", datos_personales
+        )
+
+        # Datos de aprendiz/ficha — solo si la persona tiene ficha asignada
+        # (LEFT JOIN en el backend: NULL para instructores/funcionarios/
+        # contratistas/visitantes, que no tienen tab_aprendices).
+        if d.get("id_ficha") is not None:
+            estado_form = ESTADO_FORMACION_LABELS.get(
+                d.get("estado_formacion"), "—"
             )
-            ttk.Label(info_frame, text=valor, style="App.TLabel").grid(
-                row=idx, column=1, sticky="ew", padx=(8, 0), pady=3
+            jornada = JORNADA_LABELS.get(d.get("id_jornada"), "—")
+            modalidad = MODALIDAD_LABELS.get(d.get("ind_modalidad"), "—")
+            datos_institucionales = [
+                ("Ficha", str(d.get("id_ficha"))),
+                ("Programa", d.get("nom_programa") or "—"),
+                ("Estado formación", estado_form),
+                ("Jornada", jornada),
+                ("Modalidad", modalidad),
+                ("N.° llamados atención", str(d.get("num_llamados", 0))),
+            ]
+            self._agregar_seccion(
+                info_frame, 1, "DATOS INSTITUCIONALES", datos_institucionales
             )
 
         # ---- COLUMNA 3: HUELLA DACTILAR (Derecha) ----
@@ -229,7 +319,67 @@ class IdentificationConfirmationModal(tk.Toplevel):
             command=self._cancelar,
         ).pack(side="left")
 
+    def _agregar_seccion(
+        self,
+        parent: ttk.Frame,
+        orden: int,
+        titulo: str,
+        campos: list[tuple[str, str]],
+    ) -> None:
+        """Renderiza una sección con título + campos en 2 pares
+        label:valor por fila (compacta ~20 campos en el alto disponible
+        sin necesitar scroll)."""
+        seccion = ttk.Frame(parent, style="App.TFrame")
+        seccion.grid(row=orden, column=0, sticky="ew", pady=(0, 14))
+        seccion.columnconfigure(1, weight=1)
+        seccion.columnconfigure(3, weight=1)
+
+        ttk.Label(seccion, text=titulo, style="Title.TLabel").grid(
+            row=0, column=0, columnspan=4, sticky="w", pady=(0, 8)
+        )
+
+        for idx, (label, valor) in enumerate(campos):
+            fila = idx // 2 + 1
+            col_base = 0 if idx % 2 == 0 else 2
+            ttk.Label(seccion, text=f"{label}:", style="Muted.TLabel").grid(
+                row=fila, column=col_base, sticky="w", pady=2,
+                padx=(0, 4) if col_base == 2 else 0,
+            )
+            ttk.Label(
+                seccion, text=valor, style="App.TLabel", wraplength=180,
+            ).grid(
+                row=fila, column=col_base + 1, sticky="w",
+                padx=(6, 14), pady=2,
+            )
+
     # ---- Lógica -----
+
+    def _programar_auto_registro(self) -> None:
+        self._auto_after_id = self.after(AUTO_REGISTRO_MS, self._confirmar)
+
+    def _programar_cierre(self, ms: int = AUTO_CIERRE_ERROR_MS) -> None:
+        self._cancelar_auto_registro()
+        self._auto_after_id = self.after(ms, self._cerrar_automatico)
+
+    def _cerrar_automatico(self) -> None:
+        self._auto_after_id = None
+        if self.winfo_exists():
+            self.grab_release()
+            self.destroy()
+
+    def _mostrar_error_y_cerrar(self, mensaje: str) -> None:
+        segundos = AUTO_CIERRE_ERROR_MS // 1000
+        self._subtitulo_var.set(
+            f"❌ {mensaje}\nCerrando en {segundos} s para la siguiente persona..."
+        )
+        if self._subtitulo_label is not None:
+            self._subtitulo_label.configure(fg=theme.ERROR)
+        self._programar_cierre()
+
+    def _cancelar_auto_registro(self) -> None:
+        if self._auto_after_id is not None:
+            self.after_cancel(self._auto_after_id)
+            self._auto_after_id = None
 
     def _cargar_foto(self) -> None:
         """Carga la foto en base64 y la muestra en el canvas."""
@@ -266,15 +416,17 @@ class IdentificationConfirmationModal(tk.Toplevel):
 
     def _confirmar(self) -> None:
         """Registra el ingreso/salida."""
+        if self._registro_en_curso:
+            return
+        self._registro_en_curso = True
+        self._cancelar_auto_registro()
         if self._on_confirmar:
             try:
                 self._on_confirmar(self._persona_datos)
                 self.destroy()
             except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-                messagebox.showerror(
-                    f"Error registrando {'ingreso' if self._modo == 'ingreso' else 'salida'}",
-                    str(exc),
-                )
+                self._registro_en_curso = False
+                self._mostrar_error_y_cerrar(str(exc))
 
     def _ver_detalles(self) -> None:
         """Abre una ventana con detalles completos de la persona (TODO)."""
@@ -288,4 +440,5 @@ class IdentificationConfirmationModal(tk.Toplevel):
 
     def _cancelar(self) -> None:
         """Cierra el modal sin registrar."""
+        self._cancelar_auto_registro()
         self.destroy()

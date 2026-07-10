@@ -12,29 +12,82 @@ alcanzan y `tk.PhotoImage` acepta PPM binario directo vía `data=`.
 """
 from __future__ import annotations
 
+import os
 import tkinter as tk
 
 import cv2
 import numpy as np
 
-MAX_INDICES_A_PROBAR = 4
+MAX_INDICES_A_PROBAR = 8
 
 
-def detectar_camara_disponible(max_indices: int = MAX_INDICES_A_PROBAR) -> int | None:
-    """Prueba los primeros `max_indices` índices de video del equipo y
-    devuelve el primero que abre Y entrega un frame real — no basta con
-    que `isOpened()` sea True (algunos nodos /dev/video* son metadata,
-    no cámara real, y abren pero no leen)."""
-    for indice in range(max_indices):
+def _backend_captura() -> int:
+    """Backend de video según SO — en Windows DirectShow es el más fiable
+    para webcams integradas y USB (MSMF suele fallar en equipos mixtos)."""
+    if os.name == "nt" and hasattr(cv2, "CAP_DSHOW"):
+        return cv2.CAP_DSHOW
+    return cv2.CAP_ANY
+
+
+def _abrir_captura(indice: int) -> cv2.VideoCapture:
+    backend = _backend_captura()
+    cap = cv2.VideoCapture(indice, backend)
+    if not cap.isOpened() and backend != cv2.CAP_ANY:
+        cap.release()
         cap = cv2.VideoCapture(indice)
-        try:
-            if not cap.isOpened():
-                continue
-            ok, frame = cap.read()
-            if ok and frame is not None:
-                return indice
-        finally:
-            cap.release()
+    return cap
+
+
+def _leer_frame_con_warmup(cap: cv2.VideoCapture, intentos: int = 8) -> bool:
+    """Algunas cámaras en Windows entregan frames vacíos los primeros
+    ciclos tras `open()` — descartarlos antes de dar la cámara por lista."""
+    for _ in range(intentos):
+        ok, frame = cap.read()
+        if ok and frame is not None and frame.size > 0:
+            return True
+    return False
+
+
+def _indice_entrega_frame_real(indice: int) -> bool:
+    """Abre el índice y confirma que entrega un frame real — no basta
+    con que `isOpened()` sea True (algunos nodos /dev/video* son
+    metadata, no cámara real, y abren pero no leen)."""
+    cap = _abrir_captura(indice)
+    try:
+        if not cap.isOpened():
+            return False
+        return _leer_frame_con_warmup(cap)
+    finally:
+        cap.release()
+
+
+def listar_camaras_disponibles(max_indices: int = MAX_INDICES_A_PROBAR) -> list[int]:
+    """Prueba los primeros `max_indices` índices de video del equipo y
+    devuelve TODOS los que abren y entregan un frame real — permite
+    detectar periféricos/cámaras externas además de la que trae el
+    dispositivo por defecto (índice 0)."""
+    return [i for i in range(max_indices) if _indice_entrega_frame_real(i)]
+
+
+def detectar_camara_disponible(
+    max_indices: int = MAX_INDICES_A_PROBAR,
+    *,
+    preferido: int | None = None,
+) -> int | None:
+    """Devuelve el primer índice de video disponible.
+
+    Por defecto prueba primero el índice 0 (cámara conectada en la mayoría
+    de equipos Windows) y solo escanea el resto si falla — evita bloquear
+    la UI varios segundos al abrir el modal facial."""
+    if preferido is not None:
+        return preferido if _indice_entrega_frame_real(preferido) else None
+
+    if _indice_entrega_frame_real(0):
+        return 0
+
+    for indice in range(1, max_indices):
+        if _indice_entrega_frame_real(indice):
+            return indice
     return None
 
 
@@ -46,8 +99,10 @@ class CameraSource:
         self._cap: cv2.VideoCapture | None = None
 
     def abrir(self) -> bool:
-        self._cap = cv2.VideoCapture(self._indice)
-        return self._cap.isOpened()
+        self._cap = _abrir_captura(self._indice)
+        if not self._cap.isOpened():
+            return False
+        return _leer_frame_con_warmup(self._cap)
 
     def leer_frame(self) -> np.ndarray | None:
         if self._cap is None:

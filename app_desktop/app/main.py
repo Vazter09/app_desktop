@@ -46,7 +46,17 @@ class SmartcsetDesktopApp:
         theme.apply_theme(self.root)
 
         self._current_view: tk.Widget | None = None
+        self._logged_in = False
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._show_login()
+
+    def _on_close(self) -> None:
+        if self._logged_in:
+            try:
+                self.client.logout()
+            except Exception:
+                pass
+        self.root.destroy()
 
     def _clear(self) -> None:
         if self._current_view is not None:
@@ -54,12 +64,14 @@ class SmartcsetDesktopApp:
             self._current_view = None
 
     def _show_login(self) -> None:
+        self._logged_in = False
         self._clear()
         view = LoginView(self.root, self.client, on_success=self._show_dashboard)
         view.pack(fill="both", expand=True)
         self._current_view = view
 
     def _show_dashboard(self, usuario: dict) -> None:
+        self._logged_in = True
         self._clear()
         view = AppShell(
             self.root, self.client, usuario, on_logout=self._show_login

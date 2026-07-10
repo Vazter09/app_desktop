@@ -10,11 +10,48 @@ iniciar sesión aquí.
 from __future__ import annotations
 
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 from typing import Callable
 
+from PIL import Image, ImageTk
+
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
+
+LOGO_MAX_ANCHO = 150
+CARD_PADDING = 44
+ENTRY_WIDTH = 40
+
+
+def _ruta_logo_sena() -> Path | None:
+    app_dir = Path(__file__).resolve().parents[1]
+    candidatos = (
+        app_dir / "assets" / "img" / "logo-sena.png",
+        app_dir.parent.parent
+        / "frontend"
+        / "web"
+        / "public"
+        / "assets"
+        / "img"
+        / "logo-sena.png",
+    )
+    for ruta in candidatos:
+        if ruta.is_file():
+            return ruta
+    return None
+
+
+def _cargar_logo_sena() -> ImageTk.PhotoImage | None:
+    ruta = _ruta_logo_sena()
+    if ruta is None:
+        return None
+    imagen = Image.open(ruta)
+    ancho, alto = imagen.size
+    if ancho > LOGO_MAX_ANCHO:
+        nuevo_alto = int(alto * LOGO_MAX_ANCHO / ancho)
+        imagen = imagen.resize((LOGO_MAX_ANCHO, nuevo_alto), Image.Resampling.LANCZOS)
+    return ImageTk.PhotoImage(imagen)
 
 
 class LoginView(ttk.Frame):
@@ -27,54 +64,79 @@ class LoginView(ttk.Frame):
         super().__init__(master, style="App.TFrame")
         self._client = client
         self._on_success = on_success
+        self._logo_photo: ImageTk.PhotoImage | None = None
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        card = ttk.Frame(self, style="Card.TFrame", padding=30)
-        card.grid(row=0, column=0)
+        card = ttk.Frame(self, style="Card.TFrame", padding=CARD_PADDING)
+        card.grid(row=0, column=0, padx=24, pady=24)
+        card.columnconfigure(0, weight=1)
 
-        ttk.Label(card, text="SMARTCSET", style="Title.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="w"
-        )
-        ttk.Label(
-            card, text="Control de Acceso · App de Escritorio SGI", style="CardMuted.TLabel"
-        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 18))
-
-        ttk.Label(card, text="Identificación", style="CardMuted.TLabel").grid(
-            row=2, column=0, columnspan=2, sticky="w"
-        )
-        self._usuario_var = tk.StringVar(value="porteria")
-        usuario_entry = ttk.Entry(card, textvariable=self._usuario_var, width=32)
-        usuario_entry.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 12))
-
-        ttk.Label(card, text="Contraseña", style="CardMuted.TLabel").grid(
-            row=4, column=0, columnspan=2, sticky="w"
-        )
-        self._clave_var = tk.StringVar()
-        clave_entry = ttk.Entry(
-            card, textvariable=self._clave_var, show="•", width=32
-        )
-        clave_entry.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(2, 6))
-        clave_entry.bind("<Return>", lambda _e: self._do_login())
-
-        self._error_var = tk.StringVar(value="")
-        self._error_label = ttk.Label(
-            card, textvariable=self._error_var, style="CardMuted.TLabel", foreground=theme.ERROR
-        )
-        self._error_label.grid(row=6, column=0, columnspan=2, sticky="w", pady=(0, 6))
-
-        self._submit_btn = ttk.Button(
-            card, text="INGRESAR AL SISTEMA", style="Primary.TButton", command=self._do_login
-        )
-        self._submit_btn.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        fila = 0
+        self._logo_photo = _cargar_logo_sena()
+        if self._logo_photo is not None:
+            marco_logo = tk.Frame(card, bg=theme.BG_CARD)
+            marco_logo.grid(row=fila, column=0, sticky="ew", pady=(0, 20))
+            tk.Label(
+                marco_logo,
+                image=self._logo_photo,
+                bg=theme.BG_CARD,
+            ).pack()
+            fila += 1
 
         ttk.Label(
             card,
-            text=f"Servidor: {client.base_url}",
-            style="CardMuted.TLabel",
-            font=theme.FONT_LABEL_SMALL,
-        ).grid(row=8, column=0, columnspan=2, sticky="w", pady=(14, 0))
+            text="SMARTCSET",
+            style="LoginTitle.TLabel",
+            anchor="center",
+        ).grid(row=fila, column=0, sticky="ew", pady=(0, 24))
+        fila += 1
+
+        ttk.Label(card, text="Identificación", style="LoginField.TLabel").grid(
+            row=fila, column=0, sticky="w", pady=(0, 4)
+        )
+        fila += 1
+        self._usuario_var = tk.StringVar(value="porteria")
+        usuario_entry = ttk.Entry(
+            card, textvariable=self._usuario_var, width=ENTRY_WIDTH, style="Login.TEntry"
+        )
+        usuario_entry.grid(row=fila, column=0, sticky="ew", pady=(0, 16))
+        fila += 1
+
+        ttk.Label(card, text="Contraseña", style="LoginField.TLabel").grid(
+            row=fila, column=0, sticky="w", pady=(0, 4)
+        )
+        fila += 1
+        self._clave_var = tk.StringVar()
+        clave_entry = ttk.Entry(
+            card,
+            textvariable=self._clave_var,
+            show="•",
+            width=ENTRY_WIDTH,
+            style="Login.TEntry",
+        )
+        clave_entry.grid(row=fila, column=0, sticky="ew", pady=(0, 8))
+        clave_entry.bind("<Return>", lambda _e: self._do_login())
+        fila += 1
+
+        self._error_var = tk.StringVar(value="")
+        self._error_label = ttk.Label(
+            card,
+            textvariable=self._error_var,
+            style="LoginError.TLabel",
+            wraplength=420,
+        )
+        self._error_label.grid(row=fila, column=0, sticky="ew", pady=(0, 8))
+        fila += 1
+
+        self._submit_btn = ttk.Button(
+            card,
+            text="INGRESAR AL SISTEMA",
+            style="LoginPrimary.TButton",
+            command=self._do_login,
+        )
+        self._submit_btn.grid(row=fila, column=0, sticky="ew", pady=(12, 0))
 
         usuario_entry.focus_set()
 
@@ -90,13 +152,24 @@ class LoginView(ttk.Frame):
         self._error_var.set("")
         self.update_idletasks()
 
+        # Descartar cookies locales previas (re-login en la misma ventana).
+        self._client.logout()
+
         try:
             data = self._client.login(usuario, clave)
         except SmartcsetApiError as exc:
-            self._error_var.set(str(exc))
+            mensaje = str(exc)
+            if "sesión activa" in mensaje.lower():
+                mensaje += (
+                    " Si inició sesión en la web, cierre sesión allí primero "
+                    "o pida al administrador que libere su usuario."
+                )
+            self._error_var.set(mensaje)
         except SmartcsetConnectionError as exc:
             self._error_var.set(str(exc))
         else:
             self._on_success(data.get("usuario", {}))
+            return
         finally:
-            self._submit_btn.state(["!disabled"])
+            if self.winfo_exists():
+                self._submit_btn.state(["!disabled"])

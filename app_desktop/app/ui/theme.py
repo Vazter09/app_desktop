@@ -36,6 +36,13 @@ SUCCESS = "#00e5b0"
 FONT_BODY = ("Segoe UI", 10)
 FONT_BODY_BOLD = ("Segoe UI", 10, "bold")
 FONT_TITLE = ("Segoe UI", 15, "bold")
+FONT_LOGIN_TITLE = ("Segoe UI", 22, "bold")
+FONT_LOGIN_LABEL = ("Segoe UI", 12)
+FONT_LOGIN_INPUT = ("Segoe UI", 14)
+FONT_LOGIN_BUTTON = ("Segoe UI", 12, "bold")
+FONT_TOPBAR_BREADCRUMB = ("Segoe UI", 13, "bold")
+FONT_TOPBAR_USER = ("Segoe UI", 12)
+TOPBAR_HEIGHT = 58
 FONT_KPI = ("Segoe UI", 22, "bold")
 FONT_LABEL_SMALL = ("Segoe UI", 8)
 
@@ -67,6 +74,43 @@ def apply_theme(root: tk.Misc) -> ttk.Style:
     )
     style.configure(
         "Title.TLabel", background=BG_DEEP, foreground=TEXT_PRIMARY, font=FONT_TITLE
+    )
+    style.configure(
+        "LoginTitle.TLabel",
+        background=BG_CARD,
+        foreground=TEXT_PRIMARY,
+        font=FONT_LOGIN_TITLE,
+    )
+    style.configure(
+        "LoginField.TLabel",
+        background=BG_CARD,
+        foreground=TEXT_MUTED,
+        font=FONT_LOGIN_LABEL,
+    )
+    style.configure(
+        "LoginError.TLabel",
+        background=BG_CARD,
+        foreground=ERROR,
+        font=FONT_LOGIN_LABEL,
+    )
+    style.configure(
+        "Login.TEntry",
+        fieldbackground="#0f1712",
+        foreground=TEXT_PRIMARY,
+        font=FONT_LOGIN_INPUT,
+        padding=(12, 10),
+    )
+    style.configure(
+        "LoginPrimary.TButton",
+        background=V_OLIVA,
+        foreground="#ffffff",
+        font=FONT_LOGIN_BUTTON,
+        borderwidth=0,
+        padding=(18, 14),
+    )
+    style.map(
+        "LoginPrimary.TButton",
+        background=[("active", V_OSCURO), ("disabled", BORDER)],
     )
     style.configure(
         "Kpi.TLabel", background=BG_CARD, foreground=CYAN, font=FONT_KPI
@@ -104,6 +148,18 @@ def apply_theme(root: tk.Misc) -> ttk.Style:
         font=FONT_BODY,
         borderwidth=1,
         padding=(10, 6),
+    )
+    style.configure(
+        "TopbarLogout.TButton",
+        background=BG_PANEL,
+        foreground=TEXT_MUTED,
+        font=FONT_TOPBAR_USER,
+        borderwidth=1,
+        padding=(14, 8),
+    )
+    style.map(
+        "TopbarLogout.TButton",
+        foreground=[("active", ERROR)],
     )
     style.map(
         "Logout.TButton",

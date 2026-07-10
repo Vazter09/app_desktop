@@ -11,6 +11,9 @@ const ACCESO_SESION_CIERRE_ADMIN       = 'ADMIN';
 const ACCESO_SESION_CIERRE_TIMEOUT     = 'TIMEOUT';
 const ACCESO_SESION_CIERRE_IP_MISMATCH = 'IP_MISMATCH';
 
+/** ult_ruta en tab_sesiones para sesiones de la app de escritorio SGI. */
+const ACCESO_SESION_RUTA_DESKTOP = 'app_desktop';
+
 const ACCESO_PRESENCIA_ACTIVO       = 'ACTIVO';
 const ACCESO_PRESENCIA_AUSENTE      = 'AUSENTE';
 const ACCESO_PRESENCIA_DESCONECTADO = 'DESCONECTADO';
@@ -83,7 +86,8 @@ function accesoIngresoSesion(
     PDOStatement $stmtFunIngreso,
     string $idUsuario,
     ?string $ipCliente = null,
-    ?int $timeoutSeg = null
+    ?int $timeoutSeg = null,
+    ?string $ultRuta = 'index.php'
 ): int {
     $idUsuario = trim($idUsuario);
     if ($idUsuario === '') {
@@ -94,7 +98,12 @@ function accesoIngresoSesion(
     $timeout = $timeoutSeg ?? (defined('SESSION_TIMEOUT') ? (int) SESSION_TIMEOUT : 1800);
     $timeout = max(0, $timeout);
 
-    $stmtFunIngreso->execute([$idUsuario, $ip, $timeout]);
+    $ruta = trim((string) ($ultRuta ?? 'index.php'));
+    if ($ruta === '') {
+        $ruta = 'index.php';
+    }
+
+    $stmtFunIngreso->execute([$idUsuario, $ip, $timeout, $ruta]);
     $idSesion = (int) $stmtFunIngreso->fetchColumn();
 
     if ($idSesion < 1) {

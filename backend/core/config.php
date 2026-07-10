@@ -90,7 +90,13 @@ $w_error_db = "Error de conexión: ";
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', (string) SESSION_TIMEOUT);
     ini_set('session.cookie_lifetime', (string) SESSION_TIMEOUT);
-    $cookiePath = APP_BASE_PATH !== '' ? '/' . APP_BASE_PATH . '/' : '/';
+    // Apache bajo /smartcset/ necesita path acotado; el servidor embebido
+    // (php -S :8080) sirve /routers/* en la raíz — cookie /smartcset/
+    // rompe la app de escritorio y cualquier cliente en :8080.
+    $cookiePath = '/';
+    if (APP_BASE_PATH !== '' && PHP_SAPI !== 'cli-server') {
+        $cookiePath = '/' . APP_BASE_PATH . '/';
+    }
     session_set_cookie_params([
         'lifetime' => SESSION_TIMEOUT,
         'path' => $cookiePath,

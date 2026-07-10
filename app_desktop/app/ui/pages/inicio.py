@@ -1,8 +1,6 @@
 """
 Página "Inicio" — réplica del dashboard real
-(frontend/web/pages/menu/menu_principal.php): hero de bienvenida, 3 KPI,
-"Acciones rápidas" (navegan de verdad a Ingreso/Salida) y "Actividad
-reciente" con datos reales de hoy.
+(frontend/web/pages/menu/menu_principal.php): hero de bienvenida y 3 KPI.
 """
 from __future__ import annotations
 
@@ -12,7 +10,6 @@ from typing import Any, Callable
 
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
-from ui.format_utils import format_db_timestamp
 
 
 class InicioPage(ttk.Frame):
@@ -29,10 +26,8 @@ class InicioPage(ttk.Frame):
         self._on_navigate = on_navigate
 
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
 
         self._build_hero()
-        self._build_panels()
         self.after(10, self._load)
 
     def _build_hero(self) -> None:
@@ -51,8 +46,7 @@ class InicioPage(ttk.Frame):
         ).grid(row=1, column=0, sticky="w", pady=(2, 4))
         tk.Label(
             hero,
-            text="Resumen operativo del día. Use el menú lateral o las acciones\n"
-            "rápidas para tareas frecuentes.",
+            text="Resumen operativo del día. Use el menú lateral para las tareas frecuentes.",
             bg=theme.V_OSCURO, fg="#dbe8d4", font=theme.FONT_BODY, justify="left",
         ).grid(row=2, column=0, sticky="w")
 
@@ -76,29 +70,6 @@ class InicioPage(ttk.Frame):
         tk.Label(card, text=label, bg=bg, fg="#ecf3e6", font=theme.FONT_LABEL_SMALL).pack(anchor="w")
         return value_label
 
-    def _build_panels(self) -> None:
-        panels = ttk.Frame(self, style="App.TFrame")
-        panels.grid(row=1, column=0, sticky="nsew", pady=(16, 0))
-        panels.columnconfigure(0, weight=1)
-        panels.columnconfigure(1, weight=1)
-
-        acciones = ttk.Frame(panels, style="Card.TFrame", padding=16)
-        acciones.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        ttk.Label(acciones, text="⚡ Acciones rápidas", style="Card.TLabel").pack(anchor="w", pady=(0, 10))
-        ttk.Button(
-            acciones, text="Registro de ingreso  →", style="Nav.TButton",
-            command=lambda: self._on_navigate("ingreso"),
-        ).pack(fill="x", pady=3)
-        ttk.Button(
-            acciones, text="Registro de salida  →", style="Nav.TButton",
-            command=lambda: self._on_navigate("salida"),
-        ).pack(fill="x", pady=3)
-
-        actividad = ttk.Frame(panels, style="Card.TFrame", padding=16)
-        actividad.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-        ttk.Label(actividad, text="⏱ Actividad reciente", style="Card.TLabel").pack(anchor="w", pady=(0, 10))
-        self._actividad_frame = actividad
-
     def _load(self) -> None:
         try:
             ingresos = self._client.ingresos_hoy()
@@ -109,19 +80,3 @@ class InicioPage(ttk.Frame):
         self._kpi_ingresos.configure(text=str(len(ingresos)))
         self._kpi_salidas.configure(text=str(len(salidas)))
         self._kpi_dentro.configure(text=str(max(0, len(ingresos) - len(salidas))))
-
-        for child in list(self._actividad_frame.winfo_children())[1:]:
-            child.destroy()
-
-        if not ingresos:
-            ttk.Label(
-                self._actividad_frame, text="Sin ingresos registrados hoy.", style="CardMuted.TLabel"
-            ).pack(anchor="w")
-            return
-
-        for item in ingresos[:8]:
-            nombre = f"{item.get('nombres', '')} {item.get('apellidos', '')}".strip()
-            hora = format_db_timestamp(item.get("fec_ingreso"))
-            ttk.Label(
-                self._actividad_frame, text=f"{nombre or '—'}   ·   {hora}", style="CardMuted.TLabel"
-            ).pack(anchor="w", pady=2)

@@ -68,14 +68,24 @@ class IngresoPage(ttk.Frame):
         self._tree.configure(yscrollcommand=scroll.set)
         scroll.grid(row=1, column=1, sticky="ns")
 
+        self._status_var = tk.StringVar(value="")
+        self._status_label = ttk.Label(
+            self, textvariable=self._status_var, style="Muted.TLabel", foreground=theme.ERROR
+        )
+        self._status_label.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
         self.after(10, self.refresh)
+        # Flujo directo portería: al entrar desde el sidebar, la cámara
+        # facial se abre sola (sin paso intermedio en "Reconocimiento facial").
+        self.after(80, self._abrir_reconocimiento)
 
     def refresh(self) -> None:
         self._tree.delete(*self._tree.get_children())
+        self._status_var.set("")
         try:
             items = self._client.ingresos_hoy()
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            messagebox.showerror("Registro de ingreso", str(exc))
+            self._status_var.set(str(exc))
             return
 
         for it in items:
@@ -98,7 +108,14 @@ class IngresoPage(ttk.Frame):
         NuevoIngresoDialog(self, self._client, on_registrado=self.refresh)
 
     def _abrir_reconocimiento(self) -> None:
-        FacialRecognitionModal(self, self._client, modo="ingreso", on_registrado=self.refresh)
+        modal = getattr(self, "_facial_modal", None)
+        if modal is not None and modal.winfo_exists():
+            modal.lift()
+            modal.focus_force()
+            return
+        self._facial_modal = FacialRecognitionModal(
+            self, self._client, modo="ingreso", on_registrado=self.refresh
+        )
 
 
 class NuevoIngresoDialog(tk.Toplevel):

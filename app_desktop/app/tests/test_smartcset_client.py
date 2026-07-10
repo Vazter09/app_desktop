@@ -61,6 +61,13 @@ class TestLogin(unittest.TestCase):
         with self.assertRaises((SmartcsetApiError, SmartcsetConnectionError)):
             client_sin_login.ingresos_hoy()
 
+    def test_relogin_desktop_sin_logout_previo(self) -> None:
+        """Simula cierre accidental: login → logout omitido → segundo login."""
+        self.client.login(NONADMIN_USER, NONADMIN_PASS)
+        self.client._cookie_jar.clear()
+        data = self.client.login(NONADMIN_USER, NONADMIN_PASS)
+        self.assertEqual(data["usuario"]["id"], NONADMIN_USER)
+
 
 class TestPorteriaFlujoReal(unittest.TestCase):
     """Ciclo completo consultar -> registrar ingreso -> listar -> salida,

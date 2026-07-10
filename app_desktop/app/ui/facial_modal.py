@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import base64
 import io
+import threading
+import time
 import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Literal
@@ -35,15 +37,32 @@ import numpy as np
 from PIL import Image
 
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
+from tkinter import messagebox
 from ui import theme
-from ui.camera import CameraSource, detectar_camara_disponible, frame_a_photoimage
+from ui.camera import (
+    CameraSource,
+    detectar_camara_disponible,
+    frame_a_photoimage,
+    listar_camaras_disponibles,
+)
 from ui.identification_confirmation_modal import IdentificationConfirmationModal
+from ui.window_utils import centrar_ventana_al_mostrar
 
 Modo = Literal["ingreso", "salida"]
 
-CAM_ANCHO = 400
-CAM_ALTO = 300
+MODAL_ANCHO = 540
+MODAL_ALTO = 760
+CAM_ANCHO = 480
+CAM_ALTO = 360
 CAM_INTERVALO_MS = 33  # ~30 fps
+
+# Auto-identificación: revisar rostro cada N ticks (~165 ms) en el hilo
+# principal (Tkinter no es thread-safe con OpenCV). Dos detecciones
+# seguidas bastan tras bajar el umbral interno de YuNet (ver embeddings).
+AUTO_DETECT_CADA_TICKS = 5
+MIN_ROSTRO_CONSECUTIVOS = 2
+MIN_CONFIANZA_ROSTRO = 0.45
+COOLDOWN_TRAS_FALLO_MS = 2000
 
 # El motor carga 2 modelos ONNX (~39MB) — se instancia una sola vez por
 # proceso, no una vez por modal abierto (abrir/cerrar el modal repetidas
@@ -84,17 +103,32 @@ class FacialRecognitionModal(tk.Toplevel):
         self._camara: CameraSource | None = None
         self._after_id: str | None = None
         self._ultimo_frame = None
+        # None = auto-detectar la primera disponible (comportamiento
+        # previo); si el usuario elige una cámara puntual con el botón
+        # 🎥, queda fija acá hasta que la cambie de nuevo.
+        self._camara_indice_seleccionado: int | None = None
+        self._frames_sin_senal = 0
+        self._abriendo_camara = False
+        self._tick_contador = 0
+        self._identificando = False
+        self._confirmacion_abierta = False
+        self._rostro_consecutivos = 0
+        self._cooldown_hasta_ms = 0.0
+        self._confirmacion_modal: IdentificationConfirmationModal | None = None
+        self._motor_listo = False
 
         titulo = "Identificar rostro — Ingreso" if modo == "ingreso" else "Identificar rostro — Salida"
         self.title(titulo)
         self.configure(bg=theme.BG_CARD)
-        self.geometry("460x660")
+        self.geometry(f"{MODAL_ANCHO}x{MODAL_ALTO}")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
         self.protocol("WM_DELETE_WINDOW", self._cerrar)
 
         self._build()
+        centrar_ventana_al_mostrar(self, MODAL_ANCHO, MODAL_ALTO)
+        self.after(150, self._iniciar_captura)
 
     # ---- UI ---------------------------------------------------------
 
@@ -108,9 +142,7 @@ class FacialRecognitionModal(tk.Toplevel):
             font=theme.FONT_TITLE,
         ).pack(anchor="w")
         subtitulo = (
-            "Identifica a la persona para registrar su ingreso"
-            if self._modo == "ingreso"
-            else "Identifica a la persona para registrar su salida"
+            "Acérquese a la cámara — la identificación es automática al detectar el rostro"
         )
         ttk.Label(header, text=subtitulo, style="CardMuted.TLabel").pack(
             anchor="w", pady=(2, 0)
@@ -137,7 +169,25 @@ class FacialRecognitionModal(tk.Toplevel):
 
         # ---- Marco de cámara ----
         cam_wrap = tk.Frame(self, bg=theme.BG_PANEL, padx=16, pady=16)
-        cam_wrap.pack(fill="both", expand=True, padx=20, pady=10)
+        cam_wrap.pack(fill="x", padx=20, pady=10)
+
+        # Fila superior: nombre de la cámara activa + botón para elegir
+        # entre periféricos conectados (no solo la que trae el equipo
+        # por defecto).
+        cam_header = tk.Frame(cam_wrap, bg=theme.BG_PANEL)
+        cam_header.pack(fill="x", pady=(0, 8))
+
+        self._camara_activa_var = tk.StringVar(value="Cámara: conectando...")
+        ttk.Label(
+            cam_header, textvariable=self._camara_activa_var, style="Muted.TLabel"
+        ).pack(side="left")
+
+        ttk.Button(
+            cam_header,
+            text="🎥 Cambiar cámara",
+            style="Nav.TButton",
+            command=self._seleccionar_camara,
+        ).pack(side="right")
 
         self._cam_canvas = tk.Canvas(
             cam_wrap,
@@ -152,7 +202,7 @@ class FacialRecognitionModal(tk.Toplevel):
         self._draw_placeholder()
 
         # ---- Estado ----
-        self._estado_var = tk.StringVar(value="En espera — inicie la captura.")
+        self._estado_var = tk.StringVar(value="Iniciando cámara...")
         estado_row = ttk.Frame(self, style="App.TFrame", padding=(20, 0))
         estado_row.pack(fill="x")
         self._estado_dot = tk.Canvas(
@@ -169,25 +219,15 @@ class FacialRecognitionModal(tk.Toplevel):
         actions.pack(fill="x")
         actions.columnconfigure(0, weight=1)
         actions.columnconfigure(1, weight=1)
-        actions.columnconfigure(2, weight=1)
 
         self._toggle_btn = ttk.Button(
             actions, text="Iniciar captura", style="Primary.TButton", command=self._toggle_captura
         )
         self._toggle_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
 
-        self._identificar_btn = ttk.Button(
-            actions,
-            text="Identificar",
-            style="Nav.TButton",
-            command=self._identificar,
-            state="disabled",
-        )
-        self._identificar_btn.grid(row=0, column=1, sticky="ew", padx=4)
-
         ttk.Button(
             actions, text="Cerrar", style="Nav.TButton", command=self._cerrar
-        ).grid(row=0, column=2, sticky="ew", padx=(4, 0))
+        ).grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
     def _draw_placeholder(self, mensaje: str = "Sin señal de cámara") -> None:
         c = self._cam_canvas
@@ -212,23 +252,171 @@ class FacialRecognitionModal(tk.Toplevel):
             self._iniciar_captura()
 
     def _iniciar_captura(self) -> None:
-        indice = detectar_camara_disponible()
+        if self._capturando or self._abriendo_camara:
+            return
+
+        indice = self._camara_indice_seleccionado
         if indice is None:
-            self._set_estado("No se detectó ninguna cámara en este equipo.", theme.ERROR)
+            indice = 0
+
+        self._abriendo_camara = True
+        self._set_estado("Conectando cámara...", theme.CYAN)
+        self._camara_activa_var.set(f"Cámara: {indice}")
+        threading.Thread(
+            target=self._abrir_camara_en_hilo,
+            args=(indice,),
+            daemon=True,
+        ).start()
+
+    def _abrir_camara_en_hilo(self, indice: int) -> None:
+        camara = CameraSource(indice)
+        ok = camara.abrir()
+        indice_final = indice
+
+        if not ok and self._camara_indice_seleccionado is None:
+            alterno = detectar_camara_disponible(preferido=None)
+            if alterno is not None and alterno != indice:
+                camara.liberar()
+                indice_final = alterno
+                camara = CameraSource(indice_final)
+                ok = camara.abrir()
+
+        self.after(0, lambda: self._finalizar_apertura_camara(indice_final, camara, ok))
+
+    def _finalizar_apertura_camara(
+        self, indice: int, camara: CameraSource, ok: bool
+    ) -> None:
+        self._abriendo_camara = False
+
+        if self._capturando:
+            camara.liberar()
+            return
+
+        if not ok:
+            self._set_estado(
+                "No se pudo abrir la cámara — verifique que no la use otra aplicación.",
+                theme.ERROR,
+            )
             self._draw_placeholder("Cámara no disponible")
             return
 
-        self._camara = CameraSource(indice)
-        if not self._camara.abrir():
-            self._set_estado(f"No se pudo abrir la cámara (índice {indice}).", theme.ERROR)
-            self._camara = None
+        self._camara = camara
+        self._capturando = True
+        self._frames_sin_senal = 0
+        self._toggle_btn.configure(text="Detener")
+        self._camara_activa_var.set(f"Cámara: {indice}")
+        self._precargar_motor()
+        self._cam_canvas.delete("all")
+        self._cam_image_id = None
+        self._tick_contador = 0
+        self._rostro_consecutivos = 0
+        self._tick_camara()
+
+    def _precargar_motor(self) -> None:
+        if self._motor_listo:
+            return
+        self._set_estado("Cargando motor de reconocimiento...", theme.CYAN)
+        self.update()
+        try:
+            _get_embedder()
+        except FileNotFoundError as exc:
+            self._set_estado(str(exc), theme.ERROR)
+            return
+        except cv2.error as exc:
+            self._set_estado(
+                "Motor biométrico no disponible. Reinicie la aplicación "
+                f"o contacte al administrador. ({exc})",
+                theme.ERROR,
+            )
+            return
+        except Exception as exc:
+            self._set_estado(f"Motor biométrico no disponible: {exc}", theme.ERROR)
+            return
+        self._motor_listo = True
+        indice = self._camara_indice_seleccionado
+        if indice is None:
+            indice = 0
+        self._set_estado(
+            f"Cámara activa (índice {indice}). Acérquese al lente.",
+            theme.CYAN,
+        )
+
+    def _seleccionar_camara(self) -> None:
+        """Escanea los índices de video disponibles (periféricos
+        externos incluidos, no solo la cámara por defecto del equipo)
+        y abre un diálogo para que el usuario elija cuál usar."""
+        estaba_capturando = self._capturando
+        if estaba_capturando:
+            self._detener_captura()
+
+        self._set_estado("🔍 Buscando cámaras conectadas...", theme.CYAN)
+        self.update()
+
+        indices = listar_camaras_disponibles()
+        if not indices:
+            self._set_estado(
+                "No se detectó ninguna cámara en este equipo.", theme.ERROR
+            )
+            self._draw_placeholder("Cámara no disponible")
+            messagebox.showwarning(
+                "Sin cámaras",
+                "No se detectó ninguna cámara conectada al equipo.",
+            )
             return
 
-        self._capturando = True
-        self._toggle_btn.configure(text="Detener")
-        self._identificar_btn.state(["!disabled"])
-        self._set_estado(f"Cámara activa (índice {indice}).", theme.CYAN)
-        self._tick_camara()
+        self._abrir_dialogo_camaras(indices)
+
+    def _abrir_dialogo_camaras(self, indices: list[int]) -> None:
+        dialogo = tk.Toplevel(self)
+        dialogo.title("Elegir cámara")
+        dialogo.configure(bg=theme.BG_CARD)
+        dialogo.resizable(False, False)
+        dialogo.transient(self)
+        dialogo.grab_set()
+
+        ttk.Label(
+            dialogo,
+            text="Cámaras detectadas",
+            style="Card.TLabel",
+            font=theme.FONT_TITLE,
+        ).pack(anchor="w", padx=16, pady=(16, 4))
+        ttk.Label(
+            dialogo,
+            text="Elija cuál usar para el reconocimiento facial.",
+            style="CardMuted.TLabel",
+        ).pack(anchor="w", padx=16, pady=(0, 12))
+
+        actual = self._camara_indice_seleccionado
+        valor_inicial = actual if actual in indices else indices[0]
+        seleccion_var = tk.IntVar(value=valor_inicial)
+
+        for indice in indices:
+            etiqueta = f"Cámara {indice}"
+            if indice == 0:
+                etiqueta += " (por defecto del equipo)"
+            ttk.Radiobutton(
+                dialogo, text=etiqueta, value=indice, variable=seleccion_var
+            ).pack(anchor="w", padx=24, pady=2)
+
+        botones = ttk.Frame(dialogo, style="App.TFrame", padding=16)
+        botones.pack(fill="x")
+
+        def _confirmar() -> None:
+            self._camara_indice_seleccionado = seleccion_var.get()
+            self._camara_activa_var.set(
+                f"Cámara: {self._camara_indice_seleccionado}"
+            )
+            dialogo.destroy()
+            self._iniciar_captura()
+
+        ttk.Button(
+            botones, text="Usar esta cámara", style="Primary.TButton",
+            command=_confirmar,
+        ).pack(side="left", padx=(0, 8))
+        ttk.Button(
+            botones, text="Cancelar", style="Nav.TButton",
+            command=dialogo.destroy,
+        ).pack(side="left")
 
     def _tick_camara(self) -> None:
         if not self._capturando or self._camara is None:
@@ -236,6 +424,7 @@ class FacialRecognitionModal(tk.Toplevel):
 
         frame = self._camara.leer_frame()
         if frame is not None:
+            self._frames_sin_senal = 0
             self._ultimo_frame = frame
             photo = frame_a_photoimage(frame, CAM_ANCHO, CAM_ALTO)
             self._cam_photo_ref = photo  # evita garbage collection
@@ -243,10 +432,78 @@ class FacialRecognitionModal(tk.Toplevel):
                 self._cam_image_id = self._cam_canvas.create_image(0, 0, anchor="nw", image=photo)
             else:
                 self._cam_canvas.itemconfig(self._cam_image_id, image=photo)
+            self._tick_contador += 1
+            self._evaluar_auto_identificacion(frame)
+        else:
+            self._frames_sin_senal += 1
+            if self._frames_sin_senal >= 45:
+                self._set_estado(
+                    "La cámara dejó de entregar imagen — pruebe otra con 🎥 Cambiar cámara.",
+                    theme.ERROR,
+                )
+                self._draw_placeholder("Sin señal de cámara")
+                self._detener_captura()
+                return
 
         self._after_id = self.after(CAM_INTERVALO_MS, self._tick_camara)
 
+    def _evaluar_auto_identificacion(self, frame: np.ndarray) -> None:
+        if (
+            not self._motor_listo
+            or self._identificando
+            or self._confirmacion_abierta
+            or time.monotonic() * 1000 < self._cooldown_hasta_ms
+        ):
+            return
+        if self._tick_contador % AUTO_DETECT_CADA_TICKS != 0:
+            return
+
+        try:
+            confianza = _get_embedder().detectar_confianza(frame)
+        except Exception as exc:
+            self._set_estado(f"Motor biométrico: {exc}", theme.ERROR)
+            return
+
+        self._on_rostro_chequeado(confianza)
+
+    def _on_rostro_chequeado(self, confianza: float | None) -> None:
+        if not self.winfo_exists() or not self._capturando:
+            return
+        if self._identificando or self._confirmacion_abierta:
+            return
+
+        indice = self._camara_indice_seleccionado
+        if indice is None:
+            indice = 0
+
+        if confianza is not None and confianza >= MIN_CONFIANZA_ROSTRO:
+            self._rostro_consecutivos += 1
+            pct = int(confianza * 100)
+            if self._rostro_consecutivos >= MIN_ROSTRO_CONSECUTIVOS:
+                self._set_estado("Rostro detectado — identificando...", theme.CYAN)
+                self._identificar(auto=True)
+                return
+            self._set_estado(
+                f"Rostro detectado ({pct}%) — confirmando...",
+                theme.CYAN,
+            )
+            return
+
+        self._rostro_consecutivos = 0
+        if confianza is not None and confianza >= 0.25:
+            pct = int(confianza * 100)
+            self._set_estado(
+                f"Detectando rostro ({pct}%) — acérquese un poco más.",
+                theme.CYAN,
+            )
+            return
+        self._set_estado(
+            f"Cámara activa (índice {indice}). Acérquese al lente.",
+            theme.CYAN,
+        )
+
     def _detener_captura(self) -> None:
+        self._abriendo_camara = False
         self._capturando = False
         if self._after_id is not None:
             self.after_cancel(self._after_id)
@@ -255,8 +512,10 @@ class FacialRecognitionModal(tk.Toplevel):
             self._camara.liberar()
             self._camara = None
         self._ultimo_frame = None
+        self._tick_contador = 0
+        self._rostro_consecutivos = 0
+        self._identificando = False
         self._toggle_btn.configure(text="Iniciar captura")
-        self._identificar_btn.state(["disabled"])
         self._set_estado("En espera — inicie la captura.", theme.TEXT_MUTED)
         self._draw_placeholder()
 
@@ -340,26 +599,37 @@ class FacialRecognitionModal(tk.Toplevel):
 
     # ---- Identificar + abrir confirmación (2026-07-09) ------------------
 
-    def _identificar(self) -> None:
+    def _identificar(self, *, auto: bool = False) -> None:
+        if self._identificando or self._confirmacion_abierta:
+            return
+
         extraido = self._extraer_embedding()
         if extraido is None:
+            if auto:
+                self._cooldown_hasta_ms = (
+                    time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
+                )
             return
+
         embedding, _calidad = extraido
+        self._identificando = True
+        self._rostro_consecutivos = 0
 
         self._set_estado("🔍 Buscando en base de datos...", theme.CYAN)
         self.update()  # Refrescar UI
 
-        self._identificar_btn.state(["disabled"])
         try:
             resultado = self._client.biometria_identificar(embedding)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             self._set_estado(f"Error al identificar: {exc}", theme.ERROR)
-            self._identificar_btn.state(["!disabled"])
+            self._identificando = False
+            self._cooldown_hasta_ms = time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
             return
 
         if not resultado.get("match"):
             self._set_estado("❌ Rostro no reconocido — no está enrolado.", theme.ERROR)
-            self._identificar_btn.state(["!disabled"])
+            self._identificando = False
+            self._cooldown_hasta_ms = time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
             return
 
         # ✅ CAMBIO (2026-07-09): En lugar de registrar directamente, abre modal
@@ -377,31 +647,45 @@ class FacialRecognitionModal(tk.Toplevel):
 
         self._set_estado("✅ Identificación confirmada — abriendo detalles...", theme.SUCCESS)
 
-        # Abre modal de confirmación
-        IdentificationConfirmationModal(
+        self._confirmacion_abierta = True
+        self._identificando = False
+        modal = IdentificationConfirmationModal(
             self,
             self._client,
             persona_datos,
             modo=self._modo,
             on_confirmar=self._on_confirmacion_modal,
         )
+        self._confirmacion_modal = modal
+        modal.bind("<Destroy>", self._on_confirmacion_cerrada, add="+")
 
-        self._identificar_btn.state(["!disabled"])
+    def _on_confirmacion_cerrada(self, event: tk.Event) -> None:
+        if self._confirmacion_modal is None or event.widget is not self._confirmacion_modal:
+            return
+        self._confirmacion_modal = None
+        if not self.winfo_exists():
+            return
+        self._confirmacion_abierta = False
+        self._rostro_consecutivos = 0
+        self._cooldown_hasta_ms = time.monotonic() * 1000 + 1500
+        indice = self._camara_indice_seleccionado
+        if indice is None:
+            indice = 0
+        if self._capturando:
+            self._set_estado(
+                f"Cámara activa (índice {indice}). Acérquese al lente.",
+                theme.CYAN,
+            )
 
     def _on_confirmacion_modal(self, persona_datos: dict) -> None:
-        """Callback del modal de confirmación cuando usuario presiona
-        'Registrar Ingreso' o 'Registrar Salida'."""
+        """Callback del modal de confirmación al registrar ingreso/salida."""
         documento = persona_datos.get("documento") or persona_datos.get("num_docum", "")
         nombre = f"{persona_datos.get('nombres', '')} {persona_datos.get('apellidos', '')}".strip()
 
-        try:
-            if self._modo == "ingreso":
-                self._registrar_ingreso_identificado(documento, nombre, persona_datos)
-            else:
-                self._registrar_salida_identificada(documento, nombre)
-        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            self._set_estado(f"{nombre}: {exc}", theme.ERROR)
-            return
+        if self._modo == "ingreso":
+            self._registrar_ingreso_identificado(documento, nombre, persona_datos)
+        else:
+            self._registrar_salida_identificada(documento, nombre)
 
         if self._on_registrado is not None:
             self._on_registrado()
@@ -410,7 +694,7 @@ class FacialRecognitionModal(tk.Toplevel):
         consulta = self._client.ingreso_consultar(documento, "CC")
         if not consulta.get("puede_ingresar"):
             self._set_estado(f"{nombre}: ya tiene un ingreso abierto.", theme.ERROR)
-            return
+            raise SmartcsetApiError(f"{nombre}: ya tiene un ingreso abierto.")
 
         # La puerta física no la elige el operador aquí (a diferencia del
         # diálogo manual) — se usa la primera entrada real del catálogo.
@@ -420,7 +704,7 @@ class FacialRecognitionModal(tk.Toplevel):
         entradas = self._client.catalogos().get("entradas", [])
         if not entradas:
             self._set_estado("No hay puertas configuradas en el catálogo.", theme.ERROR)
-            return
+            raise SmartcsetApiError("No hay puertas configuradas en el catálogo.")
 
         persona = consulta["persona"]
         # Usar datos del modal si están disponibles (con confirmación visual)
@@ -444,8 +728,13 @@ class FacialRecognitionModal(tk.Toplevel):
     def _registrar_salida_identificada(self, documento: str, nombre: str) -> None:
         consulta = self._client.salida_consultar(documento, "CC")
         if not consulta.get("puede_salir"):
-            self._set_estado(f"{nombre}: no tiene un ingreso abierto para registrar salida.", theme.ERROR)
-            return
+            self._set_estado(
+                f"{nombre}: no tiene un ingreso abierto para registrar salida.",
+                theme.ERROR,
+            )
+            raise SmartcsetApiError(
+                f"{nombre}: no tiene un ingreso abierto para registrar salida."
+            )
 
         self._client.salida_registrar(
             {

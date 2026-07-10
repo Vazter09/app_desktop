@@ -102,16 +102,18 @@ class SmartcsetClient:
         return self._request(
             "POST",
             "/routers/auth/v1/login.php",
-            {"usuario": usuario, "clave": clave},
+            {"usuario": usuario, "clave": clave, "origen": "desktop"},
         )
 
     def logout(self) -> None:
-        """GET /routers/auth/v1/logout.php — cierra la sesión real."""
+        """GET /routers/auth/v1/logout.php — cierra la sesión en tab_sesiones."""
+        url = f"{self.base_url}/routers/auth/v1/logout.php"
+        req = urllib.request.Request(url, method="GET")
         try:
-            self._request("GET", "/routers/auth/v1/logout.php")
-        except (SmartcsetApiError, SmartcsetConnectionError):
-            # El logout real responde 302 (no JSON) en la web; si falla
-            # igual descartamos la cookie local — no bloquea el cierre.
+            # El endpoint web responde 302 + HTML; basta con que el servidor
+            # ejecute fun_salida_sesion antes del redirect.
+            self._opener.open(req, timeout=15)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
             pass
         self._cookie_jar.clear()
 

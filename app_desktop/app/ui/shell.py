@@ -6,14 +6,10 @@ topbar}.php`: navegar entre "páginas" aquí reemplaza al SPA real
 resultado (cambiar el contenido sin recargar toda la ventana), sin
 necesitar navegador.
 
-Páginas registradas (mismo submenú "SGI - Ingresos" real, menú 101-104):
+Páginas registradas (submenú "SGI - Ingresos" visible en sidebar):
   - Inicio              -> pages.inicio.InicioPage
-  - Entradas       (101)-> pages.entradas.EntradasPage
   - Registro ingreso(102)-> pages.ingreso.IngresoPage
   - Registro salida (103)-> pages.salida.SalidaPage
-  - Datos estadísticos(104)-> pages.placeholder.PlaceholderPage (la web
-    real tampoco tiene esto implementado — es "en construcción" ahí
-    también, así que la paridad exacta es mostrar el mismo placeholder)
 """
 from __future__ import annotations
 
@@ -23,10 +19,8 @@ from typing import Callable
 
 from smartcset_client import SmartcsetClient
 from ui import theme
-from ui.pages.entradas import EntradasPage
 from ui.pages.inicio import InicioPage
 from ui.pages.ingreso import IngresoPage
-from ui.pages.placeholder import PlaceholderPage
 from ui.pages.salida import SalidaPage
 
 class AppShell(ttk.Frame):
@@ -44,10 +38,8 @@ class AppShell(ttk.Frame):
 
         self._pages = {
             "inicio": ("Inicio", InicioPage),
-            "entradas": ("Entradas", EntradasPage),
             "ingreso": ("Registro ingreso", IngresoPage),
             "salida": ("Registro salida", SalidaPage),
-            "estadisticos": ("Datos estadísticos", PlaceholderPage),
         }
 
         self.columnconfigure(1, weight=1)
@@ -108,10 +100,8 @@ class AppShell(ttk.Frame):
             pady=8,
         ).pack(fill="x")
 
-        self._add_nav_item(sidebar, "entradas", "        Entradas")
         self._add_nav_item(sidebar, "ingreso", "        Registro ingreso")
         self._add_nav_item(sidebar, "salida", "        Registro salida")
-        self._add_nav_item(sidebar, "estadisticos", "        Datos estadísticos")
 
     def _add_nav_item(
         self, sidebar: tk.Frame, key: str, text: str, top: bool = False
@@ -149,21 +139,20 @@ class AppShell(ttk.Frame):
     # ---- Topbar ---------------------------------------------------------
 
     def _build_topbar(self) -> None:
-        topbar = tk.Frame(self._main, bg=theme.BG_PANEL, height=54)
+        topbar = tk.Frame(self._main, bg=theme.BG_PANEL, height=theme.TOPBAR_HEIGHT)
         topbar.grid(row=0, column=0, sticky="ew")
         topbar.grid_propagate(False)
-        topbar.columnconfigure(0, weight=1)
 
         tk.Label(
             topbar,
             textvariable=self._breadcrumb_var,
             bg=theme.BG_PANEL,
             fg=theme.V_OLIVA,
-            font=theme.FONT_BODY_BOLD,
-        ).grid(row=0, column=0, sticky="w", padx=16)
+            font=theme.FONT_TOPBAR_BREADCRUMB,
+        ).place(relx=0, rely=0.5, anchor="w", x=16)
 
         right = tk.Frame(topbar, bg=theme.BG_PANEL)
-        right.grid(row=0, column=1, sticky="e", padx=12)
+        right.place(relx=1, rely=0.5, anchor="e", x=-16)
 
         nombre = self._usuario.get("nombre") or self._usuario.get("id", "")
         tk.Label(
@@ -171,11 +160,14 @@ class AppShell(ttk.Frame):
             text=f"\U0001F464 {nombre}",
             bg=theme.BG_PANEL,
             fg=theme.TEXT_PRIMARY,
-            font=theme.FONT_BODY,
-        ).pack(side="left", padx=(0, 12))
+            font=theme.FONT_TOPBAR_USER,
+        ).pack(side="left", padx=(0, 14))
 
         ttk.Button(
-            right, text="Salir", style="Logout.TButton", command=self._do_logout
+            right,
+            text="Salir",
+            style="TopbarLogout.TButton",
+            command=self._do_logout,
         ).pack(side="left")
 
     # ---- Navegación -------------------------------------------------------

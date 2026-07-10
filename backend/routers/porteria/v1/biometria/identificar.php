@@ -42,7 +42,7 @@ if (!is_array($embedding)) {
 }
 
 try {
-    global $pdo, $stmt_fun_identificar_persona_por_rostro, $stmt_buscar_persona_doc;
+    global $pdo, $stmt_fun_identificar_persona_por_rostro, $stmt_biometria_persona_completa;
 
     $idPersona = biometriaIdentificarPersona(
         $stmt_fun_identificar_persona_por_rostro,
@@ -55,8 +55,8 @@ try {
         return;
     }
 
-    $stmt_buscar_persona_doc->execute([(string) $idPersona, 'CC']);
-    $persona = $stmt_buscar_persona_doc->fetch();
+    $stmt_biometria_persona_completa->execute([(string) $idPersona]);
+    $persona = $stmt_biometria_persona_completa->fetch();
 
     // Obtener ruta de foto del enrolamiento (2026-07-09)
     $fotoBase64 = null;
@@ -76,7 +76,7 @@ try {
 
     RouterResponse::ok([
         'match' => $persona !== false,
-        'persona' => $persona !== false ? PorteriaRouterPayload::formatPersona($persona) : null,
+        'persona' => $persona !== false ? PorteriaRouterPayload::formatPersonaCompleta($persona) : null,
         'foto_base64' => $fotoBase64,
     ]);
 } catch (InvalidArgumentException $e) {

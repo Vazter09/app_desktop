@@ -63,6 +63,9 @@ run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
 echo "==> Migración tab_intentos_login (E3 — rate limiting)"
 run_sql "$ROOT/database/migrations/add_tab_intentos_login.sql"
 
+echo "==> Migración tab_comite_aprendices + id_motivo en tab_llamados_atencion (reconciliación con origin/main)"
+run_sql "$ROOT/database/migrations/add_tab_comite_aprendices_y_motivo_llamado.sql"
+
 echo "==> Migración tab_enrolamiento_facial (biometría facial — app escritorio SGI)"
 run_sql "$ROOT/database/migrations/add_tab_enrolamiento_facial.sql"
 run_sql "$ROOT/database/migrations/alter_tab_enrolamiento_facial_vector_128.sql"
@@ -167,6 +170,7 @@ for f in \
   "$ROOT/database/migrations/add_menu_sesiones_0206.sql" \
   "$ROOT/database/migrations/update_fun_salida_sesion_ip_mismatch.sql" \
   "$ROOT/database/migrations/update_fun_ingreso_sesion_cerrar_vencidas.sql" \
+  "$ROOT/database/migrations/update_fun_ingreso_sesion_desktop_reclaim.sql" \
   "$ROOT/database/migrations/add_tab_dispositivos_porteria.sql" \
   "$ROOT/database/migrations/reorganizacion_arquitectura_nom_programa.sql" \
   "$ROOT/database/migrations/add_idx_aprendices_fichas_aprendiz.sql" \
