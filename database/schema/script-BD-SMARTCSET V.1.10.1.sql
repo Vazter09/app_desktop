@@ -1,9 +1,10 @@
 -- PENDIENTE CREAR:
 -- Tab_calendario_academico
 -- tab_novedades_egreso / tab_novedades_ingreso (para las personas que no esten registrados en el sistema)
--- tab_novedades_diarias personas que ingresaron pero no salieron.
 -- tab_equipos_entrada.
--- En el log se debe determinar si ingresa con dispositivos electronicos. (id, nombre, id_tercero, serie) ligada a visitantes.
+-- trigger para validar el año, mes en la tabla parametros.
+
+-- Tener en cuenta la salida (novedades) de las personas que se colaron (tab_novedades_ingreso).
 
 ---------------------------
 -- *******************************************************************************************
@@ -11,10 +12,10 @@
 -- * SISTEMA INTEGRADO PARA LA GESTIÓN DE PLATAFORMA TECNOLÓGICA CSET                        *
 -- * SCRIPT DE INSTALACIÓN DEL SISTEMA. INCLUYE LA CREACIÓN DE ESTRUCTURAS Y LAS INSERCIONES *
 -- * CORRESPONDIENTES A LOS DATOS BÁSICOS PARA CARGA DE TABLAS MAESTRAS                      *
--- * Autores: Grupo SMARTCSET                                                     *
+-- * Autores: Grupo SMARTCSET                                                                *
 -- * Fecha: julio de 2026                                                                    *
--- * Versión: 1.10                                                                            *
--- * Revisión: Mayo de 2026                                                                 *
+-- * Versión: 1.10                                                                           *
+-- * Revisión: Mayo de 2026                                                                  *
 -- * Derechos Reservados de los Autores.                                                     *
 -- * Cualquier modificación, comercialización y/o uso sin la autorización de los autores se  *
 -- * considerará DELITO, de acuerdo con las leyes vigentes para el caso en COLOMBIA          * 
@@ -347,7 +348,7 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
 -- FIN SECCIÓN DE TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
 -- **********************************************************************
 
-CREATE DOMAIN mail_personal AS VARCHAR(255) CHECK (VALUE ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$');
+CREATE DOMAIN mail_personal AS VARCHAR(255) CHECK (VALUE ~* '^[a-z0-9._%-]+@[a-z0-9.-]+[.][a-z]+$');
 CREATE DOMAIN mail_institucional AS VARCHAR(255) CHECK (VALUE ~* '^[a-z0-9._%-]+@[a-z0-9.-]+\.[a-z]{2,}$');
 CREATE DOMAIN nombre_geografico AS VARCHAR(50) CHECK (LENGTH(VALUE) >= 3 AND VALUE ~ '^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ .-]+$');
 CREATE DOMAIN telefono_fijo AS DECIMAL(10,0) CHECK (VALUE BETWEEN 6010000000 AND 6089999999);
@@ -373,7 +374,7 @@ CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 -- | pass_usuario | VARCHAR           | NOT NULL                              | Contraseña hasheada del usuario.              |
 -- |              |                   | CHECK(LENGTH(pass_usuario) >= 60)     |                                               |
 -- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
--- | mail_usuario | mail_personal     | NOT NULL                              | Correo personal válido.                       |
+-- | mail_usuario | mail_instucional  | NOT NULL                              | Correo institucional válido.                  |
 -- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
 -- | ind_usuario  | BOOLEAN           | NOT NULL                              | TRUE = administrador, FALSE = usuario normal. |
 -- |              |                   | DEFAULT FALSE                         | Indicador de rol.                             |
@@ -395,22 +396,21 @@ CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 
 CREATE TABLE IF NOT EXISTS tab_usuarios
 (
-    id_usuario              VARCHAR(20)                     NOT NULL CHECK(LENGTH(id_usuario) >= 3),
-    nom_usuario             VARCHAR(50)                     NOT NULL CHECK(LENGTH(TRIM(nom_usuario)) >= 3),
-    pass_usuario            VARCHAR                         NOT NULL CHECK(LENGTH(pass_usuario) >= 60),
-    mail_usuario            mail_personal                   NOT NULL,
-    ind_usuario             BOOLEAN                         NOT NULL DEFAULT FALSE,
-    ind_estado              BOOLEAN                         NOT NULL DEFAULT TRUE,
-    usr_insert              VARCHAR(50)                     NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    id_usuario              VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_usuario) >= 3),        -- Usuario único en el sistema. 
+    nom_usuario             VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(nom_usuario)) >= 3), -- Nombre del usuario dentro del sistema.
+    pass_usuario            VARCHAR                     NOT NULL CHECK(LENGTH(pass_usuario) >= 60),     -- Contraseña hasheada del usuario.
+    mail_usuario            mail_instucional            NOT NULL,                                       -- Correo institucional válido.
+    ind_usuario             BOOLEAN                     NOT NULL DEFAULT FALSE,                         -- TRUE = administrador, FALSE = usuario normal.
+    ind_estado              BOOLEAN                     NOT NULL DEFAULT TRUE,                          -- TRUE = activo, FALSE = inactivo.
+    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update              VARCHAR(50)                              CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_usuario)
 );
 
 -- TABLA DE SESIONES DE APLICACIÓN (módulo acceso / login)
 CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
-
 
 -- TABLA DE SESIONES
 --  __________________________________________________________________________________________________________________________
@@ -447,16 +447,16 @@ CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE IF NOT EXISTS tab_sesiones
 (
-    id_sesion       INTEGER                     NOT NULL DEFAULT nextval('seq_sesiones'),
-    id_usuario      VARCHAR(20)                 NOT NULL,
-    fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fec_fin         TIMESTAMP WITHOUT TIME ZONE,
-    ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ult_ruta        VARCHAR(255),
-    ult_menu_id     VARCHAR(20),
-    cod_cierre      VARCHAR(20),
-    usr_cierre      VARCHAR(50),
-    ip_cliente      VARCHAR(45),
+    id_sesion       INTEGER                     NOT NULL DEFAULT nextval('seq_sesiones'), -- Identificador único de la sesión.
+    id_usuario      VARCHAR(20)                 NOT NULL,                                 -- Identificador del usuario al que pertenece la sesión.
+    fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,       -- Fecha y hora de inicio de la sesión.
+    fec_fin         TIMESTAMP WITHOUT TIME ZONE,                                          -- Fecha y hora de finalización de la sesión (Si no hay dato no permite iniciar sesión).
+    ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,       -- Fecha y hora de la última actividad registrada en la sesión.
+    ult_ruta        VARCHAR(255),                                                         -- Última ruta URL visitada por el usuario. 
+    ult_menu_id     VARCHAR(20),                                                          -- Identificador del último menú accedido. 
+    cod_cierre      VARCHAR(20),                                                          -- Motivo de cierre de la sesión.
+    usr_cierre      VARCHAR(50),                                                          -- Usuario que realizó el cierre (si aplica).
+    ip_cliente      VARCHAR(45),                                                          -- IP del cliente desde donde se conectó el usuario.
     PRIMARY KEY (id_sesion),
     FOREIGN KEY (id_usuario) REFERENCES tab_usuarios (id_usuario)
 );
@@ -538,12 +538,12 @@ CREATE TABLE IF NOT EXISTS tab_sesiones_archivo
 -- Tabla de días festivos del año, para programación de rutas
 CREATE TABLE IF NOT EXISTS tab_festivos
 (
-    fec_festivo             DECIMAL(4,0)    NOT NULL,
-    nom_festivo             VARCHAR         NOT NULL,
-    usr_insert              VARCHAR(50)                     NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_festivo             DECIMAL(4,0)                NOT NULL  CHECK(fec_festivo BETWEEN 0101 AND 3112), -- Fecha del día festivo en formato MMdd.                                             
+    nom_festivo             VARCHAR(100)                NOT NULL  CHECK(LENGTH(TRIM(nom_festivo)) >= 3),    -- Nombre descriptivo del día festivo.
+    usr_insert              VARCHAR(50)                 NOT NULL  CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update              VARCHAR(50)                              CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    usr_update              VARCHAR(50)                           CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE           CHECK(fec_update >= fec_insert),
     PRIMARY KEY(fec_festivo)
 );
 
@@ -580,14 +580,14 @@ CREATE TABLE IF NOT EXISTS tab_festivos
 
 CREATE TABLE IF NOT EXISTS tab_menus
 (
-    id_menu              VARCHAR(20)                     NOT NULL CHECK(LENGTH(id_menu) >= 2),
-    nom_menu             VARCHAR(25)                     NOT NULL CHECK(LENGTH(nom_menu) >= 3),
-    ind_id_padre         VARCHAR(20)                     NOT NULL CHECK(LENGTH(ind_id_padre) >= 2),
-    nom_programa         VARCHAR(255)                    NOT NULL DEFAULT 'no_aplica',
-    usr_insert           VARCHAR(50)                     NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    id_menu              VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_menu) >= 2),          -- Número identificador del menú.
+    nom_menu             VARCHAR(25)                 NOT NULL CHECK(LENGTH(nom_menu) >= 3),         -- Nombre del menú.
+    ind_id_padre         VARCHAR(20)                 NOT NULL CHECK(LENGTH(ind_id_padre) >= 2),     -- Número identificador del menú padre.
+    nom_programa         VARCHAR(255)                NOT NULL DEFAULT 'no_aplica',                  -- Ruta PHP del programa (desde raíz).
+    usr_insert           VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert           TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update           VARCHAR(50)                              CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update           TIMESTAMP WITHOUT TIME ZONE,
+    usr_update           VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update           TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_menu)
 );
 
@@ -620,12 +620,12 @@ CREATE TABLE IF NOT EXISTS tab_menus
 
 CREATE TABLE IF NOT EXISTS tab_menu_usuarios
 (
-    id_usuario                  VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_usuario) >= 5),
-    id_menu                     VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_menu) >= 2),
+    id_usuario                  VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_usuario) >= 5),       -- Número identificador del usuario.
+    id_menu                     VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_menu) >= 2),          -- Número identificador del menú.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_usuario,id_menu),
     FOREIGN KEY(id_usuario) REFERENCES tab_usuarios(id_usuario),
     FOREIGN KEY(id_menu)    REFERENCES tab_menus(id_menu)
@@ -741,39 +741,40 @@ CREATE TABLE IF NOT EXISTS tab_menu_usuarios
 -- Una fila por instalación (id_config = 1). Ver database/migrations/add_tab_config_sistema.sql
 CREATE TABLE IF NOT EXISTS tab_config_sistema
 (
-    id_config                     SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id_config = 1),
-    ind_modulo_registro           BOOLEAN NOT NULL DEFAULT TRUE,
-    ind_login_registro_standalone BOOLEAN NOT NULL DEFAULT FALSE,
-    nom_sistema                   VARCHAR(80) NOT NULL DEFAULT 'SmartCSET',
-    path_logo                     VARCHAR(255) NOT NULL DEFAULT 'public/uploads/logos/logo.png',
-    color_primario                VARCHAR(7) NOT NULL DEFAULT '#2E4731',
-    color_secundario              VARCHAR(7) NOT NULL DEFAULT '#6B8E23',
-    theme_bg_deep                 VARCHAR(32) NOT NULL DEFAULT '#020917',
-    theme_bg_card                 VARCHAR(32) NOT NULL DEFAULT '#060f24',
-    theme_bg_panel                VARCHAR(64) NOT NULL DEFAULT 'rgba(6, 15, 36, 0.85)',
-    theme_accent                  VARCHAR(32) NOT NULL DEFAULT '#00e5b0',
-    theme_accent_dim              VARCHAR(64) NOT NULL DEFAULT 'rgba(0, 245, 255, 0.15)',
-    theme_blue                    VARCHAR(32) NOT NULL DEFAULT '#4a9eff',
-    theme_purple                  VARCHAR(32) NOT NULL DEFAULT '#9b6dff',
-    theme_orange                  VARCHAR(32) NOT NULL DEFAULT '#ff7b2e',
-    theme_text_primary            VARCHAR(32) NOT NULL DEFAULT '#e8f4ff',
-    theme_text_muted              VARCHAR(128) NOT NULL DEFAULT 'rgba(150,180,220,0.7)',
-    theme_border                  VARCHAR(64) NOT NULL DEFAULT 'rgba(0,245,255,0.2)',
-    theme_error                   VARCHAR(32) NOT NULL DEFAULT '#ff3c6e',
-    theme_success                 VARCHAR(32) NOT NULL DEFAULT '#00e5b0',
-    theme_font_display            VARCHAR(120) NOT NULL DEFAULT 'Orbitron',
-    theme_font_body               VARCHAR(120) NOT NULL DEFAULT 'Rajdhani',
-    theme_light_bg_deep           VARCHAR(32) NOT NULL DEFAULT '#f5f7fb',
-    theme_light_bg_card           VARCHAR(32) NOT NULL DEFAULT '#ffffff',
-    theme_light_accent            VARCHAR(32) NOT NULL DEFAULT '#0b74c7',
-    theme_light_text_primary      VARCHAR(32) NOT NULL DEFAULT '#111827',
-    theme_light_text_muted        VARCHAR(128) NOT NULL DEFAULT 'rgba(55,65,81,0.8)',
-    usr_registro                  VARCHAR(40),
-    pass_registro_hash            VARCHAR(255),
-    usr_insert                    VARCHAR(50) NOT NULL DEFAULT 'migration',
+    id_config                     SMALLINT                    NOT NULL DEFAULT 1 CHECK (id_config = 1),         -- Identificador único de la configuración (siempre 1).
+    ind_modulo_registro           BOOLEAN                     NOT NULL DEFAULT TRUE,                            -- Habilita/deshabilita el módulo de registro de usuarios.
+    ind_login_registro_standalone BOOLEAN                     NOT NULL DEFAULT FALSE,                           -- Permite el login de usuarios registrados en modo standalone.
+    nom_sistema                   VARCHAR(80)                 NOT NULL DEFAULT 'SmartCSET',                     -- Nombre del sistema. 
+    path_logo                     VARCHAR(255)                NOT NULL DEFAULT 'public/uploads/logos/logo.png', -- Ruta del archivo de logo.
+    color_primario                VARCHAR(7)                  NOT NULL DEFAULT '#2E4731',                     -- Color primario (hex) para la interfaz.
+    color_secundario              VARCHAR(7)                  NOT NULL DEFAULT '#6B8E23',                     -- Color secundario (hex) para la interfaz.
+    theme_bg_deep                 VARCHAR(32)                 NOT NULL DEFAULT '#020917',                     -- Fondo profundo del tema oscuro.
+    theme_bg_card                 VARCHAR(32)                 NOT NULL DEFAULT '#060f24',                     -- Fondo de tarjetas en tema oscuro.
+    theme_bg_panel                VARCHAR(64)                 NOT NULL DEFAULT 'rgba(6, 15, 36, 0.85)',       -- Fondo de paneles en tema oscuro (con transparencia).
+    theme_accent                  VARCHAR(32)                 NOT NULL DEFAULT '#00e5b0',                     -- Color de acento principal (verde neón).
+    theme_accent_dim              VARCHAR(64)                 NOT NULL DEFAULT 'rgba(0, 245, 255, 0.15)',     -- Acento atenuado (con transparencia).
+    theme_blue                    VARCHAR(32)                 NOT NULL DEFAULT '#4a9eff',                     -- Color azul del tema.
+    theme_purple                  VARCHAR(32)                 NOT NULL DEFAULT '#9b6dff',                     -- Color púrpura del tema.
+    theme_orange                  VARCHAR(32)                 NOT NULL DEFAULT '#ff7b2e',                     -- Color naranja del tema.
+    theme_text_primary            VARCHAR(32)                 NOT NULL DEFAULT '#e8f4ff',                     -- Color primario de texto en tema oscuro.
+    theme_text_muted              VARCHAR(128)                NOT NULL DEFAULT 'rgba(150,180,220,0.7)',       -- Color de texto secundario/atenuado (con transparencia).
+    theme_border                  VARCHAR(64)                 NOT NULL DEFAULT 'rgba(0,245,255,0.2)',         -- Color de bordes (con transparencia).
+    theme_error                   VARCHAR(32)                 NOT NULL DEFAULT '#ff3c6e',                     -- Color para mensajes de error.
+    theme_success                 VARCHAR(32)                 NOT NULL DEFAULT '#00e5b0',                     -- Color para mensajes de éxito.
+    theme_font_display            VARCHAR(120)                NOT NULL DEFAULT 'Orbitron',                      -- Fuente principal para títulos y encabezados.
+    theme_font_body               VARCHAR(120)                NOT NULL DEFAULT 'Rajdhani',                      -- Fuente para el cuerpo del texto.
+    theme_light_bg_deep           VARCHAR(32)                 NOT NULL DEFAULT '#f5f7fb',                     -- Fondo profundo del tema claro.
+    theme_light_bg_card           VARCHAR(32)                 NOT NULL DEFAULT '#ffffff',                     -- Fondo de tarjetas en tema claro.
+    theme_light_accent            VARCHAR(32)                 NOT NULL DEFAULT '#0b74c7',                     -- Color de acento en tema claro.
+    theme_light_text_primary      VARCHAR(32)                 NOT NULL DEFAULT '#111827',                     -- Color primario de texto en tema claro.
+    theme_light_text_muted        VARCHAR(128)                NOT NULL DEFAULT 'rgba(55,65,81,0.8)',          -- Color de texto secundario en tema claro (con transparencia).
+    usr_registro                  VARCHAR(40),                                                                  -- Usuario para registro.
+    pass_registro_hash            VARCHAR(255),                                                                 -- Hash de contraseña para registro.
+    usr_insert                    VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3) DEFAULT 'migration',
     fec_insert                    TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
-    usr_update                    VARCHAR(50),
-    fec_update                    TIMESTAMP WITHOUT TIME ZONE
+    usr_update                    VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update                    TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
+    PRIMARY KEY(id_config)
 );
 
 -- **************************
@@ -804,12 +805,12 @@ CREATE TABLE IF NOT EXISTS tab_config_sistema
 
 CREATE TABLE IF NOT EXISTS tab_dptos
 (
-    id_dpto                     VARCHAR(2)                  NOT NULL,
-    nom_dpto                    nombre_geografico           NOT NULL,
+    id_dpto                     VARCHAR(2)                  NOT NULL,                                       -- Número identificador del departamento.
+    nom_dpto                    nombre_geografico           NOT NULL,                                       -- Nombre del departamento.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_dpto)
 );
 
@@ -844,14 +845,14 @@ CREATE TABLE IF NOT EXISTS tab_dptos
 
 CREATE TABLE IF NOT EXISTS tab_ciudades
 (
-    id_ciudad                   VARCHAR(5)                  NOT NULL,
-    nom_ciudad                  nombre_geografico           NOT NULL,
-    id_dpto                     VARCHAR(2)                  NOT NULL,
-    ind_capital                 BOOLEAN                     NOT NULL DEFAULT FALSE,
+    id_ciudad                   VARCHAR(5)                  NOT NULL,                                      -- Número identificador de la ciudad.
+    nom_ciudad                  nombre_geografico           NOT NULL,                                      -- Nombre de la ciudad.
+    id_dpto                     VARCHAR(2)                  NOT NULL,                                      -- Número identificador del departamento.
+    ind_capital                 BOOLEAN                     NOT NULL DEFAULT FALSE,                        -- TRUE = Es capital, FALSE = No es capital.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ciudad),
     FOREIGN KEY(id_dpto) REFERENCES tab_dptos(id_dpto)
 );
@@ -895,17 +896,17 @@ CREATE TABLE IF NOT EXISTS tab_ciudades
 
 CREATE TABLE IF NOT EXISTS tab_regionales
 (
-    id_regional                 DECIMAL(2)                  NOT NULL,
-    nom_regional                VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_regional) >= 10),
-    dir_regional                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_regional) >= 10) DEFAULT 'Sin dirección',
-    id_dpto                     VARCHAR(2)                  NOT NULL,
-    tel_regional                telefono_fijo               NOT NULL DEFAULT 6010000000,
-    num_extension_tel           extension                   NOT NULL DEFAULT 11111, 
-    nom_director                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_director) >= 3) DEFAULT 'Sin Datos',
+    id_regional                 DECIMAL(2)                  NOT NULL,                                                           -- Número identificador de la regional (ID similar al departamento).
+    nom_regional                VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_regional) >= 10),                         -- Nombre de la regional.
+    dir_regional                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_regional) >= 10) DEFAULT 'Sin dirección', -- Dirección de la regional.
+    id_dpto                     VARCHAR(2)                  NOT NULL,                                                           -- Número identificador del departamento.
+    tel_regional                telefono_fijo               NOT NULL DEFAULT 6010000000,                                        -- Número de teléfono de la regional.
+    num_extension_tel           extension                   NOT NULL DEFAULT 11111,                                             -- Número de extensión del teléfono de la regional.
+    nom_director                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_director) >= 3) DEFAULT 'Sin Datos',      -- Nombre del director de la regional.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_regional),
     FOREIGN KEY(id_dpto) REFERENCES tab_dptos(id_dpto)
 );
@@ -947,17 +948,17 @@ CREATE TABLE IF NOT EXISTS tab_regionales
 
 CREATE TABLE IF NOT EXISTS tab_centros
 (
-    id_centro                   DECIMAL(4,0)                NOT NULL,
-    nom_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_centro) >= 3),
-    dir_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_centro) >= 10) DEFAULT 'Sin dirección',
-    tel_centro                  telefono_fijo               NOT NULL DEFAULT 6010000000,
-    num_extension_tel           extension                   NOT NULL DEFAULT 11111,
-    nom_subdirector             VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_subdirector) >= 3),
-    id_regional                 DECIMAL(2,0)                NOT NULL,
+    id_centro                   DECIMAL(4,0)                NOT NULL,                                                         -- Número identificador del centro.
+    nom_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_centro) >= 3),                          -- Nombre del centro.  
+    dir_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_centro) >= 10) DEFAULT 'Sin dirección', -- Dirección del centro.
+    tel_centro                  telefono_fijo               NOT NULL DEFAULT 6010000000,                                      -- Número de teléfono del centro.
+    num_extension_tel           extension                   NOT NULL DEFAULT 11111,                                           -- Número de extensión del teléfono del centro.
+    nom_subdirector             VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_subdirector) >= 3),                     -- Nombre del subdirector del centro.
+    id_regional                 DECIMAL(2,0)                NOT NULL,                                                         -- Número identificador de la regional.          
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_centro),
     FOREIGN KEY(id_regional) REFERENCES tab_regionales(id_regional)
 );
@@ -999,16 +1000,16 @@ CREATE TABLE IF NOT EXISTS tab_centros
 
 CREATE TABLE IF NOT EXISTS tab_sedes
 (
-    id_centro               DECIMAL(4,0),
-    id_sede                 DECIMAL(1,0)                NOT NULL,
-    nom_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_sede) >= 4),
-    dir_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_sede) >= 10),
-    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3),
-    tel_sede                telefono_fijo               NOT NULL,
+    id_centro               DECIMAL(4,0)                NOT NULL,                                       -- Número identificador del centro.
+    id_sede                 DECIMAL(1,0)                NOT NULL,                                       -- Número identificador de la sede.        
+    nom_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_sede) >= 4),          -- Nombre de la sede.
+    dir_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_sede) >= 10),         -- Dirección de la sede.
+    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3),     -- Nombre del encargado de la sede.
+    tel_sede                telefono_fijo               NOT NULL DEFAULT 6010000000,                    -- Número de teléfono de la sede.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_centro,id_sede),
     FOREIGN KEY(id_centro) REFERENCES tab_centros(id_centro)
 );
@@ -1047,15 +1048,15 @@ CREATE TABLE IF NOT EXISTS tab_sedes
 
 CREATE TABLE IF NOT EXISTS tab_areas
 (
-    id_area                 DECIMAL(2,0)                NOT NULL,
-    nom_area                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_area) >= 3),
-    id_centro               DECIMAL(4,0)                NOT NULL,
-    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3),
-    tel_area                telefono_fijo               NOT NULL,
+    id_area                 DECIMAL(2,0)                NOT NULL,                                       -- Número identificador del área.
+    nom_area                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_area) >= 3),          -- Nombre del área.
+    id_centro               DECIMAL(4,0)                NOT NULL,                                       -- Número identificador del centro.
+    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3),     -- Nombre del encargado del área.
+    tel_area                telefono_fijo               NOT NULL DEFAULT 6010000000,                    -- Número de teléfono del área.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_area),
     FOREIGN KEY(id_centro) REFERENCES tab_centros(id_centro)
 );
@@ -1084,12 +1085,12 @@ CREATE TABLE IF NOT EXISTS tab_areas
 
 CREATE TABLE IF NOT EXISTS tab_cargos
 (
-    id_cargo                DECIMAL(2,0)                NOT NULL,
-    nom_cargo               VARCHAR(90)                 NOT NULL CHECK(LENGTH(nom_cargo) >= 3),
+    id_cargo                DECIMAL(2,0)                NOT NULL,                                       -- Número identificador del cargo. 
+    nom_cargo               VARCHAR(90)                 NOT NULL CHECK(LENGTH(nom_cargo) >= 3),         -- Nombre del cargo.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_cargo)
 );
 
@@ -1119,21 +1120,21 @@ CREATE TABLE IF NOT EXISTS tab_cargos
 -- +--------------------+-------------------+----------------------------------------+-------------------------------------------+
 -- | usr_update         | VARCHAR(50)       | CHECK (LENGTH(TRIM(usr_update)) >= 3)  | Usuario que actualizó el registro.        |
 -- +--------------------+-------------------+----------------------------------------+-------------------------------------------+
--- | fec_update         | TIMESTAMP         |                                        | Fecha/hora de actualización del registro. |
+-- | fec_update         | TIMESTAMP         | CHECK(fec_update >= fec_insert)        | Fecha/hora de actualización del registro. |
 -- |                    | WITHOUT TIME ZONE |                                        |                                           |
 -- +--------------------+-------------------+----------------------------------------+-------------------------------------------+
 
 CREATE TABLE IF NOT EXISTS tab_entradas_centro
 (
-    id_entrada_centro       DECIMAL(1,0)                NOT NULL,
-    nom_entrada_centro      VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_entrada_centro) >= 5),
-    id_centro               DECIMAL(4,0)                NOT NULL,
-    id_sede                 DECIMAL(1,0)                NOT NULL,
-    ind_parking             BOOLEAN                     NOT NULL DEFAULT FALSE, -- Si la entrada tiene parking, pide vehículo
+    id_entrada_centro       DECIMAL(1,0)                NOT NULL,                                        -- Número identificador de la entrada al centro.
+    nom_entrada_centro      VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_entrada_centro) >= 5), -- Nombre de la entrada al centro.
+    id_centro               DECIMAL(4,0)                NOT NULL,                                        -- Número identificador del centro.
+    id_sede                 DECIMAL(1,0)                NOT NULL,                                        -- Número identificador de la sede.
+    ind_parking             BOOLEAN                     NOT NULL DEFAULT FALSE,                          -- TRUE= Parqueadero / FALSE= No es parqueadero.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_entrada_centro),
     FOREIGN KEY(id_centro,id_sede) REFERENCES tab_sedes(id_centro,id_sede)
 );
@@ -1166,13 +1167,13 @@ CREATE TABLE IF NOT EXISTS tab_entradas_centro
 
 CREATE TABLE IF NOT EXISTS tab_redes
 (
-    id_red                  DECIMAL(2,0)                NOT NULL,
-    nom_red           		TEXT                        NOT NULL CHECK(LENGTH(nom_red) >= 3),
-    nom_lider               VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_lider) >= 3),
+    id_red                  DECIMAL(2,0)                NOT NULL,                                       -- Número identificador de la red.    
+    nom_red           		TEXT                        NOT NULL CHECK(LENGTH(nom_red) >= 3),           -- Nombre de la red.
+    nom_lider               VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_lider) >= 3),         -- Nombre del líder de la red.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_red)
 );
 
@@ -1199,8 +1200,8 @@ CREATE TABLE IF NOT EXISTS tab_redes
 
 CREATE TABLE IF NOT EXISTS tab_tipos_novedad
 (
-    id_tipo_novedad                 SMALLINT            NOT NULL,
-    nom_tipo_novedad                VARCHAR             NOT NULL,
+    id_tipo_novedad                 SMALLINT            NOT NULL,                                        -- Identificador único del tipo de novedad.
+    nom_tipo_novedad                VARCHAR             NOT NULL CHECK(LENGTH(nom_tipo_novedad) >= 3),   -- Nombre descriptivo del tipo de novedad.
     usr_insert                      VARCHAR(50)         NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY(id_tipo_novedad)
@@ -1261,25 +1262,26 @@ CREATE TABLE IF NOT EXISTS tab_tipos_novedad
 
 CREATE TABLE IF NOT EXISTS tab_pmtros_grales
 (
-    id_centro                   DECIMAL(8,0)                NOT NULL,-- Centro en donde se está ejecutando SMARTCSET
-    dir_centro                  VARCHAR(90)                 NOT NULL CHECK(LENGTH(dir_centro) >= 10), -- Dirección del Centro
-    tel_centro                  DECIMAL(10,0)               NOT NULL,-- Teléfono del Centro
-    ano_academico               DECIMAL(4,0)                NOT NULL,-- Año en el que se está trabajando
-    mes_academico               DECIMAL(2,0)                NOT NULL,-- Mes. Debe actualizarse automáticamente (EJECUTAR FUNCIÓN CRON)
-    val_nota_minima_rap         DECIMAL(3,0)                NOT NULL DEFAULT 71  CHECK(val_nota_minima_rap >= 0 AND val_nota_minima_rap <= 100), -- Nota mínima de aprendiz para aprobar
-    num_horas_instructor        DECIMAL(3,0)                NOT NULL DEFAULT 160 CHECK(num_horas_instructor >=0 AND num_horas_instructor <= 200), -- Horas mes instructor por cumplir por contrato
-    val_porcent_icfes_raps      DECIMAL(2,0)                NOT NULL DEFAULT 75,-- Valor mínimo de raps calificados para asistir a pruebas ICFES
-    val_tiempo_gracia_aprendiz  DECIMAL(2,0)                NOT NULL DEFAULT 0, -- Minutos de tardanza permitidos para un aprendiz
-    val_tiempo_gracia_instru    DECIMAL(2,0)                NOT NULL DEFAULT 0, -- Minutos de tardanza permitidos para un instructor
-    val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3, -- Máximo # de llamados de at. a un aprendiz para enviar a comité
-    nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),
-    tel_administrador           DECIMAL(10,0)               NOT NULL,
-    id_novedad_desercion        SMALLINT                    NOT NULL DEFAULT 1, -- Debe ser igual al creado en la tabla tab_tipos_novedad
-    id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 2, -- Debe ser igual al creado en la tabla tab_tipos_novedad
-    usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
+    id_centro                   DECIMAL(8,0)                NOT NULL,                                                                             -- Centro en donde se está ejecutando SMARTCSET.
+    dir_centro                  VARCHAR(90)                 NOT NULL CHECK(LENGTH(dir_centro) >= 10),                                             -- Dirección del Centro que está ejecutando SMARTCSET.
+    tel_centro                  DECIMAL(10,0)               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del Centro que está ejecutando SMARTCSET.
+    ano_academico               DECIMAL(4,0)                NOT NULL,                                                                             -- Año en el que se está trabajando en SMARTCSET. 
+    mes_academico               DECIMAL(2,0)                NOT NULL,                                                                             -- Mes. Debe actualizarse automáticamente (EJECUTAR FUNCIÓN CRON).
+    val_nota_minima_rap         DECIMAL(3,0)                NOT NULL DEFAULT 71  CHECK(val_nota_minima_rap >= 0 AND val_nota_minima_rap <= 100),  -- Nota mínima de aprendiz para aprobar.
+    num_horas_instructor        DECIMAL(3,0)                NOT NULL DEFAULT 160 CHECK(num_horas_instructor >=0 AND num_horas_instructor <= 200), -- Horas mes instructor por cumplir por contrato.
+    val_porcent_icfes_raps      DECIMAL(2,0)                NOT NULL DEFAULT 75,                                                                  -- Valor mínimo de raps calificados para asistir a pruebas ICFES.
+    val_tiempo_gracia_aprendiz  DECIMAL(2,0)                NOT NULL DEFAULT 0,                                                                   -- Minutos de tardanza permitidos para un aprendiz.
+    val_tiempo_gracia_instru    DECIMAL(2,0)                NOT NULL DEFAULT 0,                                                                   -- Minutos de tardanza permitidos para un instructor.
+    val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3,                                                                   -- Máximo número de llamados de atención a un aprendiz para enviar a comité
+    nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),   -- Nombre del administrador del centro.
+    tel_administrador           DECIMAL(10,0)               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del administrador del centro.
+    id_novedad_desercion        SMALLINT                    NOT NULL DEFAULT 1,                                                                   -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 2,                                                                   -- Debe ser igual al creado en la tabla tab_tipos_novedad
+    --tiempo_act_camara           DECIMAL(2,0)                NOT NULL DEFAULT 5,                                                                   -- Tiempo de actualización de cámara en segundos.
+    usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update                  VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_centro),
     FOREIGN KEY(id_centro) REFERENCES tab_centros(id_centro)
 );
@@ -1313,12 +1315,12 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
 
 CREATE TABLE IF NOT EXISTS tab_tipos_docum
 (
-    id_tipo_docum               VARCHAR(4)                  NOT NULL,
-    nom_tipo_docum              VARCHAR(40)                 NOT NULL CHECK(LENGTH(nom_tipo_docum) >= 2),
+    id_tipo_docum               VARCHAR(4)                  NOT NULL,                                      -- Número identificador del tipo de documento.
+    nom_tipo_docum              VARCHAR(40)                 NOT NULL CHECK(LENGTH(nom_tipo_docum) >= 2),   -- Nombre del tipo de documento.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_tipo_docum)
 );
 
@@ -1354,13 +1356,13 @@ CREATE TABLE IF NOT EXISTS tab_tipos_docum
 
 CREATE TABLE IF NOT EXISTS tab_empresas
 (
-    id_empresa                  DECIMAL(10,0)               NOT NULL,
-    id_tipo_docum               VARCHAR(3)                  NOT NULL DEFAULT 'N/A',
-    nom_empresa                 VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_empresa) >= 2) DEFAULT 'Sin Empresa',
+    id_empresa                  DECIMAL(10,0)               NOT NULL,                                                       -- Número identificador de la empresa.
+    id_tipo_docum               VARCHAR(3)                  NOT NULL DEFAULT 'N/A',                                         -- Número identificador del tipo de documento de la empresa.
+    nom_empresa                 VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_empresa) >= 2) DEFAULT 'Sin Empresa', -- Nombre de la empresa.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_empresa),
     FOREIGN KEY(id_tipo_docum) REFERENCES tab_tipos_docum(id_tipo_docum)
 );
@@ -1390,12 +1392,12 @@ CREATE TABLE IF NOT EXISTS tab_empresas
 
 CREATE TABLE IF NOT EXISTS tab_profesiones
 (
-    id_profesion                VARCHAR                     NOT NULL,
-    nom_profesion               VARCHAR(250)                NOT NULL CHECK(LENGTH(nom_profesion) >= 3),
-    usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    id_profesion                VARCHAR                     NOT NULL,                                       -- Número identificador de la profesión.
+    nom_profesion               VARCHAR(250)                NOT NULL  CHECK(LENGTH(nom_profesion) >= 3),    -- Nombre de la profesión.
+    usr_insert                  VARCHAR(50)                 NOT NULL  CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    usr_update                  VARCHAR(50)                           CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE           CHECK(fec_update >= fec_insert),
   PRIMARY KEY(id_profesion)
 );
 
@@ -1425,12 +1427,12 @@ CREATE TABLE IF NOT EXISTS tab_profesiones
 
 CREATE TABLE IF NOT EXISTS tab_niveles_estudio
 (
-    id_nivel_estudio            DECIMAL(2,0)                NOT NULL,
-    nom_nivel_estudio           VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_nivel_estudio) >= 5),
+    id_nivel_estudio            DECIMAL(2,0)                NOT NULL,                                       -- Número identificador del nivel de estudio.
+    nom_nivel_estudio           VARCHAR(50)                 NOT NULL CHECK(LENGTH(nom_nivel_estudio) >= 5), -- Nombre del nivel estudio.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_nivel_estudio)
 );
 
@@ -1558,10 +1560,6 @@ CREATE TABLE IF NOT EXISTS tab_tipos_persona
 -- |                          | WITHOUT TIME ZONE |                                              |                                                        |
 -- +--------------------------+-------------------+----------------------------------------------+--------------------------------------------------------+
 
-CREATE TABLE IF NOT EXISTS tab_tipo_personas
-
-
-
 CREATE TABLE IF NOT EXISTS tab_personas
 (-- DATOS DE IDENTIFICACIÓN DE LA PERSONA (A VALIDAR CONTRA REGISTRADURÍA)
     id_persona                  DECIMAL(10,0)               NOT NULL,
@@ -1571,10 +1569,10 @@ CREATE TABLE IF NOT EXISTS tab_personas
     ape_persona                 VARCHAR(30)                 NOT NULL CHECK(LENGTH(ape_persona) >= 2),
     mail_persona                mail_personal               NOT NULL DEFAULT 'sin_correo@correo.com',
     fec_nacimiento              DATE                        NOT NULL DEFAULT '1900-01-01',
-    ind_genero                  DECIMAL(2,0)                NOT NULL DEFAULT 99,  -- 99=No definido
+    ind_genero                  DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 3 OR ind_genero = 4) DEFAULT 99, --1=Femenino,2=Masculino,3=No binario,4=Trans, 99=No definido
  -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
     val_huella_digital          BYTEA,
-    val_patron_facial           JSONB,
+    val_patron_facial           VECTOR(128),
     fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     num_visitas                 SMALLINT                    NOT NULL DEFAULT 0,
@@ -1682,8 +1680,7 @@ CREATE TABLE IF NOT EXISTS tab_instructores
     id_centro               DECIMAL(4,0)                NOT NULL DEFAULT 9309,
     ind_tipo_contrato       BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Planta / FALSE=Contratista. Si es contratista, se debe consultar el vigente en la tabla tab_contratos_instructor
     ind_contratado_actual   BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Contratado actualmente / FALSE=No Contratado. Si está contratado debe consultarse el contrato en la tabla hija
-    --ind_genero              DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 4), --1=Femenino,2=Masculino,3=No binario,4=Trans
-    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9),--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
+    ind_est_civil           DECIMAL(1,0)                NOT NULL CHECK(ind_est_civil >= 0 AND ind_est_civil <=9) DEFAULT 0,--1=Casado 2=Soltero 3=Unión Libre', 3=Viudo, 4=Divorciado, 0=Otro
     id_nivel_estudio        DECIMAL(2,0)                NOT NULL DEFAULT 99,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene vehiculo / FALSE=No tiene vehiculo.
     id_profesion            VARCHAR                     NOT NULL DEFAULT '00',
@@ -2356,18 +2353,16 @@ CREATE TABLE IF NOT EXISTS tab_vehiculos
     FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
 );
 
--- En el log se debe determinar si ingresa con dispositivos electronicos. (id, nombre, id_tercero, serie) ligada a visitantes.
-
 
 CREATE TABLE IF NOT EXISTS tab_equipos (
-    id_equipos            VARCHAR(50)                 NOT NULL, -- Este sera el número de serie.
+    id_equipo             VARCHAR(50)                 NOT NULL, -- Numero de serie.
     id_propietario        DECIMAL(10,0)               NOT NULL, -- El propietario debe estar registrado.
     tipo_dispositivo      VARCHAR(50)                 NOT NULL,CHECK(LENGTH(TRIM(tipo_dispositivo)) >= 3), 
     usr_insert            VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update            VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update            TIMESTAMP WITHOUT TIME ZONE,
-    PRIMARY KEY(id_equipos),
+    PRIMARY KEY(id_equipo),
     FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
 );
 
@@ -2404,16 +2399,16 @@ CREATE TABLE IF NOT EXISTS tab_equipos (
 
 CREATE TABLE IF NOT EXISTS tab_novedades_ingreso 
 (
-    id_novedad          DECIMAL(10,0)               NOT NULL,
-    nom_tercero         VARCHAR(40)                 NOT NULL CHECK(LENGTH(TRIM(nom_tercero)) >= 3),
-    ape_tercero         VARCHAR(30)                 NOT NULL CHECK(LENGTH(TRIM(ape_tercero)) >= 2),
-    id_entrada_centro   DECIMAL(1,0)                NOT NULL,
+    id_novedad          DECIMAL(10,0),
+    nom_tercero         VARCHAR(40)                          CHECK(LENGTH(TRIM(nom_tercero)) >= 3),
+    ape_tercero         VARCHAR(30)                          CHECK(LENGTH(TRIM(ape_tercero)) >= 2),
+    id_entrada_centro   DECIMAL(1,0),
     val_huella_digital  BYTEA,
-    val_patron_facial   JSONB,
+    val_patron_facial   VECTOR(128),
     uri_imagen_huella   VARCHAR(500),
     uri_foto_facial     VARCHAR(500),
-    fec_ingreso         TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fec_salida          TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fec_ingreso         TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
+    fec_salida          TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     usr_insert          VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert          TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY (id_novedad),
@@ -2432,7 +2427,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     id_entrada_centro       DECIMAL(1,0)                NOT NULL,
     ind_dispositivo         BOOLEAN                     NOT NULL DEFAULT FALSE, -- FALSE=No ingreso con un dispositivo / TRUE=Ingreso con un dispositivo
 /*-- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario
-    facial_embedding        VECTOR(512),
+    facial_embedding        VECTOR(128),
     -- Plantilla binaria de la huella (Minucias)
     huella_template         BYTEA,
     -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo)
@@ -2463,9 +2458,9 @@ CREATE INDEX idx_fec_ingresos ON tab_log_ingresos(fec_ingreso DESC);
 
 CREATE TABLE IF NOT EXISTS tab_novedades_diarias
 (
-    id_novedad_diaria       SERIAL                      NOT NULL,
+    id_novedad_diaria       BIGSERIAL                   NOT NULL,
     id_ingreso              INTEGER                     NOT NULL,
-    motivo_novedad          VARCHAR                     NOT NULL CHECK(LENGTH(TRIM(motivo_novedad)) >= 5),
+    motivo_novedad          VARCHAR(100)                NOT NULL CHECK(LENGTH(TRIM(motivo_novedad)) >= 5),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY(id_novedad_diaria),
@@ -3020,8 +3015,6 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
     FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
 );
 
---CREATE TYPE TIPO_ESTADO_ASISTENCIA AS ENUM('Presente', 'Tarde', 'Ausente', 'Desconocido');
-
 -- TABLA DE ASISTENCIA DE APRENDICES A FORMACIÓN
 CREATE TABLE tab_asistencia_aprendiz
 (
@@ -3461,15 +3454,15 @@ CREATE TABLE IF NOT EXISTS tab_causas_novedad
 
 CREATE TABLE IF NOT EXISTS tab_novedades_academicas
 (
-    id_consecutivo                  BIGSERIAL           NOT NULL,
-    fec_novedad                     DATE                NOT NULL,
-    id_tipo_novedad                 SMALLINT            NOT NULL,
-    id_aprendiz                     DECIMAL(10,0)       NOT NULL,
-    id_ficha                        DECIMAL(10,0)       NOT NULL,
-    id_causa_novedad                SMALLINT            NOT NULL,
-    ruta_evidencia                  VARCHAR             NOT NULL,
-    id_instructor                   DECIMAL(10,0)       NOT NULL,
-    ind_procesado                   BOOLEAN             NOT NULL,
+    id_consecutivo          BIGSERIAL                   NOT NULL,
+    fec_novedad             DATE                        NOT NULL,
+    id_tipo_novedad         SMALLINT                    NOT NULL,
+    id_aprendiz             DECIMAL(10,0)               NOT NULL,
+    id_ficha                DECIMAL(10,0)               NOT NULL,
+    id_causa_novedad        SMALLINT                    NOT NULL,
+    ruta_evidencia          VARCHAR                     NOT NULL,
+    id_instructor           DECIMAL(10,0)               NOT NULL,
+    ind_procesado           BOOLEAN                     NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY(id_consecutivo),
@@ -3492,6 +3485,23 @@ CREATE TABLE tab_audit_trail
     PRIMARY KEY(id_auditoria)
 );
 
+-- TABLA DE LOS CONTRATISTAS
+CREATE TABLE IF NOT EXISTS tab_contratistas
+(
+    id_contratista          DECIMAL(10,0)               NOT NULL,
+    id_empresa              DECIMAL(10,0)               NOT NULL,
+    ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene vehiculo / FALSE=No tiene vehiculo.
+    id_cargo                VARCHAR                     NOT NULL,
+    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
+    PRIMARY KEY(id_contratista),
+    FOREIGN KEY(id_empresa) REFERENCES tab_empresas(id_empresa),
+    FOREIGN KEY(id_cargo) REFERENCES tab_cargos(id_cargo)
+);
+
+
 -- TABLA DE BITÁCORA DIARIA
 -- Se usa para que los encargados diligencien los eventos que consideren importantes en el día
 -- Similar al libro de la vigilancia
@@ -3499,76 +3509,10 @@ CREATE TABLE IF NOT EXISTS tab_bitacora
 (
     id_consecutivo          BIGSERIAL                   NOT NULL,
     fec_bitacora            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    texto_evento            TEXT                        NOT NULL,
-    nom_encargado           VARCHAR                     NOT NULL,
+    texto_evento            TEXT                        NOT NULL CHECK(LENGTH(TRIM(texto_evento)) >= 10),
+    id_contratista          DECIMAL(10,0)               NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    PRIMARY KEY(id_consecutivo)
+    PRIMARY KEY(id_consecutivo),
+    FOREIGN KEY(id_contratista) REFERENCES tab_contratistas(id_contratista)
 );
-
-
--- INSERCIÓN DE TABLA DE MOTIVOS DE LLAMADO DE ATENCIÓN
-INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
-INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');
-INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro');
-INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación');
-INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación');
-INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación');
-INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo');
-INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado');
-
--- INSERCIÓN TABLA DE TIPOS DE NOVEDADES
-INSERT INTO tab_tipos_novedad VALUES(1,'Deserción');
-INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión');
-INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico');
-INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico');
-INSERT INTO tab_tipos_novedad VALUES(5,'En Formación');
-INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento');
-INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario');
-INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad');
-
--- INSERCIÓN TABLA DE CAUSAS DE NOVEDADES
-INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida');
-INSERT INTO tab_causas_novedad VALUES(1,'a) En la formación presencial, excepto la complementaria, tener tres (3) días continuos de inasistencia injustificada o acumular cinco (5) días
- no continuos de inasistencia injustificada durante todo el proceso de formación.');
-INSERT INTO tab_causas_novedad VALUES (2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
-por el instructor o por el responsable del grupo o no ingresa a su ambiente virtual de formación (plataforma LMS) durante veinte (20) días consecutivos, sin previa justificación soportada 
-ante el sistema de gestión académico-administrativo');
-INSERT INTO tab_causas_novedad VALUES (3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
-programados para el desarrollo de sus actividades formativas.');
-INSERT INTO tab_causas_novedad VALUES (4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
-la empresa con la que desarrolla la alternativa establecida.');
-INSERT INTO tab_causas_novedad VALUES (5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
-o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.');
-INSERT INTO tab_causas_novedad VALUES (6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ');
-
--- INSERCIÓN TABLA DE VEHÍCULOS (PLACA GENÉRICA)
-INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777);
-
--- INSERCIÓN TABLA DE OPCIONES DE PRODUCTIVA
-INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida');
-INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral');
-INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral');
-INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía');
-INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo');
-
--- INSERCIÓN EN TABLA DE JORNADAS
-INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
-INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
-
--- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
-INSERT INTO tab_tipos_permiso VALUES(1,'Consulta Médica',0,3);
-INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
-INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
-INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
-INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
-INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
-INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
-INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
-INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
-INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
-INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
-INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
-INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);

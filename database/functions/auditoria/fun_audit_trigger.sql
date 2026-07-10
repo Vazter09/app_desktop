@@ -126,7 +126,7 @@ BEGIN
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND column_name = 'usr_insert'
-          AND table_name NOT IN ('tab_bitacoras', 'tab_novedades_academicas', 'tab_causa_novedad', 'tab_audit_trail')
+          AND table_name NOT IN ('tab_bitacoras', 'tab_novedades_academicas', 'tab_causa_novedad', 'tab_audit_trail', 'tab_novedades_ingreso')
           AND table_name NOT IN (
               SELECT table_name
               FROM information_schema.columns
