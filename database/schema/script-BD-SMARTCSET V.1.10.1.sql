@@ -396,9 +396,9 @@ CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 
 CREATE TABLE IF NOT EXISTS tab_usuarios
 (
-    id_usuario              VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_usuario) >= 3),        -- Usuario único en el sistema. 
+    id_usuario              VARCHAR(20)                 NOT NULL CHECK(LENGTH(TRIM(id_usuario)) >= 3),        -- Usuario único en el sistema. 
     nom_usuario             VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(nom_usuario)) >= 3), -- Nombre del usuario dentro del sistema.
-    pass_usuario            VARCHAR                     NOT NULL CHECK(LENGTH(pass_usuario) >= 60),     -- Contraseña hasheada del usuario.
+    pass_usuario            VARCHAR                     NOT NULL CHECK(LENGTH(TRIM(pass_usuario)) >= 60),     -- Contraseña hasheada del usuario.
     mail_usuario            mail_instucional            NOT NULL,                                       -- Correo institucional válido.
     ind_usuario             BOOLEAN                     NOT NULL DEFAULT FALSE,                         -- TRUE = administrador, FALSE = usuario normal.
     ind_estado              BOOLEAN                     NOT NULL DEFAULT TRUE,                          -- TRUE = activo, FALSE = inactivo.
@@ -447,16 +447,16 @@ CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE IF NOT EXISTS tab_sesiones
 (
-    id_sesion       INTEGER                     NOT NULL DEFAULT nextval('seq_sesiones'), -- Identificador único de la sesión.
-    id_usuario      VARCHAR(20)                 NOT NULL,                                 -- Identificador del usuario al que pertenece la sesión.
-    fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,       -- Fecha y hora de inicio de la sesión.
-    fec_fin         TIMESTAMP WITHOUT TIME ZONE,                                          -- Fecha y hora de finalización de la sesión (Si no hay dato no permite iniciar sesión).
-    ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,       -- Fecha y hora de la última actividad registrada en la sesión.
-    ult_ruta        VARCHAR(255),                                                         -- Última ruta URL visitada por el usuario. 
-    ult_menu_id     VARCHAR(20),                                                          -- Identificador del último menú accedido. 
-    cod_cierre      VARCHAR(20),                                                          -- Motivo de cierre de la sesión.
-    usr_cierre      VARCHAR(50),                                                          -- Usuario que realizó el cierre (si aplica).
-    ip_cliente      VARCHAR(45),                                                          -- IP del cliente desde donde se conectó el usuario.
+    id_sesion       INTEGER                     NOT NULL DEFAULT nextval('seq_sesiones'),      -- Identificador único de la sesión.
+    id_usuario      VARCHAR(20)                 NOT NULL CHECK(LENGTH(TRIM(id_usuario)) >= 3), -- Identificador del usuario al que pertenece la sesión.
+    fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,            -- Fecha y hora de inicio de la sesión.
+    fec_fin         TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_fin >= fec_inicio),         -- Fecha y hora de finalización de la sesión (Si no hay dato no permite iniciar sesión).
+    ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,            -- Fecha y hora de la última actividad registrada en la sesión.
+    ult_ruta        VARCHAR(255),                                                              -- Última ruta URL visitada por el usuario. 
+    ult_menu_id     VARCHAR(20),                                                               -- Identificador del último menú accedido. 
+    cod_cierre      VARCHAR(20),                                                               -- Motivo de cierre de la sesión.
+    usr_cierre      VARCHAR(50),                                                               -- Usuario que realizó el cierre (si aplica).
+    ip_cliente      VARCHAR(45),                                                                -- IP del cliente desde donde se conectó el usuario.
     PRIMARY KEY (id_sesion),
     FOREIGN KEY (id_usuario) REFERENCES tab_usuarios (id_usuario)
 );
@@ -501,14 +501,14 @@ CREATE INDEX ix_tab_sesiones_fec_fin ON tab_sesiones (fec_fin, fec_inicio);
 CREATE TABLE IF NOT EXISTS tab_sesiones_archivo
 (
     id_sesion       INTEGER                     NOT NULL,
-    id_usuario      VARCHAR(20)                 NOT NULL,
+    id_usuario      VARCHAR(20)                 NOT NULL CHECk(LENGTH(TRIM(id_usuario)) >= 3),
     fec_inicio      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    fec_fin         TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_fin         TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_fin >= fec_inicio),
     ult_actividad   TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     ult_ruta        VARCHAR(255),
     ult_menu_id     VARCHAR(20),
     cod_cierre      VARCHAR(20),
-    usr_cierre      VARCHAR(50),
+    usr_cierre      VARCHAR(50)                          CHECK(LENGTH(TRIM(id_usuario)) >= 3),
     ip_cliente      VARCHAR(45),
     PRIMARY KEY (id_sesion)
 );
@@ -620,7 +620,7 @@ CREATE TABLE IF NOT EXISTS tab_menus
 
 CREATE TABLE IF NOT EXISTS tab_menu_usuarios
 (
-    id_usuario                  VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_usuario) >= 5),       -- Número identificador del usuario.
+    id_usuario                  VARCHAR(20)                 NOT NULL CHECK(LENGTH(TRIM(id_usuario)) >= 3), -- Número identificador del usuario.
     id_menu                     VARCHAR(20)                 NOT NULL CHECK(LENGTH(id_menu) >= 2),          -- Número identificador del menú.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -953,7 +953,7 @@ CREATE TABLE IF NOT EXISTS tab_centros
     dir_centro                  VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_centro) >= 10) DEFAULT 'Sin dirección', -- Dirección del centro.
     tel_centro                  telefono_fijo               NOT NULL DEFAULT 6010000000,                                      -- Número de teléfono del centro.
     num_extension_tel           extension                   NOT NULL DEFAULT 11111,                                           -- Número de extensión del teléfono del centro.
-    nom_subdirector             VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_subdirector) >= 3),                     -- Nombre del subdirector del centro.
+    nom_subdirector             VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_subdirector) >= 3) DEFAULT 'Sin Datos', -- Nombre del subdirector del centro.
     id_regional                 DECIMAL(2,0)                NOT NULL,                                                         -- Número identificador de la regional.          
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -1000,12 +1000,12 @@ CREATE TABLE IF NOT EXISTS tab_centros
 
 CREATE TABLE IF NOT EXISTS tab_sedes
 (
-    id_centro               DECIMAL(4,0)                NOT NULL,                                       -- Número identificador del centro.
-    id_sede                 DECIMAL(1,0)                NOT NULL,                                       -- Número identificador de la sede.        
-    nom_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_sede) >= 4),          -- Nombre de la sede.
-    dir_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_sede) >= 10),         -- Dirección de la sede.
-    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3),     -- Nombre del encargado de la sede.
-    tel_sede                telefono_fijo               NOT NULL DEFAULT 6010000000,                    -- Número de teléfono de la sede.
+    id_centro               DECIMAL(4,0)                NOT NULL,                                                       -- Número identificador del centro.
+    id_sede                 DECIMAL(1,0)                NOT NULL,                                                       -- Número identificador de la sede.        
+    nom_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_sede) >= 4),                          -- Nombre de la sede.
+    dir_sede                VARCHAR(100)                NOT NULL CHECK(LENGTH(dir_sede) >= 10) DEFAULT 'Sin dirección', -- Dirección de la sede.
+    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3) DEFAULT 'Sin datos', -- Nombre del encargado de la sede.
+    tel_sede                telefono_fijo               NOT NULL DEFAULT 6010000000,                                    -- Número de teléfono de la sede.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1048,11 +1048,11 @@ CREATE TABLE IF NOT EXISTS tab_sedes
 
 CREATE TABLE IF NOT EXISTS tab_areas
 (
-    id_area                 DECIMAL(2,0)                NOT NULL,                                       -- Número identificador del área.
-    nom_area                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_area) >= 3),          -- Nombre del área.
-    id_centro               DECIMAL(4,0)                NOT NULL,                                       -- Número identificador del centro.
-    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3),     -- Nombre del encargado del área.
-    tel_area                telefono_fijo               NOT NULL DEFAULT 6010000000,                    -- Número de teléfono del área.
+    id_area                 DECIMAL(2,0)                NOT NULL,                                                       -- Número identificador del área.
+    nom_area                VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_area) >= 3),                          -- Nombre del área.
+    id_centro               DECIMAL(4,0)                NOT NULL,                                                       -- Número identificador del centro.
+    nom_encargado           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_encargado) >= 3) DEFAULT 'Sin datos', -- Nombre del encargado del área.
+    tel_area                telefono_fijo               NOT NULL DEFAULT 6010000000,                                    -- Número de teléfono del área.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1167,9 +1167,9 @@ CREATE TABLE IF NOT EXISTS tab_entradas_centro
 
 CREATE TABLE IF NOT EXISTS tab_redes
 (
-    id_red                  DECIMAL(2,0)                NOT NULL,                                       -- Número identificador de la red.    
-    nom_red           		TEXT                        NOT NULL CHECK(LENGTH(nom_red) >= 3),           -- Nombre de la red.
-    nom_lider               VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_lider) >= 3),         -- Nombre del líder de la red.
+    id_red                  DECIMAL(2,0)                NOT NULL,                                                   -- Número identificador de la red.    
+    nom_red           		TEXT                        NOT NULL CHECK(LENGTH(nom_red) >= 3),                       -- Nombre de la red.
+    nom_lider               VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_lider) >= 3) DEFAULT 'Sin datos', -- Nombre del líder de la red.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK (LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK (LENGTH(TRIM(usr_update)) >= 3),
@@ -1200,10 +1200,12 @@ CREATE TABLE IF NOT EXISTS tab_redes
 
 CREATE TABLE IF NOT EXISTS tab_tipos_novedad
 (
-    id_tipo_novedad                 SMALLINT            NOT NULL,                                        -- Identificador único del tipo de novedad.
-    nom_tipo_novedad                VARCHAR             NOT NULL CHECK(LENGTH(nom_tipo_novedad) >= 3),   -- Nombre descriptivo del tipo de novedad.
+    id_tipo_novedad                 SMALLINT            NOT NULL,                                      -- Identificador único del tipo de novedad.
+    nom_tipo_novedad                VARCHAR(100)        NOT NULL CHECK(LENGTH(nom_tipo_novedad) >= 3), -- Nombre descriptivo del tipo de novedad.
     usr_insert                      VARCHAR(50)         NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update                      VARCHAR(50)                  CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update                      TIMESTAMP WITHOUT TIME ZONE  CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_tipo_novedad)
 );
 
@@ -1263,21 +1265,20 @@ CREATE TABLE IF NOT EXISTS tab_tipos_novedad
 CREATE TABLE IF NOT EXISTS tab_pmtros_grales
 (
     id_centro                   DECIMAL(8,0)                NOT NULL,                                                                             -- Centro en donde se está ejecutando SMARTCSET.
-    dir_centro                  VARCHAR(90)                 NOT NULL CHECK(LENGTH(dir_centro) >= 10),                                             -- Dirección del Centro que está ejecutando SMARTCSET.
-    tel_centro                  DECIMAL(10,0)               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del Centro que está ejecutando SMARTCSET.
-    ano_academico               DECIMAL(4,0)                NOT NULL,                                                                             -- Año en el que se está trabajando en SMARTCSET. 
-    mes_academico               DECIMAL(2,0)                NOT NULL,                                                                             -- Mes. Debe actualizarse automáticamente (EJECUTAR FUNCIÓN CRON).
-    val_nota_minima_rap         DECIMAL(3,0)                NOT NULL DEFAULT 71  CHECK(val_nota_minima_rap >= 0 AND val_nota_minima_rap <= 100),  -- Nota mínima de aprendiz para aprobar.
-    num_horas_instructor        DECIMAL(3,0)                NOT NULL DEFAULT 160 CHECK(num_horas_instructor >=0 AND num_horas_instructor <= 200), -- Horas mes instructor por cumplir por contrato.
+    dir_centro                  VARCHAR(90)                 NOT NULL CHECK(LENGTH(dir_centro) >= 10) DEFAULT 'Sin dirección',                     -- Dirección del Centro que está ejecutando SMARTCSET.
+    tel_centro                  telefono_fijo               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del Centro que está ejecutando SMARTCSET.
+    ano_academico               DECIMAL(4,0)                NOT NULL DEFAULT DEFAULT EXTRACT(YEAR FROM CURRENT_DATE)::DECIMAL(4,0),               -- Año en el que se está trabajando en SMARTCSET. 
+    mes_academico               DECIMAL(2,0)                NOT NULL CHECK(mes_academico >= 1 AND mes_academico <= 12) DEFAULT 1,                           -- Mes. Debe actualizarse automáticamente (EJECUTAR FUNCIÓN CRON).
+    val_nota_minima_rap         DECIMAL(3,0)                NOT NULL CHECK(val_nota_minima_rap >= 0 AND val_nota_minima_rap <= 100) DEFAULT 71,   -- Nota mínima de aprendiz para aprobar.
+    num_horas_instructor        DECIMAL(3,0)                NOT NULL CHECK(num_horas_instructor >=0 AND num_horas_instructor <= 200) DEFAULT 160, -- Horas mes instructor por cumplir por contrato.
     val_porcent_icfes_raps      DECIMAL(2,0)                NOT NULL DEFAULT 75,                                                                  -- Valor mínimo de raps calificados para asistir a pruebas ICFES.
     val_tiempo_gracia_aprendiz  DECIMAL(2,0)                NOT NULL DEFAULT 0,                                                                   -- Minutos de tardanza permitidos para un aprendiz.
     val_tiempo_gracia_instru    DECIMAL(2,0)                NOT NULL DEFAULT 0,                                                                   -- Minutos de tardanza permitidos para un instructor.
     val_max_llamados_aprendiz   DECIMAL(1,0)                NOT NULL DEFAULT 3,                                                                   -- Máximo número de llamados de atención a un aprendiz para enviar a comité
-    nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3 AND LENGTH(nom_administrador) <= 80),   -- Nombre del administrador del centro.
-    tel_administrador           DECIMAL(10,0)               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del administrador del centro.
+    nom_administrador           VARCHAR(80)                 NOT NULL CHECK(LENGTH(nom_administrador) >= 3),                                       -- Nombre del administrador del centro.
+    tel_administrador           telefono_fijo               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del administrador del centro.
     id_novedad_desercion        SMALLINT                    NOT NULL DEFAULT 1,                                                                   -- Debe ser igual al creado en la tabla tab_tipos_novedad
     id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 2,                                                                   -- Debe ser igual al creado en la tabla tab_tipos_novedad
-    --tiempo_act_camara           DECIMAL(2,0)                NOT NULL DEFAULT 5,                                                                   -- Tiempo de actualización de cámara en segundos.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,                                
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1357,8 +1358,8 @@ CREATE TABLE IF NOT EXISTS tab_tipos_docum
 CREATE TABLE IF NOT EXISTS tab_empresas
 (
     id_empresa                  DECIMAL(10,0)               NOT NULL,                                                       -- Número identificador de la empresa.
-    id_tipo_docum               VARCHAR(3)                  NOT NULL DEFAULT 'N/A',                                         -- Número identificador del tipo de documento de la empresa.
-    nom_empresa                 VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_empresa) >= 2) DEFAULT 'Sin Empresa', -- Nombre de la empresa.
+    id_tipo_docum               VARCHAR(4)                  NOT NULL,                                                       -- Número identificador del tipo de documento de la empresa.
+    nom_empresa                 VARCHAR(100)                NOT NULL CHECK(LENGTH(nom_empresa) >= 2),                       -- Nombre de la empresa.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1462,12 +1463,12 @@ CREATE TABLE IF NOT EXISTS tab_niveles_estudio
 
 CREATE TABLE IF NOT EXISTS tab_tipos_persona
 (
-    id_tipo_persona             DECIMAL(2,0)                NOT NULL,
-    nom_tipo_persona            VARCHAR(25)                 NOT NULL CHECK(LENGTH(nom_tipo_persona) >= 5),
+    id_tipo_persona             DECIMAL(2,0)                NOT NULL,                                       -- Número identificador del tipo de persona.
+    nom_tipo_persona            VARCHAR(25)                 NOT NULL CHECK(LENGTH(nom_tipo_persona) >= 5),  -- Nombre del tipo de persona.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_tipo_persona)
 );
 
@@ -1574,7 +1575,7 @@ CREATE TABLE IF NOT EXISTS tab_personas
     val_huella_digital          BYTEA,
     val_patron_facial           VECTOR(128),
     fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_ultima_salida >= fec_ultima_entrada) DEFAULT CURRENT_TIMESTAMP,
     num_visitas                 SMALLINT                    NOT NULL DEFAULT 0,
 -- DATOS DE ESTUDIO
     id_nivel_estudio            DECIMAL(2,0)                NOT NULL DEFAULT 99, -- 99=Sin estudio
@@ -1592,7 +1593,7 @@ CREATE TABLE IF NOT EXISTS tab_personas
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                  TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_persona),
     FOREIGN KEY(id_tipo_docum)      REFERENCES tab_tipos_docum(id_tipo_docum),
     FOREIGN KEY(id_tipo_persona)    REFERENCES tab_tipos_persona(id_tipo_persona),
@@ -1603,11 +1604,12 @@ CREATE TABLE IF NOT EXISTS tab_personas
 );
 
 CREATE TABLE IF NOT EXISTS log_migracion_aprendices (
-    id_log         SERIAL PRIMARY KEY,
-    fecha          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    id_log                 SERIAL,
+    fecha                  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     num_documento_original TEXT,
-    motivo         TEXT,
-    datos_fila     JSONB
+    motivo                 TEXT,
+    datos_fila             JSONB,
+    PRIMARY KEY (id_log)
 );
 
 -- ESTRUCTURA COMPOSITE PARA DATOS PERSONALES DE UN APRENDIZ
@@ -1690,7 +1692,7 @@ CREATE TABLE IF NOT EXISTS tab_instructores
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_instructor),
     FOREIGN KEY(id_centro)        REFERENCES tab_centros(id_centro),
     FOREIGN KEY(id_nivel_estudio) REFERENCES tab_niveles_estudio(id_nivel_estudio),
@@ -1741,13 +1743,13 @@ CREATE TABLE IF NOT EXISTS tab_contratos_instructor
     num_contrato            VARCHAR                     NOT NULL,
     year_contrato           DECIMAL(4,0),
     fec_inicio              DATE                        NOT NULL,
-    fec_fin                 DATE                        NOT NULL,
-    ind_vigente             BOOLEAN                     NOT NULL DEFAULT TRUE, --TRUE=Vigente / FALSE=Ejecutado. Una vez concluya el contrato debe pasar a FALSE
-    ind_adicion             BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene adición / FALSE=No tiene adición
+    fec_fin                 DATE                        NOT NULL CHECK(fec_fin >= fec_inicio),
+    ind_vigente             BOOLEAN                     NOT NULL DEFAULT TRUE,                         --TRUE=Vigente / FALSE=Ejecutado. Una vez concluya el contrato debe pasar a FALSE
+    ind_adicion             BOOLEAN                     NOT NULL DEFAULT FALSE,                        -- TRUE=Tiene adición / FALSE=No tiene adición
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_instructor,num_contrato)
 );
 
@@ -1791,7 +1793,7 @@ CREATE TABLE IF NOT EXISTS tab_funcionarios
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_funcionario),
     FOREIGN KEY(id_funcionario) REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_area)        REFERENCES tab_areas(id_area),
@@ -1837,11 +1839,11 @@ CREATE TABLE IF NOT EXISTS tab_adicion_contratos
     num_contrato            VARCHAR                     NOT NULL,
     num_adicion             DECIMAL(1,0)                NOT NULL CHECK(num_adicion >= 0 AND num_adicion <=3),
     fec_ini_adicion         DATE                        NOT NULL,
-    fec_fin_adicion         DATE                        NOT NULL,
+    fec_fin_adicion         DATE                        NOT NULL CHECK(fec_fin_adicion >= fen_ini_adicion),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(num_contrato,num_adicion),
     FOREIGN KEY(id_instructor,num_contrato) REFERENCES tab_contratos_instructor(id_instructor,num_contrato)
 );
@@ -1882,15 +1884,15 @@ CREATE TABLE IF NOT EXISTS tab_adicion_contratos
 CREATE TABLE IF NOT EXISTS tab_horas_instructor
 (
     id_instructor           DECIMAL(10,0)               NOT NULL,
-    id_mes                  DECIMAL(2,0)                NOT NULL,   -- Meses del 1 al 12
-    val_horas_form_mes      DECIMAL(4,0)                NOT NULL,   -- Cantidad de horas del mes vigente
-    val_horas_apoyo_mes     DECIMAL(4,0)                NOT NULL,   -- Horas ejecutadas en apoyo
-    val_horas_invest_mes    DECIMAL(4,0)                NOT NULL,   -- Horas ejecutadas en Investigación
-    val_horas_acum          DECIMAL(3,0)                NOT NULL,   -- Cantidad de horas acumuladas hasta el mes vigente
-    usr_insert              VARCHAR                     NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    id_mes                  DECIMAL(2,0)                NOT NULL  CHECK(mes_academico >= 1 AND mes_academico <= 12), -- Meses del 1 al 12
+    val_horas_form_mes      DECIMAL(4,0)                NOT NULL,                                                    -- Cantidad de horas del mes vigente
+    val_horas_apoyo_mes     DECIMAL(4,0)                NOT NULL,                                                    -- Horas ejecutadas en apoyo
+    val_horas_invest_mes    DECIMAL(4,0)                NOT NULL,                                                    -- Horas ejecutadas en Investigación
+    val_horas_acum          DECIMAL(3,0)                NOT NULL,                                                    -- Cantidad de horas acumuladas hasta el mes vigente
+    usr_insert              VARCHAR                     NOT NULL  CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update              VARCHAR                              CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    usr_update              VARCHAR                               CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE           CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_instructor,id_mes),
     FOREIGN KEY(id_instructor) REFERENCES tab_instructores(id_instructor)
 );
@@ -1926,10 +1928,10 @@ CREATE TABLE IF NOT EXISTS tab_certificados
     id_consecutivo          DECIMAL(2,0)                NOT NULL,
     fec_certificado         DATE                        NOT NULL,
     id_instructor           DECIMAL(10,0)               NOT NULL,
-    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    usr_insert              VARCHAR(50)                 NOT NULL  CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    usr_update              VARCHAR(50)                           CHECK(LENGTH(TRIM(usr_update)) >= 3),
+    fec_update              TIMESTAMP WITHOUT TIME ZONE           CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_instructor) REFERENCES tab_instructores(id_instructor)
 );
@@ -1989,7 +1991,7 @@ CREATE TABLE IF NOT EXISTS tab_programas
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_programa)
 );
 
@@ -2034,7 +2036,7 @@ CREATE TABLE IF NOT EXISTS tab_competencias
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_competencia)
 );
 
@@ -2071,7 +2073,7 @@ CREATE TABLE IF NOT EXISTS tab_compet_instructor
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_instructor,id_competencia),
     FOREIGN KEY(id_instructor)          REFERENCES tab_instructores(id_instructor),
     FOREIGN KEY(id_competencia)         REFERENCES tab_competencias(id_competencia)
@@ -2108,7 +2110,7 @@ CREATE TABLE IF NOT EXISTS tab_activ_proyecto
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_actividad)
 );
 
@@ -2148,7 +2150,7 @@ CREATE TABLE IF NOT EXISTS tab_raps
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_rap),
     FOREIGN KEY(id_competencia)             REFERENCES tab_competencias(id_competencia)
 );
@@ -2194,7 +2196,7 @@ CREATE TABLE IF NOT EXISTS tab_evidencias
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_evidencia)
 );
 
@@ -2232,7 +2234,7 @@ CREATE TABLE IF NOT EXISTS tab_evidenciasXrap
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_rap,id_evidencia),
 	FOREIGN KEY(id_rap)			            REFERENCES tab_raps(id_rap),
 	FOREIGN KEY(id_evidencia)	            REFERENCES tab_evidencias(id_evidencia)
@@ -2280,7 +2282,7 @@ CREATE TABLE IF NOT EXISTS tab_juicios_eval
     usr_insert                VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update                TIMESTAMP WITHOUT TIME ZONE,
+    fec_update                TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
   PRIMARY KEY(id_aprendiz),
   FOREIGN KEY(id_rap)           REFERENCES tab_raps(id_rap),
   FOREIGN KEY(id_instructor)    REFERENCES tab_instructores(id_instructor)
@@ -2315,7 +2317,7 @@ CREATE TABLE IF NOT EXISTS tab_metodos_aut
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_metodo_aut)
 );
 
@@ -2348,7 +2350,7 @@ CREATE TABLE IF NOT EXISTS tab_vehiculos
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_vehiculo),
     FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
 );
@@ -2361,7 +2363,7 @@ CREATE TABLE IF NOT EXISTS tab_equipos (
     usr_insert            VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update            VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update            TIMESTAMP WITHOUT TIME ZONE,
+    fec_update            TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_equipo),
     FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
 );
@@ -2410,7 +2412,7 @@ CREATE TABLE IF NOT EXISTS tab_novedades_ingreso
     fec_ingreso         TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     fec_salida          TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     usr_insert          VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert          TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_insert          TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_update >= fec_insert),
     PRIMARY KEY (id_novedad),
     FOREIGN KEY(id_entrada_centro)  REFERENCES tab_entradas_centro(id_entrada_centro)
 );
@@ -2443,7 +2445,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ingreso),
     FOREIGN KEY(id_visitante)       REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_metodo_aut)      REFERENCES tab_metodos_aut(id_metodo_aut),
@@ -2462,7 +2464,7 @@ CREATE TABLE IF NOT EXISTS tab_novedades_diarias
     id_ingreso              INTEGER                     NOT NULL,
     motivo_novedad          VARCHAR(100)                NOT NULL CHECK(LENGTH(TRIM(motivo_novedad)) >= 5),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL ,
     PRIMARY KEY(id_novedad_diaria),
     FOREIGN KEY(id_ingreso) REFERENCES tab_log_ingresos(id_ingreso)
 );
@@ -2546,7 +2548,7 @@ CREATE TABLE IF NOT EXISTS tab_proyectos
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_proyecto),
     FOREIGN KEY(id_programa)                REFERENCES tab_programas(id_programa)
 );
@@ -2610,7 +2612,7 @@ CREATE TABLE IF NOT EXISTS tab_ambientes
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ambiente),
     FOREIGN KEY(id_centro)                      REFERENCES tab_centros(id_centro),
     FOREIGN KEY(id_centro,id_sede)              REFERENCES tab_sedes(id_centro,id_sede)
@@ -2642,7 +2644,7 @@ CREATE TABLE IF NOT EXISTS tab_sectores
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_sector)
 );
 
@@ -2672,7 +2674,7 @@ CREATE TABLE IF NOT EXISTS tab_ocupaciones
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ocupacion)
 );
 
@@ -2700,7 +2702,7 @@ CREATE TABLE IF NOT EXISTS tab_prog_especiales
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_prog_especial)
 );
 
@@ -2717,7 +2719,7 @@ CREATE TABLE IF NOT EXISTS tab_jornadas
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_jornada)
 );
 
@@ -2864,7 +2866,7 @@ CREATE TABLE IF NOT EXISTS tab_fichas
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ficha),
     FOREIGN KEY(id_centro)              REFERENCES tab_centros(id_centro),
     FOREIGN KEY(id_programa)            REFERENCES tab_programas(id_programa),
@@ -2914,7 +2916,7 @@ CREATE TABLE IF NOT EXISTS tab_opciones_productiva
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_opcion_productiva)
 );
 
@@ -2925,7 +2927,7 @@ CREATE TABLE IF NOT EXISTS tab_discapacidades
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_discapacidad)
 );
 
@@ -2943,7 +2945,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_aprendiz),
     FOREIGN KEY(id_aprendiz)     REFERENCES tab_personas(id_persona),
     FOREIGN KEY(id_ficha)        REFERENCES tab_fichas(id_ficha),
@@ -2961,7 +2963,7 @@ CREATE TABLE tab_tipos_permiso
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_tipo_permiso)
 );
 
@@ -2977,7 +2979,7 @@ CREATE TABLE IF NOT EXISTS tab_permisos_aprendiz
     usr_insert              VARCHAR(50)                 NOT NULL    CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                             CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE             CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_aprendiz,fec_inicio_permiso),
     FOREIGN KEY(id_aprendiz)    REFERENCES tab_aprendices
 );
@@ -3009,7 +3011,7 @@ CREATE TABLE IF NOT EXISTS tab_aprendices_fichas
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ficha,id_aprendiz),
     FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha),
     FOREIGN KEY(id_aprendiz)                REFERENCES tab_aprendices(id_aprendiz)
@@ -3028,7 +3030,7 @@ CREATE TABLE tab_asistencia_aprendiz
     -- Optimización: Dejar que la base de datos ponga la fecha de creación automáticamente
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                 CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,    
+    fec_update              TIMESTAMP WITHOUT TIME ZONE CHECK(fec_update >= fec_insert),    
     PRIMARY KEY(id_aprendiz, fec_asistencia),
     FOREIGN KEY(id_aprendiz) REFERENCES tab_aprendices(id_aprendiz)
 );
@@ -3063,7 +3065,7 @@ CREATE TABLE IF NOT EXISTS tab_motivos
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_motivo)
 );
 
@@ -3076,7 +3078,7 @@ CREATE TABLE IF NOT EXISTS tab_ausencias_aprendiz
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_aprendiz,fec_ausencia),
     FOREIGN KEY(id_aprendiz) REFERENCES tab_aprendices(id_aprendiz),
     FOREIGN KEY(id_motivo)   REFERENCES tab_motivos(id_motivo)
@@ -3124,7 +3126,7 @@ CREATE TABLE IF NOT EXISTS tab_llamados_atencion
     usr_insert              VARCHAR(50)                 NOT NULL    CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                             CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE             CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_llamado),
     FOREIGN KEY(id_motivo)      REFERENCES tab_motivos(id_motivo)
 );
@@ -3141,7 +3143,7 @@ CREATE TABLE IF NOT EXISTS tab_comite_aprendices
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_comite)
 );
 
@@ -3188,7 +3190,7 @@ CREATE TABLE IF NOT EXISTS tab_ofertas
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_oferta)
 );
 
@@ -3229,7 +3231,7 @@ CREATE TABLE IF NOT EXISTS tab_competencias_ficha
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ficha,id_competencia),
     FOREIGN KEY(id_ficha)               REFERENCES tab_fichas(id_ficha),
     FOREIGN KEY(id_competencia)         REFERENCES tab_competencias(id_competencia)
@@ -3270,7 +3272,7 @@ CREATE TABLE IF NOT EXISTS tab_rutas
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ruta),
     FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha)
 );
@@ -3336,7 +3338,7 @@ CREATE TABLE IF NOT EXISTS tab_programacion
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ruta,id_ficha,id_competencia,id_instructor),
     FOREIGN KEY(id_ficha)                   REFERENCES tab_fichas(id_ficha),
     FOREIGN KEY(id_competencia)             REFERENCES tab_competencias(id_competencia),
@@ -3410,7 +3412,7 @@ CREATE TABLE IF NOT EXISTS tab_prog_competencia
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
-    fec_update              TIMESTAMP WITHOUT TIME ZONE,
+    fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ruta,id_ficha,id_fase,id_competencia,id_instructor,id_actividad,id_rap),
     FOREIGN KEY(id_ruta)                REFERENCES tab_rutas(id_ruta),
     FOREIGN KEY(id_ficha)               REFERENCES tab_fichas(id_ficha),
@@ -3464,7 +3466,7 @@ CREATE TABLE IF NOT EXISTS tab_novedades_academicas
     id_instructor           DECIMAL(10,0)               NOT NULL,
     ind_procesado           BOOLEAN                     NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_aprendiz)        REFERENCES tab_aprendices(id_aprendiz),
     FOREIGN KEY(id_tipo_novedad)    REFERENCES tab_tipos_novedad(id_tipo_novedad),
@@ -3512,7 +3514,7 @@ CREATE TABLE IF NOT EXISTS tab_bitacora
     texto_evento            TEXT                        NOT NULL CHECK(LENGTH(TRIM(texto_evento)) >= 10),
     id_contratista          DECIMAL(10,0)               NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_contratista) REFERENCES tab_contratistas(id_contratista)
 );
