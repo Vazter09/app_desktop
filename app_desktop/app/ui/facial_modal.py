@@ -1,24 +1,20 @@
 """
-Modal "Reconocimiento Facial" — flujo único de portería.
+Panel / modal "Reconocimiento biométrico" — flujo único de portería.
+
+`FacialRecognitionPanel` es el layout fijo (cámara izquierda + huella
+derecha). `FacialRecognitionModal` es un Toplevel opcional que reutiliza
+el mismo panel (p. ej. desde la página de salida).
 
 Tras identificar un rostro, consulta `ingreso/consultar.php`:
   - si puede ingresar → registra ingreso
   - si ya tiene ingreso abierto → registra salida (sin mensaje de error)
 
-No hace falta un botón aparte de "salida" en la UI: el segundo pase
-por la cámara cierra el ciclo.
-
-ESTADO: flujo completo real.
+ESTADO: flujo completo real (facial). Huella: solo UI por ahora.
 1. Cámara en vivo (`ui/camera.py`, OpenCV).
 2. Motor de embeddings (`motor/embeddings.py`, SFace + YuNet).
 3. "Enrolar": documento + frame → `biometria/enrolar.php`.
 4. "Identificar": frame → `biometria/identificar.php` → modal de
    confirmación → ingreso o salida según estado en BD (`metodo_aut=4`).
-
-CUMPLIMIENTO MSPI + FASE 0-1:
-- E1: Validación visual de acceso (usuario confirma antes de registrar)
-- E4: Hardening de sesión (confirmación explícita)
-- E10: Auditoría (cada acción queda logueada)
 """
 from __future__ import annotations
 
@@ -48,10 +44,14 @@ from ui.window_utils import centrar_ventana_al_mostrar
 
 Modo = Literal["ingreso", "salida"]
 
-MODAL_ANCHO = 540
-MODAL_ALTO = 760
-CAM_ANCHO = 480
-CAM_ALTO = 360
+# Tres secciones: cámara | formulario | huella.
+# Alto base generoso para emparejar el formulario central.
+MODAL_ANCHO = 1280
+MODAL_ALTO = 820
+CAM_ANCHO = 360
+CAM_ALTO = 560
+HUELLA_ANCHO = 360
+HUELLA_ALTO = 560
 CAM_INTERVALO_MS = 33  # ~30 fps
 
 # Auto-identificación: revisar rostro cada N ticks (~165 ms) en el hilo
@@ -77,26 +77,32 @@ def _get_embedder():
     return _embedder_singleton
 
 
-class FacialRecognitionModal(tk.Toplevel):
+class FacialRecognitionPanel(ttk.Frame):
+    """Cámara (izq.) + huella (der.) — usable embebido en página o en modal."""
+
     def __init__(
         self,
         master: tk.Misc,
         client: SmartcsetClient,
         modo: Modo,
         on_registrado: Callable[[], None] | None = None,
+        *,
+        show_close_button: bool = False,
+        on_close: Callable[[], None] | None = None,
     ) -> None:
         """
-        `modo`: "ingreso" o "salida" — decide qué endpoint de
-        consultar/registrar se usa al identificar (misma página que ya
-        abre este modal, un botón por página, igual que en la web).
+        `modo`: "ingreso" o "salida" — decide el endpoint de
+        consultar/registrar al identificar.
 
-        `on_registrado`: callback para refrescar el listado de la
-        página (ingresos/salidas de hoy) tras un registro exitoso.
+        `on_registrado`: callback opcional tras un registro exitoso.
+        `show_close_button` / `on_close`: solo para uso en Toplevel.
         """
-        super().__init__(master)
+        super().__init__(master, style="App.TFrame")
         self._client = client
         self._modo = modo
         self._on_registrado = on_registrado
+        self._show_close_button = show_close_button
+        self._on_close = on_close
         self._capturando = False
         self._camara: CameraSource | None = None
         self._after_id: str | None = None
@@ -116,63 +122,104 @@ class FacialRecognitionModal(tk.Toplevel):
         self._motor_listo = False
         self._ultimo_embedding: list[float] | None = None
 
-        titulo = "Identificar rostro — Portería (ingreso / salida)"
-        self.title(titulo)
-        self.configure(bg=theme.BG_CARD)
-        self.geometry(f"{MODAL_ANCHO}x{MODAL_ALTO}")
-        self.resizable(False, False)
-        self.transient(master)
-        self.grab_set()
-        self.protocol("WM_DELETE_WINDOW", self._cerrar)
-
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
         self._build()
-        centrar_ventana_al_mostrar(self, MODAL_ANCHO, MODAL_ALTO)
+        self.bind("<Destroy>", self._on_destroy, add="+")
         self.after(150, self._iniciar_captura)
+
+    def _on_destroy(self, event: tk.Event) -> None:
+        if event.widget is not self:
+            return
+        # Solo liberar hardware: los widgets ya se están destruyendo.
+        self._abriendo_camara = False
+        self._capturando = False
+        if self._after_id is not None:
+            try:
+                self.after_cancel(self._after_id)
+            except tk.TclError:
+                pass
+            self._after_id = None
+        if self._camara is not None:
+            self._camara.liberar()
+            self._camara = None
 
     # ---- UI ---------------------------------------------------------
 
     def _build(self) -> None:
-        header = ttk.Frame(self, style="Card.TFrame", padding=(20, 16, 20, 8))
+        header = ttk.Frame(self, style="Card.TFrame", padding=(16, 12, 16, 8))
         header.pack(fill="x")
         ttk.Label(
             header,
-            text="📷  Reconocimiento facial",
+            text="📷  Reconocimiento biométrico",
             style="Card.TLabel",
             font=theme.FONT_TITLE,
         ).pack(anchor="w")
-        subtitulo = (
-            "Acérquese a la cámara — la identificación es automática al detectar el rostro"
+        ttk.Label(
+            header,
+            text=(
+                "Izquierda: cámara · Centro: formulario de ingreso nuevo · "
+                "Derecha: huella (solo visual)"
+            ),
+            style="CardMuted.TLabel",
+        ).pack(anchor="w", pady=(2, 0))
+
+        # ---- Tres secciones fijas: cámara | formulario | huella ----
+        bio_row = tk.Frame(self, bg=theme.BG_DEEP)
+        bio_row.pack(fill="both", expand=True, padx=12, pady=8)
+        bio_row.columnconfigure(0, weight=1, minsize=CAM_ANCHO + 40)
+        bio_row.columnconfigure(1, weight=1, minsize=300)
+        bio_row.columnconfigure(2, weight=1, minsize=HUELLA_ANCHO + 40)
+        bio_row.rowconfigure(0, weight=1)
+
+        self._build_columna_camara(bio_row)
+        self._build_columna_formulario(bio_row)
+        self._build_columna_huella(bio_row)
+
+        # ---- Estado ----
+        self._estado_var = tk.StringVar(value="Iniciando cámara...")
+        estado_row = ttk.Frame(self, style="App.TFrame", padding=(16, 0))
+        estado_row.pack(fill="x")
+        self._estado_dot = tk.Canvas(
+            estado_row, width=10, height=10, bg=theme.BG_DEEP, highlightthickness=0
         )
-        ttk.Label(header, text=subtitulo, style="CardMuted.TLabel").pack(
-            anchor="w", pady=(2, 0)
+        self._estado_dot.pack(side="left", padx=(0, 8))
+        self._estado_dot.create_oval(1, 1, 9, 9, fill=theme.TEXT_MUTED, outline="")
+        ttk.Label(estado_row, textvariable=self._estado_var, style="Muted.TLabel").pack(
+            side="left"
         )
 
-        # ---- Documento a enrolar ----
-        enrolar_row = ttk.Frame(self, style="App.TFrame", padding=(20, 12, 20, 0))
-        enrolar_row.pack(fill="x")
-        ttk.Label(enrolar_row, text="Número de documento (para enrolar)", style="App.TLabel").pack(
-            anchor="w"
+        # ---- Acciones ----
+        actions = ttk.Frame(self, style="App.TFrame", padding=(16, 12))
+        actions.pack(fill="x")
+        actions.columnconfigure(0, weight=1)
+        if self._show_close_button:
+            actions.columnconfigure(1, weight=1)
+
+        self._toggle_btn = ttk.Button(
+            actions,
+            text="Iniciar captura",
+            style="Primary.TButton",
+            command=self._toggle_captura,
         )
-        doc_row = ttk.Frame(enrolar_row, style="App.TFrame")
-        doc_row.pack(fill="x", pady=(4, 0))
-        doc_row.columnconfigure(0, weight=1)
-
-        self._documento_var = tk.StringVar()
-        self._documento_entry = ttk.Entry(doc_row, textvariable=self._documento_var)
-        self._documento_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-
-        self._enrolar_btn = ttk.Button(
-            doc_row, text="Enrolar", style="Nav.TButton", command=self._enrolar
+        self._toggle_btn.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, 4) if self._show_close_button else 0,
         )
-        self._enrolar_btn.grid(row=0, column=1)
 
-        # ---- Marco de cámara ----
-        cam_wrap = tk.Frame(self, bg=theme.BG_PANEL, padx=16, pady=16)
-        cam_wrap.pack(fill="x", padx=20, pady=10)
+        if self._show_close_button:
+            ttk.Button(
+                actions, text="Cerrar", style="Nav.TButton", command=self._cerrar
+            ).grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
-        # Fila superior: nombre de la cámara activa + botón para elegir
-        # entre periféricos conectados (no solo la que trae el equipo
-        # por defecto).
+        self.after(30, self._cargar_catalogos_formulario)
+
+    def _build_columna_camara(self, parent: tk.Frame) -> None:
+        cam_wrap = tk.Frame(parent, bg=theme.BG_PANEL, padx=12, pady=12)
+        cam_wrap.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
         cam_header = tk.Frame(cam_wrap, bg=theme.BG_PANEL)
         cam_header.pack(fill="x", pady=(0, 8))
 
@@ -183,7 +230,7 @@ class FacialRecognitionModal(tk.Toplevel):
 
         ttk.Button(
             cam_header,
-            text="🎥 Cambiar cámara",
+            text="🎥 Cambiar",
             style="Nav.TButton",
             command=self._seleccionar_camara,
         ).pack(side="right")
@@ -196,46 +243,248 @@ class FacialRecognitionModal(tk.Toplevel):
             highlightthickness=1,
             highlightbackground=theme.BORDER,
         )
-        self._cam_canvas.pack()
+        self._cam_canvas.pack(fill="both", expand=True)
         self._cam_image_id: int | None = None
         self._draw_placeholder()
+        self._cam_canvas.bind("<Configure>", self._on_cam_resize, add="+")
 
-        # ---- Estado ----
-        self._estado_var = tk.StringVar(value="Iniciando cámara...")
-        estado_row = ttk.Frame(self, style="App.TFrame", padding=(20, 0))
-        estado_row.pack(fill="x")
-        self._estado_dot = tk.Canvas(
-            estado_row, width=10, height=10, bg=theme.BG_DEEP, highlightthickness=0
-        )
-        self._estado_dot.pack(side="left", padx=(0, 8))
-        self._estado_dot.create_oval(1, 1, 9, 9, fill=theme.TEXT_MUTED, outline="")
-        ttk.Label(estado_row, textvariable=self._estado_var, style="Muted.TLabel").pack(
-            side="left"
-        )
+    def _build_columna_formulario(self, parent: tk.Frame) -> None:
+        form_wrap = tk.Frame(parent, bg=theme.BG_PANEL, padx=14, pady=12)
+        form_wrap.grid(row=0, column=1, sticky="nsew", padx=6)
 
-        # ---- Acciones ----
-        actions = ttk.Frame(self, style="App.TFrame", padding=20)
-        actions.pack(fill="x")
-        actions.columnconfigure(0, weight=1)
-        actions.columnconfigure(1, weight=1)
+        ttk.Label(
+            form_wrap,
+            text="Ingreso de persona nueva",
+            style="Card.TLabel",
+            font=theme.FONT_BODY_BOLD,
+        ).pack(anchor="w")
+        ttk.Label(
+            form_wrap,
+            text="Complete los datos y registre o enrolar el rostro.",
+            style="CardMuted.TLabel",
+        ).pack(anchor="w", pady=(2, 10))
 
-        self._toggle_btn = ttk.Button(
-            actions, text="Iniciar captura", style="Primary.TButton", command=self._toggle_captura
+        self._catalogos: dict = {
+            "tipos_doc": [],
+            "tipos_persona": [],
+            "entradas": [],
+        }
+        self._tipo_doc_map: dict[str, str] = {}
+        self._tipo_persona_map: dict[str, int] = {}
+        self._entrada_map: dict[str, int] = {}
+        self._form_msg_var = tk.StringVar(value="")
+
+        def _campo(lbl: str) -> None:
+            ttk.Label(form_wrap, text=lbl, style="Card.TLabel").pack(anchor="w", pady=(6, 2))
+
+        _campo("Tipo de documento")
+        self._tipo_doc_combo = ttk.Combobox(form_wrap, state="readonly")
+        self._tipo_doc_combo.pack(fill="x")
+
+        _campo("Número de documento")
+        self._documento_var = tk.StringVar()
+        self._documento_entry = ttk.Entry(form_wrap, textvariable=self._documento_var)
+        self._documento_entry.pack(fill="x")
+
+        _campo("Nombres")
+        self._nombres_var = tk.StringVar()
+        ttk.Entry(form_wrap, textvariable=self._nombres_var).pack(fill="x")
+
+        _campo("Apellidos")
+        self._apellidos_var = tk.StringVar()
+        ttk.Entry(form_wrap, textvariable=self._apellidos_var).pack(fill="x")
+
+        _campo("Tipo de persona")
+        self._tipo_persona_combo = ttk.Combobox(form_wrap, state="readonly")
+        self._tipo_persona_combo.pack(fill="x")
+
+        _campo("Puerta de ingreso")
+        self._entrada_combo = ttk.Combobox(form_wrap, state="readonly")
+        self._entrada_combo.pack(fill="x")
+
+        _campo("Observaciones (opcional)")
+        self._obs_var = tk.StringVar()
+        ttk.Entry(form_wrap, textvariable=self._obs_var).pack(fill="x")
+
+        ttk.Label(
+            form_wrap,
+            textvariable=self._form_msg_var,
+            style="CardMuted.TLabel",
+            wraplength=260,
+        ).pack(anchor="w", pady=(8, 0))
+
+        btns = ttk.Frame(form_wrap, style="Card.TFrame")
+        btns.pack(fill="x", pady=(12, 0))
+        btns.columnconfigure(0, weight=1)
+        btns.columnconfigure(1, weight=1)
+
+        self._enrolar_btn = ttk.Button(
+            btns, text="Enrolar rostro", style="Nav.TButton", command=self._enrolar
         )
-        self._toggle_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        self._enrolar_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
 
         ttk.Button(
-            actions, text="Cerrar", style="Nav.TButton", command=self._cerrar
+            btns,
+            text="Registrar ingreso",
+            style="Primary.TButton",
+            command=self._registrar_persona_nueva,
         ).grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+    def _build_columna_huella(self, parent: tk.Frame) -> None:
+        huella_wrap = tk.Frame(parent, bg=theme.BG_PANEL, padx=12, pady=12)
+        huella_wrap.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+
+        huella_header = tk.Frame(huella_wrap, bg=theme.BG_PANEL)
+        huella_header.pack(fill="x", pady=(0, 8))
+
+        ttk.Label(huella_header, text="Huella dactilar", style="Muted.TLabel").pack(
+            side="left"
+        )
+        ttk.Label(huella_header, text="Próximamente", style="Muted.TLabel").pack(
+            side="right"
+        )
+
+        self._huella_canvas = tk.Canvas(
+            huella_wrap,
+            width=HUELLA_ANCHO,
+            height=HUELLA_ALTO,
+            bg="#000000",
+            highlightthickness=1,
+            highlightbackground=theme.BORDER,
+        )
+        self._huella_canvas.pack(fill="both", expand=True)
+        self._draw_huella_placeholder()
+        self._huella_canvas.bind("<Configure>", self._on_huella_resize, add="+")
+
+    def _cargar_catalogos_formulario(self) -> None:
+        try:
+            self._catalogos = self._client.catalogos()
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            self._form_msg_var.set(f"No se pudieron cargar catálogos: {exc}")
+            return
+
+        tipos_doc = self._catalogos.get("tipos_doc", [])
+        self._tipo_doc_map = {t["nombre"]: t["id"] for t in tipos_doc}
+        self._tipo_doc_combo.configure(values=list(self._tipo_doc_map.keys()))
+        if tipos_doc:
+            self._tipo_doc_combo.current(0)
+
+        tipos_persona = self._catalogos.get("tipos_persona", [])
+        self._tipo_persona_map = {t["nombre"]: t["id"] for t in tipos_persona}
+        self._tipo_persona_combo.configure(values=list(self._tipo_persona_map.keys()))
+        if tipos_persona:
+            self._tipo_persona_combo.current(0)
+
+        entradas = self._catalogos.get("entradas", [])
+        self._entrada_map = {e["nombre"]: e["id"] for e in entradas}
+        self._entrada_combo.configure(values=list(self._entrada_map.keys()))
+        if entradas:
+            self._entrada_combo.current(0)
+
+    def _registrar_persona_nueva(self) -> None:
+        documento = self._documento_var.get().strip()
+        nombres = self._nombres_var.get().strip()
+        apellidos = self._apellidos_var.get().strip()
+        if not documento:
+            self._form_msg_var.set("Ingrese el número de documento.")
+            self._documento_entry.focus_set()
+            return
+        if not nombres or not apellidos:
+            self._form_msg_var.set("Complete nombres y apellidos.")
+            return
+
+        tipo_doc = self._tipo_doc_map.get(self._tipo_doc_combo.get(), "CC")
+        tipo_persona = self._tipo_persona_map.get(self._tipo_persona_combo.get(), 0)
+        id_entrada = self._entrada_map.get(self._entrada_combo.get(), 0)
+        if not id_entrada:
+            self._form_msg_var.set("Seleccione una puerta de ingreso.")
+            return
+
+        payload = {
+            "tipo_doc": tipo_doc,
+            "documento": documento,
+            "nombres": nombres,
+            "apellidos": apellidos,
+            "tipo_persona": tipo_persona,
+            "id_entrada": id_entrada,
+            "observaciones": self._obs_var.get().strip(),
+            "metodo_aut": 1,
+        }
+        try:
+            self._client.ingreso_registrar(payload)
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            self._form_msg_var.set(str(exc))
+            self._set_estado(str(exc), theme.ERROR)
+            return
+
+        self._form_msg_var.set(f"Ingreso registrado: {nombres} {apellidos}.")
+        self._set_estado(
+            f"Ingreso registrado: {nombres} {apellidos}.", theme.SUCCESS
+        )
+        if self._on_registrado is not None:
+            self._on_registrado()
+
+    def _tamano_canvas(
+        self, canvas: tk.Canvas, fallback_w: int, fallback_h: int
+    ) -> tuple[int, int]:
+        w = int(canvas.winfo_width())
+        h = int(canvas.winfo_height())
+        if w < 40:
+            w = fallback_w
+        if h < 40:
+            h = fallback_h
+        return w, h
+
+    def _on_cam_resize(self, _event: tk.Event | None = None) -> None:
+        # Solo redibuja placeholder si no hay stream activo.
+        if not self._capturando:
+            self._draw_placeholder()
+
+    def _on_huella_resize(self, _event: tk.Event | None = None) -> None:
+        self._draw_huella_placeholder()
 
     def _draw_placeholder(self, mensaje: str = "Sin señal de cámara") -> None:
         c = self._cam_canvas
         c.delete("all")
         self._cam_image_id = None
-        cx, cy = CAM_ANCHO // 2, CAM_ALTO // 2
+        w, h = self._tamano_canvas(c, CAM_ANCHO, CAM_ALTO)
+        cx, cy = w // 2, h // 2
         c.create_oval(cx - 70, cy - 90, cx + 70, cy + 90, outline=theme.CYAN, dash=(5, 4), width=2)
         c.create_text(
             cx, cy + 120, text=mensaje, fill=theme.TEXT_MUTED, font=theme.FONT_LABEL_SMALL
+        )
+
+    def _draw_huella_placeholder(self) -> None:
+        """Dibuja la caja de huella (solo front — sin lector ni matching)."""
+        c = self._huella_canvas
+        c.delete("all")
+        w, h = self._tamano_canvas(c, HUELLA_ANCHO, HUELLA_ALTO)
+        cx, cy = w // 2, h // 2
+        c.create_oval(
+            cx - 55,
+            cy - 85,
+            cx + 55,
+            cy + 85,
+            outline=theme.CYAN,
+            dash=(5, 4),
+            width=2,
+        )
+        c.create_oval(
+            cx - 28,
+            cy - 50,
+            cx + 28,
+            cy + 40,
+            outline=theme.V_OLIVA,
+            dash=(3, 3),
+            width=1,
+        )
+        c.create_text(
+            cx,
+            cy + 120,
+            text="Coloque el dedo en el lector\n(feature en desarrollo)",
+            fill=theme.TEXT_MUTED,
+            font=theme.FONT_LABEL_SMALL,
+            justify="center",
         )
 
     def _set_estado(self, texto: str, color: str) -> None:
@@ -425,7 +674,9 @@ class FacialRecognitionModal(tk.Toplevel):
         if frame is not None:
             self._frames_sin_senal = 0
             self._ultimo_frame = frame
-            photo = frame_a_photoimage(frame, CAM_ANCHO, CAM_ALTO)
+            photo = frame_a_photoimage(
+                frame, *self._tamano_canvas(self._cam_canvas, CAM_ANCHO, CAM_ALTO)
+            )
             self._cam_photo_ref = photo  # evita garbage collection
             if self._cam_image_id is None:
                 self._cam_image_id = self._cam_canvas.create_image(0, 0, anchor="nw", image=photo)
@@ -775,5 +1026,43 @@ class FacialRecognitionModal(tk.Toplevel):
 
     def _cerrar(self) -> None:
         self._detener_captura()
-        self.grab_release()
+        if self._on_close is not None:
+            self._on_close()
+
+
+class FacialRecognitionModal(tk.Toplevel):
+    """Toplevel opcional que reutiliza FacialRecognitionPanel."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        client: SmartcsetClient,
+        modo: Modo,
+        on_registrado: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(master)
+        self.title("Identificar rostro — Portería (ingreso / salida)")
+        self.configure(bg=theme.BG_CARD)
+        self.geometry(f"{MODAL_ANCHO}x{MODAL_ALTO}")
+        self.resizable(False, False)
+        self.transient(master)
+        self.grab_set()
+        self.protocol("WM_DELETE_WINDOW", self._cerrar)
+
+        self._panel = FacialRecognitionPanel(
+            self,
+            client,
+            modo=modo,
+            on_registrado=on_registrado,
+            show_close_button=True,
+            on_close=self._cerrar,
+        )
+        self._panel.pack(fill="both", expand=True)
+        centrar_ventana_al_mostrar(self, MODAL_ANCHO, MODAL_ALTO)
+
+    def _cerrar(self) -> None:
+        try:
+            self.grab_release()
+        except tk.TclError:
+            pass
         self.destroy()

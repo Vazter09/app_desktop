@@ -27,8 +27,8 @@ from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
 from ui.shell import AppShell  # noqa: E402
 
-MIN_WIDTH = 1024
-MIN_HEIGHT = 680
+MIN_WIDTH = 1280
+MIN_HEIGHT = 820
 
 
 class SmartcsetDesktopApp:

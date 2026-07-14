@@ -1,10 +1,12 @@
 """
-Página "Registro de ingreso" — réplica funcional de
-frontend/web/pages/modulos/porteria/ingreso/index.php: tabla de
-"Ingresos de hoy" + diálogo "Nuevo ingreso" que reutiliza los mismos
-endpoints reales que usa la web (consultar → registrar), método
-manual (`metodo_aut=1`) — igual que el flujo de teclado/documento de
-la web. La captura biométrica se agrega en una fase posterior.
+Página de portería biométrica — layout fijo:
+
+  [ Cámara (izquierda) ]  [ Huella (derecha, solo UI) ]
+
+Sin tablero de accesos ni scrollbar. La lógica facial reutiliza
+`FacialRecognitionPanel` (mismos endpoints reales que la web).
+El ingreso manual queda disponible vía diálogo aparte si se invoca
+desde código; no hay tabla de "accesos de hoy" en esta vista.
 """
 from __future__ import annotations
 
@@ -14,8 +16,7 @@ from typing import Any, Callable
 
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
-from ui.facial_modal import FacialRecognitionModal
-from ui.format_utils import WITH_SECONDS_FORMAT, format_db_timestamp
+from ui.facial_modal import FacialRecognitionPanel
 
 
 class IngresoPage(ttk.Frame):
@@ -26,98 +27,22 @@ class IngresoPage(ttk.Frame):
         usuario: dict[str, Any],
         on_navigate: Callable[[str], None],
     ) -> None:
-        super().__init__(master, style="App.TFrame", padding=20)
+        super().__init__(master, style="App.TFrame", padding=8)
         self._client = client
+        self._usuario = usuario
+        self._on_navigate = on_navigate
+
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
 
-        head = ttk.Frame(self, style="App.TFrame")
-        head.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        head.columnconfigure(0, weight=1)
-        ttk.Label(
-            head,
-            text="⏱ Accesos de hoy (ingreso / salida por cámara)",
-            style="Title.TLabel",
-        ).grid(row=0, column=0, sticky="w")
-        ttk.Button(
-            head, text="⟳ Refrescar", style="Nav.TButton", command=self.refresh
-        ).grid(row=0, column=1, sticky="e", padx=(0, 8))
-        ttk.Button(
-            head,
-            text="📷 Cámara (ingreso/salida)",
-            style="Primary.TButton",
-            command=self._abrir_reconocimiento,
-        ).grid(row=0, column=2, sticky="e", padx=(0, 8))
-        ttk.Button(
-            head, text="+ Ingreso manual", style="Nav.TButton", command=self._abrir_dialogo
-        ).grid(row=0, column=3, sticky="e")
-
-        columns = ("hora", "persona", "tipo", "ficha", "programa", "entrada")
-        self._tree = ttk.Treeview(self, columns=columns, show="headings", height=16)
-        for col, label, width in (
-            ("hora", "Hora/Fecha", 160),
-            ("persona", "Persona", 220),
-            ("tipo", "Tipo", 100),
-            ("ficha", "Ficha", 80),
-            ("programa", "Carrera / Programa", 240),
-            ("entrada", "Puerta", 130),
-        ):
-            self._tree.heading(col, text=label)
-            self._tree.column(col, width=width, anchor="w")
-        self._tree.grid(row=1, column=0, sticky="nsew")
-
-        scroll = ttk.Scrollbar(self, orient="vertical", command=self._tree.yview)
-        self._tree.configure(yscrollcommand=scroll.set)
-        scroll.grid(row=1, column=1, sticky="ns")
-
-        self._status_var = tk.StringVar(value="")
-        self._status_label = ttk.Label(
-            self, textvariable=self._status_var, style="Muted.TLabel", foreground=theme.ERROR
+        self._panel = FacialRecognitionPanel(
+            self,
+            client,
+            modo="ingreso",
+            on_registrado=None,
+            show_close_button=False,
         )
-        self._status_label.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
-
-        self.after(10, self.refresh)
-        # Flujo directo portería: al entrar desde el sidebar, la cámara
-        # facial se abre sola (sin paso intermedio en "Reconocimiento facial").
-        self.after(80, self._abrir_reconocimiento)
-
-    def refresh(self) -> None:
-        self._tree.delete(*self._tree.get_children())
-        self._status_var.set("")
-        try:
-            items = self._client.ingresos_hoy()
-        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            self._status_var.set(str(exc))
-            return
-
-        for it in items:
-            nombre = f"{it.get('nombres', '')} {it.get('apellidos', '')}".strip()
-            hora = format_db_timestamp(it.get("fec_ingreso"), WITH_SECONDS_FORMAT)
-            self._tree.insert(
-                "",
-                "end",
-                values=(
-                    hora,
-                    nombre or "—",
-                    it.get("nom_tipo_persona", ""),
-                    it.get("id_ficha") or "—",
-                    it.get("nom_programa") or "—",
-                    it.get("nom_entrada", ""),
-                ),
-            )
-
-    def _abrir_dialogo(self) -> None:
-        NuevoIngresoDialog(self, self._client, on_registrado=self.refresh)
-
-    def _abrir_reconocimiento(self) -> None:
-        modal = getattr(self, "_facial_modal", None)
-        if modal is not None and modal.winfo_exists():
-            modal.lift()
-            modal.focus_force()
-            return
-        self._facial_modal = FacialRecognitionModal(
-            self, self._client, modo="ingreso", on_registrado=self.refresh
-        )
+        self._panel.grid(row=0, column=0, sticky="nsew")
 
 
 class NuevoIngresoDialog(tk.Toplevel):
