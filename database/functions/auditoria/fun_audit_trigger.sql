@@ -1,6 +1,6 @@
 /*
 ===================================================================================
-  SISTEMA DE AUDITORÍA AUTOMÁTICA PARA PostgreSQL
+  FUNCIÓN PARA LA AUDITORÍA AUTOMÁTICA EN EL MODELO.
 ===================================================================================
   Objetivo:
     - Registrar automáticamente todos los INSERT y UPDATE en todas las tablas.

@@ -1279,7 +1279,7 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     id_novedad_aplazamiento     SMALLINT                    NOT NULL DEFAULT 2,                                                                   -- Debe ser igual al creado en la tabla tab_tipos_novedad
     --tiempo_act_camara           DECIMAL(2,0)                NOT NULL DEFAULT 5,                                                                   -- Tiempo de actualización de cámara en segundos.
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,                                
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
 	PRIMARY KEY(id_centro),
@@ -2426,17 +2426,17 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     id_metodo_aut           DECIMAL(2,0)                NOT NULL,
     id_entrada_centro       DECIMAL(1,0)                NOT NULL,
     ind_dispositivo         BOOLEAN                     NOT NULL DEFAULT FALSE, -- FALSE=No ingreso con un dispositivo / TRUE=Ingreso con un dispositivo
-/*-- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario
+-- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario.
     facial_embedding        VECTOR(128),
     -- Plantilla binaria de la huella (Minucias)
     huella_template         BYTEA,
-    -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo)
+    -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo).
     uri_foto_facial         VARCHAR(500),
     uri_imagen_huella       VARCHAR(500),
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
---    val_datos_origen        JSONB,*/
+--    val_datos_origen        JSONB.
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
     val_observaciones       TEXT,
