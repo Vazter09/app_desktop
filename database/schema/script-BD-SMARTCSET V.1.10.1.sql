@@ -2401,10 +2401,12 @@ CREATE TABLE IF NOT EXISTS tab_equipos (
 
 CREATE TABLE IF NOT EXISTS tab_novedades_ingreso 
 (
-    id_novedad          DECIMAL(10,0),
-    nom_tercero         VARCHAR(40)                          CHECK(LENGTH(TRIM(nom_tercero)) >= 3),
-    ape_tercero         VARCHAR(30)                          CHECK(LENGTH(TRIM(ape_tercero)) >= 2),
-    id_entrada_centro   DECIMAL(1,0),
+    id_novedad          BIGSERIAL                    NOT NULL,
+    id_tipo_docum       VARCHAR(4,0)                 NOT NULL DEFAULT 'CC',
+    num_documento       DECIMAL(10,0)                NOT NULL,
+    nom_tercero         VARCHAR(40)                  NOT NULL CHECK(LENGTH(TRIM(nom_tercero)) >= 3),
+    ape_tercero         VARCHAR(30)                  NOT NULL CHECK(LENGTH(TRIM(ape_tercero)) >= 2),
+    id_entrada_centro   DECIMAL(1,0)                 NOT NULL,
     val_huella_digital  BYTEA,
     val_patron_facial   VECTOR(128),
     uri_imagen_huella   VARCHAR(500),
@@ -2412,8 +2414,9 @@ CREATE TABLE IF NOT EXISTS tab_novedades_ingreso
     fec_ingreso         TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     fec_salida          TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     usr_insert          VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert          TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_update >= fec_insert),
+    fec_insert          TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY (id_novedad),
+    FOREIGN KEY(id_tipo_docum)      REFERENCES tab_tipos_docum(id_tipo_docum),
     FOREIGN KEY(id_entrada_centro)  REFERENCES tab_entradas_centro(id_entrada_centro)
 );
 
@@ -2421,7 +2424,7 @@ CREATE TABLE IF NOT EXISTS tab_novedades_ingreso
 
 CREATE TABLE IF NOT EXISTS tab_log_ingresos
 (
-    id_ingreso              INTEGER                     NOT NULL,
+    id_ingreso              BIGSERIAL                   NOT NULL,
     id_visitante            DECIMAL(10,0)               NOT NULL,
     fec_ingreso             TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fec_salida              TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
