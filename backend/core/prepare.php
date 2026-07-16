@@ -197,12 +197,12 @@ try {
 
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
-        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR
+        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR, ?::BYTEA
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
 
     $sql_fun_insert_novedad_ingreso = "SELECT fun_insert_novedad_ingreso(
-        ?::VARCHAR, ?::VARCHAR, ?::NUMERIC, ?::VECTOR, ?::VARCHAR
+        ?::VARCHAR, ?::VARCHAR, ?::NUMERIC, ?::VECTOR, ?::VARCHAR, ?::BYTEA, ?::VARCHAR
     )";
     $stmt_fun_insert_novedad_ingreso = $pdo->prepare($sql_fun_insert_novedad_ingreso);
 
@@ -252,6 +252,16 @@ try {
         ?::VECTOR, ?::NUMERIC
     )";
     $stmt_fun_identificar_persona_por_rostro = $pdo->prepare($sql_fun_identificar_persona_por_rostro);
+
+    $sql_fun_guardar_enrolamiento_huella = "SELECT fun_guardar_enrolamiento_huella(
+        ?::NUMERIC, ?::BYTEA, ?::NUMERIC
+    )";
+    $stmt_fun_guardar_enrolamiento_huella = $pdo->prepare($sql_fun_guardar_enrolamiento_huella);
+
+    $sql_fun_identificar_persona_por_huella = "SELECT fun_identificar_persona_por_huella(
+        ?::BYTEA
+    )";
+    $stmt_fun_identificar_persona_por_huella = $pdo->prepare($sql_fun_identificar_persona_por_huella);
 
     // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
     $sql_fun_registrar_persona = "SELECT fun_registrar_persona(

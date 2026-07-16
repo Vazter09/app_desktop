@@ -87,6 +87,9 @@ function porteriaApiRegistrarIngreso(array $device, array $json): array
     if (isset($json['embedding']) && is_array($json['embedding'])) {
         $post['embedding'] = $json['embedding'];
     }
+    if (isset($json['huella_template_b64']) && is_string($json['huella_template_b64'])) {
+        $post['huella_template_b64'] = trim($json['huella_template_b64']);
+    }
 
     $usrAudit = (string) ($device['id_usuario_audit'] ?? $device['usr_audit'] ?? 'system');
     $pdo->exec("SET app.usuario = " . $pdo->quote($usrAudit));

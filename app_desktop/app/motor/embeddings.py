@@ -36,8 +36,9 @@ _RECOGNIZER_PATH = os.path.join(_MODELS_DIR, _RECOGNIZER_NAME)
 EMBEDDING_DIMENSION = 128
 
 # YuNet trae score_threshold=0.9 por defecto — demasiado estricto para
-# webcams de portería; con 0.9 muchas caras visibles no se devuelven.
-YUNET_SCORE_THRESHOLD = 0.45
+# webcams de portería. En pruebas reales (2026-07-16, cámara índice 0)
+# los rostros válidos llegaban ~0.20–0.28; con 0.45 no se detectaba nada.
+YUNET_SCORE_THRESHOLD = 0.22
 YUNET_NMS_THRESHOLD = 0.3
 DETECCION_MAX_LADO_PX = 640
 

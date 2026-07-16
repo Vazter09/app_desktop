@@ -1,4 +1,4 @@
--- Proceso atómico: visitante + ingreso. Opcional: vector facial del evento.
+-- Proceso atómico: visitante + ingreso. Opcional: facial y/o huella del evento.
 DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
     tab_personas.id_persona%TYPE,
     tab_personas.id_tipo_docum%TYPE,
@@ -18,6 +18,10 @@ DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
     NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
     NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR
 );
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
+    NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR, BYTEA
+);
 
 CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wid_persona        tab_personas.id_persona%TYPE,
@@ -29,7 +33,8 @@ CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wval_observaciones tab_log_ingresos.val_observaciones%TYPE,
     wid_metodo_aut     tab_log_ingresos.id_metodo_aut%TYPE DEFAULT 1,
     wcaptura_pdf417    BOOLEAN DEFAULT FALSE,
-    wfacial_embedding  tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL
+    wfacial_embedding  tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
+    whuella_template   tab_log_ingresos.huella_template%TYPE DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
     wid_ingreso    INTEGER;
@@ -52,6 +57,7 @@ BEGIN
     END IF;
 
     worigen_txt := CASE
+        WHEN wid_metodo_aut = 5 THEN 'biometrico_huella'
         WHEN wid_metodo_aut = 4 THEN 'biometrico_facial'
         WHEN wid_metodo_aut = 3 THEN 'codigo_barras'
         WHEN wid_metodo_aut = 2 THEN 'codigo_qr'
@@ -85,7 +91,8 @@ BEGIN
         wid_entrada_centro,
         wjson_origen,
         NULLIF(TRIM(wval_observaciones), ''),
-        wfacial_embedding
+        wfacial_embedding,
+        whuella_template
     );
 
     PERFORM fun_update_persona_tras_ingreso(wid_persona);

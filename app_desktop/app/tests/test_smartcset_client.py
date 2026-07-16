@@ -346,5 +346,120 @@ class TestBiometriaFacial(unittest.TestCase):
         run_psql(f"DELETE FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';")
 
 
+class TestBiometriaHuella(unittest.TestCase):
+    """Huella: plantilla en tab_personas + auditoría en log / novedad."""
+
+    def setUp(self) -> None:
+        close_stale_session(NONADMIN_USER)
+        self.client = _make_client()
+        self.client.login(NONADMIN_USER, NONADMIN_PASS)
+        self.documento = f"9{uuid.uuid4().int % 10**8:08d}"
+
+        catalogos = self.client.catalogos()
+        self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "nombres": "Test",
+                "apellidos": "Huella",
+                "tipo_persona": catalogos["tipos_persona"][0]["id"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "setup huella test",
+                "metodo_aut": 1,
+            }
+        )
+        self.client.salida_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "observaciones": "cierre setup",
+                "metodo_aut": 1,
+            }
+        )
+
+    def tearDown(self) -> None:
+        delete_test_persona(self.documento)
+        self.client.logout()
+
+    def _huella_b64(self, documento: str) -> str:
+        from motor.huella import capturar_template_prueba, template_a_base64
+
+        return template_a_base64(capturar_template_prueba(documento))
+
+    def test_ciclo_enrolar_identificar_huella(self) -> None:
+        plantilla = self._huella_b64(self.documento)
+        self.client.biometria_huella_enrolar(self.documento, plantilla)
+        en_bd = run_psql(
+            "SELECT CASE WHEN val_huella_digital IS NULL THEN 'null' ELSE 'ok' END "
+            f"FROM tab_personas WHERE id_persona = '{self.documento}';"
+        )
+        self.assertEqual(en_bd, "ok")
+
+        id_match = self.client.biometria_huella_identificar(plantilla)
+        self.assertTrue(id_match["match"])
+        self.assertEqual(str(id_match["persona"]["documento"]), self.documento)
+
+    def test_ingreso_por_huella_escribe_template_en_log(self) -> None:
+        plantilla = self._huella_b64(self.documento)
+        self.client.biometria_huella_enrolar(self.documento, plantilla)
+        persona = self.client.biometria_huella_identificar(plantilla)["persona"]
+        catalogos = self.client.catalogos()
+        self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "nombres": persona["nombres"],
+                "apellidos": persona["apellidos"],
+                "tipo_persona": persona["tipo_persona"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "Identificado por huella.",
+                "metodo_aut": 5,
+                "huella_template_b64": plantilla,
+            }
+        )
+        metodo = run_psql(
+            "SELECT id_metodo_aut FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(metodo, "5")
+        tpl = run_psql(
+            "SELECT CASE WHEN huella_template IS NULL THEN 'null' ELSE 'ok' END "
+            "FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(tpl, "ok")
+
+    def test_ingreso_huella_persona_inexistente_crea_novedad(self) -> None:
+        doc_fantasma = f"8{uuid.uuid4().int % 10**8:08d}"
+        plantilla = self._huella_b64(doc_fantasma)
+        catalogos = self.client.catalogos()
+        resultado = self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": doc_fantasma,
+                "nombres": "NovedadTest",
+                "apellidos": "HuellaAuto",
+                "tipo_persona": catalogos["tipos_persona"][0]["id"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "novedad huella test",
+                "metodo_aut": 5,
+                "huella_template_b64": plantilla,
+            }
+        )
+        id_novedad = str(resultado["id_ingreso"])
+        self.assertEqual(
+            run_psql(
+                f"SELECT COUNT(*) FROM tab_personas WHERE id_persona = '{doc_fantasma}';"
+            ),
+            "0",
+        )
+        novedad = run_psql(
+            "SELECT CASE WHEN val_huella_digital IS NULL THEN 'null' ELSE 'ok' END "
+            f"FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';"
+        )
+        self.assertEqual(novedad, "ok")
+        run_psql(f"DELETE FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';")
+
+
 if __name__ == "__main__":
     unittest.main()

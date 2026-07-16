@@ -28,7 +28,7 @@ from typing import Callable, Literal
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageTk
 
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from tkinter import messagebox
@@ -39,7 +39,9 @@ from ui.camera import (
     frame_a_photoimage,
     listar_camaras_disponibles,
 )
-from ui.identification_confirmation_modal import IdentificationConfirmationModal
+from ui.huella_scan import HuellaScanCanvas
+from ui.identification_confirmation_modal import IdentificationConfirmationPanel
+from ui.ingreso_form_panel import IngresoFormPanel
 from ui.window_utils import centrar_ventana_al_mostrar
 
 Modo = Literal["ingreso", "salida"]
@@ -49,9 +51,11 @@ Modo = Literal["ingreso", "salida"]
 MODAL_ANCHO = 1280
 MODAL_ALTO = 820
 CAM_ANCHO = 360
-CAM_ALTO = 560
+# Alto contenido: deja espacio fijo abajo para barra de estado + acciones
+# (ventana app ~820 px con topbar; 560 empujaba esos mensajes fuera de vista).
+CAM_ALTO = 420
 HUELLA_ANCHO = 360
-HUELLA_ALTO = 560
+HUELLA_ALTO = 420
 CAM_INTERVALO_MS = 33  # ~30 fps
 
 # Auto-identificación: revisar rostro cada N ticks (~165 ms) en el hilo
@@ -59,7 +63,7 @@ CAM_INTERVALO_MS = 33  # ~30 fps
 # seguidas bastan tras bajar el umbral interno de YuNet (ver embeddings).
 AUTO_DETECT_CADA_TICKS = 5
 MIN_ROSTRO_CONSECUTIVOS = 2
-MIN_CONFIANZA_ROSTRO = 0.45
+MIN_CONFIANZA_ROSTRO = 0.22
 COOLDOWN_TRAS_FALLO_MS = 2000
 
 # El motor carga 2 modelos ONNX (~39MB) — se instancia una sola vez por
@@ -118,12 +122,22 @@ class FacialRecognitionPanel(ttk.Frame):
         self._confirmacion_abierta = False
         self._rostro_consecutivos = 0
         self._cooldown_hasta_ms = 0.0
-        self._confirmacion_modal: IdentificationConfirmationModal | None = None
+        self._confirmacion_modal: IdentificationConfirmationPanel | None = None
         self._motor_listo = False
         self._ultimo_embedding: list[float] | None = None
+        self._ultimo_huella_b64: str | None = None
+        self._huella_scan: HuellaScanCanvas | None = None
+        self._huella_header_icon: ImageTk.PhotoImage | None = None
+        self._form_panel: IngresoFormPanel | None = None
+        self._centro_wrap: tk.Frame | None = None
+        # 4=facial, 5=huella (tab_metodos_aut)
+        self._ultimo_metodo_biometrico: int = 4
 
         self.columnconfigure(0, weight=1)
+        # Solo la fila biométrica crece; estado y acciones quedan fijas abajo.
         self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=0)
+        self.rowconfigure(2, weight=0)
         self._build()
         self.bind("<Destroy>", self._on_destroy, add="+")
         self.after(150, self._iniciar_captura)
@@ -143,30 +157,15 @@ class FacialRecognitionPanel(ttk.Frame):
         if self._camara is not None:
             self._camara.liberar()
             self._camara = None
+        if self._huella_scan is not None:
+            self._huella_scan.stop()
 
     # ---- UI ---------------------------------------------------------
 
     def _build(self) -> None:
-        header = ttk.Frame(self, style="Card.TFrame", padding=(16, 12, 16, 8))
-        header.pack(fill="x")
-        ttk.Label(
-            header,
-            text="📷  Reconocimiento biométrico",
-            style="Card.TLabel",
-            font=theme.FONT_TITLE,
-        ).pack(anchor="w")
-        ttk.Label(
-            header,
-            text=(
-                "Izquierda: cámara · Centro: formulario de ingreso nuevo · "
-                "Derecha: huella (solo visual)"
-            ),
-            style="CardMuted.TLabel",
-        ).pack(anchor="w", pady=(2, 0))
-
-        # ---- Tres secciones fijas: cámara | formulario | huella ----
+        # ---- Tres secciones: cámara | formulario | huella (fila 0) ----
         bio_row = tk.Frame(self, bg=theme.BG_DEEP)
-        bio_row.pack(fill="both", expand=True, padx=12, pady=8)
+        bio_row.grid(row=0, column=0, sticky="nsew", padx=12, pady=(12, 4))
         bio_row.columnconfigure(0, weight=1, minsize=CAM_ANCHO + 40)
         bio_row.columnconfigure(1, weight=1, minsize=300)
         bio_row.columnconfigure(2, weight=1, minsize=HUELLA_ANCHO + 40)
@@ -176,22 +175,25 @@ class FacialRecognitionPanel(ttk.Frame):
         self._build_columna_formulario(bio_row)
         self._build_columna_huella(bio_row)
 
-        # ---- Estado ----
+        # ---- Estado (fila 1, altura fija — siempre visible) ----
         self._estado_var = tk.StringVar(value="Iniciando cámara...")
-        estado_row = ttk.Frame(self, style="App.TFrame", padding=(16, 0))
-        estado_row.pack(fill="x")
+        estado_row = ttk.Frame(self, style="App.TFrame", padding=(16, 6))
+        estado_row.grid(row=1, column=0, sticky="ew")
         self._estado_dot = tk.Canvas(
             estado_row, width=10, height=10, bg=theme.BG_DEEP, highlightthickness=0
         )
         self._estado_dot.pack(side="left", padx=(0, 8))
         self._estado_dot.create_oval(1, 1, 9, 9, fill=theme.TEXT_MUTED, outline="")
-        ttk.Label(estado_row, textvariable=self._estado_var, style="Muted.TLabel").pack(
-            side="left"
-        )
+        ttk.Label(
+            estado_row,
+            textvariable=self._estado_var,
+            style="Muted.TLabel",
+            wraplength=1100,
+        ).pack(side="left", fill="x", expand=True)
 
-        # ---- Acciones ----
-        actions = ttk.Frame(self, style="App.TFrame", padding=(16, 12))
-        actions.pack(fill="x")
+        # ---- Acciones (fila 2, altura fija — siempre visible) ----
+        actions = ttk.Frame(self, style="App.TFrame", padding=(16, 8, 16, 12))
+        actions.grid(row=2, column=0, sticky="ew")
         actions.columnconfigure(0, weight=1)
         if self._show_close_button:
             actions.columnconfigure(1, weight=1)
@@ -230,7 +232,7 @@ class FacialRecognitionPanel(ttk.Frame):
 
         ttk.Button(
             cam_header,
-            text="🎥 Cambiar",
+            text="📷 Cambiar",
             style="Nav.TButton",
             command=self._seleccionar_camara,
         ).pack(side="right")
@@ -249,86 +251,20 @@ class FacialRecognitionPanel(ttk.Frame):
         self._cam_canvas.bind("<Configure>", self._on_cam_resize, add="+")
 
     def _build_columna_formulario(self, parent: tk.Frame) -> None:
-        form_wrap = tk.Frame(parent, bg=theme.BG_PANEL, padx=14, pady=12)
-        form_wrap.grid(row=0, column=1, sticky="nsew", padx=6)
+        self._centro_wrap = tk.Frame(parent, bg=theme.BG_DEEP)
+        self._centro_wrap.grid(row=0, column=1, sticky="nsew", padx=6)
+        self._centro_wrap.columnconfigure(0, weight=1)
+        self._centro_wrap.rowconfigure(0, weight=1)
 
-        ttk.Label(
-            form_wrap,
-            text="Ingreso de persona nueva",
-            style="Card.TLabel",
-            font=theme.FONT_BODY_BOLD,
-        ).pack(anchor="w")
-        ttk.Label(
-            form_wrap,
-            text="Complete los datos y registre o enrolar el rostro.",
-            style="CardMuted.TLabel",
-        ).pack(anchor="w", pady=(2, 10))
-
-        self._catalogos: dict = {
-            "tipos_doc": [],
-            "tipos_persona": [],
-            "entradas": [],
-        }
-        self._tipo_doc_map: dict[str, str] = {}
-        self._tipo_persona_map: dict[str, int] = {}
-        self._entrada_map: dict[str, int] = {}
-        self._form_msg_var = tk.StringVar(value="")
-
-        def _campo(lbl: str) -> None:
-            ttk.Label(form_wrap, text=lbl, style="Card.TLabel").pack(anchor="w", pady=(6, 2))
-
-        _campo("Tipo de documento")
-        self._tipo_doc_combo = ttk.Combobox(form_wrap, state="readonly")
-        self._tipo_doc_combo.pack(fill="x")
-
-        _campo("Número de documento")
-        self._documento_var = tk.StringVar()
-        self._documento_entry = ttk.Entry(form_wrap, textvariable=self._documento_var)
-        self._documento_entry.pack(fill="x")
-
-        _campo("Nombres")
-        self._nombres_var = tk.StringVar()
-        ttk.Entry(form_wrap, textvariable=self._nombres_var).pack(fill="x")
-
-        _campo("Apellidos")
-        self._apellidos_var = tk.StringVar()
-        ttk.Entry(form_wrap, textvariable=self._apellidos_var).pack(fill="x")
-
-        _campo("Tipo de persona")
-        self._tipo_persona_combo = ttk.Combobox(form_wrap, state="readonly")
-        self._tipo_persona_combo.pack(fill="x")
-
-        _campo("Puerta de ingreso")
-        self._entrada_combo = ttk.Combobox(form_wrap, state="readonly")
-        self._entrada_combo.pack(fill="x")
-
-        _campo("Observaciones (opcional)")
-        self._obs_var = tk.StringVar()
-        ttk.Entry(form_wrap, textvariable=self._obs_var).pack(fill="x")
-
-        ttk.Label(
-            form_wrap,
-            textvariable=self._form_msg_var,
-            style="CardMuted.TLabel",
-            wraplength=260,
-        ).pack(anchor="w", pady=(8, 0))
-
-        btns = ttk.Frame(form_wrap, style="Card.TFrame")
-        btns.pack(fill="x", pady=(12, 0))
-        btns.columnconfigure(0, weight=1)
-        btns.columnconfigure(1, weight=1)
-
-        self._enrolar_btn = ttk.Button(
-            btns, text="Enrolar rostro", style="Nav.TButton", command=self._enrolar
+        self._form_panel = IngresoFormPanel(
+            self._centro_wrap,
+            self._client,
+            on_enrolar_rostro=self._enrolar,
+            on_registrado=self._on_registrado,
+            on_mensaje_estado=self._set_estado,
         )
-        self._enrolar_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-
-        ttk.Button(
-            btns,
-            text="Registrar ingreso",
-            style="Primary.TButton",
-            command=self._registrar_persona_nueva,
-        ).grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        self._form_panel.grid(row=0, column=0, sticky="nsew")
+        self._enrolar_btn = self._form_panel._enrolar_btn
 
     def _build_columna_huella(self, parent: tk.Frame) -> None:
         huella_wrap = tk.Frame(parent, bg=theme.BG_PANEL, padx=12, pady=12)
@@ -340,89 +276,47 @@ class FacialRecognitionPanel(ttk.Frame):
         ttk.Label(huella_header, text="Huella dactilar", style="Muted.TLabel").pack(
             side="left"
         )
-        ttk.Label(huella_header, text="Próximamente", style="Muted.TLabel").pack(
-            side="right"
-        )
+        # Ícono ~tamaño del emoji 📷 del botón "Cambiar".
+        self._huella_header_icon = self._photo_huella_icono(18)
+        if self._huella_header_icon is not None:
+            tk.Label(
+                huella_header,
+                image=self._huella_header_icon,
+                bg=theme.BG_PANEL,
+                borderwidth=0,
+            ).pack(side="right")
+        else:
+            ttk.Label(huella_header, text="🖐", style="Muted.TLabel").pack(side="right")
 
-        self._huella_canvas = tk.Canvas(
-            huella_wrap,
-            width=HUELLA_ANCHO,
-            height=HUELLA_ALTO,
-            bg="#000000",
-            highlightthickness=1,
-            highlightbackground=theme.BORDER,
+        self._huella_scan = HuellaScanCanvas(
+            huella_wrap, width=HUELLA_ANCHO, height=HUELLA_ALTO
         )
-        self._huella_canvas.pack(fill="both", expand=True)
-        self._draw_huella_placeholder()
-        self._huella_canvas.bind("<Configure>", self._on_huella_resize, add="+")
+        self._huella_canvas = self._huella_scan  # compat. helpers de tamaño
+        self._huella_scan.pack(fill="both", expand=True)
+        self._huella_scan.start()
+        self._sync_huella_mensaje()
+
+        ttk.Button(
+            huella_wrap,
+            text="Identificar huella",
+            style="Primary.TButton",
+            command=self._identificar_huella,
+        ).pack(fill="x", pady=(10, 0))
 
     def _cargar_catalogos_formulario(self) -> None:
+        if self._form_panel is None:
+            return
         try:
-            self._catalogos = self._client.catalogos()
+            catalogos = self._client.catalogos()
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            self._form_msg_var.set(f"No se pudieron cargar catálogos: {exc}")
+            self._set_estado(f"No se pudieron cargar catálogos: {exc}", theme.ERROR)
             return
+        self._form_panel.cargar_catalogos(catalogos)
 
-        tipos_doc = self._catalogos.get("tipos_doc", [])
-        self._tipo_doc_map = {t["nombre"]: t["id"] for t in tipos_doc}
-        self._tipo_doc_combo.configure(values=list(self._tipo_doc_map.keys()))
-        if tipos_doc:
-            self._tipo_doc_combo.current(0)
-
-        tipos_persona = self._catalogos.get("tipos_persona", [])
-        self._tipo_persona_map = {t["nombre"]: t["id"] for t in tipos_persona}
-        self._tipo_persona_combo.configure(values=list(self._tipo_persona_map.keys()))
-        if tipos_persona:
-            self._tipo_persona_combo.current(0)
-
-        entradas = self._catalogos.get("entradas", [])
-        self._entrada_map = {e["nombre"]: e["id"] for e in entradas}
-        self._entrada_combo.configure(values=list(self._entrada_map.keys()))
-        if entradas:
-            self._entrada_combo.current(0)
-
-    def _registrar_persona_nueva(self) -> None:
-        documento = self._documento_var.get().strip()
-        nombres = self._nombres_var.get().strip()
-        apellidos = self._apellidos_var.get().strip()
-        if not documento:
-            self._form_msg_var.set("Ingrese el número de documento.")
-            self._documento_entry.focus_set()
-            return
-        if not nombres or not apellidos:
-            self._form_msg_var.set("Complete nombres y apellidos.")
-            return
-
-        tipo_doc = self._tipo_doc_map.get(self._tipo_doc_combo.get(), "CC")
-        tipo_persona = self._tipo_persona_map.get(self._tipo_persona_combo.get(), 0)
-        id_entrada = self._entrada_map.get(self._entrada_combo.get(), 0)
-        if not id_entrada:
-            self._form_msg_var.set("Seleccione una puerta de ingreso.")
-            return
-
-        payload = {
-            "tipo_doc": tipo_doc,
-            "documento": documento,
-            "nombres": nombres,
-            "apellidos": apellidos,
-            "tipo_persona": tipo_persona,
-            "id_entrada": id_entrada,
-            "observaciones": self._obs_var.get().strip(),
-            "metodo_aut": 1,
-        }
-        try:
-            self._client.ingreso_registrar(payload)
-        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            self._form_msg_var.set(str(exc))
-            self._set_estado(str(exc), theme.ERROR)
-            return
-
-        self._form_msg_var.set(f"Ingreso registrado: {nombres} {apellidos}.")
-        self._set_estado(
-            f"Ingreso registrado: {nombres} {apellidos}.", theme.SUCCESS
-        )
-        if self._on_registrado is not None:
-            self._on_registrado()
+    def _documento_formulario(self) -> str:
+        if self._form_panel is not None:
+            return self._form_panel.documento()
+        return ""
 
     def _tamano_canvas(
         self, canvas: tk.Canvas, fallback_w: int, fallback_h: int
@@ -440,8 +334,48 @@ class FacialRecognitionPanel(ttk.Frame):
         if not self._capturando:
             self._draw_placeholder()
 
-    def _on_huella_resize(self, _event: tk.Event | None = None) -> None:
-        self._draw_huella_placeholder()
+    def _photo_huella_icono(self, size_px: int = 18) -> ImageTk.PhotoImage | None:
+        """Miniatura blanca de huella.png (mismo orden de tamaño que 📷)."""
+        from ui.huella_scan import _ruta_huella_png
+
+        ruta = _ruta_huella_png()
+        if ruta is None:
+            return None
+        try:
+            img = Image.open(ruta).convert("RGBA")
+            arr = np.asarray(img).copy()
+            luminancia = (
+                arr[:, :, 0].astype(np.int16) + arr[:, :, 1] + arr[:, :, 2]
+            )
+            mascara = (arr[:, :, 3] >= 16) & (luminancia >= 40)
+            arr[~mascara, 3] = 0
+            arr[mascara, 0] = 255
+            arr[mascara, 1] = 255
+            arr[mascara, 2] = 255
+            arr[mascara, 3] = 255
+            img = Image.fromarray(arr, mode="RGBA")
+            img.thumbnail((size_px, size_px), Image.Resampling.LANCZOS)
+            return ImageTk.PhotoImage(img, master=self)
+        except (OSError, ValueError, tk.TclError):
+            return None
+
+    def _sync_huella_mensaje(self) -> None:
+        if self._huella_scan is None:
+            return
+        if self._ultimo_huella_b64:
+            self._huella_scan.set_mensaje(
+                "Plantilla capturada\n(listo para enrolar / identificar)",
+                theme.SUCCESS,
+            )
+        else:
+            self._huella_scan.set_mensaje(
+                "Coloque el dedo índice derecho\nen el huellero.",
+                theme.TEXT_MUTED,
+            )
+
+    def _draw_huella_placeholder(self) -> None:
+        """Actualiza texto/estado del panel animado de huella."""
+        self._sync_huella_mensaje()
 
     def _draw_placeholder(self, mensaje: str = "Sin señal de cámara") -> None:
         c = self._cam_canvas
@@ -452,39 +386,6 @@ class FacialRecognitionPanel(ttk.Frame):
         c.create_oval(cx - 70, cy - 90, cx + 70, cy + 90, outline=theme.CYAN, dash=(5, 4), width=2)
         c.create_text(
             cx, cy + 120, text=mensaje, fill=theme.TEXT_MUTED, font=theme.FONT_LABEL_SMALL
-        )
-
-    def _draw_huella_placeholder(self) -> None:
-        """Dibuja la caja de huella (solo front — sin lector ni matching)."""
-        c = self._huella_canvas
-        c.delete("all")
-        w, h = self._tamano_canvas(c, HUELLA_ANCHO, HUELLA_ALTO)
-        cx, cy = w // 2, h // 2
-        c.create_oval(
-            cx - 55,
-            cy - 85,
-            cx + 55,
-            cy + 85,
-            outline=theme.CYAN,
-            dash=(5, 4),
-            width=2,
-        )
-        c.create_oval(
-            cx - 28,
-            cy - 50,
-            cx + 28,
-            cy + 40,
-            outline=theme.V_OLIVA,
-            dash=(3, 3),
-            width=1,
-        )
-        c.create_text(
-            cx,
-            cy + 120,
-            text="Coloque el dedo en el lector\n(feature en desarrollo)",
-            fill=theme.TEXT_MUTED,
-            font=theme.FONT_LABEL_SMALL,
-            justify="center",
         )
 
     def _set_estado(self, texto: str, color: str) -> None:
@@ -679,7 +580,9 @@ class FacialRecognitionPanel(ttk.Frame):
             )
             self._cam_photo_ref = photo  # evita garbage collection
             if self._cam_image_id is None:
-                self._cam_image_id = self._cam_canvas.create_image(0, 0, anchor="nw", image=photo)
+                self._cam_image_id = self._cam_canvas.create_image(
+                    0, 0, anchor="nw", image=photo
+                )
             else:
                 self._cam_canvas.itemconfig(self._cam_image_id, image=photo)
             self._tick_contador += 1
@@ -688,7 +591,7 @@ class FacialRecognitionPanel(ttk.Frame):
             self._frames_sin_senal += 1
             if self._frames_sin_senal >= 45:
                 self._set_estado(
-                    "La cámara dejó de entregar imagen — pruebe otra con 🎥 Cambiar cámara.",
+                    "La cámara dejó de entregar imagen — pruebe otra con 📷 Cambiar cámara.",
                     theme.ERROR,
                 )
                 self._draw_placeholder("Sin señal de cámara")
@@ -816,10 +719,11 @@ class FacialRecognitionPanel(ttk.Frame):
             return ""
 
     def _enrolar(self) -> None:
-        documento = self._documento_var.get().strip()
+        documento = self._documento_formulario()
         if not documento:
             self._set_estado("Ingrese un número de documento antes de enrolar.", theme.ERROR)
-            self._documento_entry.focus_set()
+            if self._form_panel is not None:
+                self._form_panel.focus_documento()
             return
 
         extraido = self._extraer_embedding()
@@ -847,7 +751,159 @@ class FacialRecognitionPanel(ttk.Frame):
 
         self._set_estado(f"✅ Rostro enrolado para {documento} (calidad {calidad}%).", theme.SUCCESS)
 
+    # ---- Huella (plantilla → tab_personas.val_huella_digital) ------------
+
+    def _simular_captura_huella(self) -> None:
+        from motor.huella import capturar_template_prueba, template_a_base64
+
+        documento = self._documento_formulario()
+        try:
+            template = capturar_template_prueba(documento)
+            self._ultimo_huella_b64 = template_a_base64(template)
+        except ValueError as exc:
+            self._set_estado(str(exc), theme.ERROR)
+            if self._form_panel is not None:
+                self._form_panel.focus_documento()
+            return
+        self._draw_huella_placeholder()
+        self._set_estado(
+            f"Huella simulada para documento {documento} (listo).",
+            theme.SUCCESS,
+        )
+
+    def _enrolar_huella(self) -> None:
+        documento = self._documento_formulario()
+        if not documento:
+            self._set_estado("Ingrese el documento antes de enrolar la huella.", theme.ERROR)
+            if self._form_panel is not None:
+                self._form_panel.focus_documento()
+            return
+        if not self._ultimo_huella_b64:
+            self._simular_captura_huella()
+            if not self._ultimo_huella_b64:
+                return
+        try:
+            self._client.biometria_huella_enrolar(documento, self._ultimo_huella_b64)
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            self._set_estado(f"Error al enrolar huella: {exc}", theme.ERROR)
+            return
+        self._set_estado(f"✅ Huella enrolada para {documento}.", theme.SUCCESS)
+
+    def _identificar_huella(self) -> None:
+        if self._identificando or self._confirmacion_abierta:
+            return
+        if not self._ultimo_huella_b64:
+            self._simular_captura_huella()
+            if not self._ultimo_huella_b64:
+                return
+
+        self._identificando = True
+        self._ultimo_metodo_biometrico = 5
+        if self._huella_scan is not None:
+            self._huella_scan.set_exito(False)
+            self._huella_scan.set_mensaje("Escaneando huella...", theme.CYAN)
+        self._set_estado("🔍 Identificando por huella...", theme.CYAN)
+        self.update()
+
+        try:
+            resultado = self._client.biometria_huella_identificar(self._ultimo_huella_b64)
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            if self._huella_scan is not None:
+                self._huella_scan.set_exito(False)
+            self._set_estado(f"Error al identificar huella: {exc}", theme.ERROR)
+            self._identificando = False
+            return
+
+        if not resultado.get("match"):
+            if self._huella_scan is not None:
+                self._huella_scan.set_exito(False)
+                self._huella_scan.set_mensaje(
+                    "Huella no reconocida", theme.ERROR
+                )
+            self._set_estado("❌ Huella no reconocida — no está enrolada.", theme.ERROR)
+            self._identificando = False
+            return
+
+        persona_datos = dict(resultado.get("persona") or {})
+        documento = str(
+            persona_datos.get("documento")
+            or persona_datos.get("id_persona")
+            or ""
+        )
+        try:
+            modo_efectivo = self._resolver_modo_acceso(documento)
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            if self._huella_scan is not None:
+                self._huella_scan.set_exito(False)
+            self._set_estado(f"Error al consultar acceso: {exc}", theme.ERROR)
+            self._identificando = False
+            return
+
+        if resultado.get("foto_base64"):
+            persona_datos["foto_base64"] = resultado.get("foto_base64")
+        persona_datos["_modo_acceso"] = modo_efectivo
+        accion = "ingreso" if modo_efectivo == "ingreso" else "salida"
+        if self._form_panel is not None:
+            self._form_panel.aplicar_persona_identificada(persona_datos)
+        if self._huella_scan is not None:
+            self._huella_scan.set_exito(True)
+            self._huella_scan.set_mensaje(
+                f"Identificado — {accion}", theme.SUCCESS
+            )
+        self._set_estado(
+            f"✅ Identificado por huella — se registrará {accion}...",
+            theme.SUCCESS,
+        )
+        self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
+
     # ---- Identificar + abrir confirmación (2026-07-09) ------------------
+
+    def _mostrar_confirmacion_centro(
+        self, persona_datos: dict, modo_efectivo: Modo
+    ) -> None:
+        """Sustituye el formulario central por el panel de confirmación."""
+        if self._centro_wrap is None:
+            return
+        if self._confirmacion_modal is not None:
+            try:
+                self._confirmacion_modal.destroy()
+            except tk.TclError:
+                pass
+            self._confirmacion_modal = None
+
+        if self._form_panel is not None:
+            self._form_panel.grid_remove()
+
+        self._confirmacion_abierta = True
+        self._identificando = False
+        panel = IdentificationConfirmationPanel(
+            self._centro_wrap,
+            self._client,
+            persona_datos,
+            modo=modo_efectivo,
+            on_confirmar=self._on_confirmacion_modal,
+            persona_existente=True,
+            on_cerrado=self._restaurar_formulario_central,
+        )
+        panel.grid(row=0, column=0, sticky="nsew")
+        self._confirmacion_modal = panel
+
+    def _restaurar_formulario_central(self) -> None:
+        """Vuelve a mostrar el formulario al cerrar la confirmación."""
+        self._confirmacion_modal = None
+        self._confirmacion_abierta = False
+        self._rostro_consecutivos = 0
+        self._cooldown_hasta_ms = time.monotonic() * 1000 + 1500
+        if self._form_panel is not None and self._form_panel.winfo_exists():
+            self._form_panel.grid()
+        indice = self._camara_indice_seleccionado
+        if indice is None:
+            indice = 0
+        if self._capturando and self.winfo_exists():
+            self._set_estado(
+                f"Cámara activa (índice {indice}). Acérquese al lente.",
+                theme.CYAN,
+            )
 
     def _identificar(self, *, auto: bool = False) -> None:
         if self._identificando or self._confirmacion_abierta:
@@ -865,6 +921,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._identificando = True
         self._rostro_consecutivos = 0
         self._ultimo_embedding = list(embedding)
+        self._ultimo_metodo_biometrico = 4
 
         self._set_estado("🔍 Buscando en base de datos...", theme.CYAN)
         self.update()  # Refrescar UI
@@ -908,40 +965,13 @@ class FacialRecognitionPanel(ttk.Frame):
 
         persona_datos["_modo_acceso"] = modo_efectivo
         accion = "ingreso" if modo_efectivo == "ingreso" else "salida"
+        if self._form_panel is not None:
+            self._form_panel.aplicar_persona_identificada(persona_datos)
         self._set_estado(
             f"✅ Identificado — se registrará {accion}...",
             theme.SUCCESS,
         )
-
-        self._confirmacion_abierta = True
-        self._identificando = False
-        modal = IdentificationConfirmationModal(
-            self,
-            self._client,
-            persona_datos,
-            modo=modo_efectivo,
-            on_confirmar=self._on_confirmacion_modal,
-        )
-        self._confirmacion_modal = modal
-        modal.bind("<Destroy>", self._on_confirmacion_cerrada, add="+")
-
-    def _on_confirmacion_cerrada(self, event: tk.Event) -> None:
-        if self._confirmacion_modal is None or event.widget is not self._confirmacion_modal:
-            return
-        self._confirmacion_modal = None
-        if not self.winfo_exists():
-            return
-        self._confirmacion_abierta = False
-        self._rostro_consecutivos = 0
-        self._cooldown_hasta_ms = time.monotonic() * 1000 + 1500
-        indice = self._camara_indice_seleccionado
-        if indice is None:
-            indice = 0
-        if self._capturando:
-            self._set_estado(
-                f"Cámara activa (índice {indice}). Acérquese al lente.",
-                theme.CYAN,
-            )
+        self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
 
     def _resolver_modo_acceso(self, documento: str) -> Modo:
         """Ingreso si no hay abierto; salida si ya está dentro."""
@@ -987,20 +1017,33 @@ class FacialRecognitionPanel(ttk.Frame):
             raise SmartcsetApiError("No hay puertas configuradas en el catálogo.")
 
         persona = persona_datos or consulta.get("persona") or {}
-
-        self._client.ingreso_registrar(
-            {
-                "tipo_doc": "CC",
-                "documento": documento,
-                "nombres": persona.get("nombres", ""),
-                "apellidos": persona.get("apellidos", ""),
-                "tipo_persona": persona.get("tipo_persona", 0),
-                "id_entrada": entradas[0]["id"],
-                "observaciones": "Identificado por reconocimiento facial.",
-                "metodo_aut": 4,
-                "embedding": self._ultimo_embedding,
-            }
+        metodo = self._ultimo_metodo_biometrico
+        obs = (
+            "Identificado por huella dactilar."
+            if metodo == 5
+            else "Identificado por reconocimiento facial."
         )
+        payload: dict = {
+            "tipo_doc": "CC",
+            "documento": documento,
+            "nombres": persona.get("nombres", ""),
+            "apellidos": persona.get("apellidos", ""),
+            "tipo_persona": persona.get("tipo_persona", 0),
+            "id_entrada": entradas[0]["id"],
+            "observaciones": obs,
+            "metodo_aut": metodo,
+        }
+        if metodo == 4 and self._ultimo_embedding is not None:
+            payload["embedding"] = self._ultimo_embedding
+        if metodo == 5 and self._ultimo_huella_b64:
+            payload["huella_template_b64"] = self._ultimo_huella_b64
+
+        self._client.ingreso_registrar(payload)
+        if metodo == 5 and self._huella_scan is not None:
+            self._huella_scan.set_exito(True)
+            self._huella_scan.set_mensaje(
+                f"Ingreso OK\n{nombre}", theme.SUCCESS
+            )
         self._set_estado(f"Ingreso registrado: {nombre}.", theme.SUCCESS)
 
     def _registrar_salida_identificada(self, documento: str, nombre: str) -> None:
@@ -1014,14 +1057,25 @@ class FacialRecognitionPanel(ttk.Frame):
                 f"{nombre}: no tiene un ingreso abierto para registrar salida."
             )
 
+        metodo = self._ultimo_metodo_biometrico
+        obs = (
+            "Identificado por huella dactilar."
+            if metodo == 5
+            else "Identificado por reconocimiento facial."
+        )
         self._client.salida_registrar(
             {
                 "tipo_doc": "CC",
                 "documento": documento,
-                "observaciones": "Identificado por reconocimiento facial.",
-                "metodo_aut": 4,
+                "observaciones": obs,
+                "metodo_aut": metodo,
             }
         )
+        if metodo == 5 and self._huella_scan is not None:
+            self._huella_scan.set_exito(True)
+            self._huella_scan.set_mensaje(
+                f"Salida OK\n{nombre}", theme.SUCCESS
+            )
         self._set_estado(f"Salida registrada: {nombre}.", theme.SUCCESS)
 
     def _cerrar(self) -> None:

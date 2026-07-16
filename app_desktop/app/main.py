@@ -12,6 +12,8 @@ Ejecutar (desde cualquier Python del sistema, 3.11+):
 """
 from __future__ import annotations
 
+import atexit
+import signal
 import sys
 
 from bootstrap import ensure_venv
@@ -27,8 +29,12 @@ from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
 from ui.shell import AppShell  # noqa: E402
 
-MIN_WIDTH = 1280
-MIN_HEIGHT = 820
+# Login compacto (como antes del layout biométrico). Tras autenticar se
+# amplía para las 3 columnas de portería.
+LOGIN_WIDTH = 1024
+LOGIN_HEIGHT = 680
+APP_WIDTH = 1280
+APP_HEIGHT = 860
 
 
 class SmartcsetDesktopApp:
@@ -40,22 +46,52 @@ class SmartcsetDesktopApp:
 
         self.root = tk.Tk()
         self.root.title("SmartCSET · App Escritorio SGI")
-        self.root.geometry(f"{MIN_WIDTH}x{MIN_HEIGHT}")
-        self.root.minsize(MIN_WIDTH, MIN_HEIGHT)
+        self._apply_login_geometry()
 
         theme.apply_theme(self.root)
 
         self._current_view: tk.Widget | None = None
         self._logged_in = False
+        self._logout_done = False
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        atexit.register(self._logout_if_needed)
+        self._install_signal_handlers()
         self._show_login()
 
-    def _on_close(self) -> None:
-        if self._logged_in:
+    def _apply_login_geometry(self) -> None:
+        self.root.geometry(f"{LOGIN_WIDTH}x{LOGIN_HEIGHT}")
+        self.root.minsize(LOGIN_WIDTH, LOGIN_HEIGHT)
+
+    def _apply_app_geometry(self) -> None:
+        self.root.geometry(f"{APP_WIDTH}x{APP_HEIGHT}")
+        self.root.minsize(APP_WIDTH, APP_HEIGHT)
+
+    def _install_signal_handlers(self) -> None:
+        # Ctrl+C / cierre del proceso: liberar sesión BD (WM_DELETE no corre).
+        def _handle(_signum, _frame) -> None:
+            self._logout_if_needed()
+            raise SystemExit(0)
+
+        for sig in (getattr(signal, "SIGINT", None), getattr(signal, "SIGTERM", None)):
+            if sig is None:
+                continue
             try:
-                self.client.logout()
-            except Exception:
+                signal.signal(sig, _handle)
+            except (ValueError, OSError):
                 pass
+
+    def _logout_if_needed(self) -> None:
+        if self._logout_done or not self._logged_in:
+            return
+        self._logout_done = True
+        try:
+            self.client.logout()
+        except Exception:
+            pass
+        self._logged_in = False
+
+    def _on_close(self) -> None:
+        self._logout_if_needed()
         self.root.destroy()
 
     def _clear(self) -> None:
@@ -65,6 +101,8 @@ class SmartcsetDesktopApp:
 
     def _show_login(self) -> None:
         self._logged_in = False
+        self._logout_done = False
+        self._apply_login_geometry()
         self._clear()
         view = LoginView(self.root, self.client, on_success=self._show_dashboard)
         view.pack(fill="both", expand=True)
@@ -72,6 +110,8 @@ class SmartcsetDesktopApp:
 
     def _show_dashboard(self, usuario: dict) -> None:
         self._logged_in = True
+        self._logout_done = False
+        self._apply_app_geometry()
         self._clear()
         view = AppShell(
             self.root, self.client, usuario, on_logout=self._show_login

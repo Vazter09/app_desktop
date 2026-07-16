@@ -47,7 +47,9 @@ ON CONFLICT (id_tipo_persona) DO NOTHING;
 INSERT INTO tab_metodos_aut (id_metodo_aut, nom_metodo_aut, usr_insert, fec_insert) VALUES
     (1, 'Registro manual', 'seed', NOW()),
     (2, 'Código QR', 'seed', NOW()),
-    (3, 'Código de barras', 'seed', NOW())
+    (3, 'Código de barras', 'seed', NOW()),
+    (4, 'Biometría facial', 'seed', NOW()),
+    (5, 'Biometría huella', 'seed', NOW())
 ON CONFLICT (id_metodo_aut) DO NOTHING;
 
 -- Puertas del centro: solo si ya hay sedes (p. ej. tras inserts SENA) y aún no hay entradas

@@ -33,7 +33,7 @@ class AppShell(ttk.Frame):
 
         self._pages = {
             "inicio": ("Inicio", InicioPage),
-            "ingreso": ("Reconocimiento facial", IngresoPage),
+            "ingreso": ("Sistema de Reconocimiento Multibiométrico", IngresoPage),
             "salida": ("Registro salida", SalidaPage),
         }
 
@@ -109,7 +109,9 @@ class AppShell(ttk.Frame):
         if key == "inicio":
             self._breadcrumb_var.set("⌂ Inicio")
         elif key == "ingreso":
-            self._breadcrumb_var.set("⌂ Portería  ›  Reconocimiento facial")
+            self._breadcrumb_var.set(
+                "⌂ Portería  ›  Sistema de Reconocimiento Multibiométrico"
+            )
         else:
             self._breadcrumb_var.set(f"⌂ Inicio  ›  {title}")
 
