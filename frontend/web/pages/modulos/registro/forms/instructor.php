@@ -227,6 +227,39 @@ try {
                             <span class="toggle-label">Autoriza recibir correos</span>
                         </div>
                     </div>
+                    <div class="field-group">
+                        <div class="toggle-group">
+                            <label class="toggle">
+                                <input type="checkbox" id="ind_vehiculo" name="ind_vehiculo" value="1">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">Registra vehículo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="vehiculo-fields" hidden aria-hidden="true">
+                    <div class="form-section-title">Datos del vehículo</div>
+                    <div class="form-grid">
+                        <div class="field-group">
+                            <label for="id_vehiculo">Placa <span class="required">*</span></label>
+                            <input type="text" id="id_vehiculo" name="id_vehiculo"
+                                   placeholder="ABC123" maxlength="8" autocomplete="off"
+                                   pattern="[A-Za-z0-9]{5,8}"
+                                   title="Placa: 5 a 8 letras o números"
+                                   disabled>
+                            <span class="field-hint">Identificador del vehículo (placa)</span>
+                        </div>
+                        <div class="field-group">
+                            <label for="ind_tipovehiculo">Tipo de vehículo <span class="required">*</span></label>
+                            <select id="ind_tipovehiculo" name="ind_tipovehiculo" disabled>
+                                <option value="">— Seleccione —</option>
+                                <option value="1">Automóvil</option>
+                                <option value="2">Moto</option>
+                                <option value="3">Bicicleta</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="btn-row">
@@ -241,6 +274,7 @@ try {
 
     <?php $_ar = dirname(__DIR__, 3) . '/public/assets'; ?>
     <script src="<?= htmlspecialchars(smartcsetAsset('js/core/registro-cargar-ciudades.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/core/registro-cargar-ciudades.js') ?: time()) ?>"></script>
+    <script src="<?= htmlspecialchars(smartcsetAsset('js/core/registro-instructor-vehiculo.js')) ?>?v=<?= (int) (@filemtime($_ar . '/js/core/registro-instructor-vehiculo.js') ?: time()) ?>"></script>
     <?php registroIncludeRouterScripts(); ?>
     <?php registroIncludeFooterScripts(); ?>
 </body>

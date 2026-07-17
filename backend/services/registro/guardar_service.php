@@ -89,6 +89,12 @@ function registroGuardarFormulario(PDO $pdo, string $tipo, array $post): array
             return ['message' => 'Persona registrada correctamente.'];
 
         case 'instructor':
+            $indVehiculo = isset($post['ind_vehiculo']);
+            $placa = isset($post['id_vehiculo']) ? strtoupper(trim((string) $post['id_vehiculo'])) : '';
+            $tipoVehiculo = isset($post['ind_tipovehiculo']) && $post['ind_tipovehiculo'] !== ''
+                ? (int) $post['ind_tipovehiculo']
+                : null;
+
             $stmt_fun_registrar_instructor->execute([
                 $post['id_persona'] ?? null,
                 $post['id_tipo_docum'] ?? null,
@@ -114,6 +120,9 @@ function registroGuardarFormulario(PDO $pdo, string $tipo, array $post): array
                 isset($post['ind_contratado_actual']) ? 'true' : 'false',
                 isset($post['ind_disponibilidad']) ? 'true' : 'false',
                 $post['ind_estado'] ?? null,
+                $indVehiculo ? 'true' : 'false',
+                $indVehiculo ? ($placa !== '' ? $placa : null) : null,
+                $indVehiculo ? $tipoVehiculo : null,
                 $usr,
             ]);
             $resultado = (string) $stmt_fun_registrar_instructor->fetchColumn();

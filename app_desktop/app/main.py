@@ -29,10 +29,10 @@ from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
 from ui.shell import AppShell  # noqa: E402
 
-# Login compacto (como antes del layout biométrico). Tras autenticar se
-# amplía para las 3 columnas de portería.
-LOGIN_WIDTH = 1024
-LOGIN_HEIGHT = 680
+# Login compacto (~card web 380px + márgenes). Tras autenticar se amplía
+# para las 3 columnas de portería.
+LOGIN_WIDTH = 480
+LOGIN_HEIGHT = 560
 APP_WIDTH = 1280
 APP_HEIGHT = 860
 

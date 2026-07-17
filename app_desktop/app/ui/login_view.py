@@ -19,9 +19,10 @@ from PIL import Image, ImageTk
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 
-LOGO_MAX_ANCHO = 150
-CARD_PADDING = 44
-ENTRY_WIDTH = 40
+LOGO_MAX_ANCHO = 110
+CARD_PADDING = 28
+ENTRY_WIDTH = 28
+CARD_WIDTH = 380
 
 
 def _ruta_logo_sena() -> Path | None:
@@ -69,15 +70,17 @@ class LoginView(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
+        # Card centrada (~login web 380px). Sin sticky=ew en la card para
+        # que no se estire si la ventana es más ancha.
         card = ttk.Frame(self, style="Card.TFrame", padding=CARD_PADDING)
-        card.grid(row=0, column=0, padx=24, pady=24)
-        card.columnconfigure(0, weight=1)
+        card.grid(row=0, column=0)
+        card.columnconfigure(0, minsize=CARD_WIDTH - (CARD_PADDING * 2))
 
         fila = 0
         self._logo_photo = _cargar_logo_sena()
         if self._logo_photo is not None:
-            marco_logo = tk.Frame(card, bg=theme.BG_CARD)
-            marco_logo.grid(row=fila, column=0, sticky="ew", pady=(0, 20))
+            marco_logo = tk.Frame(card, bg=theme.BG_CARD, width=CARD_WIDTH - (CARD_PADDING * 2))
+            marco_logo.grid(row=fila, column=0, sticky="ew", pady=(0, 16))
             tk.Label(
                 marco_logo,
                 image=self._logo_photo,
@@ -90,7 +93,7 @@ class LoginView(ttk.Frame):
             text="SMARTCSET",
             style="LoginTitle.TLabel",
             anchor="center",
-        ).grid(row=fila, column=0, sticky="ew", pady=(0, 24))
+        ).grid(row=fila, column=0, sticky="ew", pady=(0, 20))
         fila += 1
 
         ttk.Label(card, text="Identificación", style="LoginField.TLabel").grid(
@@ -101,7 +104,7 @@ class LoginView(ttk.Frame):
         usuario_entry = ttk.Entry(
             card, textvariable=self._usuario_var, width=ENTRY_WIDTH, style="Login.TEntry"
         )
-        usuario_entry.grid(row=fila, column=0, sticky="ew", pady=(0, 16))
+        usuario_entry.grid(row=fila, column=0, sticky="ew", pady=(0, 14))
         fila += 1
 
         ttk.Label(card, text="Contraseña", style="LoginField.TLabel").grid(
@@ -125,7 +128,7 @@ class LoginView(ttk.Frame):
             card,
             textvariable=self._error_var,
             style="LoginError.TLabel",
-            wraplength=420,
+            wraplength=CARD_WIDTH - (CARD_PADDING * 2),
         )
         self._error_label.grid(row=fila, column=0, sticky="ew", pady=(0, 8))
         fila += 1

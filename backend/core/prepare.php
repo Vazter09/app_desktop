@@ -309,7 +309,8 @@ try {
         ?::VARCHAR, ?::VARCHAR, ?::VARCHAR,
         ?::NUMERIC, ?::NUMERIC, ?::VARCHAR, ?::NUMERIC,
         ?::BOOLEAN, ?::NUMERIC, ?::NUMERIC,
-        ?::BOOLEAN, ?::BOOLEAN, ?::BOOLEAN, ?::NUMERIC, ?::TEXT
+        ?::BOOLEAN, ?::BOOLEAN, ?::BOOLEAN, ?::NUMERIC,
+        ?::BOOLEAN, ?::VARCHAR, ?::NUMERIC, ?::TEXT
     )";
     $stmt_fun_registrar_instructor = $pdo->prepare($sql_fun_registrar_instructor);
 

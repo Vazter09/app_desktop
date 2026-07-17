@@ -1,4 +1,15 @@
--- Registro atómico de instructor: tab_personas + tab_instructores (módulo registro).
+-- Registro atómico de instructor: tab_personas + tab_instructores
+-- (+ tab_vehiculos si ind_vehiculo = TRUE).
+-- Cambio de aridad (25 → 28): DROP explícito de la firma vieja (Bug 20).
+DROP FUNCTION IF EXISTS fun_registrar_instructor(
+    NUMERIC, VARCHAR, VARCHAR, VARCHAR, VARCHAR, DATE,
+    NUMERIC, NUMERIC, NUMERIC, VARCHAR,
+    VARCHAR, VARCHAR, VARCHAR,
+    NUMERIC, NUMERIC, VARCHAR, NUMERIC,
+    BOOLEAN, NUMERIC, NUMERIC,
+    BOOLEAN, BOOLEAN, BOOLEAN, NUMERIC, TEXT
+);
+
 CREATE OR REPLACE FUNCTION fun_registrar_instructor(
     wid_persona                 tab_personas.id_persona%TYPE,
     wid_tipo_docum              tab_personas.id_tipo_docum%TYPE,
@@ -24,10 +35,15 @@ CREATE OR REPLACE FUNCTION fun_registrar_instructor(
     wind_contratado_actual      tab_instructores.ind_contratado_actual%TYPE,
     wind_disponibilidad         tab_instructores.ind_disponibilidad%TYPE,
     wind_estado                 tab_instructores.ind_estado%TYPE,
+    wind_vehiculo               tab_instructores.ind_vehiculo%TYPE,
+    wid_vehiculo                tab_vehiculos.id_vehiculo%TYPE,
+    wind_tipovehiculo           tab_vehiculos.ind_tipovehiculo%TYPE,
     wusr                        tab_personas.usr_insert%TYPE
 ) RETURNS TEXT AS $$
 DECLARE
     wid_tipo_instructor CONSTANT DECIMAL(2,0) := 3;
+    w_ind_vehiculo      BOOLEAN;
+    w_placa             TEXT;
     w_exc_state         TEXT;
     w_exc_msg           TEXT;
     w_exc_detail        TEXT;
@@ -148,6 +164,38 @@ BEGIN
         PERFORM smartcset_raise_validacion('Usuario de auditoría no válido.');
     END IF;
 
+    w_ind_vehiculo := COALESCE(wind_vehiculo, FALSE);
+
+    IF w_ind_vehiculo THEN
+        w_placa := UPPER(TRIM(COALESCE(wid_vehiculo, '')));
+        IF w_placa = '' OR LENGTH(w_placa) < 5 OR LENGTH(w_placa) > 8 THEN
+            PERFORM smartcset_raise_validacion(
+                'La placa del vehículo es obligatoria (5 a 8 caracteres).'
+            );
+        END IF;
+
+        IF w_placa !~ '^[A-Z0-9]+$' THEN
+            PERFORM smartcset_raise_validacion(
+                'La placa solo puede contener letras y números.'
+            );
+        END IF;
+
+        IF wind_tipovehiculo IS NULL OR wind_tipovehiculo NOT IN (1, 2, 3) THEN
+            PERFORM smartcset_raise_validacion(
+                'Seleccione un tipo de vehículo válido (Automóvil, Moto o Bicicleta).'
+            );
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM tab_vehiculos WHERE id_vehiculo = w_placa) THEN
+            PERFORM smartcset_raise_negocio(
+                'Ya existe un vehículo registrado con esa placa.',
+                'id_vehiculo=' || w_placa
+            );
+        END IF;
+    ELSE
+        w_placa := NULL;
+    END IF;
+
     IF EXISTS (SELECT 1 FROM tab_instructores WHERE id_instructor = wid_persona) THEN
         PERFORM smartcset_raise_negocio(
             'Ya existe un instructor registrado con ese número de documento.',
@@ -190,17 +238,27 @@ BEGIN
         id_instructor, id_centro,
         ind_tipo_contrato, ind_contratado_actual,
         ind_genero, ind_est_civil,
-        id_nivel_estudio, id_profesion, id_red,
+        id_nivel_estudio, ind_vehiculo, id_profesion, id_red,
         ind_disponibilidad, ind_estado,
         usr_insert, fec_insert
     ) VALUES (
         wid_persona, wid_centro,
         COALESCE(wind_tipo_contrato, TRUE), COALESCE(wind_contratado_actual, TRUE),
         wind_genero, wind_est_civil,
-        wid_nivel_estudio, wid_profesion, wid_red,
+        wid_nivel_estudio, w_ind_vehiculo, wid_profesion, wid_red,
         COALESCE(wind_disponibilidad, TRUE), wind_estado,
         wusr, CURRENT_TIMESTAMP
     );
+
+    IF w_ind_vehiculo THEN
+        INSERT INTO tab_vehiculos (
+            id_vehiculo, ind_tipovehiculo, id_propietario,
+            usr_insert, fec_insert
+        ) VALUES (
+            w_placa, wind_tipovehiculo, wid_persona,
+            wusr, CURRENT_TIMESTAMP
+        );
+    END IF;
 
     RETURN 'OK';
 EXCEPTION
