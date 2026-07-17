@@ -114,7 +114,6 @@ DROP DOMAIN IF EXISTS extension;
 -- *****************************
 CREATE EXTENSION IF NOT EXISTS PLPGSQL;
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS PG_VECTOR;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
@@ -344,6 +343,23 @@ CREATE TABLE IF NOT EXISTS tab_temp_df53
     ind_estado_aprendiz     VARCHAR
  );
 
+CREATE TABLE IF NOT EXISTS tab_temp_fichas_creadas
+(
+  id_ficha                 DECIMAL(10,0),
+  nom_programa             VARCHAR,
+  horas_programa           DECIMAL(4,0),
+  fec_inicio               DATE,
+  fec_fin                  DATE,
+  fec_hora_ejecucion       VARCHAR,
+  estado_ficha             VARCHAR,
+  cantidad_aprendices      DECIMAL(3,0),
+  cantidad_apren_transito  DECIMAL(3,0),
+  tipo_documento           VARCHAR,
+  num_documento            DECIMAL(10,0),
+  nom_instructor           VARCHAR,
+  ape_instructor           VARCHAR
+);
+
 --***********************************************************************
 -- FIN SECCIÓN DE TABLAS TEMPORALES PARA EL PARSING DE ARCHIVOS EN EXCEL
 -- **********************************************************************
@@ -374,7 +390,7 @@ CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 -- | pass_usuario | VARCHAR           | NOT NULL                              | Contraseña hasheada del usuario.              |
 -- |              |                   | CHECK(LENGTH(pass_usuario) >= 60)     |                                               |
 -- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
--- | mail_usuario | mail_instucional  | NOT NULL                              | Correo institucional válido.                  |
+-- | mail_usuario | mail_instituucional  | NOT NULL                              | Correo institucional válido.                  |
 -- +--------------+-------------------+---------------------------------------+-----------------------------------------------+
 -- | ind_usuario  | BOOLEAN           | NOT NULL                              | TRUE = administrador, FALSE = usuario normal. |
 -- |              |                   | DEFAULT FALSE                         | Indicador de rol.                             |
@@ -397,11 +413,11 @@ CREATE DOMAIN extension AS DECIMAL(8,0) CHECK (VALUE >= 0);
 CREATE TABLE IF NOT EXISTS tab_usuarios
 (
     id_usuario              VARCHAR(20)                 NOT NULL CHECK(LENGTH(TRIM(id_usuario)) >= 3),        -- Usuario único en el sistema. 
-    nom_usuario             VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(nom_usuario)) >= 3), -- Nombre del usuario dentro del sistema.
+    nom_usuario             VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(nom_usuario)) >= 3),       -- Nombre del usuario dentro del sistema.
     pass_usuario            VARCHAR                     NOT NULL CHECK(LENGTH(TRIM(pass_usuario)) >= 60),     -- Contraseña hasheada del usuario.
-    mail_usuario            mail_instucional            NOT NULL,                                       -- Correo institucional válido.
-    ind_usuario             BOOLEAN                     NOT NULL DEFAULT FALSE,                         -- TRUE = administrador, FALSE = usuario normal.
-    ind_estado              BOOLEAN                     NOT NULL DEFAULT TRUE,                          -- TRUE = activo, FALSE = inactivo.
+    mail_usuario            mail_institucional          NOT NULL DEFAULT 'correo_prueba@soy.sena.edu.co',     -- Correo institucional válido.
+    ind_usuario             BOOLEAN                     NOT NULL DEFAULT FALSE,                               -- TRUE = administrador, FALSE = usuario normal.
+    ind_estado              BOOLEAN                     NOT NULL DEFAULT TRUE,                                -- TRUE = activo, FALSE = inactivo.
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1267,7 +1283,7 @@ CREATE TABLE IF NOT EXISTS tab_pmtros_grales
     id_centro                   DECIMAL(8,0)                NOT NULL,                                                                             -- Centro en donde se está ejecutando SMARTCSET.
     dir_centro                  VARCHAR(90)                 NOT NULL CHECK(LENGTH(dir_centro) >= 10) DEFAULT 'Sin dirección',                     -- Dirección del Centro que está ejecutando SMARTCSET.
     tel_centro                  telefono_fijo               NOT NULL DEFAULT 6010000000,                                                          -- Teléfono del Centro que está ejecutando SMARTCSET.
-    ano_academico               DECIMAL(4,0)                NOT NULL DEFAULT DEFAULT EXTRACT(YEAR FROM CURRENT_DATE)::DECIMAL(4,0),               -- Año en el que se está trabajando en SMARTCSET. 
+    ano_academico               DECIMAL(4,0)                NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE)::DECIMAL(4,0),                       -- Año en el que se está trabajando en SMARTCSET. 
     mes_academico               DECIMAL(2,0)                NOT NULL CHECK(mes_academico >= 1 AND mes_academico <= 12) DEFAULT 1,                           -- Mes. Debe actualizarse automáticamente (EJECUTAR FUNCIÓN CRON).
     val_nota_minima_rap         DECIMAL(3,0)                NOT NULL CHECK(val_nota_minima_rap >= 0 AND val_nota_minima_rap <= 100) DEFAULT 71,   -- Nota mínima de aprendiz para aprobar.
     num_horas_instructor        DECIMAL(3,0)                NOT NULL CHECK(num_horas_instructor >=0 AND num_horas_instructor <= 200) DEFAULT 160, -- Horas mes instructor por cumplir por contrato.
@@ -1561,6 +1577,7 @@ CREATE TABLE IF NOT EXISTS tab_tipos_persona
 -- |                          | WITHOUT TIME ZONE |                                              |                                                        |
 -- +--------------------------+-------------------+----------------------------------------------+--------------------------------------------------------+
 
+
 CREATE TABLE IF NOT EXISTS tab_personas
 (-- DATOS DE IDENTIFICACIÓN DE LA PERSONA (A VALIDAR CONTRA REGISTRADURÍA)
     id_persona                  DECIMAL(10,0)               NOT NULL,
@@ -1570,7 +1587,7 @@ CREATE TABLE IF NOT EXISTS tab_personas
     ape_persona                 VARCHAR(30)                 NOT NULL CHECK(LENGTH(ape_persona) >= 2),
     mail_persona                mail_personal               NOT NULL DEFAULT 'sin_correo@correo.com',
     fec_nacimiento              DATE                        NOT NULL DEFAULT '1900-01-01',
-    ind_genero                  DECIMAL(1,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 3 OR ind_genero = 4) DEFAULT 99, --1=Femenino,2=Masculino,3=No binario,4=Trans, 99=No definido
+    ind_genero                  DECIMAL(2,0)                NOT NULL CHECK(ind_genero = 1 OR ind_genero = 2 OR ind_genero = 3 OR ind_genero = 4 OR ind_genero = 99) DEFAULT 99, --1=Femenino,2=Masculino,3=No binario,4=Trans, 99=No definido
  -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
     val_huella_digital          BYTEA,
     val_patron_facial           VECTOR(128),
@@ -1620,7 +1637,7 @@ CREATE TYPE datos_personales_aprendiz AS
     ext_sede                    extension,
     tel_padre_fijo              telefono_fijo,
     tel_padre_movil             telefono_movil,
-    val_mail_institucional      mail_personal,
+    val_mail_institucional      mail_institucional,
     nom_contacto_emergencias    VARCHAR,
     tel_contacto_emergencias    DECIMAL(10,0)
 );
@@ -1839,7 +1856,7 @@ CREATE TABLE IF NOT EXISTS tab_adicion_contratos
     num_contrato            VARCHAR                     NOT NULL,
     num_adicion             DECIMAL(1,0)                NOT NULL CHECK(num_adicion >= 0 AND num_adicion <=3),
     fec_ini_adicion         DATE                        NOT NULL,
-    fec_fin_adicion         DATE                        NOT NULL CHECK(fec_fin_adicion >= fen_ini_adicion),
+    fec_fin_adicion         DATE                        NOT NULL CHECK(fec_fin_adicion >= fec_ini_adicion),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -1884,7 +1901,7 @@ CREATE TABLE IF NOT EXISTS tab_adicion_contratos
 CREATE TABLE IF NOT EXISTS tab_horas_instructor
 (
     id_instructor           DECIMAL(10,0)               NOT NULL,
-    id_mes                  DECIMAL(2,0)                NOT NULL  CHECK(mes_academico >= 1 AND mes_academico <= 12), -- Meses del 1 al 12
+    id_mes                  DECIMAL(2,0)                NOT NULL  CHECK(id_mes >= 1 AND id_mes <= 12),               -- Meses del 1 al 12
     val_horas_form_mes      DECIMAL(4,0)                NOT NULL,                                                    -- Cantidad de horas del mes vigente
     val_horas_apoyo_mes     DECIMAL(4,0)                NOT NULL,                                                    -- Horas ejecutadas en apoyo
     val_horas_invest_mes    DECIMAL(4,0)                NOT NULL,                                                    -- Horas ejecutadas en Investigación
@@ -2355,17 +2372,28 @@ CREATE TABLE IF NOT EXISTS tab_vehiculos
     FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
 );
 
+CREATE TABLE IF NOT EXISTS tab_tipos_equipo (
+    id_tipo_equipo        DECIMAL(2,0)                NOT NULL,
+    nom_tipo_equipo       VARCHAR(50)                 NOT NULL,
+    usr_insert            VARCHAR(50)                 NOT NULL,
+    fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usr_update            VARCHAR(50)                 NOT NULL,
+    fec_update            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY(id_tipo_equipo)
+);
+
 
 CREATE TABLE IF NOT EXISTS tab_equipos (
     id_equipo             VARCHAR(50)                 NOT NULL, -- Numero de serie.
+    id_tipo_equipo        DECIMAL(2,0)                NOT NULL, 
     id_propietario        DECIMAL(10,0)               NOT NULL, -- El propietario debe estar registrado.
-    tipo_dispositivo      VARCHAR(50)                 NOT NULL,CHECK(LENGTH(TRIM(tipo_dispositivo)) >= 3), 
     usr_insert            VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update            VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update            TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_equipo),
-    FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
+    FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona),
+    FOREIGN KEY(id_tipo_equipo) REFERENCES tab_tipos_equipo(id_tipo_equipo)
 );
 
 -- TABLA TRANSACCIONAL DE REGISTRO DE INGRESOS
@@ -2402,15 +2430,15 @@ CREATE TABLE IF NOT EXISTS tab_equipos (
 CREATE TABLE IF NOT EXISTS tab_novedades_ingreso 
 (
     id_novedad          BIGSERIAL                    NOT NULL,
-    id_tipo_docum       VARCHAR(4,0)                 NOT NULL DEFAULT 'CC',
+    id_tipo_docum       VARCHAR(4)                   NOT NULL DEFAULT 'CC',
     num_documento       DECIMAL(10,0)                NOT NULL,
     nom_tercero         VARCHAR(40)                  NOT NULL CHECK(LENGTH(TRIM(nom_tercero)) >= 3),
     ape_tercero         VARCHAR(30)                  NOT NULL CHECK(LENGTH(TRIM(ape_tercero)) >= 2),
     id_entrada_centro   DECIMAL(1,0)                 NOT NULL,
     val_huella_digital  BYTEA,
     val_patron_facial   VECTOR(128),
-    uri_imagen_huella   VARCHAR(500),
-    uri_foto_facial     VARCHAR(500),
+    url_imagen_huella   VARCHAR(500),
+    url_foto_facial     VARCHAR(500),
     fec_ingreso         TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     fec_salida          TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     usr_insert          VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
@@ -2430,14 +2458,15 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     fec_salida              TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     id_metodo_aut           DECIMAL(2,0)                NOT NULL,
     id_entrada_centro       DECIMAL(1,0)                NOT NULL,
-    ind_dispositivo         BOOLEAN                     NOT NULL DEFAULT FALSE, -- FALSE=No ingreso con un dispositivo / TRUE=Ingreso con un dispositivo
+    ind_equipo              BOOLEAN                     NOT NULL DEFAULT FALSE, -- FALSE=No ingreso con un equipo/ TRUE=Ingreso con un equipo
+    id_equipo               VARCHAR                     NOT NULL DEFAULT 111111,
 -- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario.
     facial_embedding        VECTOR(128),
     -- Plantilla binaria de la huella (Minucias)
     huella_template         BYTEA,
     -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo).
-    uri_foto_facial         VARCHAR(500),
-    uri_imagen_huella       VARCHAR(500),
+    url_foto_facial         VARCHAR(500),
+    url_imagen_huella       VARCHAR(500),
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
@@ -3469,7 +3498,7 @@ CREATE TABLE IF NOT EXISTS tab_novedades_academicas
     id_instructor           DECIMAL(10,0)               NOT NULL,
     ind_procesado           BOOLEAN                     NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_update >= fec_insert),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_aprendiz)        REFERENCES tab_aprendices(id_aprendiz),
     FOREIGN KEY(id_tipo_novedad)    REFERENCES tab_tipos_novedad(id_tipo_novedad),
@@ -3496,7 +3525,7 @@ CREATE TABLE IF NOT EXISTS tab_contratistas
     id_contratista          DECIMAL(10,0)               NOT NULL,
     id_empresa              DECIMAL(10,0)               NOT NULL,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Tiene vehiculo / FALSE=No tiene vehiculo.
-    id_cargo                VARCHAR                     NOT NULL,
+    id_cargo                DECIMAL(2,0)                NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -3517,7 +3546,7 @@ CREATE TABLE IF NOT EXISTS tab_bitacora
     texto_evento            TEXT                        NOT NULL CHECK(LENGTH(TRIM(texto_evento)) >= 10),
     id_contratista          DECIMAL(10,0)               NOT NULL,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
-    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_update >= fec_insert),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     PRIMARY KEY(id_consecutivo),
     FOREIGN KEY(id_contratista) REFERENCES tab_contratistas(id_contratista)
 );

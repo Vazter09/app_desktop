@@ -16257,7 +16257,7 @@ INSERT INTO tab_personas (id_persona, id_tipo_docum, id_tipo_persona, nom_person
 
 INSERT INTO tab_redes VALUES (99, 'Sin red', 'Sin instructor lider');
 
-INSERT INTO tab_instructores (id_instructor, ind_genero, ind_est_civil) VALUES (77777777, 4, 0);
+INSERT INTO tab_instructores (id_instructor, ind_est_civil) VALUES (77777777,0);
 
 INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
 INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');

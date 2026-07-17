@@ -1,16 +1,16 @@
 /*
-================================================================================
-TRIGGER PARA CONTROLAR EL INGRESO.
-================================================================================
-OBJETIVO:
+====================================================================================
+    SCRIPT PARA CONTROLAR EL INGRESO.
+====================================================================================
+    OBJETIVO:
 
- Este script implementa la lógica de negocio para el registro de ingresos
- y salidas de personas en el centro, garantizando la integridad de los datos.
+        Este script implementa la lógica de negocio para el registro de ingresos
+        y salidas de personas en el centro, garantizando la integridad de los datos.
 
-AUTOR:       Grupo SMARTCSET
-FECHA:       2026-07-14
-VERSIÓN:     1.0
-================================================================================
+    AUTOR:   Grupo SMARTCSET
+    FECHA:   2026-07-14
+    VERSIÓN: 1.0
+====================================================================================
 */
 
 -- =============================================================================
@@ -57,11 +57,11 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 COMMENT ON FUNCTION fn_diferencia_minutos IS 
-    'Retorna la diferencia en minutos entre dos timestamps (p_fecha1 - p_fecha2).';
+    'Retorna la diferencia en minutos entre (p_fecha1 - p_fecha2).';
 
 
 -- =============================================================================
--- 3. PROCEDIMIENTO: sp_registrar_ingreso (CORREGIDO)
+-- 3. PROCEDIMIENTO: sp_registrar_ingreso
 -- =============================================================================
 CREATE OR REPLACE PROCEDURE sp_registrar_ingreso(
     -- Datos básicos de la persona (siempre proporcionados)
@@ -74,8 +74,8 @@ CREATE OR REPLACE PROCEDURE sp_registrar_ingreso(
     p_ind_dispositivo   BOOLEAN      DEFAULT FALSE,
     p_facial_embedding  VECTOR(128)  DEFAULT NULL,
     p_huella_template   BYTEA        DEFAULT NULL,
-    p_uri_foto_facial   VARCHAR(500) DEFAULT NULL,
-    p_uri_imagen_huella VARCHAR(500) DEFAULT NULL,
+    p_url_foto_facial   VARCHAR(500) DEFAULT NULL,
+    p_url_imagen_huella VARCHAR(500) DEFAULT NULL,
     p_calidad_facial    NUMERIC(5,2) DEFAULT NULL,
     p_calidad_huella    NUMERIC(5,2) DEFAULT NULL,
     p_ind_vehiculo      BOOLEAN      DEFAULT FALSE,
@@ -104,7 +104,7 @@ BEGIN
         -- La persona NO existe → registrar intento en tab_novedades_ingreso
         INSERT INTO tab_novedades_ingreso (
             num_documento, nom_tercero, ape_tercero, id_entrada_centro,
-            val_huella_digital, val_patron_facial, uri_imagen_huella, uri_foto_facial,
+            val_huella_digital, val_patron_facial, url_imagen_huella, url_foto_facial,
             fec_ingreso, fec_salida, usr_insert, fec_insert
         ) VALUES (
             p_num_documento,
@@ -113,8 +113,8 @@ BEGIN
             p_id_entrada_centro,
             p_huella_template,     -- val_huella_digital
             p_facial_embedding,    -- val_patron_facial
-            p_uri_imagen_huella,
-            p_uri_foto_facial,
+            p_url_imagen_huella,
+            p_url_foto_facial,
             v_fec_ingreso,
             v_fec_ingreso,
             p_usr_insert,
@@ -155,7 +155,7 @@ BEGIN
     -- 5. Insertar el nuevo ingreso
     INSERT INTO tab_log_ingresos (
         id_visitante, fec_ingreso, fec_salida, id_metodo_aut, id_entrada_centro,
-        ind_dispositivo, facial_embedding, huella_template, uri_foto_facial, uri_imagen_huella,
+        ind_dispositivo, facial_embedding, huella_template, url_foto_facial, url_imagen_huella,
         calidad_facial, calidad_huella, ind_vehiculo, id_vehiculo, val_observaciones,
         usr_insert, fec_insert
     ) VALUES (
@@ -167,8 +167,8 @@ BEGIN
         p_ind_dispositivo,
         p_facial_embedding,
         p_huella_template,
-        p_uri_foto_facial,
-        p_uri_imagen_huella,
+        p_url_foto_facial,
+        p_url_imagen_huella,
         p_calidad_facial,
         p_calidad_huella,
         p_ind_vehiculo,
@@ -372,8 +372,8 @@ CALL sp_registrar_ingreso(
     p_ind_dispositivo   => TRUE,
     p_facial_embedding  => NULL,
     p_huella_template   => NULL,
-    p_uri_foto_facial   => 'https://...',
-    p_uri_imagen_huella => NULL,
+    p_url_foto_facial   => 'https://...',
+    p_url_imagen_huella => NULL,
     p_calidad_facial    => 85.5,
     p_calidad_huella    => NULL,
     p_ind_vehiculo      => FALSE,
