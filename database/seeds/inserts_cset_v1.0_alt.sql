@@ -3,74 +3,6 @@
 -- *************************************************
 
 -- INSERCIÓN DE TABLA DE MOTIVOS DE LLAMADO DE ATENCIÓN
-INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
-INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');
-INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro');
-INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación');
-INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación');
-INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación');
-INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo');
-INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado');
-
--- INSERCIÓN TABLA DE TIPOS DE NOVEDADES
-INSERT INTO tab_tipos_novedad VALUES(1,'Deserción');
-INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión');
-INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico');
-INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico');
-INSERT INTO tab_tipos_novedad VALUES(5,'En Formación');
-INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento');
-INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario');
-INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad');
-
--- INSERCIÓN TABLA DE CAUSAS DE NOVEDADES
-INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida');
-INSERT INTO tab_causas_novedad VALUES(1,'a) En la formación presencial, excepto la complementaria, tener tres (3) días continuos de inasistencia injustificada o acumular cinco (5) días
- no continuos de inasistencia injustificada durante todo el proceso de formación.');
-INSERT INTO tab_causas_novedad VALUES (2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
-por el instructor o por el responsable del grupo o no ingresa a su ambiente virtual de formación (plataforma LMS) durante veinte (20) días consecutivos, sin previa justificación soportada 
-ante el sistema de gestión académico-administrativo');
-INSERT INTO tab_causas_novedad VALUES (3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
-programados para el desarrollo de sus actividades formativas.');
-INSERT INTO tab_causas_novedad VALUES (4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
-la empresa con la que desarrolla la alternativa establecida.');
-INSERT INTO tab_causas_novedad VALUES (5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
-o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.');
-INSERT INTO tab_causas_novedad VALUES (6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ');
-
--- INSERCIÓN TABLA DE VEHÍCULOS (PLACA GENÉRICA)
-INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777);
-
--- INSERCIÓN TABLA DE OPCIONES DE PRODUCTIVA
-INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida');
-INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral');
-INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral');
-INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía');
-INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo');
-
-
--- INSERCIÓN EN TABLA DE JORNADAS
-INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
-INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
-INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
-
--- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
-INSERT INTO tab_tipos_permiso VALUES(1,'Consulta médica',0,3);
-INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
-INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
-INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
-INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
-INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
-INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
-INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
-INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
-INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
-INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
-INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
-INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
-
-INSERT INTO tab_pmtros VALUES(9309,2023,2,71,160,6076800600);
-
 INSERT INTO tab_dptos VALUES('91','Amazonas');
 INSERT INTO tab_dptos VALUES('05','Antioquia');
 INSERT INTO tab_dptos VALUES('81','Arauca');
@@ -16282,7 +16214,7 @@ INSERT INTO tab_competencias VALUES(38426,'Atender clientes de acuerdo con proce
 INSERT INTO tab_proyectos VALUES(2500191,228118,'Construcción de software empresarial a la medida',3,27,74,27,20,27,
                                 'Personas y organizaciones poseen modelos tradicionales y manuales de administración de la información, estos modelos pierden vigencia y pertinencia por la dinámica del mercado y el desarrollo tecnológico, además, ponen en riesgo la permanencia y competitividad de las organizaciones y productos. Asi mismo, un gran número de organizaciones disponen de sistemas de información que operan bajo el dominio de determinados métodos, en algunos casos obsoletos o no pertinentes. Emerge la necesidad de implementar recursos de gestión de la información mediante soluciones informaticas para dar respuestas rápidas y pertinentes a estas problematicas del sector productivo.',
                                 'El proyecto se formula en el contexto de los avances tecnológicos y políticas de mercado que se incrementan rapidamente y donde la validez de la información es efímera, haciendo de la toma de decisiones un asunto de gran valor, pertinencia y de exigencia competitiva',
-                                'postgres',NOW());
+                                'SISTEMA',NOW());
 
 INSERT INTO tab_sedes VALUES(9309,1,'CSET Sede Principal Cra. 27','Calle 15 # 27-15','Jairo Algo',6076800600);
 INSERT INTO tab_sedes VALUES(9309,2,'CSET Sede Salud Calle 45','Calle 45 # 10-30','Alguien allá',6076800600);
@@ -16325,5 +16257,73 @@ INSERT INTO tab_personas (id_persona, id_tipo_docum, id_tipo_persona, nom_person
 
 INSERT INTO tab_redes VALUES (99, 'Sin red', 'Sin instructor lider');
 
-INSERT INTO tab_instructores (id_instructor, ind_genero, ind_est_civil) VALUES (77777777, 4, 0);
+INSERT INTO tab_instructores (id_instructor, ind_est_civil) VALUES (77777777,0);
+
+INSERT INTO tab_motivos VALUES(1,'Irrespeto manifiesto hacia un Instructor o personal administrativo');
+INSERT INTO tab_motivos VALUES(2,'Comportamiento agresivo con un compañero de la Formación');
+INSERT INTO tab_motivos VALUES(3,'Bullyng y/o trato dicriminatorio hacia una persona dentro del Centro');
+INSERT INTO tab_motivos VALUES(4,'Retraso en el horario de llegada a la Formación');
+INSERT INTO tab_motivos VALUES(5,'No presentar evidencias a tiempo durante la Formación');
+INSERT INTO tab_motivos VALUES(6,'Ausencia no justificada de la Formación');
+INSERT INTO tab_motivos VALUES(7,'Muestras manifiestas de vandalismo');
+INSERT INTO tab_motivos VALUES(8,'No presentación de evaluación de producto y/o resultado');
+
+-- INSERCIÓN TABLA DE TIPOS DE NOVEDADES
+INSERT INTO tab_tipos_novedad VALUES(1,'Deserción');
+INSERT INTO tab_tipos_novedad VALUES(2,'Suspensión');
+INSERT INTO tab_tipos_novedad VALUES(3,'Condicionamiento Académico');
+INSERT INTO tab_tipos_novedad VALUES(4,'Cancelación de Registro Académico');
+INSERT INTO tab_tipos_novedad VALUES(5,'En Formación');
+INSERT INTO tab_tipos_novedad VALUES(6,'Aplazamiento');
+INSERT INTO tab_tipos_novedad VALUES(7,'Retiro Voluntario');
+INSERT INTO tab_tipos_novedad VALUES(99,'Sin Novedad');
+
+-- INSERCIÓN TABLA DE CAUSAS DE NOVEDADES
+INSERT INTO tab_causas_novedad VALUES(99,'Sin Causa Conocida');
+INSERT INTO tab_causas_novedad VALUES(1,'a) En la formación presencial, excepto la complementaria, tener tres (3) días continuos de inasistencia injustificada o acumular cinco (5) días
+ no continuos de inasistencia injustificada durante todo el proceso de formación.');
+INSERT INTO tab_causas_novedad VALUES (2,'b) En la formación bajo la modalidad virtual en etapa lectiva, se presenta cuando el aprendiz no asiste a tres (3) citaciones seguidas elevadas 
+por el instructor o por el responsable del grupo o no ingresa a su ambiente virtual de formación (plataforma LMS) durante veinte (20) días consecutivos, sin previa justificación soportada 
+ante el sistema de gestión académico-administrativo');
+INSERT INTO tab_causas_novedad VALUES (3,'c) En la formación a distancia en etapa lectiva, se presenta cuando el aprendiz no justifica la inasistencia a tres (3) encuentros presenciales 
+programados para el desarrollo de sus actividades formativas.');
+INSERT INTO tab_causas_novedad VALUES (4,'d) En formación presencial, virtual y a distancia en etapa productiva: se presenta inasistencia injustificada durante tres (3) días consecutivos a 
+la empresa con la que desarrolla la alternativa establecida.');
+INSERT INTO tab_causas_novedad VALUES (5,'e) En la formación complementaria virtual se presenta cuando el aprendiz no registra ingreso al ambiente virtual del programa en el que está matriculado, 
+o ingresa al ambiente virtual y no participa en ninguna de las actividades previstas en el curso.');
+INSERT INTO tab_causas_novedad VALUES (6,'f) En la formación complementaria presencial se presentan cuando el aprendiz no registra cumplimiento justificado del diez por ciento (10%) de las ');
+
+-- INSERCIÓN TABLA DE VEHÍCULOS (PLACA GENÉRICA)
+INSERT INTO tab_vehiculos VALUES('AAA000',1,77777777);
+
+-- INSERCIÓN TABLA DE OPCIONES DE PRODUCTIVA
+INSERT INTO tab_opciones_productiva VALUES(0,'Sin opción Elegida');
+INSERT INTO tab_opciones_productiva VALUES(1,'Contrato Laboral');
+INSERT INTO tab_opciones_productiva VALUES(2,'Vínculo Laboral');
+INSERT INTO tab_opciones_productiva VALUES(3,'Pasantía');
+INSERT INTO tab_opciones_productiva VALUES(4,'Proyecto Productivo');
+
+
+-- INSERCIÓN EN TABLA DE JORNADAS
+INSERT INTO tab_jornadas VALUES(1,'Mañana','06:00:00','11:45:00',FALSE,'00:00:00','00:00:00');
+INSERT INTO tab_jornadas VALUES(2,'Tarde','12:00:00','17:45:00',FALSE,'00:00:00','00:00:00');
+INSERT INTO tab_jornadas VALUES(3,'Noche','18:00:00','21:45:00',TRUE,'12:00:00','18:00:00');
+INSERT INTO tab_jornadas VALUES(4,'Mixta','00:00:00','24:00:00',TRUE,'12:00:00','18:00:00');
+
+-- INSERCIÓN EN TABLA DE TIPOS DE PERMISO
+INSERT INTO tab_tipos_permiso VALUES(1,'Consulta médica',0,3);
+INSERT INTO tab_tipos_permiso VALUES(2,'Calamidad Doméstica Familiar',3,0);
+INSERT INTO tab_tipos_permiso VALUES(3,'Calamidad Doméstica Accidental',1,0);
+INSERT INTO tab_tipos_permiso VALUES(4,'Enfermedad Repentina',1,0);
+INSERT INTO tab_tipos_permiso VALUES(5,'Asonada',1,0);
+INSERT INTO tab_tipos_permiso VALUES(6,'Paro Nacional',1,0);
+INSERT INTO tab_tipos_permiso VALUES(7,'Paro de Transporte',1,0);
+INSERT INTO tab_tipos_permiso VALUES(8,'Paro Sindical SENA',1,0);
+INSERT INTO tab_tipos_permiso VALUES(9,'Alistamiento Instructores',1,0);
+INSERT INTO tab_tipos_permiso VALUES(10,'Ausencia del Instructor',1,0);
+INSERT INTO tab_tipos_permiso VALUES(11,'Vacaciones Fin de Año',30,0);
+INSERT INTO tab_tipos_permiso VALUES(12,'Residencia Lejana del Aprendiz',0,1);
+INSERT INTO tab_tipos_permiso VALUES(99,'Otra Causa de Permiso',1,0);
+
+INSERT INTO tab_pmtros_grales VALUES (9309, 'Sin dirección', 6010000000, 2026, 07, 75, 12, 70, 15, 15, 3, 'Sin información', 6010000000, 1, 6);
 
