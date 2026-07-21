@@ -145,6 +145,12 @@ class SmartcsetClient:
         """POST /routers/porteria/v1/ingreso/registrar.php."""
         return self._request("POST", "/routers/porteria/v1/ingreso/registrar.php", payload)
 
+    def ingreso_actualizar_captura(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST /routers/porteria/v1/ingreso/actualizar_captura.php — re-captura sin nuevo ingreso."""
+        return self._request(
+            "POST", "/routers/porteria/v1/ingreso/actualizar_captura.php", payload
+        )
+
     def salida_consultar(self, documento: str, tipo_doc: str = "CC") -> dict[str, Any]:
         """GET /routers/porteria/v1/salida/consultar.php."""
         qs = urllib.parse.urlencode({"documento": documento, "tipo_doc": tipo_doc})

@@ -57,7 +57,7 @@ class EnvLoader {
             'PATH_LOGO' => 'img/logo-sena.png',
             'SESSION_TIMEOUT' => '1800',
             'APP_ENV' => 'development',
-            'DB_TIMEZONE' => 'UTC',
+            'DB_TIMEZONE' => 'America/Bogota',
             'APP_TIMEZONE' => 'America/Bogota',
         ];
         

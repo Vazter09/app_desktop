@@ -51,17 +51,13 @@ class BiometriaPhotoService
             );
         }
 
-        // 3. Crear carpeta si no existe: uploads/biometria/{id_persona}/
+        // 3. Crear carpeta base + persona: uploads/biometria/{id_persona}/
         $docRoot = dirname(__DIR__, 3) . '/frontend/web/public';
-        $carpetaPersona = "$docRoot/" . self::UPLOAD_BASE . "/$idPersona";
+        $carpetaBase = $docRoot . '/' . self::UPLOAD_BASE;
+        $carpetaPersona = $carpetaBase . '/' . $idPersona;
 
-        if (!is_dir($carpetaPersona)) {
-            if (!mkdir($carpetaPersona, 0755, true)) {
-                throw new InvalidArgumentException(
-                    "No se pudo crear carpeta de enrolamiento: $carpetaPersona"
-                );
-            }
-        }
+        self::asegurarDirectorioEscribible($carpetaBase, 'base de enrolamiento biométrico');
+        self::asegurarDirectorioEscribible($carpetaPersona, 'carpeta de enrolamiento de la persona');
 
         // 4. Nombrar archivo: {id_persona}_{primer_nombre}.jpg
         $nombreLimpio = preg_replace('/[^a-z0-9]/i', '', strtolower($nombrePersona));
@@ -81,15 +77,16 @@ class BiometriaPhotoService
         $rutaCompleta = "$carpetaPersona/$nombreArchivo";
 
         // 5. Guardar archivo
-        if (file_put_contents($rutaCompleta, $fotoBinaria) === false) {
+        $bytes = @file_put_contents($rutaCompleta, $fotoBinaria);
+        if ($bytes === false) {
             throw new InvalidArgumentException(
-                "No se pudo guardar foto en: $rutaCompleta"
+                'No se pudo guardar foto en: ' . $rutaCompleta
+                . self::detalleErrorFs()
             );
         }
 
         // 6. Retornar ruta relativa (para guardar en BD)
-        $rutaRelativa = self::UPLOAD_BASE . "/$idPersona/$nombreArchivo";
-        return $rutaRelativa;
+        return self::UPLOAD_BASE . "/$idPersona/$nombreArchivo";
     }
 
     /**
@@ -135,5 +132,40 @@ class BiometriaPhotoService
         }
 
         return unlink($rutaCompleta);
+    }
+
+    /**
+     * Crea el directorio si no existe y verifica que sea escribible.
+     *
+     * @throws InvalidArgumentException
+     */
+    private static function asegurarDirectorioEscribible(string $ruta, string $etiqueta): void
+    {
+        if (!is_dir($ruta)) {
+            if (!@mkdir($ruta, 0755, true) && !is_dir($ruta)) {
+                throw new InvalidArgumentException(
+                    "No se pudo crear {$etiqueta}: {$ruta}"
+                    . self::detalleErrorFs()
+                );
+            }
+        }
+
+        if (!is_writable($ruta)) {
+            throw new InvalidArgumentException(
+                "El directorio de {$etiqueta} no es escribible por el proceso PHP: {$ruta}"
+                . ' (revise ownership/permisos, p. ej. www-data y chmod 775).'
+                . self::detalleErrorFs()
+            );
+        }
+    }
+
+    private static function detalleErrorFs(): string
+    {
+        $ultimo = error_get_last();
+        if (!is_array($ultimo) || empty($ultimo['message'])) {
+            return '';
+        }
+
+        return ' [' . (string) $ultimo['message'] . ']';
     }
 }

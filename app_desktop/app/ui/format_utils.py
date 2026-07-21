@@ -34,6 +34,31 @@ _INPUT_FORMATS = (
 )
 
 
+# Catálogo alineado con registro web (aprendiz.php) + schema V.1.10.1.
+ESTADO_FORMACION_LABELS: dict[int, str] = {
+    1: "En formación",
+    2: "Aplazado",
+    3: "Retiro voluntario",
+    4: "Cancelado",
+    5: "Condicionado",
+    6: "Suspendido",
+    7: "Desertado",
+    8: "Trasladado",
+    9: "Sin información",
+}
+
+
+def label_estado_formacion(codigo: int | str | None) -> str:
+    """Traduce ind_etdo_formacion / estado_formacion a texto legible."""
+    if codigo is None or codigo == "":
+        return "—"
+    try:
+        key = int(codigo)
+    except (TypeError, ValueError):
+        return "—"
+    return ESTADO_FORMACION_LABELS.get(key, "—")
+
+
 def format_db_timestamp(value: str | None, fmt: str = DEFAULT_FORMAT) -> str:
     """Convierte un timestamp crudo de BD (UTC, sin zona) a hora local
     legible — mismo comportamiento que `smartcsetFormatDbTimestamp()`."""

@@ -2470,7 +2470,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
---    val_datos_origen        JSONB.
+    val_datos_origen        JSONB,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
     val_observaciones       TEXT,

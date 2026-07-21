@@ -60,7 +60,7 @@ define('APP_ENV', EnvLoader::get('APP_ENV', 'development'));
 define('APP_BASE_PATH', trim((string) EnvLoader::get('APP_BASE_PATH', ''), '/'));
 
 // Zona horaria: BD guarda TIMESTAMP sin TZ (servidor PostgreSQL suele ser UTC).
-define('DB_TIMEZONE', EnvLoader::get('DB_TIMEZONE', 'UTC'));
+define('DB_TIMEZONE', EnvLoader::get('DB_TIMEZONE', 'America/Bogota'));
 define('APP_TIMEZONE', EnvLoader::get('APP_TIMEZONE', 'America/Bogota'));
 date_default_timezone_set(APP_TIMEZONE);
 

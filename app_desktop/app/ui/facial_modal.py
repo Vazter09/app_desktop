@@ -7,14 +7,16 @@ el mismo panel (p. ej. desde la página de salida).
 
 Tras identificar un rostro, consulta `ingreso/consultar.php`:
   - si puede ingresar → registra ingreso
-  - si ya tiene ingreso abierto → registra salida (sin mensaje de error)
+  - si hay ingreso abierto y aún no pasan 5 min → UPDATE de captura
+  - si hay ingreso abierto y ya pasaron 5 min → registra salida
 
 ESTADO: flujo completo real (facial). Huella: solo UI por ahora.
 1. Cámara en vivo (`ui/camera.py`, OpenCV).
 2. Motor de embeddings (`motor/embeddings.py`, SFace + YuNet).
 3. "Enrolar": documento + frame → `biometria/enrolar.php`.
-4. "Identificar": frame → `biometria/identificar.php` → modal de
-   confirmación → ingreso o salida según estado en BD (`metodo_aut=4`).
+4. "Identificar": frame → `biometria/identificar.php` → panel
+   «Persona encontrada» (~2.5 s) → ingreso / actualizar / salida
+   (`metodo_aut=4`) y vuelve al formulario vacío.
 """
 from __future__ import annotations
 
@@ -44,7 +46,7 @@ from ui.identification_confirmation_modal import IdentificationConfirmationPanel
 from ui.ingreso_form_panel import IngresoFormPanel
 from ui.window_utils import centrar_ventana_al_mostrar
 
-Modo = Literal["ingreso", "salida"]
+Modo = Literal["ingreso", "salida", "actualizar_captura", "espera_reingreso"]
 
 # Tres secciones: cámara | formulario | huella.
 # Alto base generoso para emparejar el formulario central.
@@ -842,26 +844,27 @@ class FacialRecognitionPanel(ttk.Frame):
         if resultado.get("foto_base64"):
             persona_datos["foto_base64"] = resultado.get("foto_base64")
         persona_datos["_modo_acceso"] = modo_efectivo
-        accion = "ingreso" if modo_efectivo == "ingreso" else "salida"
-        if self._form_panel is not None:
-            self._form_panel.aplicar_persona_identificada(persona_datos)
+
+        if modo_efectivo == "espera_reingreso":
+            self._avisar_espera_reingreso(documento, desde_huella=True)
+            return
+
+        accion = self._etiqueta_accion(modo_efectivo)
         if self._huella_scan is not None:
             self._huella_scan.set_exito(True)
             self._huella_scan.set_mensaje(
                 f"Identificado — {accion}", theme.SUCCESS
             )
         self._set_estado(
-            f"✅ Identificado por huella — se registrará {accion}...",
+            f"✅ Identificado por huella — {accion}...",
             theme.SUCCESS,
         )
         self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
 
-    # ---- Identificar + abrir confirmación (2026-07-09) ------------------
-
     def _mostrar_confirmacion_centro(
         self, persona_datos: dict, modo_efectivo: Modo
     ) -> None:
-        """Sustituye el formulario central por el panel de confirmación."""
+        """Sustituye temporalmente el formulario por «Persona encontrada» (~2.5 s)."""
         if self._centro_wrap is None:
             return
         if self._confirmacion_modal is not None:
@@ -882,6 +885,7 @@ class FacialRecognitionPanel(ttk.Frame):
             persona_datos,
             modo=modo_efectivo,
             on_confirmar=self._on_confirmacion_modal,
+            auto_registro=True,
             persona_existente=True,
             on_cerrado=self._restaurar_formulario_central,
         )
@@ -889,13 +893,17 @@ class FacialRecognitionPanel(ttk.Frame):
         self._confirmacion_modal = panel
 
     def _restaurar_formulario_central(self) -> None:
-        """Vuelve a mostrar el formulario al cerrar la confirmación."""
+        """Vuelve al formulario vacío tras el panel de confirmación."""
         self._confirmacion_modal = None
         self._confirmacion_abierta = False
         self._rostro_consecutivos = 0
+        self._ultimo_embedding = None
         self._cooldown_hasta_ms = time.monotonic() * 1000 + 1500
         if self._form_panel is not None and self._form_panel.winfo_exists():
+            self._form_panel.limpiar()
             self._form_panel.grid()
+        if self._on_registrado is not None:
+            self._on_registrado()
         indice = self._camara_indice_seleccionado
         if indice is None:
             indice = 0
@@ -924,7 +932,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._ultimo_metodo_biometrico = 4
 
         self._set_estado("🔍 Buscando en base de datos...", theme.CYAN)
-        self.update()  # Refrescar UI
+        self.update()
 
         try:
             resultado = self._client.biometria_identificar(embedding)
@@ -940,8 +948,6 @@ class FacialRecognitionPanel(ttk.Frame):
             self._cooldown_hasta_ms = time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
             return
 
-        # Modal de confirmación: foto + datos. El modo (ingreso/salida)
-        # se decide con el estado real en BD, no con el botón del sidebar.
         persona_datos = dict(resultado.get("persona") or {})
         documento = str(
             persona_datos.get("documento")
@@ -964,26 +970,71 @@ class FacialRecognitionPanel(ttk.Frame):
             persona_datos["foto_base64"] = self._frame_a_base64(self._ultimo_frame)
 
         persona_datos["_modo_acceso"] = modo_efectivo
-        accion = "ingreso" if modo_efectivo == "ingreso" else "salida"
-        if self._form_panel is not None:
-            self._form_panel.aplicar_persona_identificada(persona_datos)
+
+        if modo_efectivo == "espera_reingreso":
+            self._avisar_espera_reingreso(documento, desde_huella=False)
+            return
+
+        accion = self._etiqueta_accion(modo_efectivo)
         self._set_estado(
-            f"✅ Identificado — se registrará {accion}...",
+            f"✅ Identificado — {accion}...",
             theme.SUCCESS,
         )
         self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
 
+    def _avisar_espera_reingreso(
+        self, documento: str, *, desde_huella: bool = False
+    ) -> None:
+        """Cooldown post-salida: aviso sin modal ni PII; formulario visible."""
+        consulta = self._client.ingreso_consultar(documento, "CC")
+        rest = int(consulta.get("segundos_restantes_reingreso") or 0)
+        min_rest = max(1, (rest + 59) // 60)
+        msg = (
+            f"Salida reciente: espere ~{min_rest} min para un nuevo ingreso "
+            "(mínimo 5 min)."
+        )
+        if desde_huella and self._huella_scan is not None:
+            self._huella_scan.set_exito(True)
+            self._huella_scan.set_mensaje("Espere 5 min", theme.CYAN)
+        self._set_estado(f"⏳ {msg}", theme.CYAN)
+        self._identificando = False
+        self._confirmacion_abierta = False
+        self._rostro_consecutivos = 0
+        self._ultimo_embedding = None
+        self._cooldown_hasta_ms = time.monotonic() * 1000 + 2000
+        if self._form_panel is not None and self._form_panel.winfo_exists():
+            self._form_panel.limpiar()
+            self._form_panel.grid()
+        if self._on_registrado is not None:
+            self._on_registrado()
+
+    @staticmethod
+    def _etiqueta_accion(modo: Modo) -> str:
+        if modo == "ingreso":
+            return "se registrará ingreso"
+        if modo == "salida":
+            return "se registrará salida"
+        if modo == "espera_reingreso":
+            return "espere 5 min para un nuevo ingreso"
+        return "se actualizará la captura del ingreso"
+
     def _resolver_modo_acceso(self, documento: str) -> Modo:
-        """Ingreso si no hay abierto; salida si ya está dentro."""
+        """Ingreso / actualizar captura / salida / espera post-salida."""
         if not documento:
             raise SmartcsetApiError("Documento vacío tras la identificación.")
         consulta = self._client.ingreso_consultar(documento, "CC")
+        if consulta.get("en_ventana_recaptura") or consulta.get("puede_actualizar_captura"):
+            return "actualizar_captura"
+        if consulta.get("puede_salir"):
+            return "salida"
+        if consulta.get("en_espera_reingreso"):
+            return "espera_reingreso"
         if consulta.get("puede_ingresar"):
             return "ingreso"
-        return "salida"
+        return "espera_reingreso"
 
     def _on_confirmacion_modal(self, persona_datos: dict) -> None:
-        """Registra ingreso o salida según el estado actual en BD."""
+        """Acción al confirmar el panel (auto ~2.5 s o botón)."""
         documento = str(
             persona_datos.get("documento") or persona_datos.get("num_docum") or ""
         )
@@ -991,24 +1042,74 @@ class FacialRecognitionPanel(ttk.Frame):
             f"{persona_datos.get('nombres', '')} {persona_datos.get('apellidos', '')}"
         ).strip()
 
-        # Reconsultar al confirmar (evita carrera si el estado cambió).
         modo = self._resolver_modo_acceso(documento)
-        if modo == "ingreso":
-            self._registrar_ingreso_identificado(documento, nombre, persona_datos)
-        else:
-            self._registrar_salida_identificada(documento, nombre)
+        if modo == "espera_reingreso":
+            self._avisar_espera_reingreso(documento)
+            return
 
-        if self._on_registrado is not None:
-            self._on_registrado()
+        try:
+            if modo == "ingreso":
+                self._registrar_ingreso_identificado(documento, nombre, persona_datos)
+            elif modo == "actualizar_captura":
+                self._actualizar_captura_identificada(documento, nombre)
+            else:
+                self._registrar_salida_identificada(documento, nombre)
+        except (SmartcsetApiError, SmartcsetConnectionError):
+            consulta = self._client.ingreso_consultar(documento, "CC")
+            if consulta.get("puede_actualizar_captura") or consulta.get(
+                "en_ventana_recaptura"
+            ):
+                self._actualizar_captura_identificada(documento, nombre)
+            elif consulta.get("en_espera_reingreso"):
+                self._avisar_espera_reingreso(documento)
+            else:
+                raise
+
+    def _payload_biometrico_basico(self, documento: str, nombre: str = "") -> dict:
+        metodo = self._ultimo_metodo_biometrico
+        obs = (
+            "Re-captura por huella dactilar."
+            if metodo == 5
+            else "Re-captura por reconocimiento facial."
+        )
+        payload: dict = {
+            "tipo_doc": "CC",
+            "documento": documento,
+            "observaciones": obs,
+            "metodo_aut": metodo,
+        }
+        if metodo == 4 and self._ultimo_embedding is not None:
+            payload["embedding"] = self._ultimo_embedding
+        if metodo == 5 and self._ultimo_huella_b64:
+            payload["huella_template_b64"] = self._ultimo_huella_b64
+        return payload
 
     def _registrar_ingreso_identificado(
         self, documento: str, nombre: str, persona_datos: dict | None = None
     ) -> None:
         consulta = self._client.ingreso_consultar(documento, "CC")
-        if not consulta.get("puede_ingresar"):
-            # Ya dentro → salida (no mostrar "ya tiene ingreso abierto").
-            self._registrar_salida_identificada(documento, nombre)
+        if consulta.get("puede_actualizar_captura"):
+            self._actualizar_captura_identificada(documento, nombre)
             return
+        if not consulta.get("puede_ingresar"):
+            if consulta.get("puede_salir"):
+                self._registrar_salida_identificada(documento, nombre)
+                return
+            if consulta.get("en_espera_reingreso"):
+                rest = int(consulta.get("segundos_restantes_reingreso") or 0)
+                min_rest = max(1, (rest + 59) // 60)
+                msg = (
+                    f"Debe esperar ~{min_rest} min tras la salida "
+                    "para un nuevo ingreso."
+                )
+                self._set_estado(f"⏳ {msg}", theme.CYAN)
+                raise SmartcsetApiError(msg)
+            if consulta.get("puede_actualizar_captura"):
+                self._actualizar_captura_identificada(documento, nombre)
+                return
+            msg = f"{nombre}: no se puede registrar ingreso en este momento."
+            self._set_estado(msg, theme.CYAN)
+            raise SmartcsetApiError(msg)
 
         # Puerta: primera del catálogo hasta config local por PC.
         entradas = self._client.catalogos().get("entradas", [])
@@ -1046,9 +1147,33 @@ class FacialRecognitionPanel(ttk.Frame):
             )
         self._set_estado(f"Ingreso registrado: {nombre}.", theme.SUCCESS)
 
+    def _actualizar_captura_identificada(self, documento: str, nombre: str) -> None:
+        metodo = self._ultimo_metodo_biometrico
+        payload = self._payload_biometrico_basico(documento, nombre)
+        if "embedding" not in payload and "huella_template_b64" not in payload:
+            raise SmartcsetApiError(
+                "No hay captura biométrica para actualizar el ingreso."
+            )
+
+        self._client.ingreso_actualizar_captura(payload)
+        if metodo == 5 and self._huella_scan is not None:
+            self._huella_scan.set_exito(True)
+            self._huella_scan.set_mensaje(
+                f"Captura OK\n{nombre}", theme.SUCCESS
+            )
+        self._set_estado(
+            f"Captura actualizada: {nombre}.",
+            theme.SUCCESS,
+        )
+
     def _registrar_salida_identificada(self, documento: str, nombre: str) -> None:
         consulta = self._client.salida_consultar(documento, "CC")
         if not consulta.get("puede_salir"):
+            rest = int(consulta.get("segundos_restantes_salida") or 0)
+            if rest > 0 or consulta.get("ingreso_abierto"):
+                # Aún dentro de la ventana mínima → actualizar captura, no error.
+                self._actualizar_captura_identificada(documento, nombre)
+                return
             self._set_estado(
                 f"{nombre}: no tiene un ingreso abierto para registrar salida.",
                 theme.ERROR,

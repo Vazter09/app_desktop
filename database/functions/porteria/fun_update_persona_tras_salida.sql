@@ -4,14 +4,19 @@ CREATE OR REPLACE FUNCTION fun_update_persona_tras_salida(
     wid_persona tab_personas.id_persona%TYPE
 ) RETURNS VOID AS $$
 DECLARE
+    wts_salida   TIMESTAMP WITHOUT TIME ZONE;
     w_exc_state  TEXT;
     w_exc_msg    TEXT;
     w_exc_detail TEXT;
     w_exc_hint   TEXT;
 BEGIN
+    -- GREATEST evita violar CHECK (fec_ultima_salida >= fec_ultima_entrada)
+    -- cuando fec_ultima_entrada quedó en otra zona (p. ej. UTC residual).
+    wts_salida := CURRENT_TIMESTAMP;
+
     UPDATE tab_personas
-    SET fec_ultima_salida = CURRENT_TIMESTAMP
-    WHERE id_persona = wid_persona;
+       SET fec_ultima_salida = GREATEST(fec_ultima_entrada, wts_salida)
+     WHERE id_persona = wid_persona;
 
     IF NOT FOUND THEN
         PERFORM smartcset_raise_no_encontrado(

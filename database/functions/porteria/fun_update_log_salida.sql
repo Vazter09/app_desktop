@@ -31,6 +31,20 @@ BEGIN
         wts_salida := wts_ingreso + interval '1 microsecond';
     END IF;
 
+    -- Mínimo 5 minutos entre ingreso y salida.
+    -- Re-capturas (< 5 min) actualizan el ingreso abierto; no crean otro ni cierran.
+    IF EXTRACT(EPOCH FROM (wts_salida - wts_ingreso)) < 300 THEN
+        PERFORM smartcset_raise_negocio(
+            format(
+                'Debe esperar al menos 5 minutos desde el ingreso (%s) para registrar la salida. Tiempo transcurrido: %s min.',
+                to_char(wts_ingreso, 'HH24:MI:SS'),
+                ROUND(EXTRACT(EPOCH FROM (wts_salida - wts_ingreso)) / 60.0, 1)::TEXT
+            ),
+            'id_ingreso=' || wid_ingreso::TEXT,
+            'Espere a completar el tiempo mínimo e intente de nuevo.'
+        );
+    END IF;
+
     UPDATE tab_log_ingresos
     SET fec_salida = wts_salida,
         val_observaciones = CASE

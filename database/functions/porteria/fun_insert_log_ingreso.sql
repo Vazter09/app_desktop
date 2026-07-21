@@ -7,6 +7,10 @@ DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
     tab_log_ingresos.val_datos_origen%TYPE,
     tab_log_ingresos.val_observaciones%TYPE
 );
+-- Firma legacy en servidores sin val_datos_origen (4 args TEXT)
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    NUMERIC, NUMERIC, NUMERIC, TEXT
+);
 DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
     NUMERIC, NUMERIC, NUMERIC, JSONB, TEXT
 );
@@ -27,13 +31,15 @@ CREATE OR REPLACE FUNCTION fun_insert_log_ingreso(
     whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
-    wid_ingreso    INTEGER;
-    wts_ingreso    TIMESTAMP WITHOUT TIME ZONE;
-    wid_existente  INTEGER;
-    w_exc_state    TEXT;
-    w_exc_msg      TEXT;
-    w_exc_detail   TEXT;
-    w_exc_hint     TEXT;
+    wid_ingreso         INTEGER;
+    wts_ingreso         TIMESTAMP WITHOUT TIME ZONE;
+    wid_existente       INTEGER;
+    wts_ultima_salida   TIMESTAMP WITHOUT TIME ZONE;
+    wseg_desde_salida   NUMERIC;
+    w_exc_state         TEXT;
+    w_exc_msg           TEXT;
+    w_exc_detail        TEXT;
+    w_exc_hint          TEXT;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM tab_personas WHERE id_persona = wid_visitante) THEN
         PERFORM smartcset_raise_no_encontrado(
@@ -69,6 +75,30 @@ BEGIN
             'id_visitante=' || wid_visitante::TEXT,
             'Use el módulo Registro salida.'
         );
+    END IF;
+
+    -- Mínimo 5 minutos entre la última salida cerrada y un nuevo ingreso.
+    SELECT l.fec_salida
+      INTO wts_ultima_salida
+      FROM tab_log_ingresos l
+     WHERE l.id_visitante = wid_visitante
+       AND l.fec_salida > l.fec_ingreso
+     ORDER BY l.fec_salida DESC
+     LIMIT 1;
+
+    IF wts_ultima_salida IS NOT NULL THEN
+        wseg_desde_salida := EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - wts_ultima_salida));
+        IF wseg_desde_salida < 300 THEN
+            PERFORM smartcset_raise_negocio(
+                format(
+                    'Debe esperar al menos 5 minutos desde la última salida (%s) para registrar un nuevo ingreso. Tiempo transcurrido: %s min.',
+                    to_char(wts_ultima_salida, 'HH24:MI:SS'),
+                    ROUND(wseg_desde_salida / 60.0, 1)::TEXT
+                ),
+                'id_visitante=' || wid_visitante::TEXT,
+                'Espere a completar el tiempo mínimo e intente de nuevo.'
+            );
+        END IF;
     END IF;
 
     wts_ingreso := CURRENT_TIMESTAMP;

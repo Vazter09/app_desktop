@@ -38,6 +38,15 @@ try {
         'persona' => PorteriaRouterPayload::formatPersona($resultado['persona']),
         'ingreso_abierto' => PorteriaRouterPayload::formatIngresoAbierto($resultado['ingreso_abierto']),
         'puede_ingresar' => (bool) $resultado['puede_ingresar'],
+        'puede_salir' => (bool) ($resultado['puede_salir'] ?? false),
+        'puede_actualizar_captura' => (bool) ($resultado['puede_actualizar_captura'] ?? false),
+        'en_ventana_recaptura' => (bool) ($resultado['en_ventana_recaptura'] ?? false),
+        'en_espera_reingreso' => (bool) ($resultado['en_espera_reingreso'] ?? false),
+        'segundos_restantes_salida' => (int) ($resultado['segundos_restantes_salida'] ?? 0),
+        'segundos_restantes_reingreso' => (int) ($resultado['segundos_restantes_reingreso'] ?? 0),
+        'segundos_min_salida' => (int) ($resultado['segundos_min_salida'] ?? PORTERIA_SEGUNDOS_MIN_SALIDA),
+        'minutos_min_salida' => (int) ($resultado['minutos_min_salida'] ?? PORTERIA_MINUTOS_MIN_SALIDA),
+        'minutos_min_reingreso' => (int) ($resultado['minutos_min_reingreso'] ?? PORTERIA_MINUTOS_MIN_REINGRESO),
     ]);
 } catch (Throwable $e) {
     RouterResponse::fail(ErrorHandler::userMessageFromException($e));

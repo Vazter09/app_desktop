@@ -29,12 +29,9 @@ from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
 from ui.shell import AppShell  # noqa: E402
 
-# Login compacto (~card web 380px + márgenes). Tras autenticar se amplía
-# para las 3 columnas de portería.
-LOGIN_WIDTH = 480
-LOGIN_HEIGHT = 560
-APP_WIDTH = 1280
-APP_HEIGHT = 860
+# Ventana maximizada desde el arranque (login y portería).
+APP_MIN_WIDTH = 1280
+APP_MIN_HEIGHT = 860
 
 
 class SmartcsetDesktopApp:
@@ -46,7 +43,7 @@ class SmartcsetDesktopApp:
 
         self.root = tk.Tk()
         self.root.title("SmartCSET · App Escritorio SGI")
-        self._apply_login_geometry()
+        self._aplicar_pantalla_completa()
 
         theme.apply_theme(self.root)
 
@@ -58,13 +55,18 @@ class SmartcsetDesktopApp:
         self._install_signal_handlers()
         self._show_login()
 
-    def _apply_login_geometry(self) -> None:
-        self.root.geometry(f"{LOGIN_WIDTH}x{LOGIN_HEIGHT}")
-        self.root.minsize(LOGIN_WIDTH, LOGIN_HEIGHT)
-
-    def _apply_app_geometry(self) -> None:
-        self.root.geometry(f"{APP_WIDTH}x{APP_HEIGHT}")
-        self.root.minsize(APP_WIDTH, APP_HEIGHT)
+    def _aplicar_pantalla_completa(self) -> None:
+        """Abre maximizada (barra de título visible; no fullscreen sin bordes)."""
+        self.root.minsize(APP_MIN_WIDTH, APP_MIN_HEIGHT)
+        try:
+            # Windows / varios gestores: maximizada.
+            self.root.state("zoomed")
+        except tk.TclError:
+            # Fallback: ocupar casi toda el área usable.
+            self.root.update_idletasks()
+            ancho = max(APP_MIN_WIDTH, self.root.winfo_screenwidth())
+            alto = max(APP_MIN_HEIGHT, self.root.winfo_screenheight() - 40)
+            self.root.geometry(f"{ancho}x{alto}+0+0")
 
     def _install_signal_handlers(self) -> None:
         # Ctrl+C / cierre del proceso: liberar sesión BD (WM_DELETE no corre).
@@ -102,7 +104,7 @@ class SmartcsetDesktopApp:
     def _show_login(self) -> None:
         self._logged_in = False
         self._logout_done = False
-        self._apply_login_geometry()
+        self._aplicar_pantalla_completa()
         self._clear()
         view = LoginView(self.root, self.client, on_success=self._show_dashboard)
         view.pack(fill="both", expand=True)
@@ -111,7 +113,7 @@ class SmartcsetDesktopApp:
     def _show_dashboard(self, usuario: dict) -> None:
         self._logged_in = True
         self._logout_done = False
-        self._apply_app_geometry()
+        self._aplicar_pantalla_completa()
         self._clear()
         view = AppShell(
             self.root, self.client, usuario, on_logout=self._show_login

@@ -140,6 +140,60 @@ function ingresoRegistrarManual(
 }
 
 /**
+ * Actualiza facial/huella del ingreso abierto (re-captura sin nuevo ingreso).
+ *
+ * @return int id_ingreso
+ */
+function ingresoActualizarCapturaAbierto(
+    PDOStatement $stmtFunActualizar,
+    PDOStatement $stmtIngresoAbierto,
+    array $datos
+): int {
+    $captura = accesoDocumentoDesdePost($datos);
+    $doc = $captura['documento'];
+    $metodoAut = (int) $captura['id_metodo_aut'];
+    $obs = trim((string) ($datos['txt_observaciones'] ?? ''));
+    $embedding = $datos['embedding'] ?? null;
+    $vectorTexto = null;
+    $huellaBytea = null;
+
+    if (is_array($embedding) && $embedding !== []) {
+        require_once __DIR__ . '/biometria_service.php';
+        $vectorTexto = biometriaEmbeddingATexto($embedding);
+    }
+
+    $huellaB64 = trim((string) ($datos['huella_template_b64'] ?? ''));
+    if ($huellaB64 !== '') {
+        require_once __DIR__ . '/biometria_huella_service.php';
+        $huellaBytea = biometriaHuellaAByteaLiteral(biometriaHuellaDesdeBase64($huellaB64));
+    }
+
+    if ($vectorTexto === null && $huellaBytea === null) {
+        throw new Exception('Debe enviar una captura facial o de huella.');
+    }
+
+    $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc);
+    if ($ingresoAbierto === null) {
+        throw new Exception('No tiene un ingreso activo para actualizar la captura.');
+    }
+
+    $stmtFunActualizar->execute([
+        $doc,
+        $vectorTexto,
+        $huellaBytea,
+        $metodoAut > 0 ? $metodoAut : null,
+        $obs !== '' ? $obs : null,
+    ]);
+
+    $idIngreso = $stmtFunActualizar->fetchColumn();
+    if ($idIngreso === false || (int) $idIngreso < 1) {
+        throw new Exception('No se pudo actualizar la captura del ingreso.');
+    }
+
+    return (int) $idIngreso;
+}
+
+/**
  * @return array<string, mixed>|null
  */
 function ingresoBuscarPersona(PDOStatement $stmtBuscar, string $documento, string $tipoDoc): ?array

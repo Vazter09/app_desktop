@@ -38,6 +38,8 @@ try {
         'persona' => PorteriaRouterPayload::formatPersona($resultado['persona']),
         'ingreso_abierto' => PorteriaRouterPayload::formatIngresoAbierto($resultado['ingreso_abierto']),
         'puede_salir' => (bool) $resultado['puede_salir'],
+        'segundos_restantes_salida' => (int) ($resultado['segundos_restantes_salida'] ?? 0),
+        'minutos_min_salida' => (int) ($resultado['minutos_min_salida'] ?? PORTERIA_MINUTOS_MIN_SALIDA),
     ]);
 } catch (Throwable $e) {
     RouterResponse::fail(ErrorHandler::userMessageFromException($e));

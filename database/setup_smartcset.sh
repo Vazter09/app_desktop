@@ -72,6 +72,9 @@ run_sql "$ROOT/database/migrations/alter_tab_enrolamiento_facial_vector_128.sql"
 run_sql "$ROOT/database/migrations/add_ruta_foto_enrolamiento.sql"
 
 echo "==> Migración biometría → tab_personas + tab_novedades_ingreso"
+run_sql "$ROOT/database/migrations/ensure_seq_log_ingresos.sql"
+run_sql "$ROOT/database/migrations/add_val_datos_origen_tab_log_ingresos.sql"
+run_sql "$ROOT/database/migrations/ensure_tri_act_tabla_log_ingresos.sql"
 run_sql "$ROOT/database/migrations/migrate_biometria_a_tab_personas.sql"
 run_sql "$ROOT/database/migrations/add_metodos_aut_biometricos.sql"
 
@@ -110,6 +113,7 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_upsert_persona_visitante.sql"
   "$ROOT/database/functions/porteria/fun_buscar_ingreso_abierto.sql"
   "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql"
+  "$ROOT/database/functions/porteria/fun_actualizar_captura_ingreso_abierto.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_registrar_ingreso_manual.sql"
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"

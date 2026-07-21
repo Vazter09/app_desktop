@@ -9,8 +9,11 @@ DECLARE
     w_exc_detail TEXT;
     w_exc_hint   TEXT;
 BEGIN
+    -- Ingreso abierto: fec_ultima_salida = fec_ultima_entrada (mismo patrón
+    -- que tab_log_ingresos). Si no, el CHECK fec_ultima_salida >= fec_ultima_entrada falla.
     UPDATE tab_personas
     SET fec_ultima_entrada = CURRENT_TIMESTAMP,
+        fec_ultima_salida  = CURRENT_TIMESTAMP,
         num_visitas        = num_visitas + 1
     WHERE id_persona = wid_persona;
 

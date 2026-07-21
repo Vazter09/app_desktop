@@ -157,7 +157,8 @@ try {
     );
     $stmt_buscar_persona_doc = $pdo->prepare(
         "SELECT p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
-                p.id_tipo_persona, tp.nom_tipo_persona
+                p.id_tipo_persona, tp.nom_tipo_persona,
+                p.fec_ultima_entrada, p.fec_ultima_salida
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          WHERE p.id_persona = ?::NUMERIC
@@ -200,6 +201,11 @@ try {
         ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR, ?::BYTEA
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
+
+    $sql_fun_actualizar_captura_ingreso = "SELECT fun_actualizar_captura_ingreso_abierto(
+        ?::NUMERIC, ?::VECTOR, ?::BYTEA, ?::DECIMAL, ?::TEXT
+    )";
+    $stmt_fun_actualizar_captura_ingreso = $pdo->prepare($sql_fun_actualizar_captura_ingreso);
 
     $sql_fun_insert_novedad_ingreso = "SELECT fun_insert_novedad_ingreso(
         ?::VARCHAR, ?::VARCHAR, ?::NUMERIC, ?::VECTOR, ?::VARCHAR, ?::BYTEA, ?::VARCHAR
