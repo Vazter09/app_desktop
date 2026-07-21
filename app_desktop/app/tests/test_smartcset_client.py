@@ -61,6 +61,13 @@ class TestLogin(unittest.TestCase):
         with self.assertRaises((SmartcsetApiError, SmartcsetConnectionError)):
             client_sin_login.ingresos_hoy()
 
+    def test_relogin_desktop_sin_logout_previo(self) -> None:
+        """Simula cierre accidental: login → logout omitido → segundo login."""
+        self.client.login(NONADMIN_USER, NONADMIN_PASS)
+        self.client._cookie_jar.clear()
+        data = self.client.login(NONADMIN_USER, NONADMIN_PASS)
+        self.assertEqual(data["usuario"]["id"], NONADMIN_USER)
+
 
 class TestPorteriaFlujoReal(unittest.TestCase):
     """Ciclo completo consultar -> registrar ingreso -> listar -> salida,
@@ -139,9 +146,9 @@ class TestPorteriaFlujoReal(unittest.TestCase):
 
 
 class TestBiometriaFacial(unittest.TestCase):
-    """Backend de biometría (tab_enrolamiento_facial + endpoints
+    """Backend de biometría (tab_personas.val_patron_facial + endpoints
     enrolar/identificar), sin cámara — vectores sintéticos de 128 dims
-    (dimensión real del modelo SFace, ver ui/motor/embeddings.py)."""
+    (dimensión real del modelo SFace)."""
 
     VECTOR_DIM = 128
 
@@ -230,6 +237,7 @@ class TestBiometriaFacial(unittest.TestCase):
                 "id_entrada": catalogos["entradas"][0]["id"],
                 "observaciones": "Identificado por reconocimiento facial.",
                 "metodo_aut": 4,
+                "embedding": vector,
             }
         )
 
@@ -239,26 +247,34 @@ class TestBiometriaFacial(unittest.TestCase):
         )
         self.assertEqual(metodo_real, "4")
 
+        emb_en_log = run_psql(
+            "SELECT CASE WHEN facial_embedding IS NULL THEN 'null' ELSE 'ok' END "
+            "FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(emb_en_log, "ok")
+
     def test_enrolar_con_foto_guarda_ruta_y_se_recupera_al_identificar(self) -> None:
         """2026-07-09: Opción A (servidor guarda el archivo, la app cachea).
-        Verifica de punta a punta: enrolar con foto -> ruta_foto_enrolamiento
-        queda NOT NULL en BD -> identificar devuelve foto_base64 no vacío
-        (la misma que se guardó, no una recién capturada — ver bug reportado
-        donde el modal mostraba el frame en vivo en lugar de la foto real
-        de enrolamiento)."""
+        Verifica: enrolar con foto -> ruta_foto_facial en tab_personas
+        -> identificar devuelve foto_base64."""
         vector = self._vector(42)
         foto = self._foto_base64_sintetica()
 
         self.client.biometria_enrolar(self.documento, vector, calidad_facial=88.0, foto_base64=foto)
 
         ruta_en_bd = run_psql(
-            "SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial ef "
-            "JOIN tab_personas p ON p.id_persona = ef.id_persona "
-            f"WHERE p.id_persona = '{self.documento}' "
-            "ORDER BY ef.fec_insert DESC LIMIT 1;"
+            "SELECT ruta_foto_facial FROM tab_personas "
+            f"WHERE id_persona = '{self.documento}';"
         )
-        self.assertTrue(ruta_en_bd, "ruta_foto_enrolamiento no debe quedar NULL tras enrolar con foto")
+        self.assertTrue(ruta_en_bd, "ruta_foto_facial no debe quedar NULL tras enrolar con foto")
         self.assertIn(f"{self.documento}", ruta_en_bd)
+
+        patron = run_psql(
+            "SELECT CASE WHEN val_patron_facial IS NULL THEN 'null' ELSE 'ok' END "
+            f"FROM tab_personas WHERE id_persona = '{self.documento}';"
+        )
+        self.assertEqual(patron, "ok")
 
         identificado = self.client.biometria_identificar(vector)
         self.assertTrue(identificado["match"])
@@ -287,6 +303,162 @@ class TestBiometriaFacial(unittest.TestCase):
 
         with self.assertRaises(SmartcsetApiError):
             self.client.biometria_enrolar(self.documento, vector, foto_base64=foto_invalida)
+
+    def test_ingreso_persona_inexistente_con_embedding_crea_novedad(self) -> None:
+        """Persona no en tab_personas + embedding → tab_novedades_ingreso
+        (no crea persona ni fila en tab_log_ingresos)."""
+        doc_fantasma = f"8{uuid.uuid4().int % 10**8:08d}"
+        vector = self._vector(77)
+        catalogos = self.client.catalogos()
+
+        resultado = self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": doc_fantasma,
+                "nombres": "NovedadTest",
+                "apellidos": "FacialAuto",
+                "tipo_persona": catalogos["tipos_persona"][0]["id"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "novedad facial test",
+                "metodo_aut": 4,
+                "embedding": vector,
+            }
+        )
+        self.assertIn("id_ingreso", resultado)
+        id_novedad = str(resultado["id_ingreso"])
+
+        existe_persona = run_psql(
+            f"SELECT COUNT(*) FROM tab_personas WHERE id_persona = '{doc_fantasma}';"
+        )
+        self.assertEqual(existe_persona, "0")
+
+        existe_log = run_psql(
+            f"SELECT COUNT(*) FROM tab_log_ingresos WHERE id_visitante = '{doc_fantasma}';"
+        )
+        self.assertEqual(existe_log, "0")
+
+        novedad = run_psql(
+            "SELECT CASE WHEN val_patron_facial IS NULL THEN 'null' ELSE 'ok' END "
+            f"FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';"
+        )
+        self.assertEqual(novedad, "ok")
+
+        run_psql(f"DELETE FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';")
+
+
+class TestBiometriaHuella(unittest.TestCase):
+    """Huella: plantilla en tab_personas + auditoría en log / novedad."""
+
+    def setUp(self) -> None:
+        close_stale_session(NONADMIN_USER)
+        self.client = _make_client()
+        self.client.login(NONADMIN_USER, NONADMIN_PASS)
+        self.documento = f"9{uuid.uuid4().int % 10**8:08d}"
+
+        catalogos = self.client.catalogos()
+        self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "nombres": "Test",
+                "apellidos": "Huella",
+                "tipo_persona": catalogos["tipos_persona"][0]["id"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "setup huella test",
+                "metodo_aut": 1,
+            }
+        )
+        self.client.salida_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "observaciones": "cierre setup",
+                "metodo_aut": 1,
+            }
+        )
+
+    def tearDown(self) -> None:
+        delete_test_persona(self.documento)
+        self.client.logout()
+
+    def _huella_b64(self, documento: str) -> str:
+        from motor.huella import capturar_template_prueba, template_a_base64
+
+        return template_a_base64(capturar_template_prueba(documento))
+
+    def test_ciclo_enrolar_identificar_huella(self) -> None:
+        plantilla = self._huella_b64(self.documento)
+        self.client.biometria_huella_enrolar(self.documento, plantilla)
+        en_bd = run_psql(
+            "SELECT CASE WHEN val_huella_digital IS NULL THEN 'null' ELSE 'ok' END "
+            f"FROM tab_personas WHERE id_persona = '{self.documento}';"
+        )
+        self.assertEqual(en_bd, "ok")
+
+        id_match = self.client.biometria_huella_identificar(plantilla)
+        self.assertTrue(id_match["match"])
+        self.assertEqual(str(id_match["persona"]["documento"]), self.documento)
+
+    def test_ingreso_por_huella_escribe_template_en_log(self) -> None:
+        plantilla = self._huella_b64(self.documento)
+        self.client.biometria_huella_enrolar(self.documento, plantilla)
+        persona = self.client.biometria_huella_identificar(plantilla)["persona"]
+        catalogos = self.client.catalogos()
+        self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "nombres": persona["nombres"],
+                "apellidos": persona["apellidos"],
+                "tipo_persona": persona["tipo_persona"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "Identificado por huella.",
+                "metodo_aut": 5,
+                "huella_template_b64": plantilla,
+            }
+        )
+        metodo = run_psql(
+            "SELECT id_metodo_aut FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(metodo, "5")
+        tpl = run_psql(
+            "SELECT CASE WHEN huella_template IS NULL THEN 'null' ELSE 'ok' END "
+            "FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(tpl, "ok")
+
+    def test_ingreso_huella_persona_inexistente_crea_novedad(self) -> None:
+        doc_fantasma = f"8{uuid.uuid4().int % 10**8:08d}"
+        plantilla = self._huella_b64(doc_fantasma)
+        catalogos = self.client.catalogos()
+        resultado = self.client.ingreso_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": doc_fantasma,
+                "nombres": "NovedadTest",
+                "apellidos": "HuellaAuto",
+                "tipo_persona": catalogos["tipos_persona"][0]["id"],
+                "id_entrada": catalogos["entradas"][0]["id"],
+                "observaciones": "novedad huella test",
+                "metodo_aut": 5,
+                "huella_template_b64": plantilla,
+            }
+        )
+        id_novedad = str(resultado["id_ingreso"])
+        self.assertEqual(
+            run_psql(
+                f"SELECT COUNT(*) FROM tab_personas WHERE id_persona = '{doc_fantasma}';"
+            ),
+            "0",
+        )
+        novedad = run_psql(
+            "SELECT CASE WHEN val_huella_digital IS NULL THEN 'null' ELSE 'ok' END "
+            f"FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';"
+        )
+        self.assertEqual(novedad, "ok")
+        run_psql(f"DELETE FROM tab_novedades_ingreso WHERE id_novedad = '{id_novedad}';")
 
 
 if __name__ == "__main__":

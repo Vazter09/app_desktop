@@ -68,11 +68,16 @@ try {
     $stmt_registrar_intento->execute([$ip, $reg['id_usuario'], 'true', null, $userAgent]);
 
     $timeoutSesion = !empty($reg['ind_usuario']) ? SESSION_TIMEOUT : 0;
+
+    $origen = strtolower(trim((string) ($json['origen'] ?? '')));
+    $ultRuta = $origen === 'desktop' ? ACCESO_SESION_RUTA_DESKTOP : 'index.php';
+
     $idSesion = accesoIngresoSesion(
         $stmt_fun_ingreso_sesion,
         (string) $reg['id_usuario'],
         $ip,
-        $timeoutSesion
+        $timeoutSesion,
+        $ultRuta
     );
 
     session_regenerate_id(true);

@@ -63,10 +63,17 @@ run_sql "$ROOT/database/migrations/alter_tab_sesiones_auditoria.sql"
 echo "==> Migración tab_intentos_login (E3 — rate limiting)"
 run_sql "$ROOT/database/migrations/add_tab_intentos_login.sql"
 
+echo "==> Migración tab_comite_aprendices + id_motivo en tab_llamados_atencion (reconciliación con origin/main)"
+run_sql "$ROOT/database/migrations/add_tab_comite_aprendices_y_motivo_llamado.sql"
+
 echo "==> Migración tab_enrolamiento_facial (biometría facial — app escritorio SGI)"
 run_sql "$ROOT/database/migrations/add_tab_enrolamiento_facial.sql"
 run_sql "$ROOT/database/migrations/alter_tab_enrolamiento_facial_vector_128.sql"
 run_sql "$ROOT/database/migrations/add_ruta_foto_enrolamiento.sql"
+
+echo "==> Migración biometría → tab_personas + tab_novedades_ingreso"
+run_sql "$ROOT/database/migrations/migrate_biometria_a_tab_personas.sql"
+run_sql "$ROOT/database/migrations/add_metodos_aut_biometricos.sql"
 
 echo "==> Helpers de excepciones"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
@@ -108,8 +115,11 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_update_log_salida.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_salida.sql"
   "$ROOT/database/functions/porteria/fun_registrar_salida_manual.sql"
+  "$ROOT/database/functions/porteria/fun_insert_novedad_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_guardar_enrolamiento_facial.sql"
   "$ROOT/database/functions/porteria/fun_identificar_persona_por_rostro.sql"
+  "$ROOT/database/functions/porteria/fun_guardar_enrolamiento_huella.sql"
+  "$ROOT/database/functions/porteria/fun_identificar_persona_por_huella.sql"
   "$ROOT/database/functions/instructor/fun_marcar_ausentes_fecha.sql"
   "$ROOT/database/functions/instructor/fun_listar_fichas_instructor.sql"
   "$ROOT/database/functions/instructor/fun_listar_asistencia_ficha.sql"
@@ -167,6 +177,7 @@ for f in \
   "$ROOT/database/migrations/add_menu_sesiones_0206.sql" \
   "$ROOT/database/migrations/update_fun_salida_sesion_ip_mismatch.sql" \
   "$ROOT/database/migrations/update_fun_ingreso_sesion_cerrar_vencidas.sql" \
+  "$ROOT/database/migrations/update_fun_ingreso_sesion_desktop_reclaim.sql" \
   "$ROOT/database/migrations/add_tab_dispositivos_porteria.sql" \
   "$ROOT/database/migrations/reorganizacion_arquitectura_nom_programa.sql" \
   "$ROOT/database/migrations/add_idx_aprendices_fichas_aprendiz.sql" \

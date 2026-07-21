@@ -1,14 +1,13 @@
--- Identifica una persona por su vector facial: compara contra todos los
--- enrolamientos activos (distancia coseno, pgvector) y retorna
--- id_persona SOLO si la menor distancia está dentro del umbral. Si no
--- hay match dentro del umbral, retorna NULL (no lanza excepción — "no
--- encontrado" es una respuesta válida de este flujo, no un error).
+-- Identifica persona por vector facial contra tab_personas.val_patron_facial
+-- (distancia coseno pgvector). Retorna id_persona o NULL si no hay match.
+DROP FUNCTION IF EXISTS fun_identificar_persona_por_rostro(VECTOR, NUMERIC);
+
 CREATE OR REPLACE FUNCTION fun_identificar_persona_por_rostro(
-    wfacial_embedding    tab_enrolamiento_facial.facial_embedding%TYPE,
+    wfacial_embedding    tab_personas.val_patron_facial%TYPE,
     wumbral_distancia    NUMERIC DEFAULT 0.35
-) RETURNS tab_enrolamiento_facial.id_persona%TYPE AS $$
+) RETURNS tab_personas.id_persona%TYPE AS $$
 DECLARE
-    wid_persona   tab_enrolamiento_facial.id_persona%TYPE;
+    wid_persona   tab_personas.id_persona%TYPE;
     wdistancia    NUMERIC;
     w_exc_state   TEXT;
     w_exc_msg     TEXT;
@@ -19,12 +18,13 @@ BEGIN
         PERFORM smartcset_raise_validacion('El vector facial es obligatorio.');
     END IF;
 
-    SELECT id_persona, facial_embedding <=> wfacial_embedding
-        INTO wid_persona, wdistancia
-        FROM tab_enrolamiento_facial
-        WHERE ind_activo = TRUE
-        ORDER BY facial_embedding <=> wfacial_embedding
-        LIMIT 1;
+    SELECT p.id_persona, p.val_patron_facial <=> wfacial_embedding
+      INTO wid_persona, wdistancia
+      FROM tab_personas p
+     WHERE p.val_patron_facial IS NOT NULL
+       AND p.ind_estado = TRUE
+     ORDER BY p.val_patron_facial <=> wfacial_embedding
+     LIMIT 1;
 
     IF wid_persona IS NULL OR wdistancia > wumbral_distancia THEN
         RETURN NULL;

@@ -29,13 +29,16 @@ function ingresoConsultarAcceso(
 
 /**
  * Registra ingreso llamando fun_registrar_ingreso_manual en BD.
+ * Si viene embedding facial y/o huella y la persona NO existe → tab_novedades_ingreso.
  *
- * @return int id_ingreso creado
+ * @return int id_ingreso o id_novedad creado
  */
 function ingresoRegistrarManual(
     PDOStatement $stmtFunRegistrar,
     PDOStatement $stmtIngresoAbierto,
-    array $datos
+    array $datos,
+    ?PDOStatement $stmtNovedad = null,
+    ?PDOStatement $stmtBuscarPersona = null
 ): int {
     $captura = accesoDocumentoDesdePost($datos);
     $doc = $captura['documento'];
@@ -47,11 +50,26 @@ function ingresoRegistrarManual(
     $obs = trim($datos['txt_observaciones'] ?? '');
     $metodoAut = (int) $captura['id_metodo_aut'];
     $capturaPdf417 = $captura['origen'] === 'pdf417';
+    $embedding = $datos['embedding'] ?? null;
+    $vectorTexto = null;
+    $huellaBytea = null;
+
+    if (is_array($embedding) && $embedding !== []) {
+        require_once __DIR__ . '/biometria_service.php';
+        $vectorTexto = biometriaEmbeddingATexto($embedding);
+    }
+
+    $huellaB64 = trim((string) ($datos['huella_template_b64'] ?? ''));
+    if ($huellaB64 !== '') {
+        require_once __DIR__ . '/biometria_huella_service.php';
+        $huellaBytea = biometriaHuellaAByteaLiteral(biometriaHuellaDesdeBase64($huellaB64));
+    }
 
     if ($tipo === '') {
         throw new Exception('Seleccione el tipo de documento.');
     }
-    if ($tipoPersona < 1) {
+    $tieneBiometrico = ($vectorTexto !== null || $huellaBytea !== null);
+    if ($tipoPersona < 1 && !$tieneBiometrico) {
         throw new Exception('Seleccione el tipo de persona (aprendiz, instructor, visitante, etc.).');
     }
     if ($nom === '' || strlen($nom) < 2) {
@@ -59,6 +77,35 @@ function ingresoRegistrarManual(
     }
     if ($ape === '' || strlen($ape) < 2) {
         throw new Exception('Indique los apellidos de la persona.');
+    }
+    if ($puerta < 1) {
+        throw new Exception('Seleccione la puerta de ingreso.');
+    }
+
+    // Persona no registrada + biométrico → novedad (no crea tab_personas)
+    if ($tieneBiometrico && $stmtNovedad !== null && $stmtBuscarPersona !== null) {
+        $persona = ingresoBuscarPersona($stmtBuscarPersona, $doc, $tipo !== '' ? $tipo : 'CC');
+        if ($persona === null) {
+            $stmtNovedad->execute([
+                $nom,
+                $ape,
+                $puerta,
+                $vectorTexto,
+                null,
+                $huellaBytea,
+                null,
+            ]);
+            $idNovedad = $stmtNovedad->fetchColumn();
+            if ($idNovedad === false || (int) $idNovedad < 1) {
+                throw new Exception('No se pudo registrar la novedad de ingreso.');
+            }
+
+            return (int) $idNovedad;
+        }
+    }
+
+    if ($tipoPersona < 1) {
+        throw new Exception('Seleccione el tipo de persona (aprendiz, instructor, visitante, etc.).');
     }
 
     $ingresoAbierto = salidaBuscarIngresoAbierto($stmtIngresoAbierto, $doc);
@@ -78,8 +125,9 @@ function ingresoRegistrarManual(
         $puerta,
         $obs !== '' ? $obs : null,
         $metodoAut,
-        // PDO(pgsql) puede convertir `false` a string vacío; Postgres no acepta ""::boolean.
         $capturaPdf417 ? 'true' : 'false',
+        $vectorTexto,
+        $huellaBytea,
     ]);
 
     $idIngreso = $stmtFunRegistrar->fetchColumn();

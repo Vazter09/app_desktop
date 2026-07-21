@@ -22,6 +22,43 @@ _ENV_FLAG = "SMARTCSET_VENV_ACTIVE"
 _REQUIREMENTS_HASH_FILE = ".requirements.hash"
 
 
+def _same_python(left: str, right: str) -> bool:
+    return os.path.normcase(os.path.abspath(left)) == os.path.normcase(
+        os.path.abspath(right)
+    )
+
+
+def _is_venv_interpreter(exe: str, venv_dir: str, is_windows: bool) -> bool:
+    if is_windows:
+        scripts = os.path.join(venv_dir, "Scripts")
+        if (
+            _same_python(exe, os.path.join(scripts, "python.exe"))
+            or _same_python(exe, os.path.join(scripts, "pythonw.exe"))
+        ):
+            return True
+        # Fallback: con acentos en la ruta, abspath/normcase a veces no
+        # coinciden byte a byte y el re-exec deja dos procesos.
+        exe_norm = os.path.normcase(os.path.abspath(exe))
+        scripts_norm = os.path.normcase(os.path.abspath(scripts))
+        base = os.path.basename(exe_norm)
+        return exe_norm.startswith(scripts_norm + os.sep) and base in {
+            "python.exe",
+            "pythonw.exe",
+        }
+    return _same_python(exe, os.path.join(venv_dir, "bin", "python3"))
+
+
+def _reexec_launcher(venv_dir: str, is_windows: bool) -> str:
+    """pythonw.exe en Windows evita la ventana negra de consola (solo GUI)."""
+    if is_windows:
+        scripts = os.path.join(venv_dir, "Scripts")
+        pythonw = os.path.join(scripts, "pythonw.exe")
+        if os.path.isfile(pythonw):
+            return pythonw
+        return os.path.join(scripts, "python.exe")
+    return os.path.join(venv_dir, "bin", "python3")
+
+
 def ensure_venv() -> None:
     """Garantiza que el proceso actual corre con el Python del `.venv`
     local. Si no es así, lo crea/instala si hace falta y se re-ejecuta.
@@ -37,6 +74,10 @@ def ensure_venv() -> None:
     is_windows = os.name == "nt"
     venv_python = os.path.join(venv_dir, "Scripts", "python.exe") if is_windows \
         else os.path.join(venv_dir, "bin", "python3")
+
+    if _is_venv_interpreter(sys.executable, venv_dir, is_windows):
+        os.environ[_ENV_FLAG] = "1"
+        return
 
     requirements_file = os.path.join(app_dir, "requirements.txt")
     hash_file = os.path.join(app_dir, _REQUIREMENTS_HASH_FILE)
@@ -83,4 +124,13 @@ def ensure_venv() -> None:
 
     env = os.environ.copy()
     env[_ENV_FLAG] = "1"
-    os.execve(venv_python, [venv_python, os.path.abspath(sys.argv[0]), *sys.argv[1:]], env)
+    script = os.path.abspath(sys.argv[0])
+    launcher = _reexec_launcher(venv_dir, is_windows)
+    args = [launcher, script, *sys.argv[1:]]
+
+    if is_windows:
+        # Popen + _exit: el padre no debe seguir al GUI (app doble).
+        subprocess.Popen(args, env=env, cwd=app_dir)
+        os._exit(0)
+
+    os.execve(venv_python, args, env)

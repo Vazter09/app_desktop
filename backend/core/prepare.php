@@ -165,11 +165,46 @@ try {
          LIMIT 1"
     );
 
+    // Ficha completa de la persona (biometría facial — modal de confirmación,
+    // 2026-07-09). A diferencia de $stmt_buscar_persona_doc (lookup liviano
+    // reutilizado por ingreso/salida), esta trae TODOS los campos asignados
+    // en tab_personas + datos de aprendiz/ficha/programa si aplica (LEFT JOIN,
+    // NULL para el resto de tipos de persona).
+    $stmt_biometria_persona_completa = $pdo->prepare(
+        "SELECT p.id_persona, p.id_tipo_docum, td.nom_tipo_docum,
+                p.nom_persona, p.ape_persona, p.mail_persona,
+                p.fec_nacimiento, p.ind_genero,
+                p.tel_persona_fijo, p.tel_persona_movil,
+                p.dir_ciudad_reside, c.nom_ciudad, d.nom_dpto,
+                p.nom_contacto_emergencias, p.tel_contacto_emergencias,
+                p.num_visitas, p.fec_ultima_entrada, p.fec_ultima_salida,
+                p.ind_estado, p.id_tipo_persona, tp.nom_tipo_persona,
+                p.ruta_foto_facial,
+                ap.id_ficha, ap.ind_etdo_formacion, ap.num_llamados,
+                f.id_jornada, f.ind_modalidad,
+                pr.id_programa, pr.nom_programa
+         FROM tab_personas p
+         INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
+         INNER JOIN tab_tipos_docum td ON p.id_tipo_docum = td.id_tipo_docum
+         LEFT JOIN tab_ciudades c ON p.id_ciudad_reside = c.id_ciudad
+         LEFT JOIN tab_dptos d ON p.id_dpto_reside = d.id_dpto
+         LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
+         LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha
+         LEFT JOIN tab_programas pr ON pr.id_programa = f.id_programa
+         WHERE p.id_persona = ?::NUMERIC
+         LIMIT 1"
+    );
+
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
-        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN
+        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR, ?::BYTEA
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
+
+    $sql_fun_insert_novedad_ingreso = "SELECT fun_insert_novedad_ingreso(
+        ?::VARCHAR, ?::VARCHAR, ?::NUMERIC, ?::VECTOR, ?::VARCHAR, ?::BYTEA, ?::VARCHAR
+    )";
+    $stmt_fun_insert_novedad_ingreso = $pdo->prepare($sql_fun_insert_novedad_ingreso);
 
     // --- 6c. REGISTRO DE SALIDAS (portería → tab_log_ingresos.fec_salida) ---
     $stmt_list_salidas_hoy = $pdo->prepare(
@@ -207,8 +242,7 @@ try {
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
-    // --- 6c-bis. BIOMETRÍA FACIAL (app de escritorio SGI → tab_enrolamiento_facial) ---
-    // 2026-07-09: Agregado parámetro 4 (ruta_foto_enrolamiento)
+    // --- 6c-bis. BIOMETRÍA FACIAL (app escritorio → tab_personas.val_patron_facial) ---
     $sql_fun_guardar_enrolamiento_facial = "SELECT fun_guardar_enrolamiento_facial(
         ?::NUMERIC, ?::VECTOR, ?::NUMERIC, ?::VARCHAR
     )";
@@ -218,6 +252,16 @@ try {
         ?::VECTOR, ?::NUMERIC
     )";
     $stmt_fun_identificar_persona_por_rostro = $pdo->prepare($sql_fun_identificar_persona_por_rostro);
+
+    $sql_fun_guardar_enrolamiento_huella = "SELECT fun_guardar_enrolamiento_huella(
+        ?::NUMERIC, ?::BYTEA, ?::NUMERIC
+    )";
+    $stmt_fun_guardar_enrolamiento_huella = $pdo->prepare($sql_fun_guardar_enrolamiento_huella);
+
+    $sql_fun_identificar_persona_por_huella = "SELECT fun_identificar_persona_por_huella(
+        ?::BYTEA
+    )";
+    $stmt_fun_identificar_persona_por_huella = $pdo->prepare($sql_fun_identificar_persona_por_huella);
 
     // --- 6d. REGISTRO DE PERSONAS (módulo registro → tab_personas) ---
     $sql_fun_registrar_persona = "SELECT fun_registrar_persona(

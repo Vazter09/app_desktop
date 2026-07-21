@@ -8,6 +8,7 @@ require_once __DIR__ . '/documento_service.php';
 const ACCESO_METODO_MANUAL = 1;
 const ACCESO_METODO_BARRAS = 3;
 const ACCESO_METODO_BIOMETRICO = 4;
+const ACCESO_METODO_HUELLA = 5;
 const ACCESO_PDF417_MIN_LEN = 40;
 
 /**
@@ -129,6 +130,7 @@ function accesoDocumentoDesdePost(array $post): array
         $metodoPost === ACCESO_METODO_BARRAS
         || $metodoPost === ACCESO_METODO_MANUAL
         || $metodoPost === ACCESO_METODO_BIOMETRICO
+        || $metodoPost === ACCESO_METODO_HUELLA
     ) {
         $parsed['id_metodo_aut'] = $metodoPost;
     } elseif ($parsed['origen'] === 'pdf417') {

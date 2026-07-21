@@ -80,6 +80,55 @@ class PorteriaRouterPayload
     }
 
     /**
+     * Ficha completa de una persona para el modal de confirmación de
+     * biometría facial (2026-07-09) — a diferencia de formatPersona(),
+     * expone todos los campos personales asignados en tab_personas más
+     * los de aprendiz/ficha/programa cuando aplica (NULL si no aplica).
+     *
+     * @param array<string, mixed>|null $persona
+     * @return array<string, mixed>|null
+     */
+    public static function formatPersonaCompleta(?array $persona): ?array
+    {
+        if ($persona === null) {
+            return null;
+        }
+
+        return [
+            'id_persona' => (int) ($persona['id_persona'] ?? 0),
+            'tipo_doc' => (string) ($persona['id_tipo_docum'] ?? ''),
+            'nom_tipo_docum' => (string) ($persona['nom_tipo_docum'] ?? ''),
+            'documento' => (string) ($persona['id_persona'] ?? ''),
+            'nombres' => (string) ($persona['nom_persona'] ?? ''),
+            'apellidos' => (string) ($persona['ape_persona'] ?? ''),
+            'correo' => (string) ($persona['mail_persona'] ?? ''),
+            'fec_nacimiento' => (string) ($persona['fec_nacimiento'] ?? ''),
+            'genero' => (int) ($persona['ind_genero'] ?? 99),
+            'tel_fijo' => (string) ($persona['tel_persona_fijo'] ?? ''),
+            'tel_movil' => (string) ($persona['tel_persona_movil'] ?? ''),
+            'direccion' => (string) ($persona['dir_ciudad_reside'] ?? ''),
+            'ciudad' => (string) ($persona['nom_ciudad'] ?? ''),
+            'departamento' => (string) ($persona['nom_dpto'] ?? ''),
+            'contacto_emergencia' => (string) ($persona['nom_contacto_emergencias'] ?? ''),
+            'tel_contacto_emergencia' => (string) ($persona['tel_contacto_emergencias'] ?? ''),
+            'num_visitas' => (int) ($persona['num_visitas'] ?? 0),
+            'fec_ultima_entrada' => (string) ($persona['fec_ultima_entrada'] ?? ''),
+            'fec_ultima_salida' => (string) ($persona['fec_ultima_salida'] ?? ''),
+            'activo' => (bool) ($persona['ind_estado'] ?? true),
+            'tipo_persona' => (int) ($persona['id_tipo_persona'] ?? 0),
+            'nom_tipo_persona' => (string) ($persona['nom_tipo_persona'] ?? ''),
+            'id_ficha' => isset($persona['id_ficha']) ? (int) $persona['id_ficha'] : null,
+            'estado_formacion' => isset($persona['ind_etdo_formacion'])
+                ? (int) $persona['ind_etdo_formacion'] : null,
+            'num_llamados' => isset($persona['num_llamados']) ? (int) $persona['num_llamados'] : null,
+            'id_jornada' => isset($persona['id_jornada']) ? (int) $persona['id_jornada'] : null,
+            'ind_modalidad' => isset($persona['ind_modalidad']) ? (int) $persona['ind_modalidad'] : null,
+            'id_programa' => isset($persona['id_programa']) ? (int) $persona['id_programa'] : null,
+            'nom_programa' => (string) ($persona['nom_programa'] ?? ''),
+        ];
+    }
+
+    /**
      * @param array<string, mixed>|null $ingreso
      * @return array<string, mixed>|null
      */

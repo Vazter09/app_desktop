@@ -1571,7 +1571,8 @@ CREATE TABLE IF NOT EXISTS tab_personas
     ind_genero                  DECIMAL(2,0)                NOT NULL DEFAULT 99,  -- 99=No definido
  -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
     val_huella_digital          BYTEA,
-    val_patron_facial           JSONB,
+    val_patron_facial           VECTOR(128),
+    ruta_foto_facial            VARCHAR(500),
     fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     num_visitas                 SMALLINT                    NOT NULL DEFAULT 0,
@@ -2393,7 +2394,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     id_metodo_aut           DECIMAL(2,0)                NOT NULL,
     id_entrada_centro       DECIMAL(1,0)                NOT NULL,
 -- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario
-    facial_embedding        VECTOR(512),
+    facial_embedding        VECTOR(128),
     -- Plantilla binaria de la huella (Minucias)
     huella_template         BYTEA,
     -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo)
@@ -2417,6 +2418,30 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
 );
 -- Indices para optimización de búsquedas frecuentes
 CREATE INDEX idx_fec_ingresos ON tab_log_ingresos(fec_ingreso DESC);
+
+--=====================================================================================
+-- Novedades de ingreso: persona NO registrada + captura biométrica (facial/huella)
+--=====================================================================================
+CREATE SEQUENCE IF NOT EXISTS seq_novedades_ingreso
+    START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS tab_novedades_ingreso
+(
+    id_novedad          DECIMAL(10,0)               NOT NULL,
+    nom_tercero         VARCHAR(40)                 NOT NULL CHECK(LENGTH(TRIM(nom_tercero)) >= 3),
+    ape_tercero         VARCHAR(30)                 NOT NULL CHECK(LENGTH(TRIM(ape_tercero)) >= 2),
+    id_entrada_centro   DECIMAL(1,0)                NOT NULL,
+    val_huella_digital  BYTEA,
+    val_patron_facial   VECTOR(128),
+    uri_imagen_huella   VARCHAR(500),
+    uri_foto_facial     VARCHAR(500),
+    fec_ingreso         TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fec_salida          TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usr_insert          VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_insert          TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY (id_novedad),
+    FOREIGN KEY(id_entrada_centro)  REFERENCES tab_entradas_centro(id_entrada_centro)
+);
 
 --=====================================================================================
 

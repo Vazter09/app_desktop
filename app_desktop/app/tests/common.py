@@ -68,8 +68,16 @@ def run_psql(sql: str) -> str:
     pg_env["PGPASSWORD"] = env_vars.get("DB_PASS", "")
     pg_env.setdefault("PGSSLMODE", env_vars.get("DB_SSLMODE", "") or "prefer")
 
+    psql_bin = shutil.which("psql")
+    if not psql_bin:
+        candidate = Path(r"C:\Program Files\PostgreSQL\17\bin\psql.exe")
+        if candidate.is_file():
+            psql_bin = str(candidate)
+        else:
+            raise RuntimeError("psql no está disponible en PATH.")
+
     cmd = [
-        "psql",
+        psql_bin,
         "-h", env_vars.get("DB_HOST", "localhost"),
         "-p", env_vars.get("DB_PORT", "5432"),
         "-U", env_vars.get("DB_USER", "postgres"),
@@ -109,16 +117,22 @@ def close_stale_session(username: str) -> None:
 
 
 def delete_test_persona(documento: str) -> None:
-    """Limpia el registro de ingreso + enrolamiento facial + persona de
-    prueba creados por un test (orden importa: FK de enrolamiento/ingreso
-    hacia persona), más la carpeta de fotos de enrolamiento en filesystem
-    (2026-07-09 — Opción A: servidor guarda uploads/biometria/{id}/)."""
+    """Limpia ingreso + persona de prueba (y enrolamiento legacy si existe)."""
     try:
-        run_psql(f"DELETE FROM tab_enrolamiento_facial WHERE id_persona = '{documento}';")
+        run_psql(
+            "DELETE FROM tab_enrolamiento_facial "
+            f"WHERE id_persona = '{documento}';"
+        )
+    except RuntimeError:
+        pass
+    try:
         run_psql(f"DELETE FROM tab_log_ingresos WHERE id_visitante = '{documento}';")
         run_psql(f"DELETE FROM tab_personas WHERE id_persona = '{documento}';")
     except RuntimeError:
         pass
 
-    carpeta_fotos = PROJECT_ROOT / "frontend" / "web" / "public" / "uploads" / "biometria" / documento
+    carpeta_fotos = (
+        PROJECT_ROOT / "frontend" / "web" / "public" / "uploads" / "biometria" / documento
+    )
     shutil.rmtree(carpeta_fotos, ignore_errors=True)
+

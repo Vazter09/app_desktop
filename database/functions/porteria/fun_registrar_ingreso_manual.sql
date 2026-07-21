@@ -1,5 +1,28 @@
--- Proceso atómico: visitante + ingreso manual (portería).
--- La auditoría la gestiona el trigger fun_act_tabla() a través de app.usuario.
+-- Proceso atómico: visitante + ingreso. Opcional: facial y/o huella del evento.
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    tab_personas.id_persona%TYPE,
+    tab_personas.id_tipo_docum%TYPE,
+    tab_personas.id_tipo_persona%TYPE,
+    tab_personas.nom_persona%TYPE,
+    tab_personas.ape_persona%TYPE,
+    tab_log_ingresos.id_entrada_centro%TYPE,
+    tab_log_ingresos.val_observaciones%TYPE,
+    tab_log_ingresos.id_metodo_aut%TYPE,
+    BOOLEAN
+);
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
+    NUMERIC, TEXT, DECIMAL, BOOLEAN
+);
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
+    NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR
+);
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
+    NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR, BYTEA
+);
+
 CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wid_persona        tab_personas.id_persona%TYPE,
     wid_tipo_docum     tab_personas.id_tipo_docum%TYPE,
@@ -9,7 +32,9 @@ CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wid_entrada_centro tab_log_ingresos.id_entrada_centro%TYPE,
     wval_observaciones tab_log_ingresos.val_observaciones%TYPE,
     wid_metodo_aut     tab_log_ingresos.id_metodo_aut%TYPE DEFAULT 1,
-    wcaptura_pdf417    BOOLEAN DEFAULT FALSE
+    wcaptura_pdf417    BOOLEAN DEFAULT FALSE,
+    wfacial_embedding  tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
+    whuella_template   tab_log_ingresos.huella_template%TYPE DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
     wid_ingreso    INTEGER;
@@ -32,6 +57,8 @@ BEGIN
     END IF;
 
     worigen_txt := CASE
+        WHEN wid_metodo_aut = 5 THEN 'biometrico_huella'
+        WHEN wid_metodo_aut = 4 THEN 'biometrico_facial'
         WHEN wid_metodo_aut = 3 THEN 'codigo_barras'
         WHEN wid_metodo_aut = 2 THEN 'codigo_qr'
         ELSE 'registro_manual'
@@ -63,12 +90,13 @@ BEGIN
         wid_metodo_aut,
         wid_entrada_centro,
         wjson_origen,
-        NULLIF(TRIM(wval_observaciones), '')
+        NULLIF(TRIM(wval_observaciones), ''),
+        wfacial_embedding,
+        whuella_template
     );
 
     PERFORM fun_update_persona_tras_ingreso(wid_persona);
 
-    -- Aprendiz (id_tipo_persona = 2): registrar asistencia / retardo si aplica.
     IF wid_tipo_persona = 2 THEN
         PERFORM fun_verify_retardo_aprendiz(
             wid_persona,

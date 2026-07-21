@@ -64,6 +64,7 @@ function porteriaApiCatalogos(): array
 function porteriaApiRegistrarIngreso(array $device, array $json): array
 {
     global $pdo, $stmt_fun_registrar_ingreso, $stmt_buscar_ingreso_abierto;
+    global $stmt_fun_insert_novedad_ingreso, $stmt_buscar_persona_doc;
 
     $clientId = trim((string) ($json['client_id'] ?? ''));
     if ($clientId !== '') {
@@ -83,13 +84,21 @@ function porteriaApiRegistrarIngreso(array $device, array $json): array
     if ((int) ($post['sel_entrada'] ?? 0) < 1 && !empty($device['id_entrada_default'])) {
         $post['sel_entrada'] = (int) $device['id_entrada_default'];
     }
+    if (isset($json['embedding']) && is_array($json['embedding'])) {
+        $post['embedding'] = $json['embedding'];
+    }
+    if (isset($json['huella_template_b64']) && is_string($json['huella_template_b64'])) {
+        $post['huella_template_b64'] = trim($json['huella_template_b64']);
+    }
 
     $usrAudit = (string) ($device['id_usuario_audit'] ?? $device['usr_audit'] ?? 'system');
     $pdo->exec("SET app.usuario = " . $pdo->quote($usrAudit));
     $idIngreso = ingresoRegistrarManual(
         $stmt_fun_registrar_ingreso,
         $stmt_buscar_ingreso_abierto,
-        $post
+        $post,
+        $stmt_fun_insert_novedad_ingreso ?? null,
+        $stmt_buscar_persona_doc ?? null
     );
 
     $foto = trim((string) ($json['foto_base64'] ?? $post['hid_foto_data'] ?? ''));

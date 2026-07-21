@@ -42,10 +42,12 @@ class SmartcsetClient:
         self.base_url = base_url.rstrip("/")
         self._cookie_jar = http.cookiejar.CookieJar()
 
-        ssl_context = ssl.create_default_context()
-        if not verify_tls:
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
+        # Laboratorio con cert autofirmado: usar contexto no verificado
+        # (create_default_context + CERT_NONE a veces no basta en Windows).
+        if verify_tls:
+            ssl_context = ssl.create_default_context()
+        else:
+            ssl_context = ssl._create_unverified_context()
 
         self._opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(self._cookie_jar),
@@ -76,7 +78,10 @@ class SmartcsetClient:
                 parsed = json.loads(body)
             except json.JSONDecodeError:
                 parsed = {}
-            message = parsed.get("error") or f"Error HTTP {exc.code}"
+            if exc.code == 408:
+                message = "¡Falla de conexión!"
+            else:
+                message = parsed.get("error") or f"Error HTTP {exc.code}"
             raise SmartcsetApiError(message) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             raise SmartcsetConnectionError(
@@ -102,16 +107,18 @@ class SmartcsetClient:
         return self._request(
             "POST",
             "/routers/auth/v1/login.php",
-            {"usuario": usuario, "clave": clave},
+            {"usuario": usuario, "clave": clave, "origen": "desktop"},
         )
 
     def logout(self) -> None:
-        """GET /routers/auth/v1/logout.php — cierra la sesión real."""
+        """GET /routers/auth/v1/logout.php — cierra la sesión en tab_sesiones."""
+        url = f"{self.base_url}/routers/auth/v1/logout.php"
+        req = urllib.request.Request(url, method="GET")
         try:
-            self._request("GET", "/routers/auth/v1/logout.php")
-        except (SmartcsetApiError, SmartcsetConnectionError):
-            # El logout real responde 302 (no JSON) en la web; si falla
-            # igual descartamos la cookie local — no bloquea el cierre.
+            # El endpoint web responde 302 + HTML; basta con que el servidor
+            # ejecute fun_salida_sesion antes del redirect.
+            self._opener.open(req, timeout=15)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
             pass
         self._cookie_jar.clear()
 
@@ -191,6 +198,38 @@ class SmartcsetClient:
             if id_persona:
                 self._cachear_foto_biometrica(id_persona, nombre, resultado["foto_base64"])
 
+        return resultado
+
+    def biometria_huella_enrolar(
+        self,
+        documento: str,
+        huella_template_b64: str,
+        calidad_huella: float | None = None,
+    ) -> dict[str, Any]:
+        """POST /routers/porteria/v1/biometria/huella_enrolar.php."""
+        payload: dict[str, Any] = {
+            "documento": documento,
+            "huella_template_b64": huella_template_b64,
+        }
+        if calidad_huella is not None:
+            payload["calidad_huella"] = calidad_huella
+        return self._request(
+            "POST", "/routers/porteria/v1/biometria/huella_enrolar.php", payload
+        )
+
+    def biometria_huella_identificar(self, huella_template_b64: str) -> dict[str, Any]:
+        """POST /routers/porteria/v1/biometria/huella_identificar.php."""
+        resultado = self._request(
+            "POST",
+            "/routers/porteria/v1/biometria/huella_identificar.php",
+            {"huella_template_b64": huella_template_b64},
+        )
+        if resultado.get("foto_base64"):
+            persona = resultado.get("persona") or {}
+            id_persona = persona.get("id_persona")
+            nombre = str(persona.get("nombres", "persona")).split()[0].lower()
+            if id_persona:
+                self._cachear_foto_biometrica(id_persona, nombre, resultado["foto_base64"])
         return resultado
 
     def _cachear_foto_biometrica(self, id_persona: int, nombre: str, foto_base64: str) -> str | None:

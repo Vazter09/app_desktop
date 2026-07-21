@@ -1,10 +1,30 @@
 -- Registra un ingreso en tab_log_ingresos. Retorna el id_ingreso generado.
--- La auditoría (usr_insert) la gestiona el trigger fun_act_tabla().
+-- Opcional: wfacial_embedding / whuella_template (auditoría del evento).
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    tab_log_ingresos.id_visitante%TYPE,
+    tab_log_ingresos.id_metodo_aut%TYPE,
+    tab_log_ingresos.id_entrada_centro%TYPE,
+    tab_log_ingresos.val_datos_origen%TYPE,
+    tab_log_ingresos.val_observaciones%TYPE
+);
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    NUMERIC, NUMERIC, NUMERIC, JSONB, TEXT
+);
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    NUMERIC, NUMERIC, NUMERIC, JSONB, TEXT, VECTOR
+);
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    NUMERIC, NUMERIC, NUMERIC, JSONB, TEXT, VECTOR, BYTEA
+);
+
 CREATE OR REPLACE FUNCTION fun_insert_log_ingreso(
     wid_visitante       tab_log_ingresos.id_visitante%TYPE,
     wid_metodo_aut      tab_log_ingresos.id_metodo_aut%TYPE,
     wid_entrada_centro  tab_log_ingresos.id_entrada_centro%TYPE,
-    wval_observaciones  tab_log_ingresos.val_observaciones%TYPE
+    wval_datos_origen   tab_log_ingresos.val_datos_origen%TYPE,
+    wval_observaciones  tab_log_ingresos.val_observaciones%TYPE,
+    wfacial_embedding   tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
+    whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
     wid_ingreso    INTEGER;
@@ -56,10 +76,12 @@ BEGIN
 
     INSERT INTO tab_log_ingresos (
         id_ingreso, id_visitante, fec_ingreso, fec_salida,
-        id_metodo_aut, id_entrada_centro, val_observaciones
+        id_metodo_aut, id_entrada_centro, val_datos_origen, val_observaciones,
+        facial_embedding, huella_template
     ) VALUES (
         wid_ingreso, wid_visitante, wts_ingreso, wts_ingreso,
-        wid_metodo_aut, wid_entrada_centro, wval_observaciones
+        wid_metodo_aut, wid_entrada_centro, wval_datos_origen, wval_observaciones,
+        wfacial_embedding, whuella_template
     );
 
     RETURN wid_ingreso;

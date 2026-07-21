@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from urllib.parse import urlparse
 
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,6 +33,9 @@ _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 @dataclass
 class AppConfig:
     base_url: str = DEFAULT_BASE_URL
+    # None = automático (False solo en localhost). False explícito = lab
+    # con certificado autofirmado (ej. 10.5.213.111).
+    verify_tls_override: bool | None = None
 
     @classmethod
     def load(cls) -> "AppConfig":
@@ -44,19 +47,30 @@ class AppConfig:
         with open(CONFIG_PATH, "r", encoding="utf-8") as fh:
             data = json.load(fh)
 
-        return cls(base_url=str(data.get("base_url", DEFAULT_BASE_URL)))
+        override = data.get("verify_tls", None)
+        if override is not None:
+            override = bool(override)
+
+        return cls(
+            base_url=str(data.get("base_url", DEFAULT_BASE_URL)),
+            verify_tls_override=override,
+        )
 
     def save(self) -> None:
+        payload = {"base_url": self.base_url}
+        if self.verify_tls_override is not None:
+            payload["verify_tls"] = self.verify_tls_override
         with open(CONFIG_PATH, "w", encoding="utf-8") as fh:
-            json.dump(asdict(self), fh, indent=2, ensure_ascii=False)
+            json.dump(payload, fh, indent=2, ensure_ascii=False)
 
     @property
     def verify_tls(self) -> bool:
         """
-        Verificación de certificado SIEMPRE activa, salvo contra localhost
-        de desarrollo (certificado autofirmado local, mismo patrón que el
-        resto del proyecto — nunca se desactiva contra un host remoto real,
-        ni siquiera 192.168.1.71).
+        Verificación de certificado activa por defecto, salvo localhost
+        de desarrollo o override explícito en app_config.json
+        (`"verify_tls": false`) para laboratorio con cert autofirmado.
         """
+        if self.verify_tls_override is not None:
+            return self.verify_tls_override
         host = urlparse(self.base_url).hostname or ""
         return host not in _LOCAL_HOSTS

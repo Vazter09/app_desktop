@@ -42,7 +42,7 @@ if (!is_array($embedding)) {
 }
 
 try {
-    global $pdo, $stmt_fun_identificar_persona_por_rostro, $stmt_buscar_persona_doc;
+    global $pdo, $stmt_fun_identificar_persona_por_rostro, $stmt_biometria_persona_completa;
 
     $idPersona = biometriaIdentificarPersona(
         $stmt_fun_identificar_persona_por_rostro,
@@ -55,28 +55,18 @@ try {
         return;
     }
 
-    $stmt_buscar_persona_doc->execute([(string) $idPersona, 'CC']);
-    $persona = $stmt_buscar_persona_doc->fetch();
+    $stmt_biometria_persona_completa->execute([(string) $idPersona]);
+    $persona = $stmt_biometria_persona_completa->fetch();
 
-    // Obtener ruta de foto del enrolamiento (2026-07-09)
+    // Foto de enrolamiento: tab_personas.ruta_foto_facial
     $fotoBase64 = null;
-    if ($persona !== false) {
-        $stmt = $pdo->prepare(
-            'SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
-             WHERE id_persona = ?::NUMERIC
-             ORDER BY fec_insert DESC LIMIT 1'
-        );
-        $stmt->execute([(string) $idPersona]);
-        $enrolamiento = $stmt->fetch();
-
-        if ($enrolamiento && !empty($enrolamiento['ruta_foto_enrolamiento'])) {
-            $fotoBase64 = BiometriaPhotoService::leerFoto($enrolamiento['ruta_foto_enrolamiento']);
-        }
+    if ($persona !== false && !empty($persona['ruta_foto_facial'])) {
+        $fotoBase64 = BiometriaPhotoService::leerFoto((string) $persona['ruta_foto_facial']);
     }
 
     RouterResponse::ok([
         'match' => $persona !== false,
-        'persona' => $persona !== false ? PorteriaRouterPayload::formatPersona($persona) : null,
+        'persona' => $persona !== false ? PorteriaRouterPayload::formatPersonaCompleta($persona) : null,
         'foto_base64' => $fotoBase64,
     ]);
 } catch (InvalidArgumentException $e) {
