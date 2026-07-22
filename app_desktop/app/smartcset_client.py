@@ -12,16 +12,12 @@ autofirmado); en este entorno de desarrollo local/laboratorio el
 certificado es autofirmado, por lo que se permite desactivar la
 verificación SOLO cuando `verify_tls=False` se pasa explícitamente al
 construir el cliente (nunca por defecto en el código).
-
-2026-07-09: Caché local de fotos biométricas en app_desktop/app/images/
 """
 from __future__ import annotations
 
-import base64
 import http.cookiejar
 import json
 import os
-import pathlib
 import ssl
 import urllib.error
 import urllib.parse
@@ -193,18 +189,7 @@ class SmartcsetClient:
         if umbral_distancia is not None:
             payload["umbral_distancia"] = umbral_distancia
 
-        resultado = self._request("POST", "/routers/porteria/v1/biometria/identificar.php", payload)
-
-        # 2026-07-09: Cachear foto localmente si viene en la respuesta
-        if resultado.get("foto_base64"):
-            persona = resultado.get("persona", {})
-            id_persona = persona.get("id_persona")
-            nombre = persona.get("nombres", "persona").split()[0].lower()
-
-            if id_persona:
-                self._cachear_foto_biometrica(id_persona, nombre, resultado["foto_base64"])
-
-        return resultado
+        return self._request("POST", "/routers/porteria/v1/biometria/identificar.php", payload)
 
     def biometria_huella_enrolar(
         self,
@@ -225,41 +210,8 @@ class SmartcsetClient:
 
     def biometria_huella_identificar(self, huella_template_b64: str) -> dict[str, Any]:
         """POST /routers/porteria/v1/biometria/huella_identificar.php."""
-        resultado = self._request(
+        return self._request(
             "POST",
             "/routers/porteria/v1/biometria/huella_identificar.php",
             {"huella_template_b64": huella_template_b64},
         )
-        if resultado.get("foto_base64"):
-            persona = resultado.get("persona") or {}
-            id_persona = persona.get("id_persona")
-            nombre = str(persona.get("nombres", "persona")).split()[0].lower()
-            if id_persona:
-                self._cachear_foto_biometrica(id_persona, nombre, resultado["foto_base64"])
-        return resultado
-
-    def _cachear_foto_biometrica(self, id_persona: int, nombre: str, foto_base64: str) -> str | None:
-        """Cachea foto en app_desktop/app/images/{id_persona}_{nombre}.jpg
-        Retorna ruta local o None si falla."""
-        try:
-            # Carpeta de caché local
-            app_dir = pathlib.Path(__file__).parent
-            img_dir = app_dir / "images"
-            img_dir.mkdir(exist_ok=True)
-
-            # Nombre del archivo: {id}_{nombre}.jpg
-            nombre_limpio = "".join(c for c in nombre if c.isalnum()).lower()
-            if not nombre_limpio:
-                nombre_limpio = "persona"
-            nombre_archivo = f"{id_persona}_{nombre_limpio}.jpg"
-            ruta_local = img_dir / nombre_archivo
-
-            # Decodificar y guardar
-            foto_binaria = base64.b64decode(foto_base64)
-            with open(ruta_local, "wb") as f:
-                f.write(foto_binaria)
-
-            return str(ruta_local)
-        except Exception:
-            # Si falla el caché, no bloquea — se sigue usando base64 en memoria
-            return None

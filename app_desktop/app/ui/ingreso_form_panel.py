@@ -230,19 +230,23 @@ class IngresoFormPanel(tk.Frame):
 
         ttk.Label(
             body,
-            text="Observaciones (opcional)",
+            text="Observación / Novedad",
             style="Card.TLabel",
-        ).pack(anchor="w", pady=(10, 2))
+        ).pack(anchor="w", pady=(12, 4))
         self._obs_entry = ttk.Entry(
             body, textvariable=self._obs_var, font=theme.FONT_LOGIN_LABEL
         )
-        self._obs_entry.pack(fill="x", ipady=6)
+        self._obs_entry.pack(fill="x", ipady=10)
 
     def _rebuild_puertas(self) -> None:
         for child in self._puertas_frame.winfo_children():
             child.destroy()
         self._puerta_btns.clear()
-        entradas = self._catalogos.get("entradas", [])
+        entradas = [
+            e
+            for e in (self._catalogos.get("entradas") or [])
+            if "parqueadero" not in str(e.get("nombre") or "").casefold()
+        ]
         if not entradas:
             ttk.Label(
                 self._puertas_frame,

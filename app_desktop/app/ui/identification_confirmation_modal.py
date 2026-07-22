@@ -69,22 +69,21 @@ class IdentificationConfirmationPanel(tk.Frame):
         if self._modo == "ingreso":
             btn_text = "✓ Registrar ingreso"
         elif self._modo == "actualizar_captura":
-            btn_text = "✓ Actualizar captura"
+            btn_text = "INGRESÓ"
         else:
             btn_text = "✓ Registrar salida"
+
+        # Espacio del botón superior (ya no se muestra Cancelar arriba).
+        # Deja INGRESÓ / confirmar en la posición que ocupaba Cancelar.
+        tk.Frame(footer, bg=theme.BG_PANEL, height=36).pack(
+            fill="x", pady=(0, 6)
+        )
 
         ttk.Button(
             footer,
             text=btn_text,
             style="Primary.TButton",
             command=self._confirmar,
-        ).pack(fill="x", pady=(0, 6), ipady=4)
-
-        ttk.Button(
-            footer,
-            text="Cancelar",
-            style="Danger.TButton",
-            command=self._cancelar,
         ).pack(fill="x", ipady=4)
 
         body = tk.Frame(self, bg=theme.BG_PANEL)

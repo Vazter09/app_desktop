@@ -1,26 +1,18 @@
--- *******************************************************
--- Procedimiento para recalcular los comités de un centro.
---********************************************************
-
-CREATE OR REPLACE PROCEDURE proc_recalcular_comites_por_centro(p_id_centro DECIMAL(4,0))
+-- Recalcula comités automáticos de todos los aprendices de un centro.
+CREATE OR REPLACE PROCEDURE proc_recalcular_comites_por_centro(
+    p_id_centro tab_fichas.id_centro%TYPE
+)
 LANGUAGE plpgsql AS $$
 DECLARE
     rec RECORD;
-    v_usr_actual VARCHAR(50);
 BEGIN
-    v_usr_actual := COALESCE(current_setting('app.current_user', true), 'SISTEMA');
-    RAISE NOTICE 'Iniciando recálculo de comités para centro % por usuario %', p_id_centro, v_usr_actual;
-    
-    -- Recorrer aprendices del centro (a través de la ficha)
-    FOR rec IN 
+    FOR rec IN
         SELECT a.id_aprendiz
-        FROM tab_aprendices a
-        JOIN tab_fichas f ON a.id_ficha = f.id_ficha
-        WHERE f.id_centro = p_id_centro
+          FROM tab_aprendices a
+          JOIN tab_fichas f ON f.id_ficha = a.id_ficha
+         WHERE f.id_centro = p_id_centro
     LOOP
         PERFORM fun_sincronizar_comite_aprendiz(rec.id_aprendiz);
     END LOOP;
-    
-    RAISE NOTICE 'Recálculo completado para centro %', p_id_centro;
 END;
 $$;

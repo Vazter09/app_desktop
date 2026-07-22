@@ -19,12 +19,14 @@ from ui import theme
 _COLOR_IDLE = (0, 229, 176)
 _COLOR_OK = (57, 255, 20)
 
-_OVAL_W = 110
-_OVAL_H = 170
+# Óvalo / huella / láser un poco más grandes que la versión previa.
+_OVAL_W = 148
+_OVAL_H = 228
 _TICK_MS = 33
 _LASER_MS = 2400
 _TINT_MS = 700
-_N_PUNTOS = 36
+_N_PUNTOS = 42
+_MSG_FONT = ("Segoe UI", 10)
 
 
 def _ruta_huella_png() -> Path | None:
@@ -188,8 +190,8 @@ class HuellaScanCanvas(tk.Canvas):
         arr = arr[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
 
         # Tamaño destino interior del óvalo (holgura para el trazo).
-        max_w = max(24, _OVAL_W - 28)
-        max_h = max(24, _OVAL_H - 36)
+        max_w = max(32, _OVAL_W - 32)
+        max_h = max(32, _OVAL_H - 42)
         img = Image.fromarray(arr, mode="RGBA")
         iw, ih = img.size
         scale = max(max_w / iw, max_h / ih)
@@ -262,8 +264,8 @@ class HuellaScanCanvas(tk.Canvas):
         self.create_oval(
             ox0, oy0, ox1, oy1,
             outline=_hex(ring),
-            dash=(5, 4),
-            width=2,
+            dash=(6, 5),
+            width=3,
             tags="ring",
         )
 
@@ -280,19 +282,19 @@ class HuellaScanCanvas(tk.Canvas):
         laser_y = oy0 + int(phase * (_OVAL_H - 2)) + 1
 
         # Clip suave: solo dibuja láser dentro del óvalo.
-        inset = 8
+        inset = 10
         lx0 = ox0 + inset
         lx1 = ox1 - inset
         laser_rgb = _lerp_color((0, 200, 255), _COLOR_OK, self._tint_t * 0.55)
         laser_hex = _hex(laser_rgb)
         # Brillo (líneas superpuestas).
-        self.create_line(lx0, laser_y, lx1, laser_y, fill="#003344", width=10, tags="laser")
-        self.create_line(lx0, laser_y, lx1, laser_y, fill=laser_hex, width=3, tags="laser")
-        self.create_line(lx0, laser_y, lx1, laser_y, fill="#ffffff", width=1, tags="laser")
+        self.create_line(lx0, laser_y, lx1, laser_y, fill="#003344", width=14, tags="laser")
+        self.create_line(lx0, laser_y, lx1, laser_y, fill=laser_hex, width=4, tags="laser")
+        self.create_line(lx0, laser_y, lx1, laser_y, fill="#ffffff", width=2, tags="laser")
         # Banda de “revelado” bajo el láser.
         band = self.create_rectangle(
             lx0,
-            max(oy0, laser_y - 14),
+            max(oy0, laser_y - 18),
             lx1,
             laser_y,
             fill=laser_hex,
@@ -311,13 +313,13 @@ class HuellaScanCanvas(tk.Canvas):
             py = iy0 + int(ny * ih)
             # Destello cuando el láser pasa cerca.
             dist = abs(py - laser_y)
-            r = 2
+            r = 3
             fill = punto_hex
-            if dist < 10:
-                r = 3
+            if dist < 12:
+                r = 4
                 fill = "#ffffff"
-            elif dist < 22:
-                r = 2
+            elif dist < 26:
+                r = 3
                 fill = laser_hex
             self.create_oval(
                 px - r, py - r, px + r, py + r,
@@ -328,10 +330,10 @@ class HuellaScanCanvas(tk.Canvas):
 
         self.create_text(
             cx,
-            oy1 + 28,
+            oy1 + 34,
             text=self._mensaje,
             fill=self._mensaje_color,
-            font=theme.FONT_LABEL_SMALL,
+            font=_MSG_FONT,
             justify="center",
             tags="msg",
         )

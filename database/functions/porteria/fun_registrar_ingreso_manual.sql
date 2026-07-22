@@ -97,11 +97,17 @@ BEGIN
 
     PERFORM fun_update_persona_tras_ingreso(wid_persona);
 
+    -- Retraso / asistencia / llamados solo aprendices; no tumba el ingreso.
     IF wid_tipo_persona = 2 THEN
-        PERFORM fun_verify_retardo_aprendiz(
-            wid_persona,
-            CURRENT_TIMESTAMP
-        );
+        BEGIN
+            PERFORM fun_verify_retardo_aprendiz(
+                wid_persona,
+                CURRENT_TIMESTAMP
+            );
+        EXCEPTION
+            WHEN OTHERS THEN
+                NULL;
+        END;
     END IF;
 
     RETURN wid_ingreso;

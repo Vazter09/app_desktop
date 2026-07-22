@@ -12,6 +12,7 @@ CREATE OR REPLACE FUNCTION fun_guardar_enrolamiento_facial(
     wruta_foto_facial      VARCHAR(500) DEFAULT NULL
 ) RETURNS NUMERIC AS $$
 DECLARE
+    wusr        TEXT;
     w_exc_state TEXT;
     w_exc_msg   TEXT;
     w_exc_detail TEXT;
@@ -30,9 +31,19 @@ BEGIN
         PERFORM smartcset_raise_validacion('El vector facial es obligatorio.');
     END IF;
 
+    -- usr_update explícito: evita que el audit trigger rechace CURRENT_USER
+    -- de PostgreSQL ("postgres") que no existe en tab_usuarios.
+    wusr := NULLIF(TRIM(current_setting('app.usuario', true)), '');
+    IF wusr IS NULL THEN
+        PERFORM smartcset_raise_validacion(
+            'No hay usuario de auditoría (app.usuario) para enrolar el rostro.'
+        );
+    END IF;
+
     UPDATE tab_personas
        SET val_patron_facial = wfacial_embedding,
-           ruta_foto_facial = COALESCE(NULLIF(TRIM(wruta_foto_facial), ''), ruta_foto_facial)
+           ruta_foto_facial = COALESCE(NULLIF(TRIM(wruta_foto_facial), ''), ruta_foto_facial),
+           usr_update = wusr
      WHERE id_persona = wid_persona;
 
     RETURN wid_persona;
