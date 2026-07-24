@@ -1,8 +1,5 @@
 -- PENDIENTE CREAR:
--- Tab_calendario_academico
--- tab_novedades_egreso / tab_novedades_ingreso (para las personas que no esten registrados en el sistema)
--- tab_equipos_entrada.
--- trigger para validar el año, mes en la tabla parametros.
+-- tabla intento login.
 
 -- Tener en cuenta la salida (novedades) de las personas que se colaron (tab_novedades_ingreso).
 
@@ -424,6 +421,24 @@ CREATE TABLE IF NOT EXISTS tab_usuarios
     fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_usuario)
 );
+
+
+/*
+CREATE TABLE IF NOT EXISTS tab_intentos_login
+(
+    id_intento     INT                         NOT NULL DEFAULT nextval('seq_intentos_login'::regclass),
+    ip_cliente     VARCHAR(45)                 COLLATE  pg_catalog."default" NOT NULL,
+    id_usuario     VARCHAR(20)                 COLLATE  pg_catalog."default",
+    ind_exitoso    BOOLEAN                     NOT NULL DEFAULT false,
+    fec_intento    TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    motivo_fallo   VARCHAR(30)                 COLLATE  pg_catalog."default",
+    user_agent     VARCHAR(255)                COLLATE  pg_catalog."default",
+    CONSTRAINT     tab_intentos_login_pkey PRIMARY KEY (id_intento),
+    CONSTRAINT     tab_intentos_login_ip_check CHECK (length(TRIM(BOTH FROM ip_cliente)) >= 7)
+)
+TABLESPACE pg_default;
+*/
+
 
 -- TABLA DE SESIONES DE APLICACIÓN (módulo acceso / login)
 CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
@@ -1606,11 +1621,12 @@ CREATE TABLE IF NOT EXISTS tab_personas
     nom_contacto_emergencias    VARCHAR(60)                 NOT NULL CHECK(LENGTH(nom_contacto_emergencias) >= 5) DEFAULT 'Sin Contacto',
     tel_contacto_emergencias    telefono_movil              NOT NULL DEFAULT 3000000000,
     ind_envio_correo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Enviarle correos / FALSE=No se le envían correos
-    ind_estado                  BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Activo / FALSE=Inactivo
+    ind_estado                  BOOLEAN                     NOT NULL DEFAULT TRUE,  -- TRUE=Activo / FALSE=Inactivo
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
+    ruta_foto_facial            VARCHAR(500),                                       -- Ruta donde esta almacenada la foto (servidor).
     PRIMARY KEY(id_persona),
     FOREIGN KEY(id_tipo_docum)      REFERENCES tab_tipos_docum(id_tipo_docum),
     FOREIGN KEY(id_tipo_persona)    REFERENCES tab_tipos_persona(id_tipo_persona),
@@ -2386,6 +2402,7 @@ CREATE TABLE IF NOT EXISTS tab_tipos_equipo (
 CREATE TABLE IF NOT EXISTS tab_equipos (
     id_equipo             VARCHAR(50)                 NOT NULL, -- Numero de serie.
     id_tipo_equipo        DECIMAL(2,0)                NOT NULL, 
+ -- url_foto              VARCHAR                     NOT NULL, -- La fotografia sirve para que bajo criterio del guarda de seguridad permita el ingreso/egreso del equipo.      
     id_propietario        DECIMAL(10,0)               NOT NULL, -- El propietario debe estar registrado.
     usr_insert            VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -2470,7 +2487,7 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
---    val_datos_origen        JSONB.
+    val_datos_origen        JSONB.
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
     val_observaciones       TEXT,

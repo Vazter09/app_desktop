@@ -206,7 +206,7 @@ LANGUAGE plpgsql;
 SELECT fun_verify_retardo_aprendiz(
     1095951827,                      	-- id_aprendiz
     '2026-07-03 12:15:00'::TIMESTAMPTZ, -- hora de llegada
-    'admin.scet',      	            	-- usuario
+    'admin.smart',      	            -- usuario
     1,                               	-- id_metodo_aut (1 = manual)
     1,                               	-- id_entrada_centro (1 = principal)
     'Ingreso registrado desde test'  	-- observaciones
