@@ -59,6 +59,47 @@ class PorteriaRouterPayload
     }
 
     /**
+     * @param mixed $value
+     */
+    private static function toNullableBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_bool($value)) {
+            return $value;
+        }
+        $s = strtolower(trim((string) $value));
+        if (in_array($s, ['t', 'true', '1', 'yes'], true)) {
+            return true;
+        }
+        if (in_array($s, ['f', 'false', '0', 'no'], true)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    /**
+     * Campos de tab_instructores (NULL si la persona no tiene fila de instructor).
+     *
+     * @param array<string, mixed> $persona
+     * @return array{ind_estado_instructor: ?int, ind_tipo_contrato: ?bool, ind_vehiculo: ?bool}
+     */
+    private static function formatCamposInstructor(array $persona): array
+    {
+        $estado = $persona['ind_estado_instructor'] ?? null;
+
+        return [
+            'ind_estado_instructor' => $estado !== null && $estado !== ''
+                ? (int) $estado
+                : null,
+            'ind_tipo_contrato' => self::toNullableBool($persona['ind_tipo_contrato'] ?? null),
+            'ind_vehiculo' => self::toNullableBool($persona['ind_vehiculo'] ?? null),
+        ];
+    }
+
+    /**
      * @param array<string, mixed>|null $persona
      * @return array<string, mixed>|null
      */
@@ -68,7 +109,7 @@ class PorteriaRouterPayload
             return null;
         }
 
-        return [
+        return array_merge([
             'id_persona' => (int) ($persona['id_persona'] ?? 0),
             'tipo_doc' => (string) ($persona['id_tipo_docum'] ?? $persona['id_tipo_doc'] ?? ''),
             'documento' => (string) ($persona['id_persona'] ?? ''),
@@ -76,7 +117,7 @@ class PorteriaRouterPayload
             'apellidos' => (string) ($persona['ape_persona'] ?? $persona['apellidos'] ?? ''),
             'tipo_persona' => (int) ($persona['id_tipo_persona'] ?? 0),
             'nom_tipo_persona' => (string) ($persona['nom_tipo_persona'] ?? ''),
-        ];
+        ], self::formatCamposInstructor($persona));
     }
 
     /**
@@ -94,7 +135,7 @@ class PorteriaRouterPayload
             return null;
         }
 
-        return [
+        return array_merge([
             'id_persona' => (int) ($persona['id_persona'] ?? 0),
             'tipo_doc' => (string) ($persona['id_tipo_docum'] ?? ''),
             'nom_tipo_docum' => (string) ($persona['nom_tipo_docum'] ?? ''),
@@ -125,7 +166,7 @@ class PorteriaRouterPayload
             'ind_modalidad' => isset($persona['ind_modalidad']) ? (int) $persona['ind_modalidad'] : null,
             'id_programa' => isset($persona['id_programa']) ? (int) $persona['id_programa'] : null,
             'nom_programa' => (string) ($persona['nom_programa'] ?? ''),
-        ];
+        ], self::formatCamposInstructor($persona));
     }
 
     /**

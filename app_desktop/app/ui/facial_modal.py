@@ -13,7 +13,7 @@ Tras identificar un rostro, consulta `ingreso/consultar.php`:
 ESTADO: flujo completo real (facial). Huella: solo UI por ahora.
 1. Cámara en vivo (`ui/camera.py`, OpenCV).
 2. Motor de embeddings (`motor/embeddings.py`, SFace + YuNet).
-3. "Enrolar": documento + frame → `biometria/enrolar.php`.
+3. "Capturar Rostro": documento + frame → `biometria/enrolar.php`.
 4. "Identificar": frame → `biometria/identificar.php` → panel
    «Persona encontrada» (~2.5 s) → ingreso / actualizar / salida
    (`metodo_aut=4`) y vuelve al formulario vacío.
@@ -26,7 +26,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 import cv2
 import numpy as np
@@ -132,6 +132,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._huella_header_icon: ImageTk.PhotoImage | None = None
         self._form_panel: IngresoFormPanel | None = None
         self._centro_wrap: tk.Frame | None = None
+        self._syncing_centro = False
         # 4=facial, 5=huella (tab_metodos_aut)
         self._ultimo_metodo_biometrico: int = 4
 
@@ -176,6 +177,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._build_columna_camara(bio_row)
         self._build_columna_formulario(bio_row)
         self._build_columna_huella(bio_row)
+        bio_row.bind("<Configure>", self._on_bio_row_configure, add="+")
 
         # ---- Estado (fila 1, altura fija — siempre visible) ----
         self._estado_var = tk.StringVar(value="Iniciando cámara...")
@@ -239,6 +241,15 @@ class FacialRecognitionPanel(ttk.Frame):
             command=self._seleccionar_camara,
         ).pack(side="right")
 
+        # Botón anclado abajo primero: el canvas no puede aplastarlo.
+        self._enrolar_btn = ttk.Button(
+            cam_wrap,
+            text="Capturar Rostro",
+            style="Primary.TButton",
+            command=self._enrolar,
+        )
+        self._enrolar_btn.pack(side="bottom", fill="x", pady=(10, 0), ipady=2)
+
         self._cam_canvas = tk.Canvas(
             cam_wrap,
             width=CAM_ANCHO,
@@ -261,12 +272,55 @@ class FacialRecognitionPanel(ttk.Frame):
         self._form_panel = IngresoFormPanel(
             self._centro_wrap,
             self._client,
-            on_enrolar_rostro=self._enrolar,
             on_registrado=self._on_registrado,
             on_mensaje_estado=self._set_estado,
+            on_ingreso_exitoso=self._mostrar_confirmacion_post_registro,
         )
         self._form_panel.grid(row=0, column=0, sticky="nsew")
-        self._enrolar_btn = self._form_panel._enrolar_btn
+        # Tras el primer layout, fija el tamaño de la columna central para que
+        # «Persona encontrada» ocupe exactamente la misma caja.
+        self.after_idle(self._fijar_tamano_columna_central)
+
+    def _fijar_tamano_columna_central(self) -> None:
+        """Congela ancho/alto de `_centro_wrap` al del formulario Nuevo ingreso."""
+        if self._centro_wrap is None or self._form_panel is None:
+            return
+        try:
+            if not self._form_panel.winfo_exists():
+                return
+            self._form_panel.update_idletasks()
+            w = int(self._form_panel.winfo_width())
+            h = int(self._form_panel.winfo_height())
+            if w < 50 or h < 50:
+                self.after(80, self._fijar_tamano_columna_central)
+                return
+            self._centro_wrap.grid_propagate(False)
+            self._centro_wrap.configure(width=w, height=h)
+        except tk.TclError:
+            return
+
+    def _on_bio_row_configure(self, _event: tk.Event | None = None) -> None:
+        """Si el formulario está visible, re-sincroniza la caja central al layout."""
+        if self._confirmacion_abierta or self._syncing_centro:
+            return
+        if self._form_panel is None or self._centro_wrap is None:
+            return
+        try:
+            if not self._form_panel.winfo_ismapped():
+                return
+            self._syncing_centro = True
+            # Reactivar propagate un instante para heredar el alto de cámara/huella.
+            self._centro_wrap.grid_propagate(True)
+            self._form_panel.update_idletasks()
+            w = int(self._centro_wrap.winfo_width())
+            h = int(self._centro_wrap.winfo_height())
+            if w >= 50 and h >= 50:
+                self._centro_wrap.grid_propagate(False)
+                self._centro_wrap.configure(width=w, height=h)
+        except tk.TclError:
+            return
+        finally:
+            self._syncing_centro = False
 
     def _build_columna_huella(self, parent: tk.Frame) -> None:
         huella_wrap = tk.Frame(parent, bg=theme.BG_PANEL, padx=12, pady=12)
@@ -290,6 +344,13 @@ class FacialRecognitionPanel(ttk.Frame):
         else:
             ttk.Label(huella_header, text="🖐", style="Muted.TLabel").pack(side="right")
 
+        ttk.Button(
+            huella_wrap,
+            text="Capturar Huella",
+            style="Primary.TButton",
+            command=self._identificar_huella,
+        ).pack(side="bottom", fill="x", pady=(10, 0), ipady=2)
+
         self._huella_scan = HuellaScanCanvas(
             huella_wrap, width=HUELLA_ANCHO, height=HUELLA_ALTO
         )
@@ -297,13 +358,6 @@ class FacialRecognitionPanel(ttk.Frame):
         self._huella_scan.pack(fill="both", expand=True)
         self._huella_scan.start()
         self._sync_huella_mensaje()
-
-        ttk.Button(
-            huella_wrap,
-            text="Identificar huella",
-            style="Primary.TButton",
-            command=self._identificar_huella,
-        ).pack(fill="x", pady=(10, 0))
 
     def _cargar_catalogos_formulario(self) -> None:
         if self._form_panel is None:
@@ -867,6 +921,7 @@ class FacialRecognitionPanel(ttk.Frame):
         """Sustituye temporalmente el formulario por «Persona encontrada» (~2.5 s)."""
         if self._centro_wrap is None:
             return
+        self._fijar_tamano_columna_central()
         if self._confirmacion_modal is not None:
             try:
                 self._confirmacion_modal.destroy()
@@ -887,6 +942,39 @@ class FacialRecognitionPanel(ttk.Frame):
             on_confirmar=self._on_confirmacion_modal,
             auto_registro=True,
             persona_existente=True,
+            on_cerrado=self._restaurar_formulario_central,
+        )
+        panel.grid(row=0, column=0, sticky="nsew")
+        self._confirmacion_modal = panel
+
+    def _mostrar_confirmacion_post_registro(
+        self, persona_datos: dict[str, Any]
+    ) -> None:
+        """Tras Registrar ingreso (manual): mismo panel, sin volver a registrar."""
+        if self._centro_wrap is None:
+            return
+        self._fijar_tamano_columna_central()
+        if self._confirmacion_modal is not None:
+            try:
+                self._confirmacion_modal.destroy()
+            except tk.TclError:
+                pass
+            self._confirmacion_modal = None
+
+        if self._form_panel is not None:
+            self._form_panel.grid_remove()
+
+        self._confirmacion_abierta = True
+        self._identificando = False
+        era_existente = bool(persona_datos.pop("_persona_existente", False))
+        panel = IdentificationConfirmationPanel(
+            self._centro_wrap,
+            self._client,
+            persona_datos,
+            modo="registrado",
+            on_confirmar=None,
+            auto_registro=True,
+            persona_existente=era_existente,
             on_cerrado=self._restaurar_formulario_central,
         )
         panel.grid(row=0, column=0, sticky="nsew")

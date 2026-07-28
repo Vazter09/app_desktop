@@ -3,8 +3,9 @@ Confirmación de identificación biométrica — panel embebido en la columna
 central de portería (no tapa cámara ni huella).
 
 Tras identificar, sustituye temporalmente el formulario "Nuevo ingreso".
-Misma cáscara visual que ``IngresoFormPanel`` (tamaño, padding, fondo) para
-que el cambio de panel no altere el ancho/alto de la columna central.
+Misma cáscara visual que ``IngresoFormPanel`` (padding, fondo, pie con
+mensaje + botón) para que el cambio de panel no altere el ancho/alto de
+la columna central.
 """
 from __future__ import annotations
 
@@ -18,17 +19,28 @@ from PIL import Image, ImageTk
 
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
-from ui.format_utils import label_estado_formacion
+from ui.format_utils import (
+    es_tipo_instructor,
+    label_estado_formacion,
+    label_estado_instructor,
+    label_tipo_contrato_instructor,
+    label_vehiculo_instructor,
+)
 
 AUTO_REGISTRO_MS = 2500
 AUTO_CIERRE_ERROR_MS = 2500
 
-# Foto cuadrada (2×2 visual), centrada encima de la rejilla de datos.
-FOTO_SIZE = 168
+# Foto cuadrada centrada (cabe en la misma caja que Nuevo ingreso).
+FOTO_SIZE = 152
+
+# Tipografía local: un poco mayor que el formulario, solo en este panel.
+_FONT_TITULO = ("Segoe UI", 11, "bold")
+_FONT_LABEL = ("Segoe UI", 9)
+_FONT_VALOR = ("Segoe UI", 11, "bold")
 
 
 class IdentificationConfirmationPanel(tk.Frame):
-    """Confirmación embebida: mismo tamaño de caja que Nuevo ingreso."""
+    """Confirmación embebida: misma cáscara y pie que Nuevo ingreso."""
 
     def __init__(
         self,
@@ -62,57 +74,28 @@ class IdentificationConfirmationPanel(tk.Frame):
             self._programar_auto_registro()
 
     def _build(self) -> None:
-        # Pie anclado abajo (mismo patrón que Nuevo ingreso).
+        # Pie idéntico a IngresoFormPanel: mensaje + botón primario.
         footer = tk.Frame(self, bg=theme.BG_PANEL)
         footer.pack(side="bottom", fill="x")
 
         if self._modo == "ingreso":
             btn_text = "✓ Registrar ingreso"
-        elif self._modo == "actualizar_captura":
-            btn_text = "INGRESÓ"
-        else:
-            btn_text = "✓ Registrar salida"
-
-        # Espacio del botón superior (ya no se muestra Cancelar arriba).
-        # Deja INGRESÓ / confirmar en la posición que ocupaba Cancelar.
-        tk.Frame(footer, bg=theme.BG_PANEL, height=36).pack(
-            fill="x", pady=(0, 6)
-        )
-
-        ttk.Button(
-            footer,
-            text=btn_text,
-            style="Primary.TButton",
-            command=self._confirmar,
-        ).pack(fill="x", ipady=4)
-
-        body = tk.Frame(self, bg=theme.BG_PANEL)
-        body.pack(side="top", fill="both", expand=True)
-
-        head = tk.Frame(body, bg=theme.BG_PANEL)
-        head.pack(fill="x")
-        ttk.Label(
-            head,
-            text=(
-                "✓  Persona encontrada"
-                if self._persona_existente
-                else "✓  Identificación confirmada"
-            ),
-            style="Card.TLabel",
-            font=theme.FONT_BODY_BOLD,
-        ).pack(anchor="w")
-
-        if self._modo == "ingreso":
             subtitulo_base = "Registrando ingreso automáticamente"
         elif self._modo == "actualizar_captura":
+            btn_text = "INGRESÓ"
             subtitulo_base = "Actualizando captura del ingreso"
+        elif self._modo == "registrado":
+            btn_text = "✓ Continuar"
+            subtitulo_base = "Cerrando automáticamente"
         else:
+            btn_text = "✓ Registrar salida"
             subtitulo_base = "Registrando salida automáticamente"
+
         self._subtitulo_var = tk.StringVar(
             value=f"{subtitulo_base} en {AUTO_REGISTRO_MS // 1000} s..."
         )
         self._subtitulo_label = tk.Label(
-            head,
+            footer,
             textvariable=self._subtitulo_var,
             bg=theme.BG_PANEL,
             fg=theme.TEXT_MUTED,
@@ -121,49 +104,95 @@ class IdentificationConfirmationPanel(tk.Frame):
             justify="left",
             wraplength=280,
         )
-        self._subtitulo_label.pack(anchor="w", pady=(4, 0))
+        self._subtitulo_label.pack(anchor="w", pady=(0, 6))
 
-        # Foto cuadrada centrada
-        foto_frame = tk.Frame(body, bg=theme.BG_PANEL)
-        foto_frame.pack(fill="x", pady=(16, 12))
-        ttk.Label(foto_frame, text="FOTOGRAFÍA", style="Muted.TLabel").pack()
+        ttk.Button(
+            footer,
+            text=btn_text,
+            style="Primary.TButton",
+            command=self._confirmar,
+        ).pack(fill="x", ipady=2)
+
+        # Cuerpo: contenido compacto y centrado (evita huecos grandes).
+        body = tk.Frame(self, bg=theme.BG_PANEL)
+        body.pack(side="top", fill="both", expand=True)
+
+        content = tk.Frame(body, bg=theme.BG_PANEL)
+        content.place(relx=0.5, rely=0.48, anchor="center")
+
+        if self._modo == "registrado":
+            titulo = "✓  Ingreso registrado"
+        elif self._persona_existente:
+            titulo = "✓  Persona encontrada"
+        else:
+            titulo = "✓  Identificación confirmada"
+        ttk.Label(
+            content,
+            text=titulo,
+            style="Card.TLabel",
+            font=_FONT_TITULO,
+        ).pack(anchor="center")
+
+        foto_frame = tk.Frame(content, bg=theme.BG_PANEL)
+        foto_frame.pack(fill="x", pady=(14, 10))
+        ttk.Label(
+            foto_frame,
+            text="FOTOGRAFÍA",
+            style="Muted.TLabel",
+            font=_FONT_LABEL,
+        ).pack()
         self._foto_canvas = tk.Canvas(
             foto_frame,
             width=FOTO_SIZE,
             height=FOTO_SIZE,
-            bg="#f0f0f0",
+            bg=theme.BG_DEEP,
             highlightthickness=1,
             highlightbackground=theme.BORDER,
         )
         self._foto_canvas.pack(pady=(6, 0))
         self._cargar_foto()
 
-        # Rejilla 2×2: Nombre | Tipo / Estado | Ficha
         d = self._persona_datos
         nombres = str(d.get("nombres") or "")
         apellidos = str(d.get("apellidos") or "")
         nombre_completo = f"{nombres} {apellidos}".strip() or "—"
-        estado_txt = label_estado_formacion(
-            d.get("estado_formacion")
-            if d.get("estado_formacion") is not None
-            else d.get("ind_etdo_formacion")
-        )
-        ficha = d.get("id_ficha")
-        ficha_txt = str(ficha) if ficha not in (None, "", 0) else "—"
 
-        campos = [
-            ("Nombre", nombre_completo),
-            ("Tipo", str(d.get("nom_tipo_persona") or "—")),
-            ("Estado", estado_txt),
-            ("Ficha", ficha_txt),
-        ]
+        if es_tipo_instructor(d.get("tipo_persona")):
+            campos = [
+                ("Nombre", nombre_completo),
+                ("Tipo", str(d.get("nom_tipo_persona") or "Instructor")),
+                (
+                    "Estado",
+                    label_estado_instructor(d.get("ind_estado_instructor")),
+                ),
+                (
+                    "Tipo contrato",
+                    label_tipo_contrato_instructor(d.get("ind_tipo_contrato")),
+                ),
+                (
+                    "Vehículo",
+                    label_vehiculo_instructor(d.get("ind_vehiculo")),
+                ),
+            ]
+        else:
+            estado_txt = label_estado_formacion(
+                d.get("estado_formacion")
+                if d.get("estado_formacion") is not None
+                else d.get("ind_etdo_formacion")
+            )
+            ficha = d.get("id_ficha")
+            ficha_txt = str(ficha) if ficha not in (None, "", 0) else "—"
+            campos = [
+                ("Nombre", nombre_completo),
+                ("Tipo", str(d.get("nom_tipo_persona") or "—")),
+                ("Estado", estado_txt),
+                ("Ficha", ficha_txt),
+            ]
 
-        grid = tk.Frame(body, bg=theme.BG_PANEL)
-        grid.pack(fill="both", expand=True, pady=(4, 0))
+        grid = tk.Frame(content, bg=theme.BG_PANEL)
+        grid.pack(fill="x", pady=(4, 0))
         grid.columnconfigure(0, weight=1, uniform="info")
         grid.columnconfigure(1, weight=1, uniform="info")
-        grid.rowconfigure(0, weight=1)
-        grid.rowconfigure(1, weight=1)
 
         for idx, (label, valor) in enumerate(campos):
             row, col = divmod(idx, 2)
@@ -171,17 +200,27 @@ class IdentificationConfirmationPanel(tk.Frame):
             cell.grid(
                 row=row,
                 column=col,
-                sticky="nsew",
-                padx=(0 if col == 0 else 8, 0 if col == 1 else 8),
+                sticky="ew",
+                padx=(0 if col == 0 else 10, 0 if col == 1 else 10),
                 pady=(0 if row == 0 else 12, 0),
             )
-            ttk.Label(cell, text=label, style="Muted.TLabel").pack(anchor="w")
-            ttk.Label(
+            tk.Label(
+                cell,
+                text=label,
+                bg=theme.BG_PANEL,
+                fg=theme.TEXT_MUTED,
+                font=_FONT_LABEL,
+                anchor="w",
+            ).pack(anchor="w")
+            tk.Label(
                 cell,
                 text=valor,
-                style="Card.TLabel",
-                font=theme.FONT_BODY_BOLD,
-                wraplength=160,
+                bg=theme.BG_PANEL,
+                fg=theme.TEXT_PRIMARY,
+                font=_FONT_VALOR,
+                anchor="w",
+                justify="left",
+                wraplength=170,
             ).pack(anchor="w", pady=(2, 0))
 
     def _programar_auto_registro(self) -> None:
@@ -209,13 +248,8 @@ class IdentificationConfirmationPanel(tk.Frame):
     def _cargar_foto(self) -> None:
         foto_b64 = self._persona_datos.get("foto_base64")
         if not foto_b64:
-            self._foto_canvas.create_text(
-                FOTO_SIZE // 2,
-                FOTO_SIZE // 2,
-                text="Sin foto",
-                font=("Arial", 10),
-                fill="#999999",
-            )
+            # Sin rostro enrolado: caja oscura vacía (sin inventar imagen).
+            self._foto_canvas.configure(bg=theme.BG_DEEP)
             return
         try:
             foto_pil = Image.open(io.BytesIO(b64decode(foto_b64)))
@@ -225,12 +259,13 @@ class IdentificationConfirmationPanel(tk.Frame):
             self._foto_image = ImageTk.PhotoImage(foto_pil)
             self._foto_canvas.create_image(0, 0, image=self._foto_image, anchor="nw")
         except Exception as exc:
+            self._foto_canvas.configure(bg=theme.BG_DEEP)
             self._foto_canvas.create_text(
                 FOTO_SIZE // 2,
                 FOTO_SIZE // 2,
                 text=f"Error foto\n{str(exc)[:18]}",
                 font=("Arial", 8),
-                fill="#cc0000",
+                fill=theme.ERROR,
                 justify="center",
             )
 

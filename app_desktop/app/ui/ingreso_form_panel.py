@@ -20,15 +20,15 @@ class IngresoFormPanel(tk.Frame):
         master: tk.Misc,
         client: SmartcsetClient,
         *,
-        on_enrolar_rostro: Callable[[], None] | None = None,
         on_registrado: Callable[[], None] | None = None,
         on_mensaje_estado: Callable[[str, str], None] | None = None,
+        on_ingreso_exitoso: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         super().__init__(master, bg=theme.BG_PANEL, padx=14, pady=12)
         self._client = client
-        self._on_enrolar_rostro = on_enrolar_rostro
         self._on_registrado = on_registrado
         self._on_mensaje_estado = on_mensaje_estado
+        self._on_ingreso_exitoso = on_ingreso_exitoso
 
         self._catalogos: dict[str, Any] = {
             "tipos_doc": [],
@@ -137,23 +137,28 @@ class IngresoFormPanel(tk.Frame):
         btns = ttk.Frame(foot, style="Card.TFrame")
         btns.pack(fill="x")
         btns.columnconfigure(0, weight=1)
-        btns.columnconfigure(1, weight=1)
-        self._enrolar_btn = ttk.Button(
-            btns,
-            text="Enrolar rostro",
-            style="Nav.TButton",
-            command=self._click_enrolar,
-        )
-        self._enrolar_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4), ipady=4)
         ttk.Button(
             btns,
             text="Registrar ingreso",
             style="Primary.TButton",
             command=self._registrar,
-        ).grid(row=0, column=1, sticky="ew", padx=(4, 0), ipady=4)
+        ).grid(row=0, column=0, sticky="ew", ipady=2)
 
         body = tk.Frame(self, bg=theme.BG_PANEL)
         body.pack(side="top", fill="both", expand=True)
+
+        # Observación anclada abajo del body: no se aplasta si falta altura.
+        obs_wrap = tk.Frame(body, bg=theme.BG_PANEL)
+        obs_wrap.pack(side="bottom", fill="x")
+        ttk.Label(
+            obs_wrap,
+            text="Observación / Novedad",
+            style="Card.TLabel",
+        ).pack(anchor="w", pady=(8, 4))
+        self._obs_entry = ttk.Entry(
+            obs_wrap, textvariable=self._obs_var, font=theme.FONT_LOGIN_LABEL
+        )
+        self._obs_entry.pack(fill="x", ipady=8)
 
         head = tk.Frame(body, bg=theme.BG_PANEL)
         head.pack(fill="x")
@@ -165,7 +170,7 @@ class IngresoFormPanel(tk.Frame):
         ).pack(side="left")
 
         ttk.Label(body, text="Documento de identidad", style="Card.TLabel").pack(
-            anchor="w", pady=(12, 2)
+            anchor="w", pady=(10, 2)
         )
         doc_row = tk.Frame(body, bg=theme.BG_PANEL)
         doc_row.pack(fill="x")
@@ -188,18 +193,19 @@ class IngresoFormPanel(tk.Frame):
             font=theme.FONT_LABEL_SMALL,
             anchor="w",
         )
-        self._badge_lbl.pack(fill="x", pady=(4, 0))
+        self._badge_lbl.pack(fill="x", pady=(2, 0))
 
         ttk.Label(body, text="Tipo de persona", style="Card.TLabel").pack(
-            anchor="w", pady=(10, 2)
+            anchor="w", pady=(8, 2)
         )
         self._tipo_persona_combo = ttk.Combobox(
             body, state="readonly", font=theme.FONT_LOGIN_LABEL
         )
         self._tipo_persona_combo.pack(fill="x", ipady=4)
 
+        # Separación moderada (deja aire para el badge sin abrir un hueco grande).
         ttk.Label(body, text="Datos de la persona", style="Card.TLabel").pack(
-            anchor="w", pady=(10, 2)
+            anchor="w", pady=(14, 2)
         )
         nom_row = tk.Frame(body, bg=theme.BG_PANEL)
         nom_row.pack(fill="x")
@@ -227,16 +233,6 @@ class IngresoFormPanel(tk.Frame):
         )
         self._puertas_frame = tk.Frame(body, bg=theme.BG_PANEL)
         self._puertas_frame.pack(fill="x")
-
-        ttk.Label(
-            body,
-            text="Observación / Novedad",
-            style="Card.TLabel",
-        ).pack(anchor="w", pady=(12, 4))
-        self._obs_entry = ttk.Entry(
-            body, textvariable=self._obs_var, font=theme.FONT_LOGIN_LABEL
-        )
-        self._obs_entry.pack(fill="x", ipady=10)
 
     def _rebuild_puertas(self) -> None:
         for child in self._puertas_frame.winfo_children():
@@ -346,14 +342,6 @@ class IngresoFormPanel(tk.Frame):
 
     # ---- Eventos -----------------------------------------------------
 
-    def _click_enrolar(self) -> None:
-        if not self.documento():
-            self._msg_var.set("Ingrese el documento antes de enrolar.")
-            self.focus_documento()
-            return
-        if self._on_enrolar_rostro is not None:
-            self._on_enrolar_rostro()
-
     def _on_documento_enter(self, _event: tk.Event | None = None) -> None:
         self._consultar_documento()
 
@@ -403,6 +391,7 @@ class IngresoFormPanel(tk.Frame):
 
         self.aplicar_persona_identificada(
             {
+                **persona,
                 "documento": documento,
                 "tipo_doc": tipo_doc,
                 "nombres": persona.get("nombres"),
@@ -459,6 +448,60 @@ class IngresoFormPanel(tk.Frame):
         self._msg_var.set(msg)
         if self._on_mensaje_estado is not None:
             self._on_mensaje_estado(msg, theme.SUCCESS)
+
+        persona_datos: dict[str, Any] = {
+            "documento": documento,
+            "tipo_doc": self._tipo_doc_actual(),
+            "nombres": nombres,
+            "apellidos": apellidos,
+            "tipo_persona": tipo_persona,
+            "nom_tipo_persona": self._tipo_persona_combo.get() or "",
+            "estado_formacion": (
+                (self._persona_existente or {}).get("estado_formacion")
+                or (self._persona_existente or {}).get("ind_etdo_formacion")
+            ),
+            "id_ficha": (self._persona_existente or {}).get("id_ficha"),
+            "ind_estado_instructor": (self._persona_existente or {}).get(
+                "ind_estado_instructor"
+            ),
+            "ind_tipo_contrato": (self._persona_existente or {}).get(
+                "ind_tipo_contrato"
+            ),
+            "ind_vehiculo": (self._persona_existente or {}).get("ind_vehiculo"),
+            # Sin enrolamiento facial: el panel deja la caja oscura vacía.
+            "foto_base64": (self._persona_existente or {}).get("foto_base64"),
+        }
+        # Tras registrar, reconsultar para traer campos de tab_instructores
+        # (si ya existe fila) y tipo/nombre canónicos de BD.
+        try:
+            consulta = self._client.ingreso_consultar(
+                documento, self._tipo_doc_actual()
+            )
+            persona_api = consulta.get("persona") or {}
+            if persona_api:
+                for key in (
+                    "nombres",
+                    "apellidos",
+                    "tipo_persona",
+                    "nom_tipo_persona",
+                    "ind_estado_instructor",
+                    "ind_tipo_contrato",
+                    "ind_vehiculo",
+                    "id_ficha",
+                    "estado_formacion",
+                ):
+                    if persona_api.get(key) is not None:
+                        persona_datos[key] = persona_api.get(key)
+        except (SmartcsetApiError, SmartcsetConnectionError):
+            pass
+
+        era_existente = self._persona_existente is not None
+        persona_datos["_persona_existente"] = era_existente
+
+        if self._on_ingreso_exitoso is not None:
+            self._on_ingreso_exitoso(persona_datos)
+            return
+
         if self._on_registrado is not None:
             self._on_registrado()
         self.limpiar()

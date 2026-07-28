@@ -35,6 +35,7 @@ SUCCESS = "#00e5b0"
 
 FONT_BODY = ("Segoe UI", 10)
 FONT_BODY_BOLD = ("Segoe UI", 10, "bold")
+FONT_PRIMARY_BUTTON = ("Segoe UI", 11, "bold")
 FONT_TITLE = ("Segoe UI", 15, "bold")
 FONT_LOGIN_TITLE = ("Segoe UI", 22, "bold")
 FONT_LOGIN_LABEL = ("Segoe UI", 12)
@@ -132,9 +133,9 @@ def apply_theme(root: tk.Misc) -> ttk.Style:
         "Primary.TButton",
         background=V_OLIVA,
         foreground="#ffffff",
-        font=FONT_BODY_BOLD,
+        font=FONT_PRIMARY_BUTTON,
         borderwidth=0,
-        padding=(14, 10),
+        padding=(14, 8),
     )
     style.map(
         "Primary.TButton",

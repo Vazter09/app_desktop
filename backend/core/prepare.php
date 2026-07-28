@@ -158,9 +158,13 @@ try {
     $stmt_buscar_persona_doc = $pdo->prepare(
         "SELECT p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona,
-                p.fec_ultima_entrada, p.fec_ultima_salida
+                p.fec_ultima_entrada, p.fec_ultima_salida,
+                i.ind_estado AS ind_estado_instructor,
+                i.ind_tipo_contrato,
+                i.ind_vehiculo
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
+         LEFT JOIN tab_instructores i ON i.id_instructor = p.id_persona
          WHERE p.id_persona = ?::NUMERIC
          ORDER BY CASE WHEN p.id_tipo_docum = ?::VARCHAR THEN 0 ELSE 1 END
          LIMIT 1"
@@ -170,7 +174,7 @@ try {
     // 2026-07-09). A diferencia de $stmt_buscar_persona_doc (lookup liviano
     // reutilizado por ingreso/salida), esta trae TODOS los campos asignados
     // en tab_personas + datos de aprendiz/ficha/programa si aplica (LEFT JOIN,
-    // NULL para el resto de tipos de persona).
+    // NULL para el resto de tipos de persona) + instructor cuando aplica.
     $stmt_biometria_persona_completa = $pdo->prepare(
         "SELECT p.id_persona, p.id_tipo_docum, td.nom_tipo_docum,
                 p.nom_persona, p.ape_persona, p.mail_persona,
@@ -183,7 +187,10 @@ try {
                 p.ruta_foto_facial,
                 ap.id_ficha, ap.ind_etdo_formacion, ap.num_llamados,
                 f.id_jornada, f.ind_modalidad,
-                pr.id_programa, pr.nom_programa
+                pr.id_programa, pr.nom_programa,
+                i.ind_estado AS ind_estado_instructor,
+                i.ind_tipo_contrato,
+                i.ind_vehiculo
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          INNER JOIN tab_tipos_docum td ON p.id_tipo_docum = td.id_tipo_docum
@@ -192,6 +199,7 @@ try {
          LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
          LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha
          LEFT JOIN tab_programas pr ON pr.id_programa = f.id_programa
+         LEFT JOIN tab_instructores i ON i.id_instructor = p.id_persona
          WHERE p.id_persona = ?::NUMERIC
          LIMIT 1"
     );

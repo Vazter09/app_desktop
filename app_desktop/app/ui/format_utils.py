@@ -47,6 +47,16 @@ ESTADO_FORMACION_LABELS: dict[int, str] = {
     9: "Sin información",
 }
 
+# tab_instructores.ind_estado (schema V.1.10.1).
+ESTADO_INSTRUCTOR_LABELS: dict[int, str] = {
+    0: "Activo",
+    2: "Suspendido",
+    3: "Bloqueado",
+    9: "Inactivo",
+}
+
+TIPO_PERSONA_INSTRUCTOR = 3
+
 
 def label_estado_formacion(codigo: int | str | None) -> str:
     """Traduce ind_etdo_formacion / estado_formacion a texto legible."""
@@ -57,6 +67,52 @@ def label_estado_formacion(codigo: int | str | None) -> str:
     except (TypeError, ValueError):
         return "—"
     return ESTADO_FORMACION_LABELS.get(key, "—")
+
+
+def label_estado_instructor(codigo: int | str | None) -> str:
+    """Traduce tab_instructores.ind_estado a texto legible."""
+    if codigo is None or codigo == "":
+        return "—"
+    try:
+        key = int(codigo)
+    except (TypeError, ValueError):
+        return "—"
+    return ESTADO_INSTRUCTOR_LABELS.get(key, "—")
+
+
+def label_tipo_contrato_instructor(valor: bool | str | int | None) -> str:
+    """TRUE=Planta / FALSE=Contratista (tab_instructores.ind_tipo_contrato)."""
+    if valor is None or valor == "":
+        return "—"
+    if isinstance(valor, bool):
+        return "Planta" if valor else "Contratista"
+    s = str(valor).strip().lower()
+    if s in ("t", "true", "1", "yes"):
+        return "Planta"
+    if s in ("f", "false", "0", "no"):
+        return "Contratista"
+    return "—"
+
+
+def label_vehiculo_instructor(valor: bool | str | int | None) -> str:
+    """TRUE=Sí / FALSE=No (tab_instructores.ind_vehiculo)."""
+    if valor is None or valor == "":
+        return "—"
+    if isinstance(valor, bool):
+        return "Sí" if valor else "No"
+    s = str(valor).strip().lower()
+    if s in ("t", "true", "1", "yes"):
+        return "Sí"
+    if s in ("f", "false", "0", "no"):
+        return "No"
+    return "—"
+
+
+def es_tipo_instructor(tipo_persona: int | str | None) -> bool:
+    try:
+        return int(tipo_persona or 0) == TIPO_PERSONA_INSTRUCTOR
+    except (TypeError, ValueError):
+        return False
 
 
 def format_db_timestamp(value: str | None, fmt: str = DEFAULT_FORMAT) -> str:
