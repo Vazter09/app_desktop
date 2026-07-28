@@ -1,16 +1,24 @@
 /*
-====================================================================================
-    SCRIPT PARA CONTROLAR EL INGRESO.
-====================================================================================
-    OBJETIVO:
+============================================================================================
+  SCRIPT PARA CONTROL DE INGRESOS Y SALIDAS DE PERSONAS EN EL CENTRO
+============================================================================================
+  OBJETIVO:
+    Implementar la lógica de negocio para el registro de ingresos y salidas de personas
+    en el centro, garantizando la integridad de los datos mediante:
+      - Índices estratégicos para rendimiento
+      - Funciones auxiliares
+      - Procedimientos almacenados con manejo de concurrencia (FOR UPDATE)
+      - Triggers de seguridad que previenen operaciones DML directas que violen las reglas
 
-        Este script implementa la lógica de negocio para el registro de ingresos
-        y salidas de personas en el centro, garantizando la integridad de los datos.
+  DEPENDENCIAS:
+    - Tablas: tab_personas, tab_log_ingresos, tab_novedades_ingreso
+    - Extensiones: vector (para facial_embedding)
+    - La función fn_diferencia_minutos() es requerida por los procedimientos y triggers
 
-    AUTOR:   Grupo SMARTCSET
-    FECHA:   2026-07-14
-    VERSIÓN: 1.0
-====================================================================================
+  AUTOR:          Grupo SMARTCSET
+  FECHA:          2026-07-17
+  VERSIÓN:        1.0
+============================================================================================
 */
 
 -- =============================================================================
@@ -59,10 +67,65 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION fn_diferencia_minutos IS 
     'Retorna la diferencia en minutos entre (p_fecha1 - p_fecha2).';
 
-
 -- =============================================================================
 -- 3. PROCEDIMIENTO: sp_registrar_ingreso
 -- =============================================================================
+/*
+  sp_registrar_ingreso
+  ====================
+  Propósito:
+    Registra un nuevo ingreso de una persona en el centro.
+    - Si la persona no existe en tab_personas, se crea una novedad en 
+      tab_novedades_ingreso con los datos proporcionados y finaliza.
+    - Si existe, valida que no tenga ingreso activo y que hayan pasado 
+      al menos 5 minutos desde su última salida.
+    - Inserta en tab_log_ingresos y actualiza fec_ultima_entrada y 
+      num_visitas en tab_personas.
+    - Usa FOR UPDATE para manejo de concurrencia.
+
+  Parámetros:
+    - p_num_documento     DECIMAL(10,0)   : Número de documento de la persona
+    - p_nom_tercero       VARCHAR(40)     : Nombre de la persona (para novedades)
+    - p_ape_tercero       VARCHAR(30)     : Apellido de la persona (para novedades)
+    - p_id_entrada_centro DECIMAL(1,0)    : ID de la entrada utilizada (1-4)
+    - p_id_metodo_aut     DECIMAL(2,0)    : Método de autenticación (1:Huella,2:Facial,3:Ambos)
+    - p_ind_dispositivo   BOOLEAN         : ¿Usó dispositivo móvil?
+    - p_facial_embedding  VECTOR(128)     : Vector facial para autenticación
+    - p_huella_template   BYTEA           : Template de huella digital
+    - p_url_foto_facial   VARCHAR(500)    : URL de la foto facial capturada
+    - p_url_imagen_huella VARCHAR(500)    : URL de la imagen de huella
+    - p_calidad_facial    NUMERIC(5,2)    : Calidad del vector facial (0-100)
+    - p_calidad_huella    NUMERIC(5,2)    : Calidad del template de huella
+    - p_ind_vehiculo      BOOLEAN         : ¿Ingresó con vehículo?
+    - p_id_vehiculo       VARCHAR(6)      : Placa del vehículo
+    - p_val_observaciones TEXT            : Observaciones adicionales
+    - p_usr_insert        VARCHAR(50)     : Usuario que registra el ingreso
+
+  Excepciones:
+    - Si la persona tiene ingreso activo: RAISE EXCEPTION
+    - Si no han pasado 5 minutos desde la última salida: RAISE EXCEPTION
+    - Si la persona no existe: Se crea novedad (no se lanza excepción)
+
+  Ejemplo de uso:
+    CALL sp_registrar_ingreso(
+        p_num_documento     => 123456789,
+        p_nom_tercero       => 'Juan',
+        p_ape_tercero       => 'Pérez',
+        p_id_entrada_centro => 1,
+        p_id_metodo_aut     => 2,
+        p_ind_dispositivo   => TRUE,
+        p_facial_embedding  => NULL,
+        p_huella_template   => NULL,
+        p_url_foto_facial   => 'https://...',
+        p_url_imagen_huella => NULL,
+        p_calidad_facial    => 85.5,
+        p_calidad_huella    => NULL,
+        p_ind_vehiculo      => FALSE,
+        p_id_vehiculo       => 'AAA000',
+        p_val_observaciones => 'Ingreso por puerta principal',
+        p_usr_insert        => 'admin'
+    );
+*/
 CREATE OR REPLACE PROCEDURE sp_registrar_ingreso(
     -- Datos básicos de la persona (siempre proporcionados)
     p_num_documento     DECIMAL(10,0),
@@ -201,6 +264,31 @@ COMMENT ON PROCEDURE sp_registrar_ingreso IS
 -- =============================================================================
 -- 4. PROCEDIMIENTO: sp_registrar_salida
 -- =============================================================================
+/*
+  sp_registrar_salida
+  ===================
+  Propósito:
+    Registra la salida de una persona a partir del ID de ingreso.
+    - Verifica que el ingreso esté activo (sin salida previa).
+    - Exige que hayan pasado al menos 5 minutos desde el ingreso.
+    - Actualiza fec_salida en tab_log_ingresos y fec_ultima_salida en tab_personas.
+    - Usa FOR UPDATE para manejo de concurrencia.
+
+  Parámetros:
+    - p_id_ingreso  INTEGER      : ID del ingreso a cerrar
+    - p_usr_update  VARCHAR(50)  : Usuario que registra la salida
+
+  Excepciones:
+    - Si el ID de ingreso no existe: RAISE EXCEPTION
+    - Si el ingreso ya tiene salida: RAISE EXCEPTION
+    - Si no han pasado 5 minutos desde el ingreso: RAISE EXCEPTION
+
+  Ejemplo de uso:
+    CALL sp_registrar_salida(
+        p_id_ingreso => 1,
+        p_usr_update => 'admin'
+    );
+*/
 CREATE OR REPLACE PROCEDURE sp_registrar_salida(
     p_id_ingreso        INTEGER,
     p_usr_update        VARCHAR(50)
@@ -268,6 +356,19 @@ COMMENT ON PROCEDURE sp_registrar_salida IS
 -- =============================================================================
 
 -- 5.1. Trigger para INSERT en tab_log_ingresos
+/*
+  fn_trg_validar_ingreso_directo
+  ==============================
+  Propósito:
+    Trigger de seguridad que impide INSERTS directos en tab_log_ingresos
+    que violen las reglas de negocio:
+      - La persona debe existir en tab_personas
+      - No debe tener un ingreso activo
+      - Deben haber pasado 5 minutos desde la última salida
+
+  Usado en:
+    BEFORE INSERT ON tab_log_ingresos
+*/
 CREATE OR REPLACE FUNCTION fn_trg_validar_ingreso_directo()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -325,6 +426,18 @@ COMMENT ON TRIGGER trg_validar_ingreso_directo ON tab_log_ingresos IS
     'Trigger de seguridad que impide INSERTS directos que violen las reglas de ingreso.';
 
 -- 5.2. Trigger para UPDATE de fec_salida
+/*
+  fn_trg_validar_salida_directa
+  =============================
+  Propósito:
+    Trigger de seguridad que impide actualizaciones directas de fec_salida
+    en tab_log_ingresos que violen las reglas:
+      - El ingreso debe estar activo (sin salida previa)
+      - Deben haber pasado 5 minutos desde el ingreso
+
+  Usado en:
+    BEFORE UPDATE OF fec_salida ON tab_log_ingresos
+*/
 CREATE OR REPLACE FUNCTION fn_trg_validar_salida_directa()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -359,7 +472,7 @@ COMMENT ON TRIGGER trg_validar_salida_directa ON tab_log_ingresos IS
     'Trigger de seguridad que impide actualizaciones directas de fec_salida que violen las reglas.';
 
 -- =============================================================================
--- 4. PRUEBAS DE VALIDACIÓN (ejemplos comentados)
+-- 6. PRUEBAS DE VALIDACIÓN (ejemplos comentados)
 -- =============================================================================
 /*
 -- Registrar un ingreso (persona existente)
@@ -400,5 +513,35 @@ CALL sp_registrar_ingreso(
 */
 
 -- =============================================================================
--- FIN DEL SCRIPT
+-- NOTAS ADICIONALES PARA EL ADMINISTRADOR:
+-- =============================================================================
+-- 1. Los procedimientos sp_registrar_ingreso y sp_registrar_salida son la
+--    interfaz recomendada para interactuar con el sistema de control de acceso.
+--
+-- 2. Los triggers de seguridad previenen operaciones DML directas que puedan
+--    violar la integridad de los datos. Siempre use los procedimientos.
+--
+-- 3. Los índices están diseñados para optimizar las consultas más frecuentes:
+--    - Búsqueda de ingresos activos
+--    - Historial de ingresos por persona
+--    - Última salida registrada
+--    - Búsqueda en novedades por documento
+--
+-- 4. La función fn_diferencia_minutos es inmutable (IMMUTABLE), lo que permite
+--    su uso en índices y optimizaciones.
+--
+-- 5. El manejo de concurrencia con FOR UPDATE previene condiciones de carrera
+--    cuando múltiples procesos intentan registrar ingresos/salidas simultáneamente.
+--
+-- 6. Para ejecutar las pruebas, descomentar los CALLs y ajustar los valores
+--    según los datos reales del entorno.
+--
+-- =============================================================================
+-- HISTORIAL DE VERSIONES
+-- =============================================================================
+-- Versión | Fecha       | Descripción de cambios
+-- --------|-------------|--------------------------------------------------------
+-- 1.0     | 2026-07-17  | Versión inicial. Implementación de procedimientos,
+--         |             | triggers de seguridad, índices estratégicos y
+--         |             | documentación completa.
 -- =============================================================================

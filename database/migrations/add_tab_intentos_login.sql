@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS tab_intentos_login (
         CHECK (LENGTH(TRIM(ip_cliente)) >= 7)
 );
 
+
 -- Columnas de auditoría forense (E3 enriquecido): idempotente para BD ya creadas.
 -- motivo_fallo: 'usuario_no_existe' | 'contrasena_incorrecta' | 'usuario_inactivo'
 --               (NULL en intentos exitosos). Se valida en fun_registrar_intento_login.
