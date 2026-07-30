@@ -94,20 +94,6 @@ def label_tipo_contrato_instructor(valor: bool | str | int | None) -> str:
     return "—"
 
 
-def label_vehiculo_instructor(valor: bool | str | int | None) -> str:
-    """TRUE=Sí / FALSE=No (tab_instructores.ind_vehiculo)."""
-    if valor is None or valor == "":
-        return "—"
-    if isinstance(valor, bool):
-        return "Sí" if valor else "No"
-    s = str(valor).strip().lower()
-    if s in ("t", "true", "1", "yes"):
-        return "Sí"
-    if s in ("f", "false", "0", "no"):
-        return "No"
-    return "—"
-
-
 def es_tipo_instructor(tipo_persona: int | str | None) -> bool:
     try:
         return int(tipo_persona or 0) == TIPO_PERSONA_INSTRUCTOR

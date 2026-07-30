@@ -6,8 +6,8 @@ versionado, se crea/edita una sola vez en la instalación de cada PC).
 No hay campo de usuario/token — el login es siempre con usuario y
 contraseña reales de SmartCSET, tecleados en cada sesión (ver login_view).
 
-Sigue la regla del proyecto: nada de configuración hardcodeada en el
-código fuente, todo en un archivo de configuración explícito.
+En ejecutable (PyInstaller) el default es el servidor institucional;
+en desarrollo desde fuentes sigue siendo localhost.
 """
 from __future__ import annotations
 
@@ -16,35 +16,41 @@ import os
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(CONFIG_DIR, "app_config.json")
+from app_paths import is_frozen, writable_root
 
-# Fase actual (dev/laboratorio): código PHP corriendo LOCAL vía Apache
-# (https://localhost/smartcset), BD remota en el servidor de laboratorio
-# (192.168.1.71) — ver acuerdo de esta sesión. En despliegue institucional
-# real este valor cambia al host real (ver HANDOFF.md) y deja de ser
-# "localhost", por lo que el certificado autofirmado ya no aplica
-# (verify_tls se activa solo automáticamente).
-DEFAULT_BASE_URL = "https://localhost/smartcset"
+# Servidor institucional SENA (PC de portería / .exe empaquetado).
+PRODUCTION_BASE_URL = "https://10.5.213.103/smartcset"
+# Desarrollo local vía Apache.
+DEV_BASE_URL = "https://localhost/smartcset"
 
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
+def default_base_url() -> str:
+    return PRODUCTION_BASE_URL if is_frozen() else DEV_BASE_URL
+
+
+def config_path() -> str:
+    return str(writable_root() / "app_config.json")
+
+
 @dataclass
 class AppConfig:
-    base_url: str = DEFAULT_BASE_URL
+    base_url: str = DEV_BASE_URL
     # None = automático (False solo en localhost). False explícito = lab
     # con certificado autofirmado (ej. 10.5.213.111).
     verify_tls_override: bool | None = None
 
     @classmethod
     def load(cls) -> "AppConfig":
-        if not os.path.isfile(CONFIG_PATH):
-            cfg = cls()
+        path = config_path()
+        default_url = default_base_url()
+        if not os.path.isfile(path):
+            cfg = cls(base_url=default_url)
             cfg.save()
             return cfg
 
-        with open(CONFIG_PATH, "r", encoding="utf-8") as fh:
+        with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
 
         override = data.get("verify_tls", None)
@@ -52,15 +58,16 @@ class AppConfig:
             override = bool(override)
 
         return cls(
-            base_url=str(data.get("base_url", DEFAULT_BASE_URL)),
+            base_url=str(data.get("base_url", default_url)),
             verify_tls_override=override,
         )
 
     def save(self) -> None:
+        path = config_path()
         payload = {"base_url": self.base_url}
         if self.verify_tls_override is not None:
             payload["verify_tls"] = self.verify_tls_override
-        with open(CONFIG_PATH, "w", encoding="utf-8") as fh:
+        with open(path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2, ensure_ascii=False)
 
     @property

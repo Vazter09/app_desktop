@@ -23,12 +23,17 @@ class IngresoFormPanel(tk.Frame):
         on_registrado: Callable[[], None] | None = None,
         on_mensaje_estado: Callable[[str, str], None] | None = None,
         on_ingreso_exitoso: Callable[[dict[str, Any]], None] | None = None,
+        on_enriquecer_payload: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         super().__init__(master, bg=theme.BG_PANEL, padx=14, pady=12)
         self._client = client
         self._on_registrado = on_registrado
         self._on_mensaje_estado = on_mensaje_estado
         self._on_ingreso_exitoso = on_ingreso_exitoso
+        # FacialModal: adjunta embedding/foto si hay rostro en cámara.
+        self._on_enriquecer_payload = on_enriquecer_payload
+        # True tras pegar visitante desde pistola: evita doble consulta FocusOut.
+        self._omitir_consulta_focus_out = False
 
         self._catalogos: dict[str, Any] = {
             "tipos_doc": [],
@@ -59,8 +64,43 @@ class IngresoFormPanel(tk.Frame):
     def set_documento(self, valor: str) -> None:
         self._documento_var.set(valor)
 
+    def aplicar_visitante_escaneado(
+        self,
+        documento: str,
+        *,
+        tipo_doc: str = "CC",
+        nombres: str = "",
+        apellidos: str = "",
+    ) -> None:
+        """Visitante no registrado: deja el documento (y nombres si PDF417)."""
+        # Evitar que FocusOut dispare consulta al reenfocar el campo.
+        self._omitir_consulta_focus_out = True
+        if tipo_doc and tipo_doc in self._tipo_doc_ids:
+            self._tipo_doc_combo.set(tipo_doc)
+        self._documento_var.set(documento)
+        if nombres:
+            self._nombres_var.set(nombres)
+        if apellidos:
+            self._apellidos_var.set(apellidos)
+        self._persona_existente = None
+        self._bloqueo_ingreso = False
+        self._set_campos_editables(True)
+        self._badge_var.set("Persona nueva — complete nombres y tipo")
+        self._badge_lbl.configure(fg=theme.CYAN)
+        if nombres and apellidos:
+            self._msg_var.set("Datos leídos del documento — verifique y registre.")
+        else:
+            self._msg_var.set("")
+        self.focus_documento()
+
     def focus_documento(self) -> None:
         self._documento_entry.focus_set()
+
+    def mostrar_error_catalogos(self, mensaje: str) -> None:
+        """Muestra fallo de carga de catálogos en el propio formulario."""
+        self._msg_var.set(mensaje)
+        self._badge_var.set("")
+        self._bloqueo_ingreso = True
 
     def cargar_catalogos(self, catalogos: dict[str, Any]) -> None:
         self._catalogos = catalogos or self._catalogos
@@ -72,14 +112,25 @@ class IngresoFormPanel(tk.Frame):
 
         tipos_persona = self._catalogos.get("tipos_persona", [])
         self._tipo_persona_map = {
-            str(t.get("nombre") or ""): int(t.get("id") or 0) for t in tipos_persona
+            str(t.get("nombre") or ""): int(t.get("id") or 0)
+            for t in tipos_persona
+            if t.get("nombre")
         }
+        # Evitar clave vacía que deja el combo sin opciones visibles.
+        self._tipo_persona_map.pop("", None)
         nombres = list(self._tipo_persona_map.keys())
         self._tipo_persona_combo.configure(values=nombres)
         if nombres:
             self._tipo_persona_combo.set(nombres[0])
 
         self._rebuild_puertas()
+        if self._tipo_doc_ids and nombres:
+            self._msg_var.set("")
+            self._bloqueo_ingreso = False
+        else:
+            self.mostrar_error_catalogos(
+                "Catálogos incompletos (tipos de documento/persona)."
+            )
 
     def aplicar_persona_identificada(self, persona: dict[str, Any]) -> None:
         """Rellena el formulario tras match biométrico (persona existente)."""
@@ -184,6 +235,8 @@ class IngresoFormPanel(tk.Frame):
         self._documento_entry.pack(side="left", fill="x", expand=True, ipady=4)
         self._documento_entry.bind("<Return>", self._on_documento_enter)
         self._documento_entry.bind("<FocusOut>", self._on_documento_focus_out)
+        # Escritura manual / Enter / FocusOut → consultar y cargar form.
+        # Pistola QR/barras la maneja FacialRecognitionPanel (modal), no aquí.
 
         self._badge_lbl = tk.Label(
             body,
@@ -342,16 +395,34 @@ class IngresoFormPanel(tk.Frame):
 
     # ---- Eventos -----------------------------------------------------
 
-    def _on_documento_enter(self, _event: tk.Event | None = None) -> None:
+    def _on_documento_enter(self, _event: tk.Event | None = None) -> str | None:
+        """Enter: consulta id_persona y carga datos en el formulario."""
+        self._omitir_consulta_focus_out = True
         self._consultar_documento()
+        return "break"
 
     def _on_documento_focus_out(self, _event: tk.Event | None = None) -> None:
-        if self.documento():
-            self._consultar_documento()
+        """Al salir del campo: misma consulta (si no se acaba de consultar)."""
+        if self._omitir_consulta_focus_out:
+            self._omitir_consulta_focus_out = False
+            return
+        if not self.documento():
+            return
+        self._consultar_documento()
 
-    def _tipo_doc_actual(self) -> str:
+    def tipo_doc_actual(self) -> str:
+        """Tipo de documento seleccionado en el formulario (CC/TI/CE/…)."""
         val = self._tipo_doc_combo.get().strip()
         return val or "CC"
+
+    def set_tipo_doc(self, tipo: str) -> None:
+        """Sincroniza el combo si el tipo existe en el catálogo cargado."""
+        tipo = (tipo or "").strip()
+        if tipo and tipo in self._tipo_doc_ids:
+            self._tipo_doc_combo.set(tipo)
+
+    def _tipo_doc_actual(self) -> str:
+        return self.tipo_doc_actual()
 
     def _consultar_documento(self) -> None:
         documento = self.documento()
@@ -373,6 +444,23 @@ class IngresoFormPanel(tk.Frame):
                 "No se puede registrar otro ingreso hasta registrar la salida."
             )
             persona = resultado.get("persona") or {}
+            if persona:
+                self._nombres_var.set(str(persona.get("nombres") or ""))
+                self._apellidos_var.set(str(persona.get("apellidos") or ""))
+                self._set_campos_editables(False)
+            return
+
+        if resultado.get("en_espera_reingreso"):
+            self._bloqueo_ingreso = True
+            persona = resultado.get("persona") or {}
+            self._persona_existente = persona or None
+            rest = int(resultado.get("segundos_restantes_reingreso") or 0)
+            min_rest = max(1, (rest + 59) // 60)
+            self._badge_var.set("Espere para reingresar")
+            self._badge_lbl.configure(fg=theme.ERROR)
+            self._msg_var.set(
+                f"Salida reciente: espere ~{min_rest} min para un nuevo ingreso."
+            )
             if persona:
                 self._nombres_var.set(str(persona.get("nombres") or ""))
                 self._apellidos_var.set(str(persona.get("apellidos") or ""))
@@ -436,15 +524,20 @@ class IngresoFormPanel(tk.Frame):
             "observaciones": self._obs_var.get().strip(),
             "metodo_aut": 1,
         }
+        if self._on_enriquecer_payload is not None:
+            self._on_enriquecer_payload(payload)
         try:
-            self._client.ingreso_registrar(payload)
+            resultado = self._client.ingreso_registrar(payload)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             self._msg_var.set(str(exc))
             if self._on_mensaje_estado is not None:
                 self._on_mensaje_estado(str(exc), theme.ERROR)
             return
 
+        id_ingreso = resultado.get("id_ingreso") if isinstance(resultado, dict) else None
         msg = f"Ingreso registrado: {nombres} {apellidos}."
+        if id_ingreso:
+            msg = f"Ingreso #{id_ingreso} registrado: {nombres} {apellidos}."
         self._msg_var.set(msg)
         if self._on_mensaje_estado is not None:
             self._on_mensaje_estado(msg, theme.SUCCESS)
@@ -467,7 +560,6 @@ class IngresoFormPanel(tk.Frame):
             "ind_tipo_contrato": (self._persona_existente or {}).get(
                 "ind_tipo_contrato"
             ),
-            "ind_vehiculo": (self._persona_existente or {}).get("ind_vehiculo"),
             # Sin enrolamiento facial: el panel deja la caja oscura vacía.
             "foto_base64": (self._persona_existente or {}).get("foto_base64"),
         }
@@ -486,7 +578,6 @@ class IngresoFormPanel(tk.Frame):
                     "nom_tipo_persona",
                     "ind_estado_instructor",
                     "ind_tipo_contrato",
-                    "ind_vehiculo",
                     "id_ficha",
                     "estado_formacion",
                 ):

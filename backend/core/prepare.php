@@ -160,8 +160,7 @@ try {
                 p.id_tipo_persona, tp.nom_tipo_persona,
                 p.fec_ultima_entrada, p.fec_ultima_salida,
                 i.ind_estado AS ind_estado_instructor,
-                i.ind_tipo_contrato,
-                i.ind_vehiculo
+                i.ind_tipo_contrato
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          LEFT JOIN tab_instructores i ON i.id_instructor = p.id_persona
@@ -189,8 +188,7 @@ try {
                 f.id_jornada, f.ind_modalidad,
                 pr.id_programa, pr.nom_programa,
                 i.ind_estado AS ind_estado_instructor,
-                i.ind_tipo_contrato,
-                i.ind_vehiculo
+                i.ind_tipo_contrato
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
          INNER JOIN tab_tipos_docum td ON p.id_tipo_docum = td.id_tipo_docum

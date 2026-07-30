@@ -24,6 +24,7 @@ import tkinter as tk  # noqa: E402 (después de ensure_venv a propósito)
 from tkinter import messagebox  # noqa: E402
 
 from config import AppConfig  # noqa: E402
+from app_log import get_logger, log_path, setup_logging  # noqa: E402
 from smartcset_client import SmartcsetClient  # noqa: E402
 from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
@@ -32,11 +33,17 @@ from ui.shell import AppShell  # noqa: E402
 # Ventana maximizada desde el arranque (login y portería).
 APP_MIN_WIDTH = 1280
 APP_MIN_HEIGHT = 860
+log = get_logger("main")
 
 
 class SmartcsetDesktopApp:
     def __init__(self) -> None:
         self.config = AppConfig.load()
+        log.info(
+            "Arranque app | base_url=%s verify_tls=%s",
+            self.config.base_url,
+            self.config.verify_tls,
+        )
         self.client = SmartcsetClient(
             self.config.base_url, verify_tls=self.config.verify_tls
         )
@@ -122,14 +129,28 @@ class SmartcsetDesktopApp:
         self._current_view = view
 
     def run(self) -> None:
-        self.root.mainloop()
+        try:
+            self.root.mainloop()
+        finally:
+            # Red de seguridad: si mainloop terminó sin WM_DELETE (crash
+            # parcial / destroy externo), aún intentar liberar la sesión BD.
+            self._logout_if_needed()
 
 
 def main() -> int:
+    path = setup_logging()
+    log.info("Archivo de log: %s", path)
+    app: SmartcsetDesktopApp | None = None
     try:
         app = SmartcsetDesktopApp()
         app.run()
     except Exception as exc:  # pragma: no cover - fallo visible al operador
+        log.exception("Error fatal de la aplicación: %s", exc)
+        if app is not None:
+            try:
+                app._logout_if_needed()
+            except Exception:
+                pass
         try:
             messagebox.showerror("SmartCSET — Error", str(exc))
         except tk.TclError:

@@ -2398,8 +2398,8 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     -- Plantilla binaria de la huella (Minucias)
     huella_template         BYTEA,
     -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo)
-    uri_foto_facial         VARCHAR(500),
-    uri_imagen_huella       VARCHAR(500),
+    url_foto_facial         VARCHAR(500),
+    url_imagen_huella       VARCHAR(500),
     -- Metadatos de la captura para control y auditoría
     calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
@@ -2433,8 +2433,8 @@ CREATE TABLE IF NOT EXISTS tab_novedades_ingreso
     id_entrada_centro   DECIMAL(1,0)                NOT NULL,
     val_huella_digital  BYTEA,
     val_patron_facial   VECTOR(128),
-    uri_imagen_huella   VARCHAR(500),
-    uri_foto_facial     VARCHAR(500),
+    url_imagen_huella   VARCHAR(500),
+    url_foto_facial     VARCHAR(500),
     fec_ingreso         TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fec_salida          TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     usr_insert          VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),

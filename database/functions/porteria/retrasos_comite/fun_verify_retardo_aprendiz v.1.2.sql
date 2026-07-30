@@ -22,10 +22,12 @@ DECLARE
     v_hora_llegada_time   TIME;
     v_usr_actual          VARCHAR(50);
     v_id_centro           DECIMAL(8,0);
-    v_motivo_llamado      TEXT;
+    v_ya_llamado_hoy      BOOLEAN := FALSE;
     v_id_ingreso          INTEGER;
     v_fec_ingreso         TIMESTAMP;
     v_fecha_asistencia    DATE;
+    -- Catálogo tab_motivos: 4 = Retraso en el horario de llegada a la Formación
+    CMOTIVO_RETARDO       CONSTANT SMALLINT := 4;
 BEGIN
     -- Obtener usuario de sesión o usar el proporcionado
     v_usr_actual := COALESCE(p_usr_insert, current_setting('app.current_user', true), 'SISTEMA');
@@ -165,28 +167,42 @@ BEGIN
     RAISE NOTICE 'Asistencia registrada en tab_asistencia_aprendiz para aprendiz %. Fecha: %, Estado: %, Retardo real: % min',
                  p_id_aprendiz, v_fecha_asistencia, v_estado, v_minutos_retardo;
 
-    -- 10. Si es Tarde y tiene retraso > 0, insertar llamado de atención
+    -- 10. Si es Tarde y tiene retraso > 0, insertar llamado (id_motivo = 4).
+    -- El detalle de minutos queda en tab_asistencia_aprendiz.minutos_retraso.
     IF v_estado = 'Tarde' AND v_minutos_retardo > 0 THEN
-        v_motivo_llamado := 'Retardo de ' || v_minutos_retardo || ' minutos (excediendo gracia de ' || v_tiempo_gracia || ' min). Llegada a las ' || v_hora_llegada_time;
+        SELECT EXISTS (
+            SELECT 1
+              FROM tab_llamados_atencion la
+             WHERE la.id_tercero = p_id_aprendiz
+               AND la.ind_tipo_tercero = TRUE
+               AND la.id_motivo = CMOTIVO_RETARDO
+               AND la.fec_llamado = v_fecha_asistencia
+        ) INTO v_ya_llamado_hoy;
 
-        INSERT INTO tab_llamados_atencion (
-            ind_tipo,
-            id_tercero,
-            ind_tipo_tercero,
-            motivo_llamado,
-            usr_insert,
-            fec_insert
-        ) VALUES (
-            FALSE,                           -- Disciplinario
-            p_id_aprendiz,
-            TRUE,                            -- Es aprendiz
-            v_motivo_llamado,
-            v_usr_actual,
-            CURRENT_TIMESTAMP
-        );
+        IF NOT v_ya_llamado_hoy THEN
+            INSERT INTO tab_llamados_atencion (
+                ind_tipo,
+                fec_llamado,
+                id_tercero,
+                ind_tipo_tercero,
+                id_motivo,
+                usr_insert,
+                fec_insert
+            ) VALUES (
+                FALSE,                 -- Disciplinario
+                v_fecha_asistencia,
+                p_id_aprendiz,
+                TRUE,                  -- Aprendiz
+                CMOTIVO_RETARDO,       -- 4 = Retardo (tab_motivos)
+                v_usr_actual,
+                CURRENT_TIMESTAMP
+            );
 
-        RAISE NOTICE 'Se insertó llamado de atención por retardo para aprendiz %. Minutos de retraso real: %',
-                     p_id_aprendiz, v_minutos_retardo;
+            RAISE NOTICE 'Se insertó llamado de atención (id_motivo=%) por retardo para aprendiz %. Minutos: %',
+                         CMOTIVO_RETARDO, p_id_aprendiz, v_minutos_retardo;
+        ELSE
+            RAISE NOTICE 'Ya existe llamado de atención por retardo hoy para aprendiz %.', p_id_aprendiz;
+        END IF;
     END IF;
 
     RETURN TRUE;

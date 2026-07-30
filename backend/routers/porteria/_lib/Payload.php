@@ -84,7 +84,7 @@ class PorteriaRouterPayload
      * Campos de tab_instructores (NULL si la persona no tiene fila de instructor).
      *
      * @param array<string, mixed> $persona
-     * @return array{ind_estado_instructor: ?int, ind_tipo_contrato: ?bool, ind_vehiculo: ?bool}
+     * @return array{ind_estado_instructor: ?int, ind_tipo_contrato: ?bool}
      */
     private static function formatCamposInstructor(array $persona): array
     {
@@ -95,7 +95,6 @@ class PorteriaRouterPayload
                 ? (int) $estado
                 : null,
             'ind_tipo_contrato' => self::toNullableBool($persona['ind_tipo_contrato'] ?? null),
-            'ind_vehiculo' => self::toNullableBool($persona['ind_vehiculo'] ?? null),
         ];
     }
 

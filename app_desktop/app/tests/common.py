@@ -37,7 +37,49 @@ def _find_project_root(start: Path) -> Path:
 
 PROJECT_ROOT = _find_project_root(APP_DIR)
 
-BASE_URL = os.environ.get("SMARTCSET_BASE_URL", "https://localhost/smartcset")
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _base_url_from_app_config() -> str | None:
+    """Misma URL que la app si existe `app_desktop/app/app_config.json`."""
+    config_path = APP_DIR / "app_config.json"
+    if not config_path.is_file():
+        return None
+    try:
+        import json
+
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    url = str(data.get("base_url") or "").strip()
+    return url or None
+
+
+BASE_URL = (
+    os.environ.get("SMARTCSET_BASE_URL")
+    or _base_url_from_app_config()
+    or "https://localhost/smartcset"
+)
+
+
+def resolve_verify_tls(base_url: str | None = None) -> bool:
+    """Alinea TLS con el `.exe` de portería (cert autofirmado).
+
+    `SMARTCSET_VERIFY_TLS=true|false` fuerza el valor.
+    Sin variable: localhost → True; host remoto → False (igual que
+    `app_config.porteria.json`).
+    """
+    from urllib.parse import urlparse
+
+    raw = os.environ.get("SMARTCSET_VERIFY_TLS")
+    if raw is not None and raw.strip() != "":
+        return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+    host = (urlparse(base_url or BASE_URL).hostname or "").lower()
+    if host in _LOCAL_HOSTS:
+        return True
+    return False
+
 
 # Credenciales de desarrollo documentadas en CLAUDE.md — mismas que usa
 # el resto de la suite de tests del proyecto (scripts/test_seguridad/).

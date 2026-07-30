@@ -58,16 +58,19 @@ try {
     $stmt_biometria_persona_completa->execute([(string) $idPersona]);
     $persona = $stmt_biometria_persona_completa->fetch();
 
-    // Foto de enrolamiento: tab_personas.ruta_foto_facial
+    // Foto de enrolamiento: tab_personas.ruta_foto_facial (+ fallback carpeta).
     $fotoBase64 = null;
-    if ($persona !== false && !empty($persona['ruta_foto_facial'])) {
-        $fotoBase64 = BiometriaPhotoService::leerFoto((string) $persona['ruta_foto_facial']);
+    $idPersonaInt = (int) $idPersona;
+    $ruta = ($persona !== false) ? (string) ($persona['ruta_foto_facial'] ?? '') : '';
+    if ($persona !== false) {
+        $fotoBase64 = BiometriaPhotoService::resolverFotoBase64($ruta, $idPersonaInt);
     }
 
     RouterResponse::ok([
         'match' => $persona !== false,
         'persona' => $persona !== false ? PorteriaRouterPayload::formatPersonaCompleta($persona) : null,
         'foto_base64' => $fotoBase64,
+        'foto_disponible' => $fotoBase64 !== null,
     ]);
 } catch (InvalidArgumentException $e) {
     RouterResponse::fail($e->getMessage());

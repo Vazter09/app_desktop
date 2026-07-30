@@ -12,9 +12,9 @@ CREATE OR REPLACE FUNCTION fun_insert_novedad_ingreso(
     wape_tercero         tab_novedades_ingreso.ape_tercero%TYPE,
     wid_entrada_centro   tab_novedades_ingreso.id_entrada_centro%TYPE,
     wfacial_embedding    tab_novedades_ingreso.val_patron_facial%TYPE DEFAULT NULL,
-    wuri_foto_facial     tab_novedades_ingreso.uri_foto_facial%TYPE DEFAULT NULL,
+    wurl_foto_facial     tab_novedades_ingreso.url_foto_facial%TYPE DEFAULT NULL,
     wval_huella_digital  tab_novedades_ingreso.val_huella_digital%TYPE DEFAULT NULL,
-    wuri_imagen_huella   tab_novedades_ingreso.uri_imagen_huella%TYPE DEFAULT NULL
+    wurl_imagen_huella   tab_novedades_ingreso.url_imagen_huella%TYPE DEFAULT NULL
 ) RETURNS NUMERIC AS $$
 DECLARE
     wid_novedad    NUMERIC;
@@ -57,13 +57,13 @@ BEGIN
 
     INSERT INTO tab_novedades_ingreso (
         id_novedad, nom_tercero, ape_tercero, id_entrada_centro,
-        val_patron_facial, uri_foto_facial,
-        val_huella_digital, uri_imagen_huella,
+        val_patron_facial, url_foto_facial,
+        val_huella_digital, url_imagen_huella,
         fec_ingreso, fec_salida, usr_insert, fec_insert
     ) VALUES (
         wid_novedad, TRIM(wnom_tercero), TRIM(wape_tercero), wid_entrada_centro,
-        wfacial_embedding, NULLIF(TRIM(wuri_foto_facial), ''),
-        wval_huella_digital, NULLIF(TRIM(wuri_imagen_huella), ''),
+        wfacial_embedding, NULLIF(TRIM(wurl_foto_facial), ''),
+        wval_huella_digital, NULLIF(TRIM(wurl_imagen_huella), ''),
         wts, wts, wusr, wts
     );
 

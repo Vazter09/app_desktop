@@ -7,7 +7,8 @@ declare(strict_types=1);
  *   "tags": ["Portería"],
  *   "parameters": [
  *     { "name": "documento", "in": "query", "required": true, "schema": { "type": "string" } },
- *     { "name": "tipo_doc", "in": "query", "schema": { "type": "string", "default": "CC" } }
+ *     { "name": "tipo_doc", "in": "query", "schema": { "type": "string", "default": "CC" } },
+ *     { "name": "incluir_foto", "in": "query", "schema": { "type": "boolean", "default": false }, "description": "Si true, adjunta foto_base64 de enrolamiento (si existe en disco)" }
  *   ],
  *   "responses": {
  *     "200": { "description": "Estado de acceso para ingreso", "dataSchema": { "type": "object", "properties": { "persona": { "type": "object" }, "ingreso_abierto": { "type": "object", "nullable": true }, "puede_ingresar": { "type": "boolean" } } } }
@@ -25,16 +26,41 @@ porteriaRequireSessionOrDevice();
 
 $documento = trim((string) ($_GET['documento'] ?? ''));
 $tipoDoc = trim((string) ($_GET['tipo_doc'] ?? 'CC'));
+$incluirFoto = in_array(
+    strtolower(trim((string) ($_GET['incluir_foto'] ?? ''))),
+    ['1', 'true', 'yes', 'on'],
+    true
+);
 
 try {
-    global $stmt_buscar_persona_doc, $stmt_buscar_ingreso_abierto;
+    global $pdo, $stmt_buscar_persona_doc, $stmt_buscar_ingreso_abierto;
     $resultado = ingresoConsultarAcceso(
         $stmt_buscar_persona_doc,
         $stmt_buscar_ingreso_abierto,
         $documento,
         $tipoDoc
     );
-    RouterResponse::ok([
+
+    $fotoBase64 = null;
+    $tienePatronFacial = false;
+    if ($incluirFoto && $resultado['persona'] !== null) {
+        require_once dirname(__DIR__, 4) . '/services/porteria/biometria_photo_service.php';
+        $idPersona = (int) ($resultado['persona']['id_persona'] ?? 0);
+        $stmtRuta = $pdo->prepare(
+            'SELECT ruta_foto_facial,
+                    (val_patron_facial IS NOT NULL) AS tiene_vector
+               FROM tab_personas
+              WHERE id_persona = ?::NUMERIC
+              LIMIT 1'
+        );
+        $stmtRuta->execute([(string) $idPersona]);
+        $rowBio = $stmtRuta->fetch(PDO::FETCH_ASSOC) ?: [];
+        $ruta = (string) ($rowBio['ruta_foto_facial'] ?? '');
+        $tienePatronFacial = !empty($rowBio['tiene_vector']);
+        $fotoBase64 = BiometriaPhotoService::resolverFotoBase64($ruta, $idPersona);
+    }
+
+    $payload = [
         'persona' => PorteriaRouterPayload::formatPersona($resultado['persona']),
         'ingreso_abierto' => PorteriaRouterPayload::formatIngresoAbierto($resultado['ingreso_abierto']),
         'puede_ingresar' => (bool) $resultado['puede_ingresar'],
@@ -47,7 +73,14 @@ try {
         'segundos_min_salida' => (int) ($resultado['segundos_min_salida'] ?? PORTERIA_SEGUNDOS_MIN_SALIDA),
         'minutos_min_salida' => (int) ($resultado['minutos_min_salida'] ?? PORTERIA_MINUTOS_MIN_SALIDA),
         'minutos_min_reingreso' => (int) ($resultado['minutos_min_reingreso'] ?? PORTERIA_MINUTOS_MIN_REINGRESO),
-    ]);
+    ];
+    if ($incluirFoto) {
+        $payload['foto_base64'] = $fotoBase64;
+        $payload['foto_disponible'] = $fotoBase64 !== null;
+        $payload['tiene_patron_facial'] = $tienePatronFacial;
+    }
+
+    RouterResponse::ok($payload);
 } catch (Throwable $e) {
     RouterResponse::fail(ErrorHandler::userMessageFromException($e));
 }

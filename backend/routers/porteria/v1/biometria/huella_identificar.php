@@ -46,14 +46,16 @@ try {
     $persona = $stmt_biometria_persona_completa->fetch();
 
     $fotoBase64 = null;
-    if ($persona !== false && !empty($persona['ruta_foto_facial'])) {
-        $fotoBase64 = BiometriaPhotoService::leerFoto((string) $persona['ruta_foto_facial']);
+    if ($persona !== false) {
+        $ruta = (string) ($persona['ruta_foto_facial'] ?? '');
+        $fotoBase64 = BiometriaPhotoService::resolverFotoBase64($ruta, (int) $idPersona);
     }
 
     RouterResponse::ok([
         'match' => $persona !== false,
         'persona' => $persona !== false ? PorteriaRouterPayload::formatPersonaCompleta($persona) : null,
         'foto_base64' => $fotoBase64,
+        'foto_disponible' => $fotoBase64 !== null,
     ]);
 } catch (InvalidArgumentException $e) {
     RouterResponse::fail($e->getMessage());

@@ -16,7 +16,6 @@ import base64
 import io
 import unittest
 import uuid
-from urllib.parse import urlparse
 
 from PIL import Image
 
@@ -26,17 +25,15 @@ from common import (
     NONADMIN_USER,
     close_stale_session,
     delete_test_persona,
+    resolve_verify_tls,
     run_psql,
 )
 
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 
-_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
-
 
 def _make_client() -> SmartcsetClient:
-    verify_tls = urlparse(BASE_URL).hostname not in _LOCAL_HOSTS
-    return SmartcsetClient(BASE_URL, verify_tls=verify_tls)
+    return SmartcsetClient(BASE_URL, verify_tls=resolve_verify_tls(BASE_URL))
 
 
 class TestLogin(unittest.TestCase):
@@ -198,16 +195,24 @@ class TestBiometriaFacial(unittest.TestCase):
 
     def test_enrolar_e_identificar_mismo_vector(self) -> None:
         vector = self._vector(1)
+        foto = self._foto_base64_sintetica()
 
-        resultado = self.client.biometria_enrolar(self.documento, vector, calidad_facial=90.0)
+        resultado = self.client.biometria_enrolar(
+            self.documento, vector, calidad_facial=90.0, foto_base64=foto
+        )
         self.assertIn("id_enrolamiento", resultado)
+        self.assertEqual(int(resultado["id_persona"]), int(self.documento))
 
         identificado = self.client.biometria_identificar(vector)
         self.assertTrue(identificado["match"])
         self.assertEqual(identificado["persona"]["documento"], self.documento)
 
     def test_identificar_vector_distinto_no_matchea(self) -> None:
-        self.client.biometria_enrolar(self.documento, self._vector(1))
+        self.client.biometria_enrolar(
+            self.documento,
+            self._vector(1),
+            foto_base64=self._foto_base64_sintetica(),
+        )
 
         identificado = self.client.biometria_identificar(self._vector(999))
         self.assertFalse(identificado["match"])
@@ -215,14 +220,20 @@ class TestBiometriaFacial(unittest.TestCase):
 
     def test_enrolar_rechaza_dimension_incorrecta(self) -> None:
         with self.assertRaises(SmartcsetApiError):
-            self.client.biometria_enrolar(self.documento, [0.1, 0.2, 0.3])
+            self.client.biometria_enrolar(
+                self.documento,
+                [0.1, 0.2, 0.3],
+                foto_base64=self._foto_base64_sintetica(),
+            )
 
     def test_ingreso_por_identificacion_usa_metodo_aut_biometrico(self) -> None:
         """Congruencia con Bug histórico (CLAUDE.md): el whitelist de
         método de autenticación debe aceptar el valor biométrico (4), no
         degradarlo silenciosamente a manual (1)."""
         vector = self._vector(7)
-        self.client.biometria_enrolar(self.documento, vector)
+        self.client.biometria_enrolar(
+            self.documento, vector, foto_base64=self._foto_base64_sintetica()
+        )
         identificado = self.client.biometria_identificar(vector)
         self.assertTrue(identificado["match"])
 
@@ -283,16 +294,11 @@ class TestBiometriaFacial(unittest.TestCase):
             "identificar.php debe devolver la foto guardada en el enrolamiento",
         )
 
-    def test_enrolar_sin_foto_no_rompe_identificacion(self) -> None:
-        """Congruencia: el flujo debe seguir funcionando si no hay foto
-        (ej. cámara sin frame válido al enrolar) — foto_base64 debe venir
-        None, no lanzar excepción."""
+    def test_enrolar_sin_foto_es_rechazado(self) -> None:
+        """La foto es obligatoria: se asocia a tab_personas.ruta_foto_facial."""
         vector = self._vector(43)
-        self.client.biometria_enrolar(self.documento, vector, calidad_facial=70.0)
-
-        identificado = self.client.biometria_identificar(vector)
-        self.assertTrue(identificado["match"])
-        self.assertIsNone(identificado.get("foto_base64"))
+        with self.assertRaises(SmartcsetApiError):
+            self.client.biometria_enrolar(self.documento, vector, calidad_facial=70.0)
 
     def test_enrolar_foto_invalida_es_rechazada(self) -> None:
         """E6 (validación de uploads): base64 que no decodifica a una

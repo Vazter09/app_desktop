@@ -10,7 +10,7 @@ declare(strict_types=1);
  * MSPI + FASE 0-1:
  * - E2: Cifrado en reposo (fotos en filesystem, no en BD BYTEA)
  * - E6: Validación de uploads (finfo, whitelist MIME)
- * - E10: Auditoría (ruta guardada en tab_enrolamiento_facial para trazabilidad)
+ * - E10: Auditoría (ruta guardada en tab_personas.ruta_foto_facial)
  */
 class BiometriaPhotoService
 {
@@ -18,32 +18,41 @@ class BiometriaPhotoService
     private const UPLOAD_BASE = 'uploads/biometria';
 
     /**
-     * Guarda foto base64 en filesystem
+     * Document root físico (frontend/web/public).
+     */
+    public static function documentRoot(): string
+    {
+        return dirname(__DIR__, 3) . '/frontend/web/public';
+    }
+
+    /**
+     * Guarda foto base64 en filesystem.
      *
-     * @param int $idPersona ID de la persona
-     * @param string $nombrePersona Primer nombre de la persona (para nomenclatura)
-     * @param string $fotoBase64 Foto en formato base64
-     * @return string|null Ruta relativa guardada o NULL si falla
-     *                     Ej: "uploads/biometria/12345/12345_juan.jpg"
-     * @throws InvalidArgumentException Si validación falla
+     * Nombre estable: {id_persona}.jpg|png|webp (evita desfaces
+     * franz vs franzanderson cuando cambia el parser del nombre).
+     *
+     * @return string Ruta relativa (ej: uploads/biometria/123/123.jpg)
+     * @throws InvalidArgumentException Si validación o escritura falla
      */
     public static function guardarFoto(int $idPersona, string $nombrePersona, string $fotoBase64): ?string
     {
-        // 1. Validar que sea base64 válido
+        unset($nombrePersona); // compat firma; el nombre de archivo es el id.
+
+        if ($idPersona < 1) {
+            throw new InvalidArgumentException('id_persona inválido para guardar foto.');
+        }
         if (empty($fotoBase64)) {
             throw new InvalidArgumentException('Foto en base64 no puede estar vacía.');
         }
 
-        // Decodificar base64
+        $fotoBase64 = self::normalizarBase64($fotoBase64);
         $fotoBinaria = base64_decode($fotoBase64, true);
-        if ($fotoBinaria === false) {
+        if ($fotoBinaria === false || $fotoBinaria === '') {
             throw new InvalidArgumentException('Foto base64 inválida — no se pudo decodificar.');
         }
 
-        // 2. Validar que sea imagen (usar finfo)
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->buffer($fotoBinaria);
-
         $mimeValido = in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true);
         if (!$mimeValido) {
             throw new InvalidArgumentException(
@@ -51,21 +60,13 @@ class BiometriaPhotoService
             );
         }
 
-        // 3. Crear carpeta base + persona: uploads/biometria/{id_persona}/
-        $docRoot = dirname(__DIR__, 3) . '/frontend/web/public';
+        $docRoot = self::documentRoot();
         $carpetaBase = $docRoot . '/' . self::UPLOAD_BASE;
         $carpetaPersona = $carpetaBase . '/' . $idPersona;
 
         self::asegurarDirectorioEscribible($carpetaBase, 'base de enrolamiento biométrico');
         self::asegurarDirectorioEscribible($carpetaPersona, 'carpeta de enrolamiento de la persona');
 
-        // 4. Nombrar archivo: {id_persona}_{primer_nombre}.jpg
-        $nombreLimpio = preg_replace('/[^a-z0-9]/i', '', strtolower($nombrePersona));
-        if (empty($nombreLimpio)) {
-            $nombreLimpio = 'persona';
-        }
-
-        // Determinar extensión según MIME
         $extension = match ($mimeType) {
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
@@ -73,43 +74,41 @@ class BiometriaPhotoService
             default => 'jpg',
         };
 
-        $nombreArchivo = "{$idPersona}_{$nombreLimpio}.{$extension}";
-        $rutaCompleta = "$carpetaPersona/$nombreArchivo";
+        $nombreArchivo = $idPersona . '.' . $extension;
+        $rutaCompleta = $carpetaPersona . '/' . $nombreArchivo;
 
-        // 5. Guardar archivo
         $bytes = @file_put_contents($rutaCompleta, $fotoBinaria);
-        if ($bytes === false) {
+        if ($bytes === false || !is_file($rutaCompleta) || !is_readable($rutaCompleta)) {
             throw new InvalidArgumentException(
                 'No se pudo guardar foto en: ' . $rutaCompleta
                 . self::detalleErrorFs()
             );
         }
 
-        // 6. Retornar ruta relativa (para guardar en BD)
-        return self::UPLOAD_BASE . "/$idPersona/$nombreArchivo";
+        $rutaRelativa = self::UPLOAD_BASE . '/' . $idPersona . '/' . $nombreArchivo;
+        if (!self::esRutaFotoValida($rutaRelativa)) {
+            throw new InvalidArgumentException('Ruta de foto generada no es válida.');
+        }
+
+        return $rutaRelativa;
     }
 
     /**
-     * Lee foto desde filesystem y retorna en base64
-     *
-     * @param string $rutaRelativa Ruta relativa guardada (ej: "uploads/biometria/12345/12345_juan.jpg")
-     * @return string|null Foto en base64 o NULL si no existe
+     * Lee foto desde filesystem y retorna en base64.
      */
     public static function leerFoto(string $rutaRelativa): ?string
     {
-        $docRoot = dirname(__DIR__, 3) . '/frontend/web/public';
-        $rutaCompleta = "$docRoot/$rutaRelativa";
-
-        if (!file_exists($rutaCompleta)) {
+        if (!self::esRutaFotoValida($rutaRelativa)) {
             return null;
         }
 
-        if (!is_readable($rutaCompleta)) {
+        $rutaCompleta = self::documentRoot() . '/' . str_replace('\\', '/', trim($rutaRelativa));
+        if (!is_file($rutaCompleta) || !is_readable($rutaCompleta)) {
             return null;
         }
 
         $fotoBinaria = file_get_contents($rutaCompleta);
-        if ($fotoBinaria === false) {
+        if ($fotoBinaria === false || $fotoBinaria === '') {
             return null;
         }
 
@@ -117,17 +116,86 @@ class BiometriaPhotoService
     }
 
     /**
-     * Elimina foto del filesystem (si se requiere)
-     *
-     * @param string $rutaRelativa Ruta relativa
-     * @return bool True si se eliminó, false si no existe o error
+     * Foto de enrolamiento: ruta en BD, o cualquier imagen en la carpeta
+     * de la persona (recuperación si el nombre de archivo divergió).
+     */
+    public static function resolverFotoBase64(?string $rutaRelativa, int $idPersona): ?string
+    {
+        $ruta = trim((string) $rutaRelativa);
+        if ($ruta !== '') {
+            $foto = self::leerFoto($ruta);
+            if ($foto !== null) {
+                return $foto;
+            }
+        }
+
+        return self::buscarFotoEnCarpetaPersona($idPersona);
+    }
+
+    /**
+     * Busca la imagen más reciente en uploads/biometria/{id_persona}/.
+     */
+    public static function buscarFotoEnCarpetaPersona(int $idPersona): ?string
+    {
+        if ($idPersona < 1) {
+            return null;
+        }
+
+        $dir = self::documentRoot() . '/' . self::UPLOAD_BASE . '/' . $idPersona;
+        if (!is_dir($dir)) {
+            return null;
+        }
+
+        $candidatos = [];
+        foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
+            foreach (glob($dir . '/*.' . $ext) ?: [] as $path) {
+                if (is_file($path) && is_readable($path)) {
+                    $candidatos[] = $path;
+                }
+            }
+        }
+        if ($candidatos === []) {
+            return null;
+        }
+
+        usort(
+            $candidatos,
+            static fn(string $a, string $b): int => (filemtime($b) ?: 0) <=> (filemtime($a) ?: 0)
+        );
+
+        $fotoBinaria = file_get_contents($candidatos[0]);
+        if ($fotoBinaria === false || $fotoBinaria === '') {
+            return null;
+        }
+
+        return base64_encode($fotoBinaria);
+    }
+
+    /**
+     * True si la ruta de BD apunta a un archivo legible en disco.
+     */
+    public static function archivoExiste(?string $rutaRelativa): bool
+    {
+        $ruta = trim((string) $rutaRelativa);
+        if ($ruta === '' || !self::esRutaFotoValida($ruta)) {
+            return false;
+        }
+        $completa = self::documentRoot() . '/' . str_replace('\\', '/', $ruta);
+
+        return is_file($completa) && is_readable($completa);
+    }
+
+    /**
+     * Elimina foto del filesystem (si se requiere).
      */
     public static function eliminarFoto(string $rutaRelativa): bool
     {
-        $docRoot = dirname(__DIR__, 3) . '/frontend/web/public';
-        $rutaCompleta = "$docRoot/$rutaRelativa";
+        if (!self::esRutaFotoValida($rutaRelativa)) {
+            return false;
+        }
 
-        if (!file_exists($rutaCompleta)) {
+        $rutaCompleta = self::documentRoot() . '/' . str_replace('\\', '/', trim($rutaRelativa));
+        if (!is_file($rutaCompleta)) {
             return false;
         }
 
@@ -135,8 +203,29 @@ class BiometriaPhotoService
     }
 
     /**
-     * Crea el directorio si no existe y verifica que sea escribible.
-     *
+     * Ruta relativa segura bajo uploads/biometria/ (sin path traversal).
+     */
+    public static function esRutaFotoValida(string $rutaRelativa): bool
+    {
+        $ruta = str_replace('\\', '/', trim($rutaRelativa));
+        if ($ruta === '' || str_contains($ruta, '..')) {
+            return false;
+        }
+
+        return str_starts_with($ruta, self::UPLOAD_BASE . '/');
+    }
+
+    private static function normalizarBase64(string $fotoBase64): string
+    {
+        $fotoBase64 = trim($fotoBase64);
+        if (preg_match('#^data:image/[a-zA-Z0-9.+-]+;base64,(.+)$#s', $fotoBase64, $m) === 1) {
+            return trim($m[1]);
+        }
+
+        return $fotoBase64;
+    }
+
+    /**
      * @throws InvalidArgumentException
      */
     private static function asegurarDirectorioEscribible(string $ruta, string $etiqueta): void

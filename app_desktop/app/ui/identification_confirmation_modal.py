@@ -24,7 +24,6 @@ from ui.format_utils import (
     label_estado_formacion,
     label_estado_instructor,
     label_tipo_contrato_instructor,
-    label_vehiculo_instructor,
 )
 
 AUTO_REGISTRO_MS = 2500
@@ -74,44 +73,39 @@ class IdentificationConfirmationPanel(tk.Frame):
             self._programar_auto_registro()
 
     def _build(self) -> None:
-        # Pie idéntico a IngresoFormPanel: mensaje + botón primario.
+        # Pie: solo botón. El aviso de estado vive en la barra inferior
+        # (punto verde), no encima del botón del panel.
         footer = tk.Frame(self, bg=theme.BG_PANEL)
         footer.pack(side="bottom", fill="x")
 
         if self._modo == "ingreso":
             btn_text = "✓ Registrar ingreso"
-            subtitulo_base = "Registrando ingreso automáticamente"
         elif self._modo == "actualizar_captura":
-            btn_text = "INGRESÓ"
-            subtitulo_base = "Actualizando captura del ingreso"
+            btn_text = "Actualizar captura"
         elif self._modo == "registrado":
             btn_text = "✓ Continuar"
-            subtitulo_base = "Cerrando automáticamente"
         else:
             btn_text = "✓ Registrar salida"
-            subtitulo_base = "Registrando salida automáticamente"
 
-        self._subtitulo_var = tk.StringVar(
-            value=f"{subtitulo_base} en {AUTO_REGISTRO_MS // 1000} s..."
-        )
+        # Solo visible ante error de registro.
+        self._subtitulo_var = tk.StringVar(value="")
         self._subtitulo_label = tk.Label(
             footer,
             textvariable=self._subtitulo_var,
             bg=theme.BG_PANEL,
-            fg=theme.TEXT_MUTED,
+            fg=theme.ERROR,
             font=theme.FONT_LABEL_SMALL,
             anchor="w",
             justify="left",
             wraplength=280,
         )
-        self._subtitulo_label.pack(anchor="w", pady=(0, 6))
-
-        ttk.Button(
+        self._footer_btn = ttk.Button(
             footer,
             text=btn_text,
             style="Primary.TButton",
             command=self._confirmar,
-        ).pack(fill="x", ipady=2)
+        )
+        self._footer_btn.pack(fill="x", ipady=2)
 
         # Cuerpo: contenido compacto y centrado (evita huecos grandes).
         body = tk.Frame(self, bg=theme.BG_PANEL)
@@ -122,8 +116,12 @@ class IdentificationConfirmationPanel(tk.Frame):
 
         if self._modo == "registrado":
             titulo = "✓  Ingreso registrado"
-        elif self._persona_existente:
+        elif self._modo == "salida":
+            titulo = "⚠  Se registrará SALIDA"
+        elif self._modo == "actualizar_captura":
             titulo = "✓  Persona encontrada"
+        elif self._persona_existente:
+            titulo = "✓  Persona encontrada — ingreso"
         else:
             titulo = "✓  Identificación confirmada"
         ttk.Label(
@@ -168,10 +166,6 @@ class IdentificationConfirmationPanel(tk.Frame):
                 (
                     "Tipo contrato",
                     label_tipo_contrato_instructor(d.get("ind_tipo_contrato")),
-                ),
-                (
-                    "Vehículo",
-                    label_vehiculo_instructor(d.get("ind_vehiculo")),
                 ),
             ]
         else:
@@ -235,6 +229,12 @@ class IdentificationConfirmationPanel(tk.Frame):
         self._subtitulo_var.set(f"❌ {mensaje}\nCerrando en {segundos} s...")
         if self._subtitulo_label is not None:
             self._subtitulo_label.configure(fg=theme.ERROR)
+            if not self._subtitulo_label.winfo_ismapped():
+                self._subtitulo_label.pack(
+                    anchor="w",
+                    pady=(0, 6),
+                    before=self._footer_btn,
+                )
         self._programar_cierre()
 
     def _cancelar_auto_registro(self) -> None:

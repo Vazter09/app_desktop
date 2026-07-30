@@ -5,3 +5,6 @@ app/ui/pages/__pycache__/
 app/tests/__pycache__/
 app/.venv/
 *.pyc
+build/
+dist/
+packaging/smartcset_porteria.ico

@@ -16,6 +16,7 @@ from typing import Callable
 
 from PIL import Image, ImageTk
 
+from app_paths import resource_root
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 
@@ -26,9 +27,10 @@ CARD_WIDTH = 380
 
 
 def _ruta_logo_sena() -> Path | None:
-    app_dir = Path(__file__).resolve().parents[1]
+    app_dir = resource_root()
     candidatos = (
         app_dir / "assets" / "img" / "logo-sena.png",
+        Path(__file__).resolve().parents[1] / "assets" / "img" / "logo-sena.png",
         app_dir.parent.parent
         / "frontend"
         / "web"

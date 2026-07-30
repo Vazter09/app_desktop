@@ -132,9 +132,18 @@ class SmartcsetClient:
         """GET /routers/porteria/v1/catalogos.php — tipos_doc, tipos_persona, entradas."""
         return self._request("GET", "/routers/porteria/v1/catalogos.php")
 
-    def ingreso_consultar(self, documento: str, tipo_doc: str = "CC") -> dict[str, Any]:
+    def ingreso_consultar(
+        self,
+        documento: str,
+        tipo_doc: str = "CC",
+        *,
+        incluir_foto: bool = False,
+    ) -> dict[str, Any]:
         """GET /routers/porteria/v1/ingreso/consultar.php."""
-        qs = urllib.parse.urlencode({"documento": documento, "tipo_doc": tipo_doc})
+        params: dict[str, str] = {"documento": documento, "tipo_doc": tipo_doc}
+        if incluir_foto:
+            params["incluir_foto"] = "1"
+        qs = urllib.parse.urlencode(params)
         return self._request("GET", f"/routers/porteria/v1/ingreso/consultar.php?{qs}")
 
     def ingreso_registrar(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -172,9 +181,21 @@ class SmartcsetClient:
         embedding: list[float],
         calidad_facial: float | None = None,
         foto_base64: str | None = None,
+        tipo_doc: str = "CC",
+        *,
+        forzar: bool = False,
     ) -> dict[str, Any]:
-        """POST /routers/porteria/v1/biometria/enrolar.php (2026-07-09: con foto)."""
-        payload: dict[str, Any] = {"documento": documento, "embedding": embedding}
+        """POST /routers/porteria/v1/biometria/enrolar.php (2026-07-09: con foto).
+
+        ``forzar=True`` solo desde «Capturar Rostro» (reemplaza referencia).
+        Sin forzar, si ya hay vector el servidor no lo pisa.
+        """
+        payload: dict[str, Any] = {
+            "documento": documento,
+            "embedding": embedding,
+            "tipo_doc": (tipo_doc or "CC").strip() or "CC",
+            "forzar": bool(forzar),
+        }
         if calidad_facial is not None:
             payload["calidad_facial"] = calidad_facial
         if foto_base64 is not None:
@@ -184,7 +205,7 @@ class SmartcsetClient:
     def biometria_identificar(
         self, embedding: list[float], umbral_distancia: float | None = None
     ) -> dict[str, Any]:
-        """POST /routers/porteria/v1/biometria/identificar.php (2026-07-09: con foto descargada)."""
+        """POST /routers/porteria/v1/biometria/identificar.php (con foto enrolada)."""
         payload: dict[str, Any] = {"embedding": embedding}
         if umbral_distancia is not None:
             payload["umbral_distancia"] = umbral_distancia

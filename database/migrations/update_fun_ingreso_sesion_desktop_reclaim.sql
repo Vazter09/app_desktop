@@ -1,9 +1,14 @@
--- App de escritorio SGI: reclaim de sesiones huérfanas (ult_ruta=app_desktop)
--- al re-login, sin cerrar sesiones web activas del mismo usuario.
+-- App de escritorio SGI: al login con origen=desktop (ult_ruta=app_desktop)
+-- cierra TODAS las sesiones abiertas del usuario (crash / cierre brusco /
+-- residual web). Login web sigue bloqueando si hay sesión activa.
 DROP FUNCTION IF EXISTS fun_ingreso_sesion(TEXT, TEXT, INTEGER, TEXT);
 DROP FUNCTION IF EXISTS fun_ingreso_sesion(TEXT, TEXT, INTEGER);
 DROP FUNCTION IF EXISTS fun_ingreso_sesion(TEXT, TEXT);
 DROP FUNCTION IF EXISTS fun_ingreso_sesion(TEXT);
+DROP FUNCTION IF EXISTS fun_ingreso_sesion(VARCHAR, VARCHAR, INTEGER, TEXT);
+DROP FUNCTION IF EXISTS fun_ingreso_sesion(VARCHAR, VARCHAR, INTEGER);
+DROP FUNCTION IF EXISTS fun_ingreso_sesion(VARCHAR, VARCHAR);
+DROP FUNCTION IF EXISTS fun_ingreso_sesion(VARCHAR);
 
 CREATE OR REPLACE FUNCTION fun_ingreso_sesion(
     p_user tab_usuarios.id_usuario%TYPE,
@@ -48,24 +53,17 @@ BEGIN
           AND fec_fin IS NULL;
     END IF;
 
-    IF w_ult_ruta = 'app_desktop' THEN
+    IF w_ult_ruta = 'app_desktop'
+       AND NOT EXISTS (
+           SELECT 1 FROM tab_usuarios
+           WHERE id_usuario = p_user AND ind_usuario = TRUE
+       ) THEN
         UPDATE tab_sesiones
         SET fec_fin = CURRENT_TIMESTAMP,
             cod_cierre = 'LOGOUT',
             usr_cierre = p_user
         WHERE id_usuario = p_user
-          AND fec_fin IS NULL
-          AND ult_ruta = 'app_desktop';
-
-        IF NULLIF(TRIM(p_ip_cliente), '') IS NOT NULL THEN
-            UPDATE tab_sesiones
-            SET fec_fin = CURRENT_TIMESTAMP,
-                cod_cierre = 'LOGOUT',
-                usr_cierre = p_user
-            WHERE id_usuario = p_user
-              AND fec_fin IS NULL
-              AND ip_cliente IS NOT DISTINCT FROM NULLIF(TRIM(p_ip_cliente), '');
-        END IF;
+          AND fec_fin IS NULL;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM tab_usuarios WHERE id_usuario = p_user AND ind_usuario = TRUE)

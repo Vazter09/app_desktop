@@ -76,6 +76,8 @@ run_sql "$ROOT/database/migrations/ensure_seq_log_ingresos.sql"
 run_sql "$ROOT/database/migrations/add_val_datos_origen_tab_log_ingresos.sql"
 run_sql "$ROOT/database/migrations/ensure_tri_act_tabla_log_ingresos.sql"
 run_sql "$ROOT/database/migrations/migrate_biometria_a_tab_personas.sql"
+run_sql "$ROOT/database/migrations/rename_uri_to_url_foto_huella.sql"
+run_sql "$ROOT/database/migrations/add_ind_vehiculo_tab_instructores.sql"
 run_sql "$ROOT/database/migrations/add_metodos_aut_biometricos.sql"
 
 echo "==> Helpers de excepciones"

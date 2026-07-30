@@ -27,7 +27,12 @@ import os
 import cv2
 import numpy as np
 
-_MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+from app_paths import resource_root
+
+_MODELS_DIR = os.path.join(str(resource_root()), "motor", "models")
+if not os.path.isdir(_MODELS_DIR):
+    # Desarrollo / layout clásico junto a este módulo.
+    _MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 _DETECTOR_NAME = "face_detection_yunet_2023mar.onnx"
 _RECOGNIZER_NAME = "face_recognition_sface_2021dec.onnx"
 _DETECTOR_PATH = os.path.join(_MODELS_DIR, _DETECTOR_NAME)
@@ -145,6 +150,20 @@ class FaceEmbedder:
     def extraer(self, frame_bgr: np.ndarray) -> tuple[list[float], float] | None:
         """Detecta el rostro más confiable del frame y devuelve
         `(embedding_128d, calidad_0_a_100)`, o `None` si no hay rostro."""
+        resultado = self.extraer_con_recorte(frame_bgr)
+        if resultado is None:
+            return None
+        embedding, calidad, _recorte = resultado
+        return embedding, calidad
+
+    def extraer_con_recorte(
+        self, frame_bgr: np.ndarray
+    ) -> tuple[list[float], float, np.ndarray] | None:
+        """Igual que `extraer`, más el recorte alineado (BGR) del rostro.
+
+        El recorte es la imagen que debe enrolarse en
+        ``tab_personas.ruta_foto_facial`` — la misma que usó SFace.
+        """
         ok, caras = self._detectar_caras(frame_bgr)
         if not ok or caras is None or len(caras) == 0:
             return None
@@ -158,4 +177,4 @@ class FaceEmbedder:
         embedding = [float(v) for v in vector.flatten()]
         calidad = round(min(confianza, 1.0) * 100, 2)
 
-        return embedding, calidad
+        return embedding, calidad, alineada

@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageTk
 
+from app_paths import resource_root
 from ui import theme
 
 # Idle = cyan corporativo; éxito = verde neón (referencia UI).
@@ -30,10 +31,11 @@ _MSG_FONT = ("Segoe UI", 10)
 
 
 def _ruta_huella_png() -> Path | None:
-    app_dir = Path(__file__).resolve().parents[1]
-    repo_root = app_dir.parent.parent
+    app_dir = resource_root()
+    repo_root = Path(__file__).resolve().parents[3]
     candidatos = (
         app_dir / "assets" / "img" / "huella.png",
+        Path(__file__).resolve().parents[1] / "assets" / "img" / "huella.png",
         repo_root / "frontend" / "web" / "public" / "assets" / "img" / "huella.png",
     )
     for ruta in candidatos:

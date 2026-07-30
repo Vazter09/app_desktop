@@ -1,0 +1,90 @@
+=== grep PHP remoto enrolamiento ===
+/var/www/html/smartcset/backend/services/porteria/biometria_photo_service.php:13: * - E10: Auditoría (ruta guardada en tab_enrolamiento_facial para trazabilidad)
+/var/www/html/smartcset/backend/services/porteria/biometria_service.php:19: * Dimensión esperada del vector facial (tab_enrolamiento_facial.facial_embedding).
+/var/www/html/smartcset/backend/logs/error_handler.log:26:[2026-07-28 18:31:59] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:27:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:28:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:29:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:31:[2026-07-28 18:32:02] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:32:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:33:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:34:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:36:[2026-07-28 18:32:04] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:37:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:38:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:39:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:41:[2026-07-28 18:32:07] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:42:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:43:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:44:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:46:[2026-07-28 18:32:10] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:47:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:48:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:49:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:51:[2026-07-28 18:32:12] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:52:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:53:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:54:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:56:[2026-07-28 18:32:15] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:57:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:58:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:59:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:61:[2026-07-28 18:32:18] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:62:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:63:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:64:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:66:[2026-07-28 18:32:23] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:67:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:68:                                           ^ | SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:69:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+/var/www/html/smartcset/backend/logs/error_handler.log:71:[2026-07-28 18:32:25] DATABASE_ERROR | Code: 42P01 | Message: ERROR:  relation "tab_enrolamiento_facial" does not exist
+/var/www/html/smartcset/backend/logs/error_handler.log:72:LINE 1: SELECT ruta_foto_enrolamiento FROM tab_enrolamiento_facial
+=== prepare biometria stmts ===
+259:    // --- 6c-bis. BIOMETRÍA FACIAL (app escritorio → tab_personas.val_patron_facial) ---
+
+260:    $sql_fun_guardar_enrolamiento_facial = "SELECT fun_guardar_enrolamiento_facial(
+
+263:    $stmt_fun_guardar_enrolamiento_facial = $pdo->prepare($sql_fun_guardar_enrolamiento_facial);
+
+265:    $sql_fun_identificar_persona_por_rostro = "SELECT fun_identificar_persona_por_rostro(
+
+268:    $stmt_fun_identificar_persona_por_rostro = $pdo->prepare($sql_fun_identificar_persona_por_rostro);
+
+270:    $sql_fun_guardar_enrolamiento_huella = "SELECT fun_guardar_enrolamiento_huella(
+
+273:    $stmt_fun_guardar_enrolamiento_huella = $pdo->prepare($sql_fun_guardar_enrolamiento_huella);
+
+275:    $sql_fun_identificar_persona_por_huella = "SELECT fun_identificar_persona_por_huella(
+
+278:    $stmt_fun_identificar_persona_por_huella = $pdo->prepare($sql_fun_identificar_persona_por_huella);
+
+=== smoke identificar ===
+SET
+
+ id 
+
+----
+
+   
+
+(1 row)
+
+
+
+ enrolados 
+
+-----------
+
+        40
+
+(1 row)
+
+
+
+=== ind_estado tipo ===
+ column_name | data_type | udt_name 
+-------------+-----------+----------
+ ind_estado  | boolean   | bool
+(1 row)
+
+OK_SMOKE

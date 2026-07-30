@@ -65,7 +65,11 @@ def ensure_venv() -> None:
     Debe llamarse ANTES de importar cualquier módulo que use `cv2`.
 
     2026-07-09: Detecta cambios en requirements.txt y reinstala si es necesario.
+    Empaquetado (PyInstaller): no-op — las deps ya van dentro del .exe.
     """
+    if getattr(sys, "frozen", False):
+        return
+
     if os.environ.get(_ENV_FLAG) == "1":
         return  # ya estamos dentro del venv correcto, no hacer nada más
 

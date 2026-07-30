@@ -1,0 +1,45 @@
+=== verificar SQL viejo en identificar.php ===
+61:    // Foto de enrolamiento: tab_personas.ruta_foto_facial
+
+63:    if ($persona !== false && !empty($persona['ruta_foto_facial'])) {
+
+64:        $fotoBase64 = BiometriaPhotoService::leerFoto((string) $persona['ruta_foto_facial']);
+
+PHP_OK_NO_ENROLAMIENTO_TABLE
+=== SQL migrate + funcs ===
+psql:/tmp/deploy_bio_personas_1785282062/migrate_biometria_a_tab_personas.sql:9: NOTICE:  extension "vector" already exists, skipping
+CREATE EXTENSION
+DO
+DO
+psql:/tmp/deploy_bio_personas_1785282062/migrate_biometria_a_tab_personas.sql:62: NOTICE:  relation "idx_personas_patron_facial_hnsw" already exists, skipping
+CREATE INDEX
+DO
+psql:/tmp/deploy_bio_personas_1785282062/migrate_biometria_a_tab_personas.sql:98: NOTICE:  relation "seq_novedades_ingreso" already exists, skipping
+CREATE SEQUENCE
+psql:/tmp/deploy_bio_personas_1785282062/migrate_biometria_a_tab_personas.sql:117: NOTICE:  relation "tab_novedades_ingreso" already exists, skipping
+CREATE TABLE
+DO
+DO
+psql:/tmp/deploy_bio_personas_1785282062/fun_guardar_enrolamiento_facial.sql:5: NOTICE:  function fun_guardar_enrolamiento_facial(pg_catalog.numeric,vector,pg_catalog.numeric) does not exist, skipping
+DROP FUNCTION
+DROP FUNCTION
+psql:/tmp/deploy_bio_personas_1785282062/fun_guardar_enrolamiento_facial.sql:61: NOTICE:  type reference tab_personas.id_persona%TYPE converted to numeric
+psql:/tmp/deploy_bio_personas_1785282062/fun_guardar_enrolamiento_facial.sql:61: NOTICE:  type reference tab_personas.val_patron_facial%TYPE converted to vector
+CREATE FUNCTION
+DROP FUNCTION
+psql:/tmp/deploy_bio_personas_1785282062/fun_identificar_persona_por_rostro.sql:45: NOTICE:  type reference tab_personas.val_patron_facial%TYPE converted to vector
+psql:/tmp/deploy_bio_personas_1785282062/fun_identificar_persona_por_rostro.sql:45: NOTICE:  type reference tab_personas.id_persona%TYPE converted to numeric
+CREATE FUNCTION
+=== firmas ===
+                                    oid                                    
+---------------------------------------------------------------------------
+ fun_guardar_enrolamiento_facial(numeric,vector,numeric,character varying)
+ fun_identificar_persona_por_rostro(vector,numeric)
+(2 rows)
+
+ con_patron 
+------------
+         40
+(1 row)
+
+OK_BIO_PERSONAS_DEPLOY
