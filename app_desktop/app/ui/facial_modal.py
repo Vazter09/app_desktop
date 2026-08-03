@@ -149,8 +149,8 @@ class FacialRecognitionPanel(ttk.Frame):
         self._form_panel: IngresoFormPanel | None = None
         self._centro_wrap: tk.Frame | None = None
         self._syncing_centro = False
-        # 2=QR, 3=barras, 4=facial, 5=huella (tab_metodos_aut)
-        self._ultimo_metodo_biometrico: int = 4
+        # 1=manual, 2=QR, 3=barras, 4=facial, 5=huella (tab_metodos_aut)
+        self._ultimo_metodo_biometrico: int = 1
         self._scan_buf: list[str] = []
         self._scan_last_ms: float = 0.0
         self._scan_fast: bool = True
@@ -562,7 +562,7 @@ class FacialRecognitionPanel(ttk.Frame):
         if cap.apellidos and not persona_datos.get("apellidos"):
             persona_datos["apellidos"] = cap.apellidos
         self._sincronizar_tipo_doc_formulario(persona_datos)
-        self._ultimo_metodo_biometrico = int(cap.metodo_aut)
+        self._ultimo_metodo_biometrico = self._metodo_aut_valido(int(cap.metodo_aut))
 
         try:
             modo_efectivo = self._resolver_modo_acceso(
@@ -1134,15 +1134,43 @@ class FacialRecognitionPanel(ttk.Frame):
         return self._captura_facial_opcional() is not None
 
     def _enriquecer_payload_ingreso_manual(self, payload: dict[str, Any]) -> None:
-        """Pre-captura rostro para enrol *después* del ingreso.
+        """Clasifica ``metodo_aut`` según captura real (no dejar fijo en 1).
 
-        No altera el payload: si se manda ``embedding`` en el alta del
-        formulario, el backend deriva a ``tab_novedades_ingreso`` cuando la
-        persona aún no existe (no crea ingreso real).
+        - Rostro en cámara → ``metodo_aut=4`` (facial).
+        - Huella lista → ``metodo_aut=5``.
+        - Sin biométrico → se conserva el 1 del formulario (manual).
+
+        El embedding facial solo se adjunta si la persona **ya existe**
+        (si no, el backend crea novedad en vez de ingreso real).
         """
-        del payload  # el alta manual sigue con metodo_aut=1 sin embedding
-        self._captura_facial_opcional()
+        # Preferir rostro si hay frame usable.
+        capturado = self._captura_facial_opcional()
+        if capturado is not None:
+            embedding, _calidad, _foto = capturado
+            payload["metodo_aut"] = 4
+            persona_ok = (
+                self._form_panel is not None
+                and getattr(self._form_panel, "_persona_existente", None)
+                is not None
+            )
+            if persona_ok:
+                payload["embedding"] = embedding
+            obs = str(payload.get("observaciones") or "").strip()
+            nota = "Ingreso por biometría facial"
+            payload["observaciones"] = (
+                f"{obs} | {nota}".strip(" |") if obs else nota
+            )
+            return
 
+        # Huella capturada y lista (método 5).
+        if self._ultimo_huella_b64 and self._ultimo_metodo_biometrico == 5:
+            payload["metodo_aut"] = 5
+            payload["huella_template_b64"] = self._ultimo_huella_b64
+            obs = str(payload.get("observaciones") or "").strip()
+            nota = "Ingreso por biometría huella"
+            payload["observaciones"] = (
+                f"{obs} | {nota}".strip(" |") if obs else nota
+            )
     def _enrolar_tras_registro_manual(self, persona_datos: dict[str, Any]) -> None:
         """Enrol solo si aún no hay foto de referencia; audita el log del ingreso."""
         documento = str(
@@ -1534,6 +1562,8 @@ class FacialRecognitionPanel(ttk.Frame):
         self._ultimo_embedding = None
         self._ultima_foto_enrol_b64 = None
         self._ultima_calidad_facial = None
+        self._ultimo_huella_b64 = None
+        self._ultimo_metodo_biometrico = 1
         self._cooldown_hasta_ms = time.monotonic() * 1000 + 1500
         if self._form_panel is not None and self._form_panel.winfo_exists():
             self._form_panel.limpiar()
@@ -1815,6 +1845,14 @@ class FacialRecognitionPanel(ttk.Frame):
                 documento, nombre, persona_datos=persona_datos
             )
 
+    @staticmethod
+    def _metodo_aut_valido(metodo: int) -> int:
+        """Solo ids de tab_metodos_aut (1..5); fuera de rango → manual."""
+        m = int(metodo or 0)
+        if m in (1, 2, 3, 4, 5):
+            return m
+        return 1
+
     def _payload_biometrico_basico(
         self,
         documento: str,
@@ -1822,7 +1860,7 @@ class FacialRecognitionPanel(ttk.Frame):
         *,
         persona_datos: dict[str, Any] | None = None,
     ) -> dict:
-        metodo = self._ultimo_metodo_biometrico
+        metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
         payload: dict = {
             "tipo_doc": self._tipo_doc_efectivo(persona_datos),
             "documento": documento,
@@ -1882,7 +1920,7 @@ class FacialRecognitionPanel(ttk.Frame):
             entrada_id = entradas[0]["id"]
 
         persona = persona_datos or consulta.get("persona") or {}
-        metodo = self._ultimo_metodo_biometrico
+        metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
         payload: dict = {
             "tipo_doc": tipo_doc,
             "documento": documento,
@@ -1923,7 +1961,7 @@ class FacialRecognitionPanel(ttk.Frame):
         *,
         persona_datos: dict[str, Any] | None = None,
     ) -> None:
-        metodo = self._ultimo_metodo_biometrico
+        metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
         if metodo == 2 or metodo == 3:
             # QR / código de barras no aportan vector/huella para re-captura.
             self._avisar_ventana_recaptura_barras(
@@ -1989,7 +2027,7 @@ class FacialRecognitionPanel(ttk.Frame):
                 f"{nombre}: no tiene un ingreso abierto para registrar salida."
             )
 
-        metodo = self._ultimo_metodo_biometrico
+        metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
         self._client.salida_registrar(
             {
                 "tipo_doc": tipo_doc,

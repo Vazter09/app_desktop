@@ -424,6 +424,12 @@ class IngresoFormPanel(tk.Frame):
     def _tipo_doc_actual(self) -> str:
         return self.tipo_doc_actual()
 
+    def _estado_barra(self, mensaje: str, color: str = theme.ERROR) -> None:
+        """Avisos operativos: solo barra inferior del panel facial, no el form."""
+        self._msg_var.set("")
+        if self._on_mensaje_estado is not None:
+            self._on_mensaje_estado(mensaje, color)
+
     def _consultar_documento(self) -> None:
         documento = self.documento()
         if not documento:
@@ -432,7 +438,7 @@ class IngresoFormPanel(tk.Frame):
         try:
             resultado = self._client.ingreso_consultar(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            self._msg_var.set(str(exc))
+            self._estado_barra(str(exc), theme.ERROR)
             return
 
         if resultado.get("ingreso_abierto") is not None:
@@ -440,8 +446,9 @@ class IngresoFormPanel(tk.Frame):
             self._persona_existente = resultado.get("persona")
             self._badge_var.set("Ya tiene ingreso abierto")
             self._badge_lbl.configure(fg=theme.ERROR)
-            self._msg_var.set(
-                "No se puede registrar otro ingreso hasta registrar la salida."
+            self._estado_barra(
+                "No se puede registrar otro ingreso hasta registrar la salida.",
+                theme.ERROR,
             )
             persona = resultado.get("persona") or {}
             if persona:
@@ -458,8 +465,9 @@ class IngresoFormPanel(tk.Frame):
             min_rest = max(1, (rest + 59) // 60)
             self._badge_var.set("Espere para reingresar")
             self._badge_lbl.configure(fg=theme.ERROR)
-            self._msg_var.set(
-                f"Salida reciente: espere ~{min_rest} min para un nuevo ingreso."
+            self._estado_barra(
+                f"Salida reciente: espere ~{min_rest} min para un nuevo ingreso.",
+                theme.ERROR,
             )
             if persona:
                 self._nombres_var.set(str(persona.get("nombres") or ""))
@@ -492,8 +500,9 @@ class IngresoFormPanel(tk.Frame):
 
     def _registrar(self) -> None:
         if self._bloqueo_ingreso:
-            self._msg_var.set(
-                "Esta persona ya tiene ingreso abierto. Registre la salida primero."
+            self._estado_barra(
+                "No se puede registrar otro ingreso hasta registrar la salida.",
+                theme.ERROR,
             )
             return
         documento = self.documento()
@@ -522,6 +531,7 @@ class IngresoFormPanel(tk.Frame):
             "tipo_persona": tipo_persona,
             "id_entrada": self._entrada_seleccionada,
             "observaciones": self._obs_var.get().strip(),
+            # Default manual; FacialModal puede reclasificar a 4/5 si hay bio.
             "metodo_aut": 1,
         }
         if self._on_enriquecer_payload is not None:
