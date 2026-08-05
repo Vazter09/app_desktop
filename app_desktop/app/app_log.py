@@ -1,16 +1,15 @@
 """
-Logging de la app de escritorio SmartCSET.
+Logging de la app de escritorio SmartCSET (errores / avisos).
 
 Archivo de log (una sola ruta canónica):
   - Desarrollo:  app_desktop/app/logs/smartcset_desktop.log
   - Ejecutable:  <carpeta_del_exe>/logs/smartcset_desktop.log
 
 Uso:
-    from app_log import get_logger, log_path, setup_logging
+    from app_log import get_logger, log_exception, log_path, setup_logging
     setup_logging()
     log = get_logger(__name__)
-    log.info("mensaje")
-    log.exception("fallo")
+    log_exception(log, "fallo al registrar", exc)
 """
 from __future__ import annotations
 
@@ -40,16 +39,52 @@ def log_path() -> Path:
     return logs_dir() / _LOG_FILE
 
 
-def setup_logging(level: int = logging.INFO) -> Path:
-    """Inicializa logging a archivo + consola (stderr). Idempotente."""
+def flush_handlers() -> None:
+    """Fuerza escritura inmediata a archivo y consola."""
+    root = logging.getLogger(_LOG_NAME)
+    for handler in root.handlers:
+        try:
+            handler.flush()
+        except Exception:
+            pass
+
+
+def log_exception(
+    logger: logging.Logger,
+    msg: str,
+    exc: BaseException | None = None,
+    *args: object,
+) -> None:
+    """Registra excepción con traceback y hace flush (tiempo real)."""
+    if exc is not None:
+        logger.error(
+            "%s: %s",
+            msg,
+            exc,
+            *args,
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+    else:
+        logger.exception(msg, *args)
+    flush_handlers()
+
+
+def setup_logging(level: int = logging.WARNING) -> Path:
+    """Inicializa logging a archivo + consola (stderr). Idempotente.
+
+    Nivel por defecto WARNING: errores y avisos operativos. El arranque
+    emite un único INFO con la ruta del archivo (pasa el filtro del root).
+    """
     global _configured
     path = log_path()
     if _configured:
         return path
 
     root = logging.getLogger(_LOG_NAME)
-    root.setLevel(level)
+    # Root en DEBUG para permitir INFO puntual de arranque; handlers filtrán.
+    root.setLevel(logging.DEBUG)
     root.handlers.clear()
+    root.propagate = False
 
     fmt = logging.Formatter(
         fmt="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
@@ -76,7 +111,14 @@ def setup_logging(level: int = logging.INFO) -> Path:
         except Exception:
             pass
 
+    # Un solo INFO de arranque (bypass temporal del nivel de handlers).
+    for handler in root.handlers:
+        handler.setLevel(logging.INFO)
     root.info("Logging iniciado → %s", path)
+    for handler in root.handlers:
+        handler.setLevel(level)
+    flush_handlers()
+
     _configured = True
     return path
 

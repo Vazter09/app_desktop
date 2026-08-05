@@ -23,6 +23,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
+from urllib.parse import urlsplit
+
+from app_log import flush_handlers, get_logger
+
+log = get_logger("smartcset_client")
 
 
 class SmartcsetApiError(Exception):
@@ -31,6 +36,11 @@ class SmartcsetApiError(Exception):
 
 class SmartcsetConnectionError(Exception):
     """No se pudo alcanzar el servidor (red caída, TLS inválido, etc.)."""
+
+
+def _path_for_log(path: str) -> str:
+    """Path sin query string (evita documento u otros params en el log)."""
+    return urlsplit(path).path or path
 
 
 class SmartcsetClient:
@@ -60,6 +70,7 @@ class SmartcsetClient:
     ) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        safe_path = _path_for_log(path)
 
         req = urllib.request.Request(url, data=data, method=method)
         req.add_header("Content-Type", "application/json")
@@ -78,21 +89,39 @@ class SmartcsetClient:
                 message = "¡Falla de conexión!"
             else:
                 message = parsed.get("error") or f"Error HTTP {exc.code}"
+            log.error(
+                "API HTTP %s %s → %s: %s",
+                method,
+                safe_path,
+                exc.code,
+                message,
+            )
+            flush_handlers()
             raise SmartcsetApiError(message) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
-            raise SmartcsetConnectionError(
-                f"No se pudo conectar con {self.base_url}: {exc}"
-            ) from exc
+            message = f"No se pudo conectar con {self.base_url}: {exc}"
+            log.error("Conexión %s %s: %s", method, safe_path, exc)
+            flush_handlers()
+            raise SmartcsetConnectionError(message) from exc
 
         try:
             parsed = json.loads(body)
         except json.JSONDecodeError as exc:
+            log.error(
+                "JSON inválido %s %s",
+                method,
+                safe_path,
+            )
+            flush_handlers()
             raise SmartcsetConnectionError(
                 "Respuesta inválida del servidor (¿URL correcta?)."
             ) from exc
 
         if not parsed.get("ok"):
-            raise SmartcsetApiError(parsed.get("error") or "Error desconocido.")
+            message = parsed.get("error") or "Error desconocido."
+            log.error("API fail %s %s: %s", method, safe_path, message)
+            flush_handlers()
+            raise SmartcsetApiError(message)
 
         return parsed.get("data") or {}
 

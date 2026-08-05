@@ -15,6 +15,8 @@ from __future__ import annotations
 import atexit
 import signal
 import sys
+import traceback
+import types
 
 from bootstrap import ensure_venv
 
@@ -24,7 +26,12 @@ import tkinter as tk  # noqa: E402 (después de ensure_venv a propósito)
 from tkinter import messagebox  # noqa: E402
 
 from config import AppConfig  # noqa: E402
-from app_log import get_logger, log_path, setup_logging  # noqa: E402
+from app_log import (  # noqa: E402
+    flush_handlers,
+    get_logger,
+    log_exception,
+    setup_logging,
+)
 from smartcset_client import SmartcsetClient  # noqa: E402
 from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
@@ -36,10 +43,31 @@ APP_MIN_HEIGHT = 860
 log = get_logger("main")
 
 
+def _install_global_exception_hooks() -> None:
+    """Captura excepciones no manejadas (hilos principales y callbacks Tk)."""
+
+    def _excepthook(
+        exc_type: type[BaseException],
+        exc: BaseException,
+        tb: types.TracebackType | None,
+    ) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc, tb)
+            return
+        log.error(
+            "Excepción no capturada: %s",
+            exc,
+            exc_info=(exc_type, exc, tb),
+        )
+        flush_handlers()
+
+    sys.excepthook = _excepthook
+
+
 class SmartcsetDesktopApp:
     def __init__(self) -> None:
         self.config = AppConfig.load()
-        log.info(
+        log.warning(
             "Arranque app | base_url=%s verify_tls=%s",
             self.config.base_url,
             self.config.verify_tls,
@@ -49,6 +77,7 @@ class SmartcsetDesktopApp:
         )
 
         self.root = tk.Tk()
+        self.root.report_callback_exception = self._on_tk_callback_exception
         self.root.title("SmartCSET · App Escritorio SGI")
         self._aplicar_pantalla_completa()
 
@@ -61,6 +90,22 @@ class SmartcsetDesktopApp:
         atexit.register(self._logout_if_needed)
         self._install_signal_handlers()
         self._show_login()
+
+    def _on_tk_callback_exception(
+        self,
+        exc_type: type[BaseException],
+        exc: BaseException,
+        tb: types.TracebackType | None,
+    ) -> None:
+        """Errores dentro de mainloop (botones, after, bindings)."""
+        log.error(
+            "Error en callback Tkinter: %s",
+            exc,
+            exc_info=(exc_type, exc, tb),
+        )
+        flush_handlers()
+        # También a stderr crudo por si el handler de logging falló.
+        traceback.print_exception(exc_type, exc, tb, file=sys.stderr)
 
     def _aplicar_pantalla_completa(self) -> None:
         """Abre maximizada (barra de título visible; no fullscreen sin bordes)."""
@@ -95,8 +140,9 @@ class SmartcsetDesktopApp:
         self._logout_done = True
         try:
             self.client.logout()
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("Logout al cerrar falló: %s", exc)
+            flush_handlers()
         self._logged_in = False
 
     def _on_close(self) -> None:
@@ -139,13 +185,15 @@ class SmartcsetDesktopApp:
 
 def main() -> int:
     path = setup_logging()
-    log.info("Archivo de log: %s", path)
+    _install_global_exception_hooks()
+    # setup_logging ya emitió INFO con la ruta; refuerzo visible en consola.
+    print(f"SmartCSET desktop — log: {path}", file=sys.stderr)
     app: SmartcsetDesktopApp | None = None
     try:
         app = SmartcsetDesktopApp()
         app.run()
     except Exception as exc:  # pragma: no cover - fallo visible al operador
-        log.exception("Error fatal de la aplicación: %s", exc)
+        log_exception(log, "Error fatal de la aplicación", exc)
         if app is not None:
             try:
                 app._logout_if_needed()

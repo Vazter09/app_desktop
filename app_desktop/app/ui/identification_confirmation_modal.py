@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 from PIL import Image, ImageTk
 
+from app_log import flush_handlers, get_logger
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 from ui.format_utils import (
@@ -25,6 +26,8 @@ from ui.format_utils import (
     label_estado_instructor,
     label_tipo_contrato_instructor,
 )
+
+log = get_logger("ui.identification_confirmation_modal")
 
 AUTO_REGISTRO_MS = 2500
 AUTO_CIERRE_ERROR_MS = 2500
@@ -82,7 +85,7 @@ class IdentificationConfirmationPanel(tk.Frame):
             btn_text = "✓ Registrar ingreso"
         elif self._modo == "actualizar_captura":
             btn_text = "Actualizar captura"
-        elif self._modo == "registrado":
+        elif self._modo in ("registrado", "enrolado"):
             btn_text = "✓ Continuar"
         else:
             btn_text = "✓ Registrar salida"
@@ -116,6 +119,8 @@ class IdentificationConfirmationPanel(tk.Frame):
 
         if self._modo == "registrado":
             titulo = "✓  Ingreso registrado"
+        elif self._modo == "enrolado":
+            titulo = "✓  Rostro enrolado"
         elif self._modo == "salida":
             titulo = "⚠  Se registrará SALIDA"
         elif self._modo == "actualizar_captura":
@@ -259,6 +264,8 @@ class IdentificationConfirmationPanel(tk.Frame):
             self._foto_image = ImageTk.PhotoImage(foto_pil)
             self._foto_canvas.create_image(0, 0, image=self._foto_image, anchor="nw")
         except Exception as exc:
+            log.warning("Error al mostrar foto de confirmación: %s", exc)
+            flush_handlers()
             self._foto_canvas.configure(bg=theme.BG_DEEP)
             self._foto_canvas.create_text(
                 FOTO_SIZE // 2,
@@ -279,6 +286,8 @@ class IdentificationConfirmationPanel(tk.Frame):
                 self._on_confirmar(self._persona_datos)
                 self._cerrar()
             except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+                log.error("Registro automático (confirmación): %s", exc)
+                flush_handlers()
                 self._registro_en_curso = False
                 self._mostrar_error_y_cerrar(str(exc))
         else:

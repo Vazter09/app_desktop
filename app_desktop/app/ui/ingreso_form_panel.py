@@ -8,8 +8,24 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable
 
+from app_log import flush_handlers, get_logger
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
+from ui.field_validators import (
+    DOC_MAX_LEN,
+    es_documento_valido,
+    es_nombre_valido,
+    es_observacion_valida,
+    filtrar_chars_nombre,
+    filtrar_chars_observacion,
+    mensaje_documento_invalido,
+    mensaje_nombre_invalido,
+    sanear_documento,
+    sanear_nombre,
+    sanear_observacion,
+)
+
+log = get_logger("ui.ingreso_form_panel")
 
 
 class IngresoFormPanel(tk.Frame):
@@ -34,6 +50,8 @@ class IngresoFormPanel(tk.Frame):
         self._on_enriquecer_payload = on_enriquecer_payload
         # True tras pegar visitante desde pistola: evita doble consulta FocusOut.
         self._omitir_consulta_focus_out = False
+        # Evita bucles al coerción vía StringVar.trace.
+        self._coerciendo_campos = False
 
         self._catalogos: dict[str, Any] = {
             "tipos_doc": [],
@@ -55,6 +73,7 @@ class IngresoFormPanel(tk.Frame):
         self._obs_var = tk.StringVar()
 
         self._build()
+        self._activar_coercion_campos()
 
     # ---- API pública -------------------------------------------------
 
@@ -62,7 +81,7 @@ class IngresoFormPanel(tk.Frame):
         return self._documento_var.get().strip()
 
     def set_documento(self, valor: str) -> None:
-        self._documento_var.set(valor)
+        self._documento_var.set(sanear_documento(valor))
 
     def aplicar_visitante_escaneado(
         self,
@@ -73,21 +92,34 @@ class IngresoFormPanel(tk.Frame):
         apellidos: str = "",
     ) -> None:
         """Visitante no registrado: deja el documento (y nombres si PDF417)."""
+        doc = sanear_documento(documento)
+        nom = sanear_nombre(nombres)
+        ape = sanear_nombre(apellidos)
+        if not es_documento_valido(doc):
+            self._msg_var.set(mensaje_documento_invalido())
+            self._estado_barra(
+                "Escaneo sin documento válido (8–10 dígitos) — reintente.",
+                theme.ERROR,
+            )
+            return
         # Evitar que FocusOut dispare consulta al reenfocar el campo.
         self._omitir_consulta_focus_out = True
         if tipo_doc and tipo_doc in self._tipo_doc_ids:
             self._tipo_doc_combo.set(tipo_doc)
-        self._documento_var.set(documento)
-        if nombres:
-            self._nombres_var.set(nombres)
-        if apellidos:
-            self._apellidos_var.set(apellidos)
+        # Siempre sobrescribir (limpia fugas de Tab: ape en nombres, fecha en obs).
+        self._documento_var.set(doc)
+        self._nombres_var.set(nom)
+        self._apellidos_var.set(ape)
+        self._obs_var.set("")
         self._persona_existente = None
         self._bloqueo_ingreso = False
         self._set_campos_editables(True)
+        nombres_tp = list(self._tipo_persona_map.keys())
+        if nombres_tp:
+            self._tipo_persona_combo.set(nombres_tp[0])
         self._badge_var.set("Persona nueva — complete nombres y tipo")
         self._badge_lbl.configure(fg=theme.CYAN)
-        if nombres and apellidos:
+        if nom and ape:
             self._msg_var.set("Datos leídos del documento — verifique y registre.")
         else:
             self._msg_var.set("")
@@ -134,19 +166,23 @@ class IngresoFormPanel(tk.Frame):
 
     def aplicar_persona_identificada(self, persona: dict[str, Any]) -> None:
         """Rellena el formulario tras match biométrico (persona existente)."""
-        doc = str(
-            persona.get("documento")
-            or persona.get("num_docum")
-            or persona.get("id_persona")
-            or ""
+        doc = sanear_documento(
+            str(
+                persona.get("documento")
+                or persona.get("num_docum")
+                or persona.get("id_persona")
+                or ""
+            )
         )
         tipo = str(persona.get("tipo_doc") or persona.get("id_tipo_docum") or "CC")
         if doc:
             self._documento_var.set(doc)
         if tipo in self._tipo_doc_ids:
             self._tipo_doc_combo.set(tipo)
-        self._nombres_var.set(str(persona.get("nombres") or ""))
-        self._apellidos_var.set(str(persona.get("apellidos") or ""))
+        self._nombres_var.set(sanear_nombre(str(persona.get("nombres") or "")))
+        self._apellidos_var.set(
+            sanear_nombre(str(persona.get("apellidos") or ""))
+        )
         nom_tipo = str(persona.get("nom_tipo_persona") or "")
         if nom_tipo and nom_tipo in self._tipo_persona_map:
             self._tipo_persona_combo.set(nom_tipo)
@@ -198,18 +234,10 @@ class IngresoFormPanel(tk.Frame):
         body = tk.Frame(self, bg=theme.BG_PANEL)
         body.pack(side="top", fill="both", expand=True)
 
-        # Observación anclada abajo del body: no se aplasta si falta altura.
+        # Contenedor abajo (pack primero). El Entry de observación se CREA
+        # al final para que el orden Tab sea: doc → tipo → nombres → ape → obs.
         obs_wrap = tk.Frame(body, bg=theme.BG_PANEL)
         obs_wrap.pack(side="bottom", fill="x")
-        ttk.Label(
-            obs_wrap,
-            text="Observación / Novedad",
-            style="Card.TLabel",
-        ).pack(anchor="w", pady=(8, 4))
-        self._obs_entry = ttk.Entry(
-            obs_wrap, textvariable=self._obs_var, font=theme.FONT_LOGIN_LABEL
-        )
-        self._obs_entry.pack(fill="x", ipady=8)
 
         head = tk.Frame(body, bg=theme.BG_PANEL)
         head.pack(fill="x")
@@ -286,6 +314,61 @@ class IngresoFormPanel(tk.Frame):
         )
         self._puertas_frame = tk.Frame(body, bg=theme.BG_PANEL)
         self._puertas_frame.pack(fill="x")
+
+        # Observación al final del orden de creación (= orden Tab).
+        ttk.Label(
+            obs_wrap,
+            text="Observación / Novedad",
+            style="Card.TLabel",
+        ).pack(anchor="w", pady=(8, 4))
+        self._obs_entry = ttk.Entry(
+            obs_wrap, textvariable=self._obs_var, font=theme.FONT_LOGIN_LABEL
+        )
+        self._obs_entry.pack(fill="x", ipady=8)
+
+    def _activar_coercion_campos(self) -> None:
+        """Filtra en vivo: pistola/teclado no dejan basura (p. ej. O+ en doc)."""
+        self._documento_var.trace_add("write", self._coerce_documento)
+        self._nombres_var.trace_add("write", self._coerce_nombres)
+        self._apellidos_var.trace_add("write", self._coerce_apellidos)
+        self._obs_var.trace_add("write", self._coerce_obs)
+
+    def _coerce_var(
+        self,
+        var: tk.StringVar,
+        cleaner,
+        *,
+        max_len: int | None = None,
+    ) -> None:
+        if self._coerciendo_campos:
+            return
+        raw = var.get()
+        cleaned = cleaner(raw)
+        if max_len is not None:
+            cleaned = cleaned[:max_len]
+        if cleaned == raw:
+            return
+        self._coerciendo_campos = True
+        try:
+            var.set(cleaned)
+        finally:
+            self._coerciendo_campos = False
+
+    def _coerce_documento(self, *_args: object) -> None:
+        self._coerce_var(
+            self._documento_var, sanear_documento, max_len=DOC_MAX_LEN
+        )
+
+    def _coerce_nombres(self, *_args: object) -> None:
+        self._coerce_var(self._nombres_var, filtrar_chars_nombre)
+
+    def _coerce_apellidos(self, *_args: object) -> None:
+        self._coerce_var(self._apellidos_var, filtrar_chars_nombre)
+
+    def _coerce_obs(self, *_args: object) -> None:
+        self._coerce_var(
+            self._obs_var, filtrar_chars_observacion, max_len=200
+        )
 
     def _rebuild_puertas(self) -> None:
         for child in self._puertas_frame.winfo_children():
@@ -431,13 +514,21 @@ class IngresoFormPanel(tk.Frame):
             self._on_mensaje_estado(mensaje, color)
 
     def _consultar_documento(self) -> None:
-        documento = self.documento()
+        documento = sanear_documento(self.documento())
+        if documento != self.documento():
+            self._documento_var.set(documento)
         if not documento:
+            return
+        if not es_documento_valido(documento):
+            self._msg_var.set(mensaje_documento_invalido())
+            self.focus_documento()
             return
         tipo_doc = self._tipo_doc_actual()
         try:
             resultado = self._client.ingreso_consultar(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Consultar persona (formulario): %s", exc)
+            flush_handlers()
             self._estado_barra(str(exc), theme.ERROR)
             return
 
@@ -505,15 +596,36 @@ class IngresoFormPanel(tk.Frame):
                 theme.ERROR,
             )
             return
-        documento = self.documento()
-        nombres = self._nombres_var.get().strip()
-        apellidos = self._apellidos_var.get().strip()
+        documento = sanear_documento(self.documento())
+        nombres = sanear_nombre(self._nombres_var.get())
+        apellidos = sanear_nombre(self._apellidos_var.get())
+        observaciones = sanear_observacion(self._obs_var.get())
+        self._documento_var.set(documento)
+        self._nombres_var.set(nombres)
+        self._apellidos_var.set(apellidos)
+        self._obs_var.set(observaciones)
+
         if not documento:
             self._msg_var.set("Ingrese el número de documento.")
             self.focus_documento()
             return
+        if not es_documento_valido(documento):
+            self._msg_var.set(mensaje_documento_invalido())
+            self.focus_documento()
+            return
         if not nombres or not apellidos:
             self._msg_var.set("Complete nombres y apellidos.")
+            return
+        if not es_nombre_valido(nombres):
+            self._msg_var.set(mensaje_nombre_invalido("Nombres"))
+            return
+        if not es_nombre_valido(apellidos):
+            self._msg_var.set(mensaje_nombre_invalido("Apellidos"))
+            return
+        if not es_observacion_valida(observaciones):
+            self._msg_var.set(
+                "Observación: use letras, números y puntuación básica."
+            )
             return
         if not self._entrada_seleccionada:
             self._msg_var.set("Seleccione una puerta de ingreso.")
@@ -530,7 +642,7 @@ class IngresoFormPanel(tk.Frame):
             "apellidos": apellidos,
             "tipo_persona": tipo_persona,
             "id_entrada": self._entrada_seleccionada,
-            "observaciones": self._obs_var.get().strip(),
+            "observaciones": observaciones,
             # Default manual; FacialModal puede reclasificar a 4/5 si hay bio.
             "metodo_aut": 1,
         }
@@ -539,6 +651,8 @@ class IngresoFormPanel(tk.Frame):
         try:
             resultado = self._client.ingreso_registrar(payload)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Registrar ingreso (formulario): %s", exc)
+            flush_handlers()
             self._msg_var.set(str(exc))
             if self._on_mensaje_estado is not None:
                 self._on_mensaje_estado(str(exc), theme.ERROR)
@@ -593,8 +707,9 @@ class IngresoFormPanel(tk.Frame):
                 ):
                     if persona_api.get(key) is not None:
                         persona_datos[key] = persona_api.get(key)
-        except (SmartcsetApiError, SmartcsetConnectionError):
-            pass
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.warning("Enrichment post-registro omitido: %s", exc)
+            flush_handlers()
 
         era_existente = self._persona_existente is not None
         persona_datos["_persona_existente"] = era_existente

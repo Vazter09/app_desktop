@@ -17,7 +17,10 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 from typing import Any, Callable
 
+from app_log import flush_handlers, get_logger
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
+
+log = get_logger("ui.pages.entradas")
 
 
 class EntradasPage(ttk.Frame):
@@ -69,6 +72,8 @@ class EntradasPage(ttk.Frame):
         try:
             data = self._client.catalogos()
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Listar entradas: %s", exc)
+            flush_handlers()
             messagebox.showerror("Entradas", str(exc))
             return
 
@@ -93,6 +98,8 @@ class EntradasPage(ttk.Frame):
         try:
             self._client.entrada_guardar({"nombre": nombre, "sel_sede": sede})
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Guardar entrada: %s", exc)
+            flush_handlers()
             messagebox.showerror("Nueva entrada", str(exc))
             return
 
@@ -114,6 +121,8 @@ class EntradasPage(ttk.Frame):
         try:
             self._client.entrada_eliminar(id_entrada)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Eliminar entrada: %s", exc)
+            flush_handlers()
             messagebox.showerror("Eliminar entrada", str(exc))
             return
 

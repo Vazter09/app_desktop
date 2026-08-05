@@ -14,9 +14,12 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Any, Callable
 
+from app_log import flush_handlers, get_logger
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 from ui.facial_modal import FacialRecognitionPanel
+
+log = get_logger("ui.pages.ingreso")
 
 
 class IngresoPage(ttk.Frame):
@@ -66,6 +69,8 @@ class NuevoIngresoDialog(tk.Toplevel):
         try:
             self._catalogos = client.catalogos()
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Catálogos (nuevo ingreso): %s", exc)
+            flush_handlers()
             messagebox.showerror("Nuevo ingreso", str(exc))
             self.destroy()
             return
@@ -125,6 +130,8 @@ class NuevoIngresoDialog(tk.Toplevel):
         try:
             resultado = self._client.ingreso_consultar(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Consultar persona (nuevo ingreso): %s", exc)
+            flush_handlers()
             messagebox.showerror("Nuevo ingreso", str(exc))
             return
 
@@ -243,6 +250,8 @@ class NuevoIngresoDialog(tk.Toplevel):
         try:
             self._client.ingreso_registrar(payload)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Registrar ingreso: %s", exc)
+            flush_handlers()
             messagebox.showerror("Nuevo ingreso", str(exc))
             self._submit_btn.state(["!disabled"])
             return

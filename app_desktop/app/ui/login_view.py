@@ -16,9 +16,12 @@ from typing import Callable
 
 from PIL import Image, ImageTk
 
+from app_log import flush_handlers, get_logger
 from app_paths import resource_root
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
+
+log = get_logger("ui.login_view")
 
 LOGO_MAX_ANCHO = 110
 CARD_PADDING = 28
@@ -163,6 +166,8 @@ class LoginView(ttk.Frame):
         try:
             data = self._client.login(usuario, clave)
         except SmartcsetApiError as exc:
+            log.error("Login API: %s", exc)
+            flush_handlers()
             mensaje = str(exc)
             if "sesión activa" in mensaje.lower():
                 mensaje += (
@@ -171,6 +176,8 @@ class LoginView(ttk.Frame):
                 )
             self._error_var.set(mensaje)
         except SmartcsetConnectionError as exc:
+            log.error("Login conexión: %s", exc)
+            flush_handlers()
             self._error_var.set(str(exc))
         else:
             self._on_success(data.get("usuario", {}))

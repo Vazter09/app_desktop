@@ -8,8 +8,11 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable
 
+from app_log import flush_handlers, get_logger
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
+
+log = get_logger("ui.pages.inicio")
 
 
 class InicioPage(ttk.Frame):
@@ -74,7 +77,9 @@ class InicioPage(ttk.Frame):
         try:
             ingresos = self._client.ingresos_hoy()
             salidas = self._client.salidas_hoy()
-        except (SmartcsetApiError, SmartcsetConnectionError):
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.warning("KPIs inicio no disponibles: %s", exc)
+            flush_handlers()
             ingresos, salidas = [], []
 
         self._kpi_ingresos.configure(text=str(len(ingresos)))

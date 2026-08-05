@@ -10,10 +10,13 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Any, Callable
 
+from app_log import flush_handlers, get_logger
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
 from ui.facial_modal import FacialRecognitionModal
 from ui.format_utils import WITH_SECONDS_FORMAT, format_db_timestamp
+
+log = get_logger("ui.pages.salida")
 
 
 class SalidaPage(ttk.Frame):
@@ -78,6 +81,8 @@ class SalidaPage(ttk.Frame):
         try:
             items = self._client.salidas_hoy()
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Listar salidas hoy: %s", exc)
+            flush_handlers()
             self._status_var.set(str(exc))
             return
 
@@ -128,6 +133,8 @@ class NuevaSalidaDialog(tk.Toplevel):
         try:
             self._catalogos = client.catalogos()
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Catálogos (nueva salida): %s", exc)
+            flush_handlers()
             messagebox.showerror("Nueva salida", str(exc))
             self.destroy()
             return
@@ -181,6 +188,8 @@ class NuevaSalidaDialog(tk.Toplevel):
         try:
             resultado = self._client.salida_consultar(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Consultar salida: %s", exc)
+            flush_handlers()
             messagebox.showerror("Nueva salida", str(exc))
             return
 
@@ -244,6 +253,8 @@ class NuevaSalidaDialog(tk.Toplevel):
         try:
             self._client.salida_registrar(payload)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Registrar salida: %s", exc)
+            flush_handlers()
             messagebox.showerror("Nueva salida", str(exc))
             self._submit_btn.state(["!disabled"])
             return
