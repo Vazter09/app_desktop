@@ -86,6 +86,8 @@ try {
     $_SESSION['nom_usuario'] = $reg['nom_usuario'];
     $_SESSION['ind_usuario'] = smartcsetPgBool($reg['ind_usuario']);
     $_SESSION['id_sesion'] = $idSesion;
+    $_SESSION['ult_ruta'] = $ultRuta;
+    $_SESSION['origen_cliente'] = $origen === 'desktop' ? 'desktop' : 'web';
 
     RouterResponse::ok([
         'redirect' => smartcsetUrl('/pages/menu/menu_principal.php'),

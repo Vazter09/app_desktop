@@ -22,8 +22,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# app_desktop/app/ (donde vive smartcset_client.py) al sys.path.
-APP_DIR = Path(__file__).resolve().parent.parent
+# app_desktop/src/ (donde vive smartcset_client.py) al sys.path.
+APP_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
@@ -41,8 +41,8 @@ _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 def _base_url_from_app_config() -> str | None:
-    """Misma URL que la app si existe `app_desktop/app/app_config.json`."""
-    config_path = APP_DIR / "app_config.json"
+    """Misma URL que la app si existe `app_desktop/runtime/app_config.json`."""
+    config_path = APP_DIR.parent / "runtime" / "app_config.json"
     if not config_path.is_file():
         return None
     try:

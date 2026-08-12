@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 from app_paths import is_frozen, writable_root
 
 # Servidor institucional SENA (PC de portería / .exe empaquetado).
-PRODUCTION_BASE_URL = "https://10.5.213.103/smartcset"
+PRODUCTION_BASE_URL = "https://10.5.213.111/smartcset"
 # Desarrollo local vía Apache.
 DEV_BASE_URL = "https://localhost/smartcset"
 

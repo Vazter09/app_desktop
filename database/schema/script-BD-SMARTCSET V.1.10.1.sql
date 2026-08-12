@@ -1,5 +1,9 @@
-﻿-- PENDIENTE CREAR:
--- tabla intento login.
+﻿  
+-- PENDIENTE CREAR:
+-- Tab_calendario_academico
+-- tab_novedades_egreso / tab_novedades_ingreso (para las personas que no esten registrados en el sistema)
+-- tab_equipos_entrada.
+-- trigger para validar el año, mes en la tabla parametros.
 
 -- Tener en cuenta la salida (novedades) de las personas que se colaron (tab_novedades_ingreso).
 
@@ -421,24 +425,6 @@ CREATE TABLE IF NOT EXISTS tab_usuarios
     fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_usuario)
 );
-
-
-/*
-CREATE TABLE IF NOT EXISTS tab_intentos_login
-(
-    id_intento     INT                         NOT NULL DEFAULT nextval('seq_intentos_login'::regclass),
-    ip_cliente     VARCHAR(45)                 COLLATE  pg_catalog."default" NOT NULL,
-    id_usuario     VARCHAR(20)                 COLLATE  pg_catalog."default",
-    ind_exitoso    BOOLEAN                     NOT NULL DEFAULT false,
-    fec_intento    TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    motivo_fallo   VARCHAR(30)                 COLLATE  pg_catalog."default",
-    user_agent     VARCHAR(255)                COLLATE  pg_catalog."default",
-    CONSTRAINT     tab_intentos_login_pkey PRIMARY KEY (id_intento),
-    CONSTRAINT     tab_intentos_login_ip_check CHECK (length(TRIM(BOTH FROM ip_cliente)) >= 7)
-)
-TABLESPACE pg_default;
-*/
-
 
 -- TABLA DE SESIONES DE APLICACIÓN (módulo acceso / login)
 CREATE SEQUENCE seq_sesiones START WITH 1 INCREMENT BY 1;
@@ -1606,7 +1592,8 @@ CREATE TABLE IF NOT EXISTS tab_personas
  -- DATOS BIOMÉTRICOS (SEGUARDAN UNA SOLA VEZ, PARA VALIDACIONES FUTURAS CADA VEZ QUE INGRESE)
     val_huella_digital          BYTEA,
     val_patron_facial           VECTOR(128),
-    fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fec_ultima_entrada          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TI
+    MESTAMP,
     fec_ultima_salida           TIMESTAMP WITHOUT TIME ZONE NOT NULL CHECK(fec_ultima_salida >= fec_ultima_entrada) DEFAULT CURRENT_TIMESTAMP,
     num_visitas                 SMALLINT                    NOT NULL DEFAULT 0,
 -- DATOS DE ESTUDIO
@@ -1621,12 +1608,11 @@ CREATE TABLE IF NOT EXISTS tab_personas
     nom_contacto_emergencias    VARCHAR(60)                 NOT NULL CHECK(LENGTH(nom_contacto_emergencias) >= 5) DEFAULT 'Sin Contacto',
     tel_contacto_emergencias    telefono_movil              NOT NULL DEFAULT 3000000000,
     ind_envio_correo            BOOLEAN                     NOT NULL DEFAULT FALSE, -- TRUE=Enviarle correos / FALSE=No se le envían correos
-    ind_estado                  BOOLEAN                     NOT NULL DEFAULT TRUE,  -- TRUE=Activo / FALSE=Inactivo
+    ind_estado                  BOOLEAN                     NOT NULL DEFAULT TRUE, -- TRUE=Activo / FALSE=Inactivo
     usr_insert                  VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert                  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update                  VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update                  TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
-    ruta_foto_facial            VARCHAR(500),                                       -- Ruta donde esta almacenada la foto (servidor).
     PRIMARY KEY(id_persona),
     FOREIGN KEY(id_tipo_docum)      REFERENCES tab_tipos_docum(id_tipo_docum),
     FOREIGN KEY(id_tipo_persona)    REFERENCES tab_tipos_persona(id_tipo_persona),
@@ -2402,7 +2388,6 @@ CREATE TABLE IF NOT EXISTS tab_tipos_equipo (
 CREATE TABLE IF NOT EXISTS tab_equipos (
     id_equipo             VARCHAR(50)                 NOT NULL, -- Numero de serie.
     id_tipo_equipo        DECIMAL(2,0)                NOT NULL, 
- -- url_foto              VARCHAR                     NOT NULL, -- La fotografia sirve para que bajo criterio del guarda de seguridad permita el ingreso/egreso del equipo.      
     id_propietario        DECIMAL(10,0)               NOT NULL, -- El propietario debe estar registrado.
     usr_insert            VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -2432,8 +2417,6 @@ CREATE TABLE IF NOT EXISTS tab_equipos (
 -- | id_entrada_centro | DECIMAL(1,0)     | NOT NULL                               | Identificador.                                |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | val_datos_origen | JSONB            |                                        |                                               |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | val_observaciones | TEXT             |                                        |                                               |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | usr_insert     | VARCHAR          | NOT NULL                               | Usuario que creó/actualizó el registro.       |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
@@ -2473,36 +2456,38 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     id_visitante            DECIMAL(10,0)               NOT NULL,
     fec_ingreso             TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fec_salida              TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    id_metodo_aut           DECIMAL(2,0)                NOT NULL,
-    id_entrada_centro       DECIMAL(1,0)                NOT NULL,
+    id_metodo_ingreso       DECIMAL(2,0)                NOT NULL,
+	id_metodo_salida        DECIMAL(2,0)                NOT NULL DEFAULT 1,
+    id_entrada_ingreso      DECIMAL(1,0)                NOT NULL,
+	id_entrada_salida       DECIMAL(1,0)                NOT NULL DEFAULT 1,
     ind_equipo              BOOLEAN                     NOT NULL DEFAULT FALSE, -- FALSE=No ingreso con un equipo/ TRUE=Ingreso con un equipo
     id_equipo               VARCHAR                     NOT NULL DEFAULT 111111,
 -- 'datos_origen' guarda el string del QR, Barcode o la metadata del formulario.
     facial_embedding        VECTOR(128),
-    -- Plantilla binaria de la huella (Minucias)
+	url_foto_facial         VARCHAR(500),
+	calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
+-- Plantilla binaria de la huella (Minucias)
     huella_template         BYTEA,
     -- Rutas físicas de las imágenes de auditoría (Almacenamiento externo).
-    url_foto_facial         VARCHAR(500),
     url_imagen_huella       VARCHAR(500),
     -- Metadatos de la captura para control y auditoría
-    calidad_facial          NUMERIC(5,2) CHECK (calidad_facial BETWEEN 0 AND 100),
     calidad_huella          NUMERIC(5,2) CHECK (calidad_huella BETWEEN 0 AND 100),
     val_datos_origen        JSONB,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
-    val_observaciones       TEXT,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update              TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_ingreso),
     FOREIGN KEY(id_visitante)       REFERENCES tab_personas(id_persona),
-    FOREIGN KEY(id_metodo_aut)      REFERENCES tab_metodos_aut(id_metodo_aut),
-    FOREIGN KEY(id_entrada_centro)  REFERENCES tab_entradas_centro(id_entrada_centro)
+    FOREIGN KEY(id_metodo_ingreso)  REFERENCES tab_metodos_aut(id_metodo_aut),
+	FOREIGN KEY(id_metodo_salida)   REFERENCES tab_metodos_aut(id_metodo_aut),
+    FOREIGN KEY(id_entrada_ingreso)  REFERENCES tab_entradas_centro(id_entrada_centro),
+	FOREIGN KEY(id_entrada_salida)  REFERENCES tab_entradas_centro(id_entrada_centro)
 );
 -- Indices para optimización de búsquedas frecuentes
 CREATE INDEX idx_fec_ingresos ON tab_log_ingresos(fec_ingreso DESC);
-
 
 
 -- Tabla para llevar a cabo las novedades que sucedan con el ingreso de personas.
@@ -2510,7 +2495,7 @@ CREATE INDEX idx_fec_ingresos ON tab_log_ingresos(fec_ingreso DESC);
 CREATE TABLE IF NOT EXISTS tab_novedades_diarias
 (
     id_novedad_diaria       BIGSERIAL                   NOT NULL,
-    id_ingreso              INTEGER                     NOT NULL,
+    id_ingreso              BIGINT                      NOT NULL,
     motivo_novedad          VARCHAR(100)                NOT NULL CHECK(LENGTH(TRIM(motivo_novedad)) >= 5),
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL ,

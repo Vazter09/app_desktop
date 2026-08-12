@@ -80,10 +80,13 @@ final class Db
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]);
 
-        $dbTz = defined('DB_TIMEZONE') ? DB_TIMEZONE : 'UTC';
-        if (preg_match('/^[A-Za-z0-9_\/+\-]+$/', $dbTz)) {
-            $pdo->exec("SET TIME ZONE '" . str_replace("'", "''", $dbTz) . "'");
+        $dbTz = defined('DB_TIMEZONE') ? DB_TIMEZONE : 'America/Bogota';
+        if (!preg_match('/^[A-Za-z0-9_\/+\-]+$/', $dbTz)) {
+            $dbTz = 'America/Bogota';
         }
+        // Obliga a CURRENT_TIMESTAMP / now() de la sesión a hora civil Colombia.
+        // Las funciones PL/pgSQL de portería además usan smartcset_now_local().
+        $pdo->exec("SET TIME ZONE " . $pdo->quote($dbTz));
 
         return $pdo;
     }

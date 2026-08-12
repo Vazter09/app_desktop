@@ -1,9 +1,9 @@
 # Build + copia inmediata al Escritorio (evita que dist quede vacio).
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$App = Join-Path $Root "app"
+$Runtime = Join-Path $Root "runtime"
 $Pack = $PSScriptRoot
-$VenvPython = Join-Path $App ".venv\Scripts\python.exe"
+$VenvPython = Join-Path $Runtime ".venv\Scripts\python.exe"
 $Spec = Join-Path $Pack "SmartCSET_Porteria.spec"
 $BuildDir = Join-Path $Root "build"
 $DistRoot = Join-Path $Root "dist"
@@ -53,6 +53,6 @@ Copy-Item -Recurse -Force $OutFolder $DesktopOut
 Write-Host ""
 Write-Host "LISTO en Escritorio:"
 Write-Host "  $DesktopOut"
-Write-Host "  base_url = https://10.5.213.103/smartcset"
+Write-Host "  base_url = https://10.5.213.111/smartcset"
 Get-ChildItem $DesktopOut | ForEach-Object { Write-Host ("  - " + $_.Name) }
 Get-Content (Join-Path $DesktopOut "app_config.json")

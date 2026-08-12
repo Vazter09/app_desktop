@@ -1,6 +1,8 @@
 <?php
 /**
- * Lógica de registro manual de salidas (portería).
+ * Lógica de registro de salidas (portería).
+ * metodo_aut / id_entrada del payload se persisten en
+ * id_metodo_salida / id_entrada_salida (no tocan columnas de ingreso).
  */
 require_once __DIR__ . '/documento_service.php';
 require_once __DIR__ . '/parse_captura_service.php';
@@ -46,6 +48,13 @@ function salidaRegistrarManual(
     $doc = $captura['documento'];
     $tipo = $captura['tipo_doc'];
     $obs = trim($datos['txt_observaciones'] ?? '');
+    $metodoSalida = (int) ($captura['id_metodo_aut'] ?? 1);
+    if ($metodoSalida < 1) {
+        $metodoSalida = 1;
+    }
+    $entradaSalida = (int) ($datos['sel_entrada'] ?? 0);
+    // 0 → PL/pgSQL reutiliza id_entrada_ingreso del registro abierto.
+    $entradaParam = $entradaSalida >= 1 ? $entradaSalida : 0;
 
     if ($tipo === '') {
         throw new Exception('Seleccione el tipo de documento.');
@@ -77,7 +86,10 @@ function salidaRegistrarManual(
     $stmtFunRegistrar->execute([
         $doc,
         $tipo,
+        // Solo texto del formulario Observación/Novedad (≥5 chars crea fila).
         $obs !== '' ? $obs : null,
+        $metodoSalida,
+        $entradaParam,
     ]);
 
     $idIngreso = $stmtFunRegistrar->fetchColumn();

@@ -7,8 +7,8 @@ activa automáticamente — así `python3 main.py` funciona siempre, sin
 tener que acordarse de activar nada a mano.
 
 Ejecutar (desde cualquier Python del sistema, 3.11+):
-    cd app_desktop/app
-    python3 main.py
+    cd app_desktop/src
+    python main.py
 """
 from __future__ import annotations
 

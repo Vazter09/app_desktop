@@ -12,8 +12,8 @@ BEGIN
     -- Ingreso abierto: fec_ultima_salida = fec_ultima_entrada (mismo patrón
     -- que tab_log_ingresos). Si no, el CHECK fec_ultima_salida >= fec_ultima_entrada falla.
     UPDATE tab_personas
-    SET fec_ultima_entrada = CURRENT_TIMESTAMP,
-        fec_ultima_salida  = CURRENT_TIMESTAMP,
+    SET fec_ultima_entrada = smartcset_now_local(),
+        fec_ultima_salida  = smartcset_now_local(),
         num_visitas        = num_visitas + 1
     WHERE id_persona = wid_persona;
 

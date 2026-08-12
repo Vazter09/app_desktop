@@ -14,6 +14,20 @@ const ACCESO_SESION_CIERRE_IP_MISMATCH = 'IP_MISMATCH';
 /** ult_ruta en tab_sesiones para sesiones de la app de escritorio SGI. */
 const ACCESO_SESION_RUTA_DESKTOP = 'app_desktop';
 
+/**
+ * Usuario de auditoría = id_usuario real de la sesión PHP.
+ * El trigger fun_audit_trigger lo toma vía SET app.usuario.
+ */
+function accesoUsuarioAuditoriaSesion(): string
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return 'SISTEMA';
+    }
+    $id = trim((string) ($_SESSION['id_usuario'] ?? ''));
+
+    return $id !== '' ? $id : 'SISTEMA';
+}
+
 const ACCESO_PRESENCIA_ACTIVO       = 'ACTIVO';
 const ACCESO_PRESENCIA_AUSENTE      = 'AUSENTE';
 const ACCESO_PRESENCIA_DESCONECTADO = 'DESCONECTADO';

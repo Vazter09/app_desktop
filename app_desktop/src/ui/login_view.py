@@ -160,11 +160,16 @@ class LoginView(ttk.Frame):
         self._error_var.set("")
         self.update_idletasks()
 
-        # Descartar cookies locales previas (re-login en la misma ventana).
-        self._client.logout()
+        # Si había cookie local, cerrar sesión en servidor; luego jar limpio.
+        if self._client.has_session_cookie():
+            self._client.logout()
+        else:
+            self._client.clear_cookies()
 
         try:
             data = self._client.login(usuario, clave)
+            # Validar sesión de verdad (evita UI “logueada” sin cookie usable).
+            self._client.catalogos()
         except SmartcsetApiError as exc:
             log.error("Login API: %s", exc)
             flush_handlers()
@@ -174,10 +179,12 @@ class LoginView(ttk.Frame):
                     " Si inició sesión en la web, cierre sesión allí primero "
                     "o pida al administrador que libere su usuario."
                 )
+            self._client.clear_cookies()
             self._error_var.set(mensaje)
         except SmartcsetConnectionError as exc:
             log.error("Login conexión: %s", exc)
             flush_handlers()
+            self._client.clear_cookies()
             self._error_var.set(str(exc))
         else:
             self._on_success(data.get("usuario", {}))

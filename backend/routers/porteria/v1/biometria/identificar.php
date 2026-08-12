@@ -5,7 +5,7 @@ declare(strict_types=1);
  * @openapi {
  *   "summary": "Identificar persona por vector facial",
  *   "tags": ["Portería", "Biometría"],
- *   "description": "Solo identifica — NO decide ni registra ingreso/salida. El cliente reutiliza ingreso/consultar.php o salida/consultar.php con el documento devuelto para decidir cuál corresponde (mismo patrón que la captura manual), y registra con id_metodo_aut=4 (Biométrico facial).",
+ *   "description": "Solo identifica — NO decide ni registra ingreso/salida. El cliente reutiliza ingreso/consultar.php o salida/consultar.php con el documento devuelto para decidir cuál corresponde (mismo patrón que la captura manual). Al registrar, metodo_aut=4 se escribe en id_metodo_ingreso (ingreso) o id_metodo_salida (salida).",
  *   "requestBody": {
  *     "required": ["embedding"],
  *     "schema": {

@@ -2374,8 +2374,6 @@ CREATE TABLE IF NOT EXISTS tab_vehiculos
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | val_datos_origen | JSONB            |                                        |                                               |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
--- | val_observaciones | TEXT             |                                        |                                               |
--- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | usr_insert     | VARCHAR          | NOT NULL                               | Usuario que creó/actualizó el registro.       |
 -- +--------------+----------------+--------------------------------------+---------------------------------------------+
 -- | fec_insert     | TIMESTAMP WITHOUT TIME ZONE | NOT NULL                               | Fecha/hora.                                   |
@@ -2406,7 +2404,6 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
     val_datos_origen        JSONB,
     ind_vehiculo            BOOLEAN                     NOT NULL DEFAULT FALSE,
     id_vehiculo             VARCHAR(6)                  NOT NULL DEFAULT 'AAA000',
-    val_observaciones       TEXT,
     usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update              VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
@@ -2418,6 +2415,18 @@ CREATE TABLE IF NOT EXISTS tab_log_ingresos
 );
 -- Indices para optimización de búsquedas frecuentes
 CREATE INDEX idx_fec_ingresos ON tab_log_ingresos(fec_ingreso DESC);
+
+-- Motivo del operador (formulario Observación/Novedad), ligado al ingreso.
+CREATE TABLE IF NOT EXISTS tab_novedades_diarias
+(
+    id_novedad_diaria       BIGSERIAL                   NOT NULL,
+    id_ingreso              BIGINT                      NOT NULL,
+    motivo_novedad          VARCHAR(100)                NOT NULL CHECK(LENGTH(TRIM(motivo_novedad)) >= 5),
+    usr_insert              VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
+    fec_insert              TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY(id_novedad_diaria),
+    FOREIGN KEY(id_ingreso) REFERENCES tab_log_ingresos(id_ingreso)
+);
 
 --=====================================================================================
 -- Novedades de ingreso: persona NO registrada + captura biométrica (facial/huella)

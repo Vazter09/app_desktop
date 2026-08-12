@@ -56,7 +56,10 @@ function porteriaBuscarPersona(PDOStatement $stmtBuscar, string $documento, stri
 }
 
 /**
- * Segundos desde un timestamp de BD (0 si inválido).
+ * Segundos desde un timestamp de BD (hora civil Colombia / DB_TIMEZONE).
+ *
+ * Si el valor naive queda "en el futuro" al interpretarlo como Bogotá,
+ * se reintenta como reloj UTC (filas antiguas antes de smartcset_now_local).
  */
 function porteriaSegundosDesdeTimestamp(?string $raw): int
 {
@@ -64,12 +67,33 @@ function porteriaSegundosDesdeTimestamp(?string $raw): int
     if ($raw === '') {
         return 0;
     }
-    $ts = strtotime($raw);
-    if ($ts === false) {
-        return 0;
+
+    $tzName = defined('DB_TIMEZONE') ? (string) DB_TIMEZONE : 'America/Bogota';
+    $now = time();
+
+    try {
+        $epoch = (new DateTimeImmutable($raw, new DateTimeZone($tzName)))->getTimestamp();
+    } catch (Exception) {
+        $ts = strtotime($raw);
+        if ($ts === false) {
+            return 0;
+        }
+        $epoch = $ts;
     }
 
-    return max(0, time() - $ts);
+    // Naive UTC wall-clock leído como Bogotá → "futuro"; corregir a UTC.
+    if ($epoch > $now + 60) {
+        try {
+            $epochUtc = (new DateTimeImmutable($raw, new DateTimeZone('UTC')))->getTimestamp();
+            if ($epochUtc <= $now + 60) {
+                $epoch = $epochUtc;
+            }
+        } catch (Exception) {
+            // conservar $epoch original
+        }
+    }
+
+    return max(0, $now - $epoch);
 }
 
 /**

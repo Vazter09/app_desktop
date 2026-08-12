@@ -140,15 +140,20 @@ try {
          ORDER BY id_tipo_persona"
     );
     $stmt_list_ingresos_hoy = $pdo->prepare(
-        "SELECT l.id_ingreso, l.fec_ingreso, l.val_observaciones,
+        "SELECT l.id_ingreso, l.fec_ingreso,
                 p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona,
                 e.id_entrada_centro, e.nom_entrada_centro,
-                ap.id_ficha, pr.nom_programa
+                ap.id_ficha, pr.nom_programa,
+                (
+                    SELECT string_agg(n.motivo_novedad, ' | ' ORDER BY n.fec_insert)
+                      FROM tab_novedades_diarias n
+                     WHERE n.id_ingreso = l.id_ingreso
+                ) AS motivo_novedad
          FROM tab_log_ingresos l
          INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
-         INNER JOIN tab_entradas_centro e ON l.id_entrada_centro = e.id_entrada_centro
+         INNER JOIN tab_entradas_centro e ON l.id_entrada_ingreso = e.id_entrada_centro
          LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
          LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha
          LEFT JOIN tab_programas pr ON pr.id_programa = f.id_programa
@@ -159,10 +164,12 @@ try {
         "SELECT p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona,
                 p.fec_ultima_entrada, p.fec_ultima_salida,
+                ap.id_ficha, ap.ind_etdo_formacion,
                 i.ind_estado AS ind_estado_instructor,
                 i.ind_tipo_contrato
          FROM tab_personas p
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
+         LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
          LEFT JOIN tab_instructores i ON i.id_instructor = p.id_persona
          WHERE p.id_persona = ?::NUMERIC
          ORDER BY CASE WHEN p.id_tipo_docum = ?::VARCHAR THEN 0 ELSE 1 END
@@ -209,7 +216,7 @@ try {
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
 
     $sql_fun_actualizar_captura_ingreso = "SELECT fun_actualizar_captura_ingreso_abierto(
-        ?::NUMERIC, ?::VECTOR, ?::BYTEA, ?::DECIMAL, ?::TEXT
+        ?::NUMERIC, ?::VECTOR, ?::BYTEA, ?::DECIMAL
     )";
     $stmt_fun_actualizar_captura_ingreso = $pdo->prepare($sql_fun_actualizar_captura_ingreso);
 
@@ -220,15 +227,20 @@ try {
 
     // --- 6c. REGISTRO DE SALIDAS (portería → tab_log_ingresos.fec_salida) ---
     $stmt_list_salidas_hoy = $pdo->prepare(
-        "SELECT l.id_ingreso, l.fec_ingreso, l.fec_salida, l.val_observaciones,
+        "SELECT l.id_ingreso, l.fec_ingreso, l.fec_salida,
                 p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona,
                 e.id_entrada_centro, e.nom_entrada_centro,
-                ap.id_ficha, pr.nom_programa
+                ap.id_ficha, pr.nom_programa,
+                (
+                    SELECT string_agg(n.motivo_novedad, ' | ' ORDER BY n.fec_insert)
+                      FROM tab_novedades_diarias n
+                     WHERE n.id_ingreso = l.id_ingreso
+                ) AS motivo_novedad
          FROM tab_log_ingresos l
          INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
-         INNER JOIN tab_entradas_centro e ON l.id_entrada_centro = e.id_entrada_centro
+         INNER JOIN tab_entradas_centro e ON l.id_entrada_salida = e.id_entrada_centro
          LEFT JOIN tab_aprendices ap ON ap.id_aprendiz = p.id_persona
          LEFT JOIN tab_fichas f ON f.id_ficha = ap.id_ficha
          LEFT JOIN tab_programas pr ON pr.id_programa = f.id_programa
@@ -237,20 +249,21 @@ try {
          ORDER BY l.fec_salida DESC"
     );
     $stmt_buscar_ingreso_abierto = $pdo->prepare(
-        "SELECT l.id_ingreso, l.fec_ingreso, l.id_entrada_centro, e.nom_entrada_centro,
+        "SELECT l.id_ingreso, l.fec_ingreso, l.id_entrada_ingreso AS id_entrada_centro,
+                e.nom_entrada_centro,
                 p.id_persona, p.id_tipo_docum, p.nom_persona, p.ape_persona,
                 p.id_tipo_persona, tp.nom_tipo_persona
          FROM tab_log_ingresos l
          INNER JOIN tab_personas p ON l.id_visitante = p.id_persona
          INNER JOIN tab_tipos_persona tp ON p.id_tipo_persona = tp.id_tipo_persona
-         INNER JOIN tab_entradas_centro e ON l.id_entrada_centro = e.id_entrada_centro
+         INNER JOIN tab_entradas_centro e ON l.id_entrada_ingreso = e.id_entrada_centro
          WHERE l.id_visitante = ?::NUMERIC
            AND l.fec_salida = l.fec_ingreso
          ORDER BY l.fec_ingreso DESC
          LIMIT 1"
     );
     $sql_fun_registrar_salida = "SELECT fun_registrar_salida_manual(
-        ?::NUMERIC, ?::VARCHAR, ?::TEXT
+        ?::NUMERIC, ?::VARCHAR, ?::TEXT, ?::NUMERIC, ?::NUMERIC
     )";
     $stmt_fun_registrar_salida = $pdo->prepare($sql_fun_registrar_salida);
 
@@ -372,7 +385,10 @@ try {
     }
 
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['id_usuario'])) {
-        $pdo->exec("SET app.usuario = " . $pdo->quote((string) $_SESSION['id_usuario']));
+        require_once __DIR__ . '/lib/acceso_sesion.php';
+        $pdo->exec(
+            'SET app.usuario = ' . $pdo->quote(accesoUsuarioAuditoriaSesion())
+        );
 
         require_once __DIR__ . '/helpers.php';
 

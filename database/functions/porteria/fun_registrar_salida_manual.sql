@@ -1,12 +1,34 @@
--- Proceso atómico: salida manual portería (actualiza ingreso abierto).
--- La auditoría la gestiona el trigger fun_act_tabla() a través de app.usuario.
+-- Proceso atomico: salida porteria (actualiza ingreso abierto).
+-- Persiste id_metodo_salida / id_entrada_salida sin alterar columnas de ingreso.
+-- wmotivo_novedad opcional -> tab_novedades_diarias solo si LENGTH(TRIM) >= 5.
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(
+    tab_personas.id_persona%TYPE,
+    tab_personas.id_tipo_docum%TYPE,
+    TEXT
+);
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(NUMERIC, VARCHAR, TEXT);
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(NUMERIC, VARCHAR);
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(
+    NUMERIC, VARCHAR, TEXT, NUMERIC, NUMERIC
+);
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(
+    tab_personas.id_persona%TYPE,
+    tab_personas.id_tipo_docum%TYPE,
+    TEXT,
+    tab_log_ingresos.id_metodo_salida%TYPE,
+    tab_log_ingresos.id_entrada_salida%TYPE
+);
+
 CREATE OR REPLACE FUNCTION fun_registrar_salida_manual(
-    wid_persona        tab_personas.id_persona%TYPE,
-    wid_tipo_docum     tab_personas.id_tipo_docum%TYPE,
-    wval_observaciones tab_log_ingresos.val_observaciones%TYPE
-) RETURNS INTEGER AS $$
+    wid_persona         tab_personas.id_persona%TYPE,
+    wid_tipo_docum      tab_personas.id_tipo_docum%TYPE,
+    wmotivo_novedad     TEXT DEFAULT NULL,
+    wid_metodo_salida   tab_log_ingresos.id_metodo_salida%TYPE DEFAULT 1,
+    wid_entrada_salida  tab_log_ingresos.id_entrada_salida%TYPE DEFAULT NULL
+) RETURNS BIGINT AS $$
 DECLARE
-    wid_ingreso  INTEGER;
+    wid_ingreso  BIGINT;
+    wmotivo      TEXT;
     w_exc_state  TEXT;
     w_exc_msg    TEXT;
     w_exc_detail TEXT;
@@ -14,7 +36,7 @@ DECLARE
 BEGIN
     IF wid_persona IS NULL OR wid_persona < 1 THEN
         PERFORM smartcset_raise_validacion(
-            'El número de documento no es válido.',
+            'El numero de documento no es valido.',
             'id_persona=' || COALESCE(wid_persona::TEXT, 'NULL')
         );
     END IF;
@@ -46,8 +68,14 @@ BEGIN
 
     wid_ingreso := fun_update_log_salida(
         wid_ingreso,
-        NULLIF(TRIM(wval_observaciones), '')
+        wid_metodo_salida,
+        wid_entrada_salida
     );
+
+    wmotivo := LEFT(TRIM(COALESCE(wmotivo_novedad, '')), 100);
+    IF LENGTH(wmotivo) >= 5 THEN
+        PERFORM fun_insert_novedad_diaria(wid_ingreso, wmotivo);
+    END IF;
 
     PERFORM fun_update_persona_tras_salida(wid_persona);
 

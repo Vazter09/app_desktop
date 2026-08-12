@@ -190,7 +190,7 @@ function porteriaApiListIngresosHoy(): array
             'nom_tipo_persona' => (string) ($r['nom_tipo_persona'] ?? ''),
             'id_entrada' => (int) ($r['id_entrada_centro'] ?? 0),
             'nom_entrada' => (string) ($r['nom_entrada_centro'] ?? ''),
-            'observaciones' => (string) ($r['val_observaciones'] ?? ''),
+            'observaciones' => (string) ($r['motivo_novedad'] ?? ''),
             'id_ficha' => isset($r['id_ficha']) ? (int) $r['id_ficha'] : null,
             'nom_programa' => (string) ($r['nom_programa'] ?? ''),
         ];
@@ -219,7 +219,7 @@ function porteriaApiListSalidasHoy(): array
             'nom_tipo_persona' => (string) ($r['nom_tipo_persona'] ?? ''),
             'id_entrada' => (int) ($r['id_entrada_centro'] ?? 0),
             'nom_entrada' => (string) ($r['nom_entrada_centro'] ?? ''),
-            'observaciones' => (string) ($r['val_observaciones'] ?? ''),
+            'observaciones' => (string) ($r['motivo_novedad'] ?? ''),
             'id_ficha' => isset($r['id_ficha']) ? (int) $r['id_ficha'] : null,
             'nom_programa' => (string) ($r['nom_programa'] ?? ''),
         ];

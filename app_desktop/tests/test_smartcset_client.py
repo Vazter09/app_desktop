@@ -7,7 +7,7 @@ el usuario de desarrollo `porteria`. Cada test que crea datos los limpia
 en `tearDown`.
 
 Ejecutar:
-    cd app_desktop/app/tests
+    cd app_desktop/tests
     python3 -m unittest test_smartcset_client.py -v
 """
 from __future__ import annotations
@@ -131,6 +131,14 @@ class TestPorteriaFlujoReal(unittest.TestCase):
         consulta_final = self.client.salida_consultar(self.documento, "CC")
         self.assertFalse(consulta_final["puede_salir"])
 
+        metodos = run_psql(
+            "SELECT id_metodo_ingreso::text || ',' || id_metodo_salida::text "
+            "FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' "
+            "ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(metodos, "1,1")
+
     def test_entradas_crud_requiere_admin(self) -> None:
         """Congruencia: `porteria` (no-admin) debe recibir el mismo
         rechazo real que en la web — no una restricción inventada en el
@@ -253,7 +261,7 @@ class TestBiometriaFacial(unittest.TestCase):
         )
 
         metodo_real = run_psql(
-            "SELECT id_metodo_aut FROM tab_log_ingresos "
+            "SELECT id_metodo_ingreso FROM tab_log_ingresos "
             f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
         )
         self.assertEqual(metodo_real, "4")
@@ -264,6 +272,30 @@ class TestBiometriaFacial(unittest.TestCase):
             f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
         )
         self.assertEqual(emb_en_log, "ok")
+
+        # Salida con método distinto no debe pisar id_metodo_ingreso.
+        run_psql(
+            "UPDATE tab_log_ingresos "
+            "SET fec_ingreso = CURRENT_TIMESTAMP - interval '6 minutes', "
+            "    fec_salida = CURRENT_TIMESTAMP - interval '6 minutes' "
+            f"WHERE id_visitante = '{self.documento}' "
+            "  AND fec_salida = fec_ingreso;"
+        )
+        self.client.salida_registrar(
+            {
+                "tipo_doc": "CC",
+                "documento": self.documento,
+                "observaciones": "Salida manual tras ingreso facial",
+                "metodo_aut": 1,
+            }
+        )
+        metodos = run_psql(
+            "SELECT id_metodo_ingreso::text || ',' || id_metodo_salida::text "
+            "FROM tab_log_ingresos "
+            f"WHERE id_visitante = '{self.documento}' "
+            "ORDER BY fec_ingreso DESC LIMIT 1;"
+        )
+        self.assertEqual(metodos, "4,1")
 
     def test_enrolar_con_foto_guarda_ruta_y_se_recupera_al_identificar(self) -> None:
         """2026-07-09: Opción A (servidor guarda el archivo, la app cachea).
@@ -424,7 +456,7 @@ class TestBiometriaHuella(unittest.TestCase):
             }
         )
         metodo = run_psql(
-            "SELECT id_metodo_aut FROM tab_log_ingresos "
+            "SELECT id_metodo_ingreso FROM tab_log_ingresos "
             f"WHERE id_visitante = '{self.documento}' ORDER BY fec_ingreso DESC LIMIT 1;"
         )
         self.assertEqual(metodo, "5")

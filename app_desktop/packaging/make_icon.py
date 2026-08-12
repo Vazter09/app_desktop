@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-PNG = ROOT / "app" / "assets" / "img" / "img-ejecutable.png"
+PNG = ROOT / "src" / "assets" / "img" / "img-ejecutable.png"
 ICO = Path(__file__).resolve().parent / "smartcset_porteria.ico"
 
 

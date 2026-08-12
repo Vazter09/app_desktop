@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/core/prepare.php';
 require_once dirname(__DIR__) . '/core/RouterResponse.php';
+require_once dirname(__DIR__) . '/core/lib/acceso_sesion.php';
 require_once dirname(__DIR__) . '/routers/porteria/_lib/Auth.php';
 
 /**
@@ -26,10 +27,13 @@ function porteriaRequireSessionOrDevice(): array
         RouterResponse::unauthorized('Sesión no válida.');
     }
 
+    $idUsuario = (string) $_SESSION['id_usuario'];
+
     return [
         'type' => 'web',
-        'id_usuario' => (string) $_SESSION['id_usuario'],
-        'usr_audit' => (string) $_SESSION['id_usuario'],
+        'id_usuario' => $idUsuario,
+        'usr_audit' => $idUsuario,
+        'origen_cliente' => (string) ($_SESSION['origen_cliente'] ?? 'web'),
     ];
 }
 
@@ -39,5 +43,5 @@ function porteriaAuthAuditUser(array $auth): string
         return (string) ($auth['row']['id_usuario_audit'] ?? 'device');
     }
 
-    return (string) ($auth['usr_audit'] ?? 'system');
+    return (string) ($auth['usr_audit'] ?? accesoUsuarioAuditoriaSesion());
 }

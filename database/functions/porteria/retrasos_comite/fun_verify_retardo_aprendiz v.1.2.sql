@@ -119,19 +119,21 @@ BEGIN
         id_visitante,
         fec_ingreso,
         fec_salida,
-        id_metodo_aut,
-        id_entrada_centro,
-        val_observaciones,
+        id_metodo_ingreso,
+        id_metodo_salida,
+        id_entrada_ingreso,
+        id_entrada_salida,
         usr_insert,
         fec_insert
     ) VALUES (
         v_id_ingreso,
         p_id_aprendiz,
         v_fec_ingreso,
-        v_fec_ingreso,  -- fec_salida igual por ahora (se actualizará después)
+        v_fec_ingreso,
         p_id_metodo_aut,
+        1,
         p_id_entrada_centro,
-        COALESCE(p_val_observaciones, 'Ingreso registrado automáticamente: ' || v_estado || ' (retraso: ' || v_minutos_retardo || ' min)'),
+        1,
         v_usr_actual,
         CURRENT_TIMESTAMP
     );

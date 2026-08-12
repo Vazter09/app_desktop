@@ -484,14 +484,18 @@ function smartcsetAppTimezone(): string
     return defined('APP_TIMEZONE') ? APP_TIMEZONE : 'America/Bogota';
 }
 
-/** Zona en la que PostgreSQL escribe CURRENT_TIMESTAMP (servidor suele ser UTC). */
+/**
+ * Zona en la que se interpretan los TIMESTAMP sin zona de BD.
+ * Portería escribe fec_ingreso/fec_salida vía smartcset_now_local()
+ * (America/Bogota). Debe coincidir con DB_TIMEZONE del .env.
+ */
 function smartcsetDbTimezone(): string
 {
-    return defined('DB_TIMEZONE') ? DB_TIMEZONE : 'UTC';
+    return defined('DB_TIMEZONE') ? DB_TIMEZONE : 'America/Bogota';
 }
 
 /**
- * Formatea un TIMESTAMP de BD (sin zona) a hora local de la aplicación.
+ * Formatea un TIMESTAMP de BD (sin zona, hora civil Colombia) a hora local.
  */
 function smartcsetFormatDbTimestamp(?string $timestamp, string $format = 'd/m/Y H:i'): string
 {

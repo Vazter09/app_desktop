@@ -40,6 +40,16 @@ define(
     EnvLoader::get('STORAGE_PORTERIA_PATH', 'storage/porteria')
 );
 
+// Fotos de enrolamiento facial (absoluta o relativa a SMARTCSET_ROOT).
+// Producción 111: /var/www/html/smartcset/src/frontend/img/biometria
+define(
+    'BIOMETRIA_FOTO_PATH',
+    EnvLoader::get(
+        'BIOMETRIA_FOTO_PATH',
+        'frontend/web/public/uploads/biometria'
+    )
+);
+
 function smartcsetStoragePorteriaAbs(string $subdir, string $fechaDir): string
 {
     $base = STORAGE_PORTERIA_PATH;
@@ -50,6 +60,19 @@ function smartcsetStoragePorteriaAbs(string $subdir, string $fechaDir): string
     }
 
     return $root . '/' . $subdir . '/' . $fechaDir;
+}
+
+/**
+ * Directorio absoluto donde se guardan fotos de enrolamiento facial.
+ */
+function smartcsetBiometriaFotoAbs(): string
+{
+    $base = (string) BIOMETRIA_FOTO_PATH;
+    if ($base !== '' && ($base[0] === '/' || preg_match('#^[A-Za-z]:[/\\\\]#', $base) === 1)) {
+        return rtrim(str_replace('\\', '/', $base), '/');
+    }
+
+    return rtrim(SMARTCSET_ROOT . '/' . trim(str_replace('\\', '/', $base), '/'), '/');
 }
 
 // Configuración de sesión (desde .env)

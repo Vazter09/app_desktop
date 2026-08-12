@@ -4,21 +4,24 @@
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$App = Join-Path $Root "app"
+$Src = Join-Path $Root "src"
+$Runtime = Join-Path $Root "runtime"
 $Pack = $PSScriptRoot
-$VenvPython = Join-Path $App ".venv\Scripts\python.exe"
+$VenvPython = Join-Path $Runtime ".venv\Scripts\python.exe"
 $Spec = Join-Path $Pack "SmartCSET_Porteria.spec"
 $DistDir = Join-Path $Root "dist\SmartCSET_Porteria"
 $ConfigSrc = Join-Path $Pack "app_config.porteria.json"
 $MakeIcon = Join-Path $Pack "make_icon.py"
+$Requirements = Join-Path $Root "requirements.txt"
 
 Write-Host "== SmartCSET Porteria - build .exe =="
 Write-Host "Root: $Root"
 
 if (-not (Test-Path $VenvPython)) {
-    Write-Host "Creando .venv e instalando requirements..."
-    & py -3 -m venv (Join-Path $App ".venv")
-    & (Join-Path $App ".venv\Scripts\pip.exe") install -r (Join-Path $App "requirements.txt")
+    Write-Host "Creando runtime/.venv e instalando requirements..."
+    New-Item -ItemType Directory -Force -Path $Runtime | Out-Null
+    & py -3 -m venv (Join-Path $Runtime ".venv")
+    & (Join-Path $Runtime ".venv\Scripts\pip.exe") install -r $Requirements
 }
 
 Write-Host "Instalando PyInstaller..."
@@ -53,6 +56,6 @@ Write-Host ""
 Write-Host "LISTO:"
 Write-Host "  $ExePath"
 Write-Host "  $(Join-Path $DistDir 'app_config.json')"
-Write-Host "  base_url = https://10.5.213.103/smartcset"
+Write-Host "  base_url = https://10.5.213.111/smartcset"
 Write-Host ""
 Write-Host "Copia TODA la carpeta dist\SmartCSET_Porteria al PC de porteria."

@@ -53,7 +53,10 @@ class PorteriaRouterPayload
             'txt_documento' => trim((string) ($json['documento'] ?? '')),
             'hid_captura_raw' => trim((string) ($json['captura_raw'] ?? '')),
             'txt_observaciones' => trim((string) ($json['observaciones'] ?? '')),
+            // metodo_aut de esta acción → id_metodo_salida (no pisa ingreso).
             'hid_metodo_aut' => (int) ($json['metodo_aut'] ?? 1),
+            // Puerta de salida opcional; si 0, PL/pgSQL reusa id_entrada_ingreso.
+            'sel_entrada' => (int) ($json['id_entrada'] ?? 0),
             'hid_foto_data' => trim((string) ($json['foto_base64'] ?? '')),
         ];
     }
@@ -116,6 +119,10 @@ class PorteriaRouterPayload
             'apellidos' => (string) ($persona['ape_persona'] ?? $persona['apellidos'] ?? ''),
             'tipo_persona' => (int) ($persona['id_tipo_persona'] ?? 0),
             'nom_tipo_persona' => (string) ($persona['nom_tipo_persona'] ?? ''),
+            // Aprendiz (NULL si no aplica): modal pistola/QR y biometría.
+            'id_ficha' => isset($persona['id_ficha']) ? (int) $persona['id_ficha'] : null,
+            'estado_formacion' => isset($persona['ind_etdo_formacion'])
+                ? (int) $persona['ind_etdo_formacion'] : null,
         ], self::formatCamposInstructor($persona));
     }
 

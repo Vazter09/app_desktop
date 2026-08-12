@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import http.cookiejar
 import json
-import os
 import ssl
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -43,10 +43,26 @@ def _path_for_log(path: str) -> str:
     return urlsplit(path).path or path
 
 
+def _body_preview(body: str, limit: int = 180) -> str:
+    text = " ".join((body or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "…"
+
+
+class _NoFollowRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """No seguir 3xx: un redirect a login HTML se parseaba como
+    «Respuesta inválida» y enmascaraba pérdida de sesión / URL mala."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        return None
+
+
 class SmartcsetClient:
     def __init__(self, base_url: str, verify_tls: bool = True) -> None:
         self.base_url = base_url.rstrip("/")
         self._cookie_jar = http.cookiejar.CookieJar()
+        self._lock = threading.RLock()
 
         # Laboratorio con cert autofirmado: usar contexto no verificado
         # (create_default_context + CERT_NONE a veces no basta en Windows).
@@ -57,8 +73,18 @@ class SmartcsetClient:
 
         self._opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(self._cookie_jar),
+            _NoFollowRedirectHandler(),
             urllib.request.HTTPSHandler(context=ssl_context),
         )
+
+    def clear_cookies(self) -> None:
+        """Borra cookies locales sin llamar al servidor."""
+        with self._lock:
+            self._cookie_jar.clear()
+
+    def has_session_cookie(self) -> bool:
+        with self._lock:
+            return any(c.name == "PHPSESSID" and c.value for c in self._cookie_jar)
 
     # ---- Núcleo HTTP -----------------------------------------------
 
@@ -76,76 +102,97 @@ class SmartcsetClient:
         req.add_header("Content-Type", "application/json")
         req.add_header("Accept", "application/json")
 
-        try:
-            with self._opener.open(req, timeout=15) as resp:
-                body = resp.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8") if exc.fp else "{}"
+        with self._lock:
+            try:
+                with self._opener.open(req, timeout=15) as resp:
+                    body = resp.read().decode("utf-8", errors="replace")
+            except urllib.error.HTTPError as exc:
+                body = (
+                    exc.read().decode("utf-8", errors="replace") if exc.fp else "{}"
+                )
+                try:
+                    parsed = json.loads(body)
+                except json.JSONDecodeError:
+                    parsed = {}
+                if exc.code in (301, 302, 303, 307, 308):
+                    location = exc.headers.get("Location") or ""
+                    message = (
+                        f"El servidor redirigió ({exc.code}) en lugar de JSON. "
+                        f"Revise URL/sesión. Location={location[:120]}"
+                    )
+                elif exc.code == 408:
+                    message = "¡Falla de conexión!"
+                else:
+                    message = parsed.get("error") or f"Error HTTP {exc.code}"
+                    if not parsed and body.strip():
+                        message = (
+                            f"{message} (respuesta no JSON: {_body_preview(body)})"
+                        )
+                log.error(
+                    "API HTTP %s %s → %s: %s",
+                    method,
+                    safe_path,
+                    exc.code,
+                    message,
+                )
+                flush_handlers()
+                raise SmartcsetApiError(message) from exc
+            except (urllib.error.URLError, TimeoutError) as exc:
+                message = f"No se pudo conectar con {self.base_url}: {exc}"
+                log.error("Conexión %s %s: %s", method, safe_path, exc)
+                flush_handlers()
+                raise SmartcsetConnectionError(message) from exc
+
             try:
                 parsed = json.loads(body)
-            except json.JSONDecodeError:
-                parsed = {}
-            if exc.code == 408:
-                message = "¡Falla de conexión!"
-            else:
-                message = parsed.get("error") or f"Error HTTP {exc.code}"
-            log.error(
-                "API HTTP %s %s → %s: %s",
-                method,
-                safe_path,
-                exc.code,
-                message,
-            )
-            flush_handlers()
-            raise SmartcsetApiError(message) from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
-            message = f"No se pudo conectar con {self.base_url}: {exc}"
-            log.error("Conexión %s %s: %s", method, safe_path, exc)
-            flush_handlers()
-            raise SmartcsetConnectionError(message) from exc
+            except json.JSONDecodeError as exc:
+                log.error(
+                    "JSON inválido %s %s preview=%s",
+                    method,
+                    safe_path,
+                    _body_preview(body),
+                )
+                flush_handlers()
+                raise SmartcsetConnectionError(
+                    "Respuesta inválida del servidor (¿URL correcta?). "
+                    f"Preview: {_body_preview(body)}"
+                ) from exc
 
-        try:
-            parsed = json.loads(body)
-        except json.JSONDecodeError as exc:
-            log.error(
-                "JSON inválido %s %s",
-                method,
-                safe_path,
-            )
-            flush_handlers()
-            raise SmartcsetConnectionError(
-                "Respuesta inválida del servidor (¿URL correcta?)."
-            ) from exc
+            if not parsed.get("ok"):
+                message = parsed.get("error") or "Error desconocido."
+                log.error("API fail %s %s: %s", method, safe_path, message)
+                flush_handlers()
+                raise SmartcsetApiError(message)
 
-        if not parsed.get("ok"):
-            message = parsed.get("error") or "Error desconocido."
-            log.error("API fail %s %s: %s", method, safe_path, message)
-            flush_handlers()
-            raise SmartcsetApiError(message)
-
-        return parsed.get("data") or {}
+            return parsed.get("data") or {}
 
     # ---- Endpoints reales reutilizados ------------------------------
 
     def login(self, usuario: str, clave: str) -> dict[str, Any]:
         """POST /routers/auth/v1/login.php — mismo login que la web."""
-        return self._request(
+        data = self._request(
             "POST",
             "/routers/auth/v1/login.php",
             {"usuario": usuario, "clave": clave, "origen": "desktop"},
         )
+        if not self.has_session_cookie():
+            raise SmartcsetConnectionError(
+                "Login OK pero no se recibió cookie PHPSESSID. "
+                f"Revise URL ({self.base_url}) y path de sesión en el servidor."
+            )
+        return data
 
     def logout(self) -> None:
         """GET /routers/auth/v1/logout.php — cierra la sesión en tab_sesiones."""
         url = f"{self.base_url}/routers/auth/v1/logout.php"
         req = urllib.request.Request(url, method="GET")
-        try:
-            # El endpoint web responde 302 + HTML; basta con que el servidor
-            # ejecute fun_salida_sesion antes del redirect.
-            self._opener.open(req, timeout=15)
-        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
-            pass
-        self._cookie_jar.clear()
+        with self._lock:
+            try:
+                # Suele responder 302; con NoFollowRedirect es HTTPError — OK.
+                self._opener.open(req, timeout=15)
+            except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
+                pass
+            self._cookie_jar.clear()
 
     def ingresos_hoy(self) -> list[dict[str, Any]]:
         """GET /routers/porteria/v1/ingreso/hoy.php (sesión real)."""

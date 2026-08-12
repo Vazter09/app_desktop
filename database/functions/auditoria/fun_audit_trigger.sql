@@ -6,108 +6,111 @@
     - Registrar automáticamente todos los INSERT y UPDATE en todas las tablas.
     - Asignar automáticamente las columnas de auditoría:
         usr_insert, fec_insert, usr_update, fec_update.
-    - Si no se proporciona un usuario, se asigna 'SISTEMA' (para operaciones
-        desde pgAdmin).
+    - Si no se proporciona un usuario, usa app.usuario (id_usuario de sesión);
+      si tampoco, 'SISTEMA' (pgAdmin / operaciones sin sesión).
     - Validar que los usuarios reales existan en tab_usuarios (excepto 'SISTEMA').
     - Solo auditar en tab_audit_trail cuando haya cambios reales (OLD != NEW).
     - Manejar tablas de solo INSERT (no tienen usr_update) correctamente.
   
   Autor:   Grupo SMARTCSET
   Fecha:   2026-07-08
-  Versión: 1.0
+  Versión: 1.3 (2026-08-04: app.usuario + JSONB seguro sin vector/bytea)
 =====================================================================================
 */
-
 -- ==================================================================================
 -- 1. FUNCIÓN DE TRIGGER PRINCIPAL
 -- ==================================================================================
--- Esta función se ejecuta antes de cada INSERT o UPDATE
--- Realiza las siguientes tareas:
---   1. Asigna automáticamente usr_insert/fec_insert en INSERT.
---   2. Asigna automáticamente usr_update/fec_update en UPDATE.
---   3. Si el usuario viene NULL o vacío, lo asigna como 'SISTEMA'.
---   4. Valida que el usuario exista en tab_usuarios (excepto 'SISTEMA').
---   5. Compara OLD y NEW (excluyendo columnas de auditoría) para decidir si auditar.
---   6. Si hay cambios reales, inserta un registro en tab_audit_trail.
--- ===================================================================================
 CREATE OR REPLACE FUNCTION fun_audit_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_tiene_update BOOLEAN;                       -- Indica si la tabla tiene columna usr_update
-    v_old_json JSONB;                             -- JSON del registro anterior
-    v_new_json JSONB;                             -- JSON del registro nuevo
-    v_campos_auditoria TEXT[] := ARRAY['usr_insert', 'fec_insert', 'usr_update', 'fec_update']; -- Columnas a excluir de la comparación
+    v_tiene_update BOOLEAN;
+    v_old_json JSONB;
+    v_new_json JSONB;
+    v_excluir TEXT[] := ARRAY[
+        'usr_insert', 'fec_insert', 'usr_update', 'fec_update',
+        'facial_embedding', 'huella_template', 'val_patron_facial'
+    ];
+    v_usuario TEXT;
+    v_json_ok BOOLEAN := FALSE;
 BEGIN
-    -- ------------------------------------------------------------------------
-    -- Determinar si la tabla tiene la columna usr_update.
-    -- Esto permite que la misma función maneje tablas con y sin UPDATE.
-    -- ------------------------------------------------------------------------
     SELECT COUNT(*) > 0 INTO v_tiene_update
     FROM information_schema.columns
     WHERE table_schema = 'public'
       AND table_name = TG_TABLE_NAME
       AND column_name = 'usr_update';
 
-    -- ------------------------------------------------------------------------
-    -- BLOQUE INSERT
-    -- ------------------------------------------------------------------------
-    IF TG_OP = 'INSERT' THEN
-        -- Si no se proporcionó usr_insert o viene vacío, asignar 'SISTEMA'
-        NEW.usr_insert := COALESCE(NULLIF(NEW.usr_insert, ''), 'SISTEMA');
-        NEW.fec_insert := CURRENT_TIMESTAMP; -- Fecha y hora actual (zona Colombia)
+    v_usuario := NULLIF(TRIM(current_setting('app.usuario', TRUE)), '');
 
-        -- Validar SOLO si el usuario NO es 'SISTEMA'.
-        -- Si la aplicación envía un usuario real, debe existir en tab_usuarios.
-        IF NEW.usr_insert != 'SISTEMA' AND NOT EXISTS (SELECT 1 FROM tab_usuarios WHERE id_usuario = NEW.usr_insert) THEN
+    IF TG_OP = 'INSERT' THEN
+        IF v_usuario IS NULL THEN
+            v_usuario := NULLIF(TRIM(COALESCE(NEW.usr_insert, '')), '');
+        END IF;
+        NEW.usr_insert := COALESCE(v_usuario, 'SISTEMA');
+        NEW.fec_insert := CURRENT_TIMESTAMP;
+
+        IF NEW.usr_insert <> 'SISTEMA'
+           AND NOT EXISTS (
+               SELECT 1 FROM tab_usuarios WHERE id_usuario = NEW.usr_insert
+           ) THEN
             RAISE EXCEPTION 'El usuario "%" no existe en tab_usuarios', NEW.usr_insert;
         END IF;
 
-        RETURN NEW; -- Importante: retornar NEW para que se ejecute el INSERT
+        RETURN NEW;
     END IF;
 
-    -- ------------------------------------------------------------------------
-    -- BLOQUE UPDATE
-    -- ------------------------------------------------------------------------
     IF TG_OP = 'UPDATE' THEN
-        -- Si la tabla no tiene usr_update, lanzar error.
-        -- Esto no debería ocurrir porque los triggers de UPDATE solo se crean
-        -- en tablas que tienen usr_update.
         IF NOT v_tiene_update THEN
             RAISE EXCEPTION 'La tabla % no permite UPDATE porque no tiene usr_update', TG_TABLE_NAME;
         END IF;
 
-        -- Asignar usr_update y fec_update (con 'SISTEMA' si no se proporcionó)
-        NEW.usr_update := COALESCE(NULLIF(NEW.usr_update, ''), 'SISTEMA');
+        IF v_usuario IS NULL THEN
+            v_usuario := NULLIF(TRIM(COALESCE(NEW.usr_update, '')), '');
+        END IF;
+        NEW.usr_update := COALESCE(v_usuario, 'SISTEMA');
         NEW.fec_update := CURRENT_TIMESTAMP;
 
-        -- Validar SOLO si el usuario NO es 'SISTEMA'
-        IF NEW.usr_update != 'SISTEMA' AND NOT EXISTS (SELECT 1 FROM tab_usuarios WHERE id_usuario = NEW.usr_update) THEN
+        IF NEW.usr_update <> 'SISTEMA'
+           AND NOT EXISTS (
+               SELECT 1 FROM tab_usuarios WHERE id_usuario = NEW.usr_update
+           ) THEN
             RAISE EXCEPTION 'El usuario "%" no existe en tab_usuarios', NEW.usr_update;
         END IF;
 
-        -- Convertir OLD y NEW a JSONB y excluir las columnas de auditoría
-        -- para que no se consideren como "cambios reales".
-        v_old_json := to_jsonb(OLD) - v_campos_auditoria;
-        v_new_json := to_jsonb(NEW) - v_campos_auditoria;
+        -- Snapshot: NUNCA tumbar DML operativo (salida/ingreso) por VECTOR/BYTEA.
+        BEGIN
+            v_old_json := to_jsonb(OLD) - v_excluir;
+            v_new_json := to_jsonb(NEW) - v_excluir;
+            v_json_ok := TRUE;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_old_json := jsonb_build_object(
+                    '_omit', 'columnas_no_json',
+                    '_table', TG_TABLE_NAME
+                );
+                v_new_json := jsonb_build_object(
+                    '_omit', 'columnas_no_json',
+                    '_table', TG_TABLE_NAME,
+                    '_op', 'UPDATE'
+                );
+                v_json_ok := FALSE;
+        END;
 
-        -- Si hay diferencias, insertar en tab_audit_trail
-        IF v_old_json <> v_new_json THEN
+        IF (NOT v_json_ok) OR (v_old_json IS DISTINCT FROM v_new_json) THEN
             INSERT INTO tab_audit_trail
                 (id_usuario, nom_operacion, fec_operacion, reg_anterior, reg_nuevo, nom_tabla)
             VALUES
                 (NEW.usr_update, 'UPDATE', CURRENT_TIMESTAMP, v_old_json, v_new_json, TG_TABLE_NAME);
         END IF;
 
-        RETURN NEW; -- Importante: retornar NEW para que se ejecute el UPDATE
+        RETURN NEW;
     END IF;
 
-    -- Si llegamos aquí, significa que la operación no es INSERT ni UPDATE (no debería pasar).
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
--- Comentarios de la función
-COMMENT ON FUNCTION fun_audit_trigger() IS 'Función de trigger universal que maneja auditoría para INSERT y UPDATE en todas las tablas. Asigna automáticamente columnas de auditoría y registra cambios en tab_audit_trail.';
+COMMENT ON FUNCTION fun_audit_trigger() IS
+'Auditoría INSERT/UPDATE: app.usuario; JSONB seguro (omite vector/bytea); no bloquea DML.';
 
 -- =======================================================================================
 -- 2. AGREGAR COLUMNAS DE AUDITORÍA A TABLAS QUE NO LAS TIENEN

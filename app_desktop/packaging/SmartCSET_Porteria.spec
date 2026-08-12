@@ -5,10 +5,11 @@ from pathlib import Path
 
 block_cipher = None
 
-APP_DIR = Path(SPECPATH).resolve().parent / "app"
-ASSETS = APP_DIR / "assets" / "img"
-MODELS = APP_DIR / "motor" / "models"
-ICON = Path(SPECPATH).resolve().parent / "packaging" / "smartcset_porteria.ico"
+ROOT = Path(SPECPATH).resolve().parent
+SRC_DIR = ROOT / "src"
+ASSETS = SRC_DIR / "assets" / "img"
+MODELS = SRC_DIR / "motor" / "models"
+ICON = ROOT / "packaging" / "smartcset_porteria.ico"
 
 datas = [
     (str(ASSETS / "logo-sena.png"), "assets/img"),
@@ -19,8 +20,8 @@ datas = [
 ]
 
 a = Analysis(
-    [str(APP_DIR / "main.py")],
-    pathex=[str(APP_DIR)],
+    [str(SRC_DIR / "main.py")],
+    pathex=[str(SRC_DIR)],
     binaries=[],
     datas=datas,
     hiddenimports=[

@@ -152,7 +152,6 @@ function ingresoActualizarCapturaAbierto(
     $captura = accesoDocumentoDesdePost($datos);
     $doc = $captura['documento'];
     $metodoAut = (int) $captura['id_metodo_aut'];
-    $obs = trim((string) ($datos['txt_observaciones'] ?? ''));
     $embedding = $datos['embedding'] ?? null;
     $vectorTexto = null;
     $huellaBytea = null;
@@ -182,7 +181,6 @@ function ingresoActualizarCapturaAbierto(
         $vectorTexto,
         $huellaBytea,
         $metodoAut > 0 ? $metodoAut : null,
-        $obs !== '' ? $obs : null,
     ]);
 
     $idIngreso = $stmtFunActualizar->fetchColumn();

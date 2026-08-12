@@ -1,15 +1,6 @@
--- Proceso atómico: visitante + ingreso. Opcional: facial y/o huella del evento.
-DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
-    tab_personas.id_persona%TYPE,
-    tab_personas.id_tipo_docum%TYPE,
-    tab_personas.id_tipo_persona%TYPE,
-    tab_personas.nom_persona%TYPE,
-    tab_personas.ape_persona%TYPE,
-    tab_log_ingresos.id_entrada_centro%TYPE,
-    tab_log_ingresos.val_observaciones%TYPE,
-    tab_log_ingresos.id_metodo_aut%TYPE,
-    BOOLEAN
-);
+-- Proceso atomico: visitante + ingreso. Opcional: facial y/o huella del evento.
+-- wmotivo_novedad: texto del formulario Observacion/Novedad -> tab_novedades_diarias
+-- (solo si LENGTH(TRIM(...)) >= 5).
 DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
     NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
     NUMERIC, TEXT, DECIMAL, BOOLEAN
@@ -24,49 +15,55 @@ DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
 );
 
 CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
-    wid_persona        tab_personas.id_persona%TYPE,
-    wid_tipo_docum     tab_personas.id_tipo_docum%TYPE,
-    wid_tipo_persona   tab_personas.id_tipo_persona%TYPE,
-    wnom_persona       tab_personas.nom_persona%TYPE,
-    wape_persona       tab_personas.ape_persona%TYPE,
-    wid_entrada_centro tab_log_ingresos.id_entrada_centro%TYPE,
-    wval_observaciones tab_log_ingresos.val_observaciones%TYPE,
-    wid_metodo_aut     tab_log_ingresos.id_metodo_aut%TYPE DEFAULT 1,
-    wcaptura_pdf417    BOOLEAN DEFAULT FALSE,
-    wfacial_embedding  tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
-    whuella_template   tab_log_ingresos.huella_template%TYPE DEFAULT NULL
-) RETURNS INTEGER AS $$
+    wid_persona         tab_personas.id_persona%TYPE,
+    wid_tipo_docum      tab_personas.id_tipo_docum%TYPE,
+    wid_tipo_persona    tab_personas.id_tipo_persona%TYPE,
+    wnom_persona        tab_personas.nom_persona%TYPE,
+    wape_persona        tab_personas.ape_persona%TYPE,
+    wid_entrada_ingreso tab_log_ingresos.id_entrada_ingreso%TYPE,
+    wmotivo_novedad     TEXT DEFAULT NULL,
+    wid_metodo_ingreso  tab_log_ingresos.id_metodo_ingreso%TYPE DEFAULT 1,
+    wcaptura_pdf417     BOOLEAN DEFAULT FALSE,
+    wfacial_embedding   tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
+    whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL
+) RETURNS BIGINT AS $$
 DECLARE
-    wid_ingreso    INTEGER;
+    wid_ingreso    BIGINT;
     wjson_origen   JSONB;
     worigen_txt    TEXT;
+    wmotivo        TEXT;
     w_exc_state    TEXT;
     w_exc_msg      TEXT;
     w_exc_detail   TEXT;
     w_exc_hint     TEXT;
 BEGIN
-    IF wid_metodo_aut IS NULL OR wid_metodo_aut < 1 THEN
-        wid_metodo_aut := 1;
+    IF wid_metodo_ingreso IS NULL OR wid_metodo_ingreso < 1 THEN
+        wid_metodo_ingreso := 1;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM tab_metodos_aut WHERE id_metodo_aut = wid_metodo_aut) THEN
+    IF NOT EXISTS (
+        SELECT 1 FROM tab_metodos_aut WHERE id_metodo_aut = wid_metodo_ingreso
+    ) THEN
         PERFORM smartcset_raise_validacion(
-            'El método de autenticación no es válido.',
-            'id_metodo_aut=' || wid_metodo_aut::TEXT
+            'El metodo de autenticacion no es valido.',
+            'id_metodo_ingreso=' || wid_metodo_ingreso::TEXT
         );
     END IF;
 
     worigen_txt := CASE
-        WHEN wid_metodo_aut = 5 THEN 'biometrico_huella'
-        WHEN wid_metodo_aut = 4 THEN 'biometrico_facial'
-        WHEN wid_metodo_aut = 3 THEN 'codigo_barras'
-        WHEN wid_metodo_aut = 2 THEN 'codigo_qr'
+        WHEN wid_metodo_ingreso = 5 THEN 'biometrico_huella'
+        WHEN wid_metodo_ingreso = 4 THEN 'biometrico_facial'
+        WHEN wid_metodo_ingreso = 3 THEN 'codigo_barras'
+        WHEN wid_metodo_ingreso = 2 THEN 'codigo_qr'
         ELSE 'registro_manual'
     END;
-    IF wid_entrada_centro IS NULL OR wid_entrada_centro < 1 OR wid_entrada_centro > 9 THEN
+
+    IF wid_entrada_ingreso IS NULL
+       OR wid_entrada_ingreso < 1
+       OR wid_entrada_ingreso > 9 THEN
         PERFORM smartcset_raise_validacion(
             'La puerta de ingreso debe estar entre 1 y 9.',
-            'id_entrada_centro=' || COALESCE(wid_entrada_centro::TEXT, 'NULL')
+            'id_entrada_ingreso=' || COALESCE(wid_entrada_ingreso::TEXT, 'NULL')
         );
     END IF;
 
@@ -87,17 +84,20 @@ BEGIN
 
     wid_ingreso := fun_insert_log_ingreso(
         wid_persona,
-        wid_metodo_aut,
-        wid_entrada_centro,
+        wid_metodo_ingreso,
+        wid_entrada_ingreso,
         wjson_origen,
-        NULLIF(TRIM(wval_observaciones), ''),
         wfacial_embedding,
         whuella_template
     );
 
+    wmotivo := LEFT(TRIM(COALESCE(wmotivo_novedad, '')), 100);
+    IF LENGTH(wmotivo) >= 5 THEN
+        PERFORM fun_insert_novedad_diaria(wid_ingreso, wmotivo);
+    END IF;
+
     PERFORM fun_update_persona_tras_ingreso(wid_persona);
 
-    -- Retraso / asistencia / llamados solo aprendices; no tumba el ingreso.
     IF wid_tipo_persona = 2 THEN
         BEGIN
             PERFORM fun_verify_retardo_aprendiz(

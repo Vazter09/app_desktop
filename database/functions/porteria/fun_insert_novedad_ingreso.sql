@@ -52,7 +52,7 @@ BEGIN
         wusr := 'sistema';
     END IF;
 
-    wts := CURRENT_TIMESTAMP;
+    wts := smartcset_now_local();
     wid_novedad := nextval('seq_novedades_ingreso');
 
     INSERT INTO tab_novedades_ingreso (

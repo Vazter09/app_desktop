@@ -79,9 +79,11 @@ run_sql "$ROOT/database/migrations/migrate_biometria_a_tab_personas.sql"
 run_sql "$ROOT/database/migrations/rename_uri_to_url_foto_huella.sql"
 run_sql "$ROOT/database/migrations/add_ind_vehiculo_tab_instructores.sql"
 run_sql "$ROOT/database/migrations/add_metodos_aut_biometricos.sql"
+run_sql "$ROOT/database/migrations/move_obs_to_tab_novedades_diarias.sql"
 
-echo "==> Helpers de excepciones"
+echo "==> Helpers de excepciones / reloj local"
 run_sql "$ROOT/database/functions/_helpers/smartcset_raise.sql"
+run_sql "$ROOT/database/functions/_helpers/smartcset_now_local.sql"
 
 if [[ -f "$ROOT/database/migrations/drop_functions_void_return.sql" ]]; then
   run_sql "$ROOT/database/migrations/drop_functions_void_return.sql"
@@ -115,6 +117,7 @@ FUNCS=(
   "$ROOT/database/functions/porteria/fun_upsert_persona_visitante.sql"
   "$ROOT/database/functions/porteria/fun_buscar_ingreso_abierto.sql"
   "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql"
+  "$ROOT/database/functions/porteria/fun_insert_novedad_diaria.sql"
   "$ROOT/database/functions/porteria/fun_actualizar_captura_ingreso_abierto.sql"
   "$ROOT/database/functions/porteria/fun_update_persona_tras_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_registrar_ingreso_manual.sql"
@@ -207,7 +210,9 @@ for f in \
   "$ROOT/database/migrations/ensure_admin_acceso_total.sql" \
   "$ROOT/database/migrations/fix_dark_theme_contrast.sql" \
   "$ROOT/database/migrations/fix_auditoria_app_usuario.sql" \
-  "$ROOT/database/migrations/fix_auditoria_eliminar_wusr.sql"
+  "$ROOT/database/migrations/fix_auditoria_eliminar_wusr.sql" \
+  "$ROOT/database/migrations/fix_fun_audit_trigger_app_usuario_porteria.sql" \
+  "$ROOT/database/migrations/fix_fun_audit_trigger_safe_jsonb.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done

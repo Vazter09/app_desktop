@@ -1,10 +1,12 @@
-app/app_config.json
-app/__pycache__/
-app/ui/__pycache__/
-app/ui/pages/__pycache__/
-app/tests/__pycache__/
-app/.venv/
-*.pyc
+# Runtime local (no versionar)
+runtime/
+runtime/**
+
+# Artefactos de build
 build/
 dist/
 packaging/smartcset_porteria.ico
+
+# Bytecode
+**/__pycache__/
+*.pyc

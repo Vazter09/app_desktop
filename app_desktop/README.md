@@ -56,7 +56,7 @@ Mockups visuales (HTML de referencia, copia literal del look real): [`mockups/`]
     vivo en lugar de la guardada; la prioridad ahora es
     servidor-primero, frame local solo como fallback si no hay foto
     guardada).
-  - App: cachea la foto descargada en `app_desktop/app/images/{id}_{nombre}.jpg`
+  - App: cachea la foto descargada en `app_desktop/runtime/images/` (si aplica)
     (no versionado, ver `.gitignore` de esa carpeta).
   - **Pendiente explícito, decisión institucional diferida:** cifrado en
     reposo de las fotos (MSPI E2) — hoy quedan como JPG planos en
@@ -126,25 +126,21 @@ de foto.
 ## Ejecutar
 
 ```bash
-cd app_desktop/app
-python3 main.py
+cd app_desktop/src
+python main.py
 ```
 
 Con **cualquier** Python del sistema (3.11+) alcanza — no hace falta
 crear ni activar el `.venv` a mano. `bootstrap.py` lo hace por su
-cuenta: si `.venv/` no existe, lo crea e instala `requirements.txt` la
-primera vez (tarda unos segundos, solo una vez), y luego siempre
-re-ejecuta el proceso con ese intérprete antes de importar nada que
-necesite `opencv-python` — así `python3 main.py` es el único comando
-que hay que recordar, siempre. `.venv/` nunca se versiona (ver
-`.gitignore`); es la única dependencia de terceros de toda la app
-(captura de cámara + motor biométrico, sección 4/5.1 de las reglas) —
-todo lo demás sigue siendo stdlib puro.
+cuenta: si `runtime/.venv/` no existe, lo crea e instala
+`requirements.txt` (en la raíz de `app_desktop/`) la primera vez, y
+luego siempre re-ejecuta el proceso con ese intérprete antes de
+importar nada que necesite `opencv-python`. `runtime/` nunca se
+versiona (ver `.gitignore`).
 
-Al primer arranque también se crea `app_config.json` (no versionado)
-con la URL del servidor. Editarlo ahí si el servidor cambia — la app
-nunca pregunta la URL en pantalla de login (ver sección 7.2 de las
-reglas).
+Al primer arranque también se crea `runtime/app_config.json` (no
+versionado) con la URL del servidor. Editarlo ahí si el servidor cambia
+— la app nunca pregunta la URL en pantalla de login.
 
 **Usuario de prueba:** `porteria` / `Porteria2026!` (prellenado en el
 campo de usuario).
@@ -158,8 +154,8 @@ incluyendo la carpeta de fotos que haya quedado en
 `frontend/web/public/uploads/biometria/{documento}/`.
 
 ```bash
-cd app_desktop/app/tests
-python3 -m unittest test_smartcset_client.py -v
+cd app_desktop/tests
+python -m unittest test_smartcset_client.py -v
 ```
 
 **13/13 PASS** (verificado 2026-07-09 contra el servidor de laboratorio
@@ -182,42 +178,25 @@ datos de prueba y cerrar sesiones colgadas entre corridas, igual que
 
 ```
 app_desktop/
-├── REGLAS_APP_ESCRITORIO_SGI.md   ← arquitectura y reglas (leer primero)
-├── HANDOFF.md                      ← estado consolidado + roadmap (leer segundo)
-├── mockups/                        ← HTML de referencia visual
-└── app/
-    ├── main.py                     ← punto de entrada
-    ├── bootstrap.py                 ← auto-activa .venv/, detecta cambios en
-    │                                   requirements.txt por hash y reinstala
-    ├── config.py                   ← AppConfig (URL preconfigurada)
-    ├── smartcset_client.py         ← cliente HTTP (urllib + cookiejar) +
-    │                                   caché local de fotos (images/)
-    ├── requirements.txt            ← opencv-python-headless + numpy + Pillow
-    ├── .venv/                      ← entorno virtual local, no versionado
-    ├── images/                     ← caché local de fotos descargadas
-    │                                   ({id}_{nombre}.jpg, no versionado)
-    ├── tests/                      ← suite automatizada (ver arriba)
-    │   ├── common.py                — incluye limpieza de uploads/biometria/
-    │   └── test_smartcset_client.py
-    ├── motor/
-    │   ├── embeddings.py            ← detección + embedding facial (YuNet+SFace)
-    │   └── models/                  ← ONNX vendorizados (ver models/README.md)
-    └── ui/
-        ├── theme.py                ← colores reales (tab_config_sistema)
-        ├── camera.py                ← detección + captura de cámara real
-        ├── facial_modal.py          ← modal "Reconocimiento facial"
-        │                                (captura foto, envía a enrolar/identificar)
-        ├── identification_confirmation_modal.py
-        │                            ← modal de confirmación (foto + datos +
-        │                                huella placeholder), nuevo 2026-07-09
-        ├── login_view.py
-        ├── shell.py                ← sidebar + topbar + navegación real
-        └── pages/
-            ├── inicio.py
-            ├── ingreso.py
-            ├── salida.py
-            ├── entradas.py
-            └── placeholder.py
+├── README.md
+├── REGLAS_APP_ESCRITORIO_SGI.md
+├── HANDOFF.md
+├── requirements.txt              ← deps (raíz del módulo)
+├── src/                          ← código
+│   ├── main.py                   ← punto de entrada
+│   ├── bootstrap.py              ← auto-activa runtime/.venv
+│   ├── config.py / app_log.py / app_paths.py
+│   ├── smartcset_client.py
+│   ├── iniciar.vbs
+│   ├── assets/img/
+│   ├── motor/                    ← embeddings + models ONNX
+│   └── ui/                       ← pantallas Tkinter
+├── tests/                        ← unittest (fuera del runtime)
+├── packaging/                    ← build PyInstaller
+├── docs/mockups/                 ← mockups opcionales
+├── runtime/                      ← NO versionado (config, logs, images, .venv)
+├── dist/                         ← artefacto .exe (gitignore)
+└── build/                        ← trabajo PyInstaller (gitignore)
 ```
 
 ### Backend tocado por esta app (fuera de `app_desktop/`)

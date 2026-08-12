@@ -30,7 +30,6 @@ from ui.format_utils import (
 log = get_logger("ui.identification_confirmation_modal")
 
 AUTO_REGISTRO_MS = 2500
-AUTO_CIERRE_ERROR_MS = 2500
 
 # Foto cuadrada centrada (cabe en la misma caja que Nuevo ingreso).
 FOTO_SIZE = 152
@@ -55,6 +54,7 @@ class IdentificationConfirmationPanel(tk.Frame):
         *,
         persona_existente: bool = True,
         on_cerrado: Callable[[], None] | None = None,
+        on_error: Callable[[str], None] | None = None,
     ) -> None:
         # Misma cáscara que IngresoFormPanel (bg + padding).
         super().__init__(master, bg=theme.BG_PANEL, padx=14, pady=12)
@@ -65,19 +65,19 @@ class IdentificationConfirmationPanel(tk.Frame):
         self._auto_registro = auto_registro
         self._persona_existente = persona_existente
         self._on_cerrado = on_cerrado
+        self._on_error = on_error
         self._auto_after_id: str | None = None
         self._registro_en_curso = False
         self._cerrado = False
         self._foto_image: ImageTk.PhotoImage | None = None
-        self._subtitulo_label: tk.Label | None = None
 
         self._build()
         if self._auto_registro:
             self._programar_auto_registro()
 
     def _build(self) -> None:
-        # Pie: solo botón. El aviso de estado vive en la barra inferior
-        # (punto verde), no encima del botón del panel.
+        # Pie: solo botón. Errores y avisos van a la barra de estado
+        # inferior del panel de portería — nunca encima del botón.
         footer = tk.Frame(self, bg=theme.BG_PANEL)
         footer.pack(side="bottom", fill="x")
 
@@ -90,18 +90,6 @@ class IdentificationConfirmationPanel(tk.Frame):
         else:
             btn_text = "✓ Registrar salida"
 
-        # Solo visible ante error de registro.
-        self._subtitulo_var = tk.StringVar(value="")
-        self._subtitulo_label = tk.Label(
-            footer,
-            textvariable=self._subtitulo_var,
-            bg=theme.BG_PANEL,
-            fg=theme.ERROR,
-            font=theme.FONT_LABEL_SMALL,
-            anchor="w",
-            justify="left",
-            wraplength=280,
-        )
         self._footer_btn = ttk.Button(
             footer,
             text=btn_text,
@@ -225,23 +213,6 @@ class IdentificationConfirmationPanel(tk.Frame):
     def _programar_auto_registro(self) -> None:
         self._auto_after_id = self.after(AUTO_REGISTRO_MS, self._confirmar)
 
-    def _programar_cierre(self, ms: int = AUTO_CIERRE_ERROR_MS) -> None:
-        self._cancelar_auto_registro()
-        self._auto_after_id = self.after(ms, self._cerrar)
-
-    def _mostrar_error_y_cerrar(self, mensaje: str) -> None:
-        segundos = AUTO_CIERRE_ERROR_MS // 1000
-        self._subtitulo_var.set(f"❌ {mensaje}\nCerrando en {segundos} s...")
-        if self._subtitulo_label is not None:
-            self._subtitulo_label.configure(fg=theme.ERROR)
-            if not self._subtitulo_label.winfo_ismapped():
-                self._subtitulo_label.pack(
-                    anchor="w",
-                    pady=(0, 6),
-                    before=self._footer_btn,
-                )
-        self._programar_cierre()
-
     def _cancelar_auto_registro(self) -> None:
         if self._auto_after_id is not None:
             try:
@@ -289,7 +260,10 @@ class IdentificationConfirmationPanel(tk.Frame):
                 log.error("Registro automático (confirmación): %s", exc)
                 flush_handlers()
                 self._registro_en_curso = False
-                self._mostrar_error_y_cerrar(str(exc))
+                # No pintar el error en este panel: barra de estado + cierre.
+                if self._on_error is not None:
+                    self._on_error(str(exc))
+                self._cerrar()
         else:
             self._cerrar()
 

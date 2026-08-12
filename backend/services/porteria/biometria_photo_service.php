@@ -4,8 +4,13 @@ declare(strict_types=1);
 /**
  * BiometriaPhotoService — Gestión de fotos de enrolamiento facial
  *
- * Guardar y recuperar fotos base64 del enrolamiento biométrico.
- * Fotos se almacenan en filesystem: frontend/web/public/uploads/biometria/
+ * Fotos en filesystem (BIOMETRIA_FOTO_PATH / smartcsetBiometriaFotoAbs()):
+ *   Producción: /var/www/html/smartcset/src/frontend/img/biometria/{id}/{id}.jpg
+ *   Dev default: frontend/web/public/uploads/biometria/{id}/{id}.jpg
+ *
+ * En BD (tab_personas.ruta_foto_facial) se guarda ruta relativa al storage:
+ *   {id_persona}/{id_persona}.jpg
+ * Compat: también lee rutas legacy uploads/biometria/...
  *
  * MSPI + FASE 0-1:
  * - E2: Cifrado en reposo (fotos en filesystem, no en BD BYTEA)
@@ -14,11 +19,30 @@ declare(strict_types=1);
  */
 class BiometriaPhotoService
 {
-    // Carpeta base para fotos (relativa a document root)
-    private const UPLOAD_BASE = 'uploads/biometria';
+    /** Prefijo legacy (document root public/). */
+    private const LEGACY_UPLOAD_BASE = 'uploads/biometria';
 
     /**
-     * Document root físico (frontend/web/public).
+     * Prefijo legacy de producción (.111): relativo a SMARTCSET_ROOT.
+     * Ej. BD: src/frontend/img/biometria/{id}/{id}_nombre.jpg
+     */
+    private const LEGACY_SRC_IMG_BASE = 'src/frontend/img/biometria';
+
+    /**
+     * Raíz absoluta de almacenamiento (configurable vía .env).
+     */
+    public static function storageRoot(): string
+    {
+        if (function_exists('smartcsetBiometriaFotoAbs')) {
+            return smartcsetBiometriaFotoAbs();
+        }
+
+        // Fallback si config.php no cargó el helper (tests aislados).
+        return dirname(__DIR__, 3) . '/frontend/web/public/uploads/biometria';
+    }
+
+    /**
+     * Document root legacy (solo lectura de rutas antiguas).
      */
     public static function documentRoot(): string
     {
@@ -28,10 +52,10 @@ class BiometriaPhotoService
     /**
      * Guarda foto base64 en filesystem.
      *
-     * Nombre estable: {id_persona}.jpg|png|webp (evita desfaces
-     * franz vs franzanderson cuando cambia el parser del nombre).
+     * Nombre estable: {id_persona}.jpg|png|webp
+     * Si ya existe el archivo, lo sobrescribe (update).
      *
-     * @return string Ruta relativa (ej: uploads/biometria/123/123.jpg)
+     * @return string Ruta relativa a storage (ej: 123/123.jpg) para ruta_foto_facial
      * @throws InvalidArgumentException Si validación o escritura falla
      */
     public static function guardarFoto(int $idPersona, string $nombrePersona, string $fotoBase64): ?string
@@ -60,8 +84,7 @@ class BiometriaPhotoService
             );
         }
 
-        $docRoot = self::documentRoot();
-        $carpetaBase = $docRoot . '/' . self::UPLOAD_BASE;
+        $carpetaBase = self::storageRoot();
         $carpetaPersona = $carpetaBase . '/' . $idPersona;
 
         self::asegurarDirectorioEscribible($carpetaBase, 'base de enrolamiento biométrico');
@@ -85,7 +108,7 @@ class BiometriaPhotoService
             );
         }
 
-        $rutaRelativa = self::UPLOAD_BASE . '/' . $idPersona . '/' . $nombreArchivo;
+        $rutaRelativa = $idPersona . '/' . $nombreArchivo;
         if (!self::esRutaFotoValida($rutaRelativa)) {
             throw new InvalidArgumentException('Ruta de foto generada no es válida.');
         }
@@ -98,12 +121,8 @@ class BiometriaPhotoService
      */
     public static function leerFoto(string $rutaRelativa): ?string
     {
-        if (!self::esRutaFotoValida($rutaRelativa)) {
-            return null;
-        }
-
-        $rutaCompleta = self::documentRoot() . '/' . str_replace('\\', '/', trim($rutaRelativa));
-        if (!is_file($rutaCompleta) || !is_readable($rutaCompleta)) {
+        $rutaCompleta = self::resolverRutaCompleta($rutaRelativa);
+        if ($rutaCompleta === null) {
             return null;
         }
 
@@ -133,7 +152,7 @@ class BiometriaPhotoService
     }
 
     /**
-     * Busca la imagen más reciente en uploads/biometria/{id_persona}/.
+     * Busca la imagen más reciente en {storage}/{id_persona}/.
      */
     public static function buscarFotoEnCarpetaPersona(int $idPersona): ?string
     {
@@ -141,16 +160,23 @@ class BiometriaPhotoService
             return null;
         }
 
-        $dir = self::documentRoot() . '/' . self::UPLOAD_BASE . '/' . $idPersona;
-        if (!is_dir($dir)) {
-            return null;
-        }
+        $dirs = [
+            self::storageRoot() . '/' . $idPersona,
+            self::documentRoot() . '/' . self::LEGACY_UPLOAD_BASE . '/' . $idPersona,
+        ];
+        $projectRoot = defined('SMARTCSET_ROOT') ? SMARTCSET_ROOT : dirname(__DIR__, 3);
+        $dirs[] = $projectRoot . '/' . self::LEGACY_SRC_IMG_BASE . '/' . $idPersona;
 
         $candidatos = [];
-        foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
-            foreach (glob($dir . '/*.' . $ext) ?: [] as $path) {
-                if (is_file($path) && is_readable($path)) {
-                    $candidatos[] = $path;
+        foreach ($dirs as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+            foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
+                foreach (glob($dir . '/*.' . $ext) ?: [] as $path) {
+                    if (is_file($path) && is_readable($path)) {
+                        $candidatos[] = $path;
+                    }
                 }
             }
         }
@@ -176,13 +202,7 @@ class BiometriaPhotoService
      */
     public static function archivoExiste(?string $rutaRelativa): bool
     {
-        $ruta = trim((string) $rutaRelativa);
-        if ($ruta === '' || !self::esRutaFotoValida($ruta)) {
-            return false;
-        }
-        $completa = self::documentRoot() . '/' . str_replace('\\', '/', $ruta);
-
-        return is_file($completa) && is_readable($completa);
+        return self::resolverRutaCompleta((string) $rutaRelativa) !== null;
     }
 
     /**
@@ -190,12 +210,8 @@ class BiometriaPhotoService
      */
     public static function eliminarFoto(string $rutaRelativa): bool
     {
-        if (!self::esRutaFotoValida($rutaRelativa)) {
-            return false;
-        }
-
-        $rutaCompleta = self::documentRoot() . '/' . str_replace('\\', '/', trim($rutaRelativa));
-        if (!is_file($rutaCompleta)) {
+        $rutaCompleta = self::resolverRutaCompleta($rutaRelativa);
+        if ($rutaCompleta === null) {
             return false;
         }
 
@@ -203,7 +219,8 @@ class BiometriaPhotoService
     }
 
     /**
-     * Ruta relativa segura bajo uploads/biometria/ (sin path traversal).
+     * Ruta relativa segura bajo el storage de biometría (sin path traversal).
+     * Acepta: {id}/{archivo}, uploads/biometria/..., src/frontend/img/biometria/...
      */
     public static function esRutaFotoValida(string $rutaRelativa): bool
     {
@@ -212,7 +229,73 @@ class BiometriaPhotoService
             return false;
         }
 
-        return str_starts_with($ruta, self::UPLOAD_BASE . '/');
+        if (str_starts_with($ruta, self::LEGACY_UPLOAD_BASE . '/')) {
+            return true;
+        }
+
+        if (str_starts_with($ruta, self::LEGACY_SRC_IMG_BASE . '/')) {
+            $resto = substr($ruta, strlen(self::LEGACY_SRC_IMG_BASE . '/'));
+            return (bool) preg_match(
+                '#^[0-9]+/[0-9A-Za-z._-]+\.(jpe?g|png|webp)$#i',
+                $resto
+            );
+        }
+
+        // Nuevo / relativo a storage: 123456/123456.jpg (también *_nombre legacy)
+        return (bool) preg_match(
+            '#^[0-9]+/[0-9A-Za-z._-]+\.(jpe?g|png|webp)$#i',
+            $ruta
+        );
+    }
+
+    /**
+     * Resuelve ruta de BD a archivo físico (nuevo storage o legacy).
+     */
+    private static function resolverRutaCompleta(string $rutaRelativa): ?string
+    {
+        if (!self::esRutaFotoValida($rutaRelativa)) {
+            return null;
+        }
+
+        $ruta = str_replace('\\', '/', trim($rutaRelativa));
+
+        if (str_starts_with($ruta, self::LEGACY_UPLOAD_BASE . '/')) {
+            $legacy = self::documentRoot() . '/' . $ruta;
+            if (is_file($legacy) && is_readable($legacy)) {
+                return $legacy;
+            }
+            // Misma ruta relativa bajo el storage nuevo (por si se movieron archivos).
+            $relativaNueva = substr($ruta, strlen(self::LEGACY_UPLOAD_BASE . '/'));
+            $nueva = self::storageRoot() . '/' . $relativaNueva;
+            if (is_file($nueva) && is_readable($nueva)) {
+                return $nueva;
+            }
+
+            return null;
+        }
+
+        // Producción .111: ruta relativa a raíz del proyecto.
+        if (str_starts_with($ruta, self::LEGACY_SRC_IMG_BASE . '/')) {
+            $desdeRoot = (defined('SMARTCSET_ROOT') ? SMARTCSET_ROOT : dirname(__DIR__, 3))
+                . '/' . $ruta;
+            if (is_file($desdeRoot) && is_readable($desdeRoot)) {
+                return $desdeRoot;
+            }
+            $relativaNueva = substr($ruta, strlen(self::LEGACY_SRC_IMG_BASE . '/'));
+            $desdeStorage = self::storageRoot() . '/' . $relativaNueva;
+            if (is_file($desdeStorage) && is_readable($desdeStorage)) {
+                return $desdeStorage;
+            }
+
+            return null;
+        }
+
+        $completa = self::storageRoot() . '/' . $ruta;
+        if (is_file($completa) && is_readable($completa)) {
+            return $completa;
+        }
+
+        return null;
     }
 
     private static function normalizarBase64(string $fotoBase64): string

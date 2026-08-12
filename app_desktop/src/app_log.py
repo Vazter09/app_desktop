@@ -2,7 +2,7 @@
 Logging de la app de escritorio SmartCSET (errores / avisos).
 
 Archivo de log (una sola ruta canónica):
-  - Desarrollo:  app_desktop/app/logs/smartcset_desktop.log
+  - Desarrollo:  app_desktop/runtime/logs/smartcset_desktop.log
   - Ejecutable:  <carpeta_del_exe>/logs/smartcset_desktop.log
 
 Uso:

@@ -12,7 +12,7 @@ DECLARE
 BEGIN
     -- GREATEST evita violar CHECK (fec_ultima_salida >= fec_ultima_entrada)
     -- cuando fec_ultima_entrada quedó en otra zona (p. ej. UTC residual).
-    wts_salida := CURRENT_TIMESTAMP;
+    wts_salida := smartcset_now_local();
 
     UPDATE tab_personas
        SET fec_ultima_salida = GREATEST(fec_ultima_entrada, wts_salida)
