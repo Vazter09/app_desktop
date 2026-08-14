@@ -53,8 +53,9 @@ function salidaRegistrarManual(
         $metodoSalida = 1;
     }
     $entradaSalida = (int) ($datos['sel_entrada'] ?? 0);
-    // 0 → PL/pgSQL reutiliza id_entrada_ingreso del registro abierto.
-    $entradaParam = $entradaSalida >= 1 ? $entradaSalida : 0;
+    if ($entradaSalida < 1) {
+        throw new Exception('Seleccione la puerta de salida.');
+    }
 
     if ($tipo === '') {
         throw new Exception('Seleccione el tipo de documento.');
@@ -89,7 +90,7 @@ function salidaRegistrarManual(
         // Solo texto del formulario Observación/Novedad (≥5 chars crea fila).
         $obs !== '' ? $obs : null,
         $metodoSalida,
-        $entradaParam,
+        $entradaSalida,
     ]);
 
     $idIngreso = $stmtFunRegistrar->fetchColumn();

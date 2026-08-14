@@ -55,7 +55,7 @@ class PorteriaRouterPayload
             'txt_observaciones' => trim((string) ($json['observaciones'] ?? '')),
             // metodo_aut de esta acción → id_metodo_salida (no pisa ingreso).
             'hid_metodo_aut' => (int) ($json['metodo_aut'] ?? 1),
-            // Puerta de salida opcional; si 0, PL/pgSQL reusa id_entrada_ingreso.
+            // Puerta seleccionada actualmente. El backend exige valor >= 1.
             'sel_entrada' => (int) ($json['id_entrada'] ?? 0),
             'hid_foto_data' => trim((string) ($json['foto_base64'] ?? '')),
         ];

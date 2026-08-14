@@ -7,6 +7,8 @@ DROP FUNCTION IF EXISTS fun_update_log_salida(
 );
 DROP FUNCTION IF EXISTS fun_update_log_salida(INTEGER, TEXT);
 DROP FUNCTION IF EXISTS fun_update_log_salida(BIGINT, TEXT);
+DROP FUNCTION IF EXISTS fun_update_log_salida(BIGINT, VARCHAR);
+DROP FUNCTION IF EXISTS fun_update_log_salida(BIGINT, CHARACTER VARYING);
 DROP FUNCTION IF EXISTS fun_update_log_salida(BIGINT);
 DROP FUNCTION IF EXISTS fun_update_log_salida(INTEGER);
 DROP FUNCTION IF EXISTS fun_update_log_salida(BIGINT, NUMERIC, NUMERIC);

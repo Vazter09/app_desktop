@@ -256,6 +256,7 @@
                 metodo_aut: Number(hidMetodo?.value || 1),
                 observaciones: document.getElementById('txt_observaciones')?.value || '',
                 foto_base64: document.getElementById('hid_foto_data')?.value || '',
+                id_entrada: Number(inputPuerta?.value || 0),
             };
 
             if (btnSubmit) btnSubmit.disabled = true;

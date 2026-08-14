@@ -1,10 +1,7 @@
 """
 Formato de fechas — réplica exacta de `smartcsetFormatDbTimestamp()`
-(`backend/core/helpers.php`): los timestamps que devuelven los endpoints
-JSON vienen en la zona de la conexión de BD (`DB_TIMEZONE=UTC`, ver
-`.env`), sin convertir — igual que la web, que NUNCA muestra la hora
-cruda de BD, siempre la convierte a `APP_TIMEZONE` (America/Bogota)
-antes de mostrarla.
+(`backend/core/helpers.php`): portería escribe hora civil Colombia
+(`DB_TIMEZONE=America/Bogota`). Si BD y app coinciden, no hay desplazamiento.
 
 Usa `zoneinfo` (librería estándar desde Python 3.9, cero dependencias de
 terceros — ver REGLAS_APP_ESCRITORIO_SGI.md, sección 4).
@@ -14,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-DB_TIMEZONE = ZoneInfo("UTC")
+DB_TIMEZONE = ZoneInfo("America/Bogota")
 APP_TIMEZONE = ZoneInfo("America/Bogota")
 
 # Mismo formato por defecto que smartcsetFormatDbTimestamp() en PHP.
@@ -102,8 +99,7 @@ def es_tipo_instructor(tipo_persona: int | str | None) -> bool:
 
 
 def format_db_timestamp(value: str | None, fmt: str = DEFAULT_FORMAT) -> str:
-    """Convierte un timestamp crudo de BD (UTC, sin zona) a hora local
-    legible — mismo comportamiento que `smartcsetFormatDbTimestamp()`."""
+    """Formatea un timestamp crudo de BD (hora civil Colombia, sin zona)."""
     raw = (value or "").strip()
     if not raw:
         return "—"

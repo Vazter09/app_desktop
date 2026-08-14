@@ -41,7 +41,7 @@ define(
 );
 
 // Fotos de enrolamiento facial (absoluta o relativa a SMARTCSET_ROOT).
-// Producción 111: /var/www/html/smartcset/src/frontend/img/biometria
+// Producción 111: /var/www/html/desktop-smartcset/src/frontend/img/biometria
 define(
     'BIOMETRIA_FOTO_PATH',
     EnvLoader::get(

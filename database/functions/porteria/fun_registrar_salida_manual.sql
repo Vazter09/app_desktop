@@ -7,6 +7,10 @@ DROP FUNCTION IF EXISTS fun_registrar_salida_manual(
     TEXT
 );
 DROP FUNCTION IF EXISTS fun_registrar_salida_manual(NUMERIC, VARCHAR, TEXT);
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(NUMERIC, VARCHAR, VARCHAR);
+DROP FUNCTION IF EXISTS fun_registrar_salida_manual(
+    NUMERIC, CHARACTER VARYING, CHARACTER VARYING
+);
 DROP FUNCTION IF EXISTS fun_registrar_salida_manual(NUMERIC, VARCHAR);
 DROP FUNCTION IF EXISTS fun_registrar_salida_manual(
     NUMERIC, VARCHAR, TEXT, NUMERIC, NUMERIC

@@ -5,7 +5,7 @@ declare(strict_types=1);
  * BiometriaPhotoService — Gestión de fotos de enrolamiento facial
  *
  * Fotos en filesystem (BIOMETRIA_FOTO_PATH / smartcsetBiometriaFotoAbs()):
- *   Producción: /var/www/html/smartcset/src/frontend/img/biometria/{id}/{id}.jpg
+ *   Producción: /var/www/html/desktop-smartcset/src/frontend/img/biometria/{id}/{id}.jpg
  *   Dev default: frontend/web/public/uploads/biometria/{id}/{id}.jpg
  *
  * En BD (tab_personas.ruta_foto_facial) se guarda ruta relativa al storage:
@@ -29,10 +29,22 @@ class BiometriaPhotoService
     private const LEGACY_SRC_IMG_BASE = 'src/frontend/img/biometria';
 
     /**
+     * Árbol live .111: SMARTCSET_ROOT ya es .../smartcset/src.
+     * Las fotos reales están en frontend/img/biometria (no src/src/...).
+     */
+    private const LIVE_SRC_IMG_BASE = 'frontend/img/biometria';
+
+    /** Ruta absoluta de fotos en el servidor live (.111). */
+    private const LIVE_ABS_IMG_BASE = '/var/www/html/desktop-smartcset/src/frontend/img/biometria';
+
+    /**
      * Raíz absoluta de almacenamiento (configurable vía .env).
      */
     public static function storageRoot(): string
     {
+        if (is_dir(self::LIVE_ABS_IMG_BASE) && is_readable(self::LIVE_ABS_IMG_BASE)) {
+            return self::LIVE_ABS_IMG_BASE;
+        }
         if (function_exists('smartcsetBiometriaFotoAbs')) {
             return smartcsetBiometriaFotoAbs();
         }
@@ -161,10 +173,12 @@ class BiometriaPhotoService
         }
 
         $dirs = [
+            self::LIVE_ABS_IMG_BASE . '/' . $idPersona,
             self::storageRoot() . '/' . $idPersona,
             self::documentRoot() . '/' . self::LEGACY_UPLOAD_BASE . '/' . $idPersona,
         ];
         $projectRoot = defined('SMARTCSET_ROOT') ? SMARTCSET_ROOT : dirname(__DIR__, 3);
+        $dirs[] = $projectRoot . '/' . self::LIVE_SRC_IMG_BASE . '/' . $idPersona;
         $dirs[] = $projectRoot . '/' . self::LEGACY_SRC_IMG_BASE . '/' . $idPersona;
 
         $candidatos = [];
@@ -220,7 +234,8 @@ class BiometriaPhotoService
 
     /**
      * Ruta relativa segura bajo el storage de biometría (sin path traversal).
-     * Acepta: {id}/{archivo}, uploads/biometria/..., src/frontend/img/biometria/...
+     * Acepta: {id}/{archivo}, uploads/biometria/...,
+     * frontend/img/biometria/... y src/frontend/img/biometria/...
      */
     public static function esRutaFotoValida(string $rutaRelativa): bool
     {
@@ -233,12 +248,14 @@ class BiometriaPhotoService
             return true;
         }
 
-        if (str_starts_with($ruta, self::LEGACY_SRC_IMG_BASE . '/')) {
-            $resto = substr($ruta, strlen(self::LEGACY_SRC_IMG_BASE . '/'));
-            return (bool) preg_match(
-                '#^[0-9]+/[0-9A-Za-z._-]+\.(jpe?g|png|webp)$#i',
-                $resto
-            );
+        foreach ([self::LIVE_SRC_IMG_BASE, self::LEGACY_SRC_IMG_BASE] as $base) {
+            if (str_starts_with($ruta, $base . '/')) {
+                $resto = substr($ruta, strlen($base . '/'));
+                return (bool) preg_match(
+                    '#^[0-9]+/[0-9A-Za-z._-]+\.(jpe?g|png|webp)$#i',
+                    $resto
+                );
+            }
         }
 
         // Nuevo / relativo a storage: 123456/123456.jpg (también *_nombre legacy)
@@ -274,14 +291,21 @@ class BiometriaPhotoService
             return null;
         }
 
-        // Producción .111: ruta relativa a raíz del proyecto.
-        if (str_starts_with($ruta, self::LEGACY_SRC_IMG_BASE . '/')) {
-            $desdeRoot = (defined('SMARTCSET_ROOT') ? SMARTCSET_ROOT : dirname(__DIR__, 3))
-                . '/' . $ruta;
+        $projectRoot = defined('SMARTCSET_ROOT') ? SMARTCSET_ROOT : dirname(__DIR__, 3);
+
+        foreach ([self::LIVE_SRC_IMG_BASE, self::LEGACY_SRC_IMG_BASE] as $base) {
+            if (!str_starts_with($ruta, $base . '/')) {
+                continue;
+            }
+            $desdeRoot = $projectRoot . '/' . $ruta;
             if (is_file($desdeRoot) && is_readable($desdeRoot)) {
                 return $desdeRoot;
             }
-            $relativaNueva = substr($ruta, strlen(self::LEGACY_SRC_IMG_BASE . '/'));
+            $relativaNueva = substr($ruta, strlen($base . '/'));
+            $desdeLive = $projectRoot . '/' . self::LIVE_SRC_IMG_BASE . '/' . $relativaNueva;
+            if (is_file($desdeLive) && is_readable($desdeLive)) {
+                return $desdeLive;
+            }
             $desdeStorage = self::storageRoot() . '/' . $relativaNueva;
             if (is_file($desdeStorage) && is_readable($desdeStorage)) {
                 return $desdeStorage;
@@ -293,6 +317,16 @@ class BiometriaPhotoService
         $completa = self::storageRoot() . '/' . $ruta;
         if (is_file($completa) && is_readable($completa)) {
             return $completa;
+        }
+
+        $desdeAbs = self::LIVE_ABS_IMG_BASE . '/' . $ruta;
+        if (is_file($desdeAbs) && is_readable($desdeAbs)) {
+            return $desdeAbs;
+        }
+
+        $desdeLiveRel = $projectRoot . '/' . self::LIVE_SRC_IMG_BASE . '/' . $ruta;
+        if (is_file($desdeLiveRel) && is_readable($desdeLiveRel)) {
+            return $desdeLiveRel;
         }
 
         return null;

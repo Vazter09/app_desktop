@@ -2257,6 +2257,31 @@ class FacialRecognitionPanel(ttk.Frame):
             return m
         return 1
 
+    def _entrada_activa(self, accion: str) -> int:
+        """Puerta marcada en el formulario. Sin fallback a catalogo[0]."""
+        entrada_id = 0
+        if self._form_panel is not None:
+            try:
+                entrada_id = int(
+                    getattr(
+                        self._form_panel,
+                        "_entrada_seleccionada",
+                        0,
+                    )
+                    or 0
+                )
+            except (TypeError, ValueError, tk.TclError):
+                entrada_id = 0
+        if entrada_id < 1:
+            self._set_estado(
+                f"Seleccione una puerta de {accion} antes de registrar.",
+                theme.ERROR,
+            )
+            raise SmartcsetApiError(
+                f"Debe seleccionar una puerta de {accion}."
+            )
+        return entrada_id
+
     def _payload_biometrico_basico(
         self,
         documento: str,
@@ -2305,22 +2330,7 @@ class FacialRecognitionPanel(ttk.Frame):
             self._set_estado(msg, theme.CYAN)
             raise SmartcsetApiError(msg)
 
-        # Puerta: preferir la del formulario; si no, primera del catálogo.
-        entrada_id = 0
-        if self._form_panel is not None:
-            entrada_id = int(
-                getattr(self._form_panel, "_entrada_seleccionada", 0) or 0
-            )
-        if not entrada_id:
-            entradas = self._client.catalogos().get("entradas", [])
-            if not entradas:
-                self._set_estado(
-                    "No hay puertas configuradas en el catálogo.", theme.ERROR
-                )
-                raise SmartcsetApiError(
-                    "No hay puertas configuradas en el catálogo."
-                )
-            entrada_id = entradas[0]["id"]
+        entrada_id = self._entrada_activa("ingreso")
 
         persona = persona_datos or consulta.get("persona") or {}
         metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
@@ -2438,21 +2448,15 @@ class FacialRecognitionPanel(ttk.Frame):
                 f"{nombre}: no tiene un ingreso abierto para registrar salida."
             )
 
+        entrada_id = self._entrada_activa("salida")
         metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
         payload_salida: dict = {
             "tipo_doc": tipo_doc,
             "documento": documento,
             "observaciones": self._obs_formulario(),
             "metodo_aut": metodo,
+            "id_entrada": entrada_id,
         }
-        # Puerta de salida: la del formulario si hay; si no, el servidor
-        # reutiliza id_entrada_ingreso.
-        if self._form_panel is not None:
-            entrada_id = int(
-                getattr(self._form_panel, "_entrada_seleccionada", 0) or 0
-            )
-            if entrada_id >= 1:
-                payload_salida["id_entrada"] = entrada_id
         result = self._client.salida_registrar(payload_salida)
         id_ingreso = int((result or {}).get("id_ingreso") or 0)
         if id_ingreso < 1:
