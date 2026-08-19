@@ -1,20 +1,27 @@
 # Empaquetado — SmartCSET Portería (Windows)
 
-## Resultado del build
+## Resultado
 
-Carpeta lista para copiar al PC de portería:
+Un solo archivo, sin `_internal` y sin `.py`:
 
-`app_desktop/dist/SmartCSET_Porteria/`
+`app_desktop/dist/SmartCSET_Porteria.exe`
 
-- `SmartCSET_Porteria.exe` — doble clic
-- `app_config.json` — `base_url = https://10.5.213.111/smartcset`
-- `_internal/` — dependencias (no borrar)
+Doble clic en el icono. El codigo fuente no viaja con el ejecutable.
 
-**Importante:** copiar **toda** la carpeta, no solo el `.exe`.
+Al **primer arranque** pueden aparecer junto al `.exe` (no son codigo):
 
-## Regenerar
+- `app_config.json` — URL del servidor (`https://10.5.213.111/smartcset`)
+- `logs/` — registro de la app
+
+## Regenerar y dejarlo en el Escritorio
 
 Desde `app_desktop`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging\build_exe_to_desktop.ps1
+```
+
+Solo build (queda en `dist/`):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File packaging\build_exe.ps1
