@@ -28,7 +28,7 @@ SQL_FILES = [
     "database/functions/porteria/fun_insert_log_ingreso.sql",
     "database/functions/porteria/fun_update_persona_tras_ingreso.sql",
     "database/functions/porteria/fun_registrar_ingreso_manual.sql",
-    "database/functions/porteria/_deploy_fun_verify_retardo_2arg.sql",
+    "database/functions/porteria/retrasos_comite/fun_verify_retardo_aprendiz.sql",
 ]
 
 
@@ -96,24 +96,6 @@ def sudo_bash(client: paramiko.SSHClient, password: str, inner: str) -> tuple[in
     return code, "\n".join(filtered)
 
 
-def extract_retardo_2arg() -> str:
-    mig = (ROOT / "database/migrations/fix_auditoria_eliminar_wusr.sql").read_text(
-        encoding="utf-8"
-    )
-    start = mig.find("-- 6. fun_verify_retardo_aprendiz")
-    end = mig.find("-- 7. fun_upsert_tab_entradas_centro", start)
-    if start < 0 or end < 0:
-        raise RuntimeError("bloque fun_verify_retardo no encontrado")
-    body = mig[start:end].strip() + "\n"
-    prefix = """
-SET search_path TO public;
-DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(numeric, timestamp with time zone, character varying);
-DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(numeric, timestamp with time zone);
-DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(decimal, timestamptz, varchar, decimal, decimal, text);
-"""
-    return prefix + "\n" + body
-
-
 def main() -> int:
     env = load_env()
     host = env.get("SERVER_HOST", DEFAULT_HOST)
@@ -136,17 +118,12 @@ def main() -> int:
     )
     sftp = client.open_sftp()
 
-    for rel in SQL_FILES[:-1]:
+    for rel in SQL_FILES:
         local = ROOT / rel
         remote = f"{REMOTE_ROOT}/{rel}"
         ensure_remote_dir(sftp, str(Path(remote).parent).replace("\\", "/"))
         print(f"Upload {rel}")
         sftp.put(str(local), remote)
-
-    remote_retardo = f"{REMOTE_ROOT}/{SQL_FILES[-1]}"
-    with sftp.file(remote_retardo, "w") as fh:
-        fh.write(extract_retardo_2arg())
-    print(f"Upload {SQL_FILES[-1]}")
 
     remote_repro = f"{REMOTE_ROOT}/scripts/dev/_repro_ingreso.sql"
     ensure_remote_dir(sftp, f"{REMOTE_ROOT}/scripts/dev")

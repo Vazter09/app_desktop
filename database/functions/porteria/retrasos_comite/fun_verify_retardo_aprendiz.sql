@@ -6,6 +6,9 @@
 DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(NUMERIC, TIME);
 DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(NUMERIC, TIMESTAMPTZ);
 DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(
+    NUMERIC, TIMESTAMPTZ, VARCHAR
+);
+DROP FUNCTION IF EXISTS fun_verify_retardo_aprendiz(
     DECIMAL, TIMESTAMPTZ, VARCHAR, DECIMAL, DECIMAL, TEXT
 );
 
