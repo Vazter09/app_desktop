@@ -54,30 +54,50 @@ log = get_logger("ui.facial_modal")
 from ui.ingreso_form_panel import IngresoFormPanel
 from ui.scan_capture import CapturaEscaneo, parse_captura_escaneo
 from ui.window_utils import centrar_ventana_al_mostrar
+from ui.responsive import sx
 
 Modo = Literal["ingreso", "salida", "actualizar_captura", "espera_reingreso"]
 
-# Captura de pistola / QR / PDF417.
-#
-# No se usa un umbral extremadamente pequeño porque algunas pistolas
-# introducen pausas >50 ms entre caracteres.
-SCAN_INTER_CHAR_MS = 120
-SCAN_RESET_MS = 500
+# Tres secciones: cámara | formulario | huella.
+# Pistola (wedge): teclas rápidas + Enter → buffer de escaneo.
+SCAN_INTER_CHAR_MS = 50
+SCAN_RESET_MS = 140
 SCAN_MIN_LEN = 4
-
-# Se conserva por compatibilidad con el estado existente,
-# pero ya no se utiliza para decidir cuándo bloquear teclas.
-SCAN_SWALLOW_AFTER = 1
-# Alto base generoso para emparejar el formulario central.
-MODAL_ANCHO = 1280
-MODAL_ALTO = 820
-CAM_ANCHO = 360
+SCAN_SWALLOW_AFTER = 3
+# Tamaños base de diseño; runtime vía sx() (cambio «responsive»).
+_MODAL_ANCHO_BASE = 1280
+_MODAL_ALTO_BASE = 820
+_CAM_ANCHO_BASE = 360
 # Alto contenido: deja espacio fijo abajo para barra de estado + acciones
 # (ventana app ~820 px con topbar; 560 empujaba esos mensajes fuera de vista).
-CAM_ALTO = 420
-HUELLA_ANCHO = 360
-HUELLA_ALTO = 420
+_CAM_ALTO_BASE = 420
+_HUELLA_ANCHO_BASE = 360
+_HUELLA_ALTO_BASE = 420
 CAM_INTERVALO_MS = 33  # ~30 fps
+
+
+def _cam_ancho() -> int:
+    return sx(_CAM_ANCHO_BASE)
+
+
+def _cam_alto() -> int:
+    return sx(_CAM_ALTO_BASE)
+
+
+def _huella_ancho() -> int:
+    return sx(_HUELLA_ANCHO_BASE)
+
+
+def _huella_alto() -> int:
+    return sx(_HUELLA_ALTO_BASE)
+
+
+def _modal_ancho() -> int:
+    return sx(_MODAL_ANCHO_BASE)
+
+
+def _modal_alto() -> int:
+    return sx(_MODAL_ALTO_BASE)
 
 # Auto-identificación: revisar rostro cada N ticks (~165 ms) en el hilo
 # principal (Tkinter no es thread-safe con OpenCV). Dos detecciones
@@ -207,10 +227,10 @@ class FacialRecognitionPanel(ttk.Frame):
     def _build(self) -> None:
         # ---- Tres secciones: cámara | formulario | huella (fila 0) ----
         bio_row = tk.Frame(self, bg=theme.BG_DEEP)
-        bio_row.grid(row=0, column=0, sticky="nsew", padx=12, pady=(12, 4))
-        bio_row.columnconfigure(0, weight=1, minsize=CAM_ANCHO + 40)
-        bio_row.columnconfigure(1, weight=1, minsize=300)
-        bio_row.columnconfigure(2, weight=1, minsize=HUELLA_ANCHO + 40)
+        bio_row.grid(row=0, column=0, sticky="nsew", padx=sx(12), pady=(sx(12), 4))
+        bio_row.columnconfigure(0, weight=1, minsize=_cam_ancho() + sx(40))
+        bio_row.columnconfigure(1, weight=1, minsize=sx(300))
+        bio_row.columnconfigure(2, weight=1, minsize=_huella_ancho() + sx(40))
         bio_row.rowconfigure(0, weight=1)
 
         self._build_columna_camara(bio_row)
@@ -223,15 +243,15 @@ class FacialRecognitionPanel(ttk.Frame):
         estado_row = ttk.Frame(self, style="App.TFrame", padding=(16, 6))
         estado_row.grid(row=1, column=0, sticky="ew")
         self._estado_dot = tk.Canvas(
-            estado_row, width=10, height=10, bg=theme.BG_DEEP, highlightthickness=0
+            estado_row, width=sx(10), height=sx(10), bg=theme.BG_DEEP, highlightthickness=0
         )
         self._estado_dot.pack(side="left", padx=(0, 8))
-        self._estado_dot.create_oval(1, 1, 9, 9, fill=theme.TEXT_MUTED, outline="")
+        self._estado_dot.create_oval(1, 1, sx(9), sx(9), fill=theme.TEXT_MUTED, outline="")
         ttk.Label(
             estado_row,
             textvariable=self._estado_var,
             style="Muted.TLabel",
-            wraplength=1100,
+            wraplength=sx(1100),
         ).pack(side="left", fill="x", expand=True)
 
         # ---- Acciones (fila 2, altura fija — siempre visible) ----
@@ -291,8 +311,8 @@ class FacialRecognitionPanel(ttk.Frame):
 
         self._cam_canvas = tk.Canvas(
             cam_wrap,
-            width=CAM_ANCHO,
-            height=CAM_ALTO,
+            width=_cam_ancho(),
+            height=_cam_alto(),
             bg="#000000",
             highlightthickness=1,
             highlightbackground=theme.BORDER,
@@ -328,7 +348,7 @@ class FacialRecognitionPanel(ttk.Frame):
         aún no está listo, usa un fallback para no dejar la columna en 0×0
         (panel de confirmación invisible).
         """
-        fallback = (340, 480)
+        fallback = (sx(340), sx(480))
         if self._centro_wrap is None:
             return fallback
         w, h = fallback
@@ -379,7 +399,7 @@ class FacialRecognitionPanel(ttk.Frame):
             side="left"
         )
         # Ícono ~tamaño del emoji 📷 del botón "Cambiar".
-        self._huella_header_icon = self._photo_huella_icono(18)
+        self._huella_header_icon = self._photo_huella_icono(sx(18))
         if self._huella_header_icon is not None:
             tk.Label(
                 huella_header,
@@ -398,7 +418,7 @@ class FacialRecognitionPanel(ttk.Frame):
         ).pack(side="bottom", fill="x", pady=(10, 0), ipady=2)
 
         self._huella_scan = HuellaScanCanvas(
-            huella_wrap, width=HUELLA_ANCHO, height=HUELLA_ALTO
+            huella_wrap, width=_huella_ancho(), height=_huella_alto()
         )
         self._huella_canvas = self._huella_scan  # compat. helpers de tamaño
         self._huella_scan.pack(fill="both", expand=True)
@@ -487,41 +507,41 @@ class FacialRecognitionPanel(ttk.Frame):
         self._scan_last_ms = 0.0
 
     def _on_scan_keypress(self, event: tk.Event) -> str | None:
-        """Captura exclusiva de pistola / QR / PDF417.
+        """Buffer de pistola/QR: teclas rápidas + Enter → identificación.
 
-        Ningún carácter del escaneo llega al Entry. Tab de PDF417
-        se convierte en '@'. Enter finaliza el escaneo.
+        Tab de PDF417 se trata como '@' (separador) y no mueve el foco
+        entre Entries del formulario (evita ape1 en Nombres, fecha en Obs).
         """
         if not self._scan_bindings_activos:
             return None
-
         try:
             if not self.winfo_exists():
                 return None
         except tk.TclError:
             return None
-
         if self._confirmacion_abierta:
             return None
 
         keysym = getattr(event, "keysym", "") or ""
-        now = time.monotonic() * 1000
-
         if keysym in ("Return", "KP_Enter"):
-            if not self._scan_buf:
-                return None
             return self._flush_scan_buffer()
 
-        if self._scan_last_ms:
-            delta = now - self._scan_last_ms
-            if delta > SCAN_RESET_MS:
-                self._reset_scan_buf()
+        now = time.monotonic() * 1000
+        if self._scan_last_ms and (now - self._scan_last_ms) > SCAN_RESET_MS:
+            self._reset_scan_buf()
+        elif self._scan_last_ms and (now - self._scan_last_ms) > SCAN_INTER_CHAR_MS:
+            # Mecanografía humana: no es pistola.
+            self._scan_fast = False
+            self._scan_swallow = False
 
+        # Tab solo en ráfaga de pistola (buffer activo + ritmo rápido).
         if keysym == "Tab":
-            if not self._scan_buf:
+            if not self._scan_buf or not self._scan_fast:
                 return None
             self._scan_buf.append("@")
             self._scan_last_ms = now
+            if len(self._scan_buf) >= SCAN_SWALLOW_AFTER:
+                self._scan_swallow = True
             return "break"
 
         char = getattr(event, "char", "") or ""
@@ -530,7 +550,13 @@ class FacialRecognitionPanel(ttk.Frame):
 
         self._scan_buf.append(char)
         self._scan_last_ms = now
-        return "break"
+
+        if self._scan_fast and len(self._scan_buf) >= SCAN_SWALLOW_AFTER:
+            self._scan_swallow = True
+
+        if self._scan_swallow:
+            return "break"
+        return None
 
     def _flush_scan_buffer(self) -> str | None:
         raw = "".join(self._scan_buf)
@@ -583,7 +609,7 @@ class FacialRecognitionPanel(ttk.Frame):
             log.error("Consultar documento (escaneo): %s", exc)
             flush_handlers()
             self._set_estado(f"Error al consultar documento: {exc}", theme.ERROR)
-            return False
+            return True
 
         persona = consulta.get("persona")
         if persona is None:
@@ -866,11 +892,23 @@ class FacialRecognitionPanel(ttk.Frame):
         c = self._cam_canvas
         c.delete("all")
         self._cam_image_id = None
-        w, h = self._tamano_canvas(c, CAM_ANCHO, CAM_ALTO)
+        w, h = self._tamano_canvas(c, _cam_ancho(), _cam_alto())
         cx, cy = w // 2, h // 2
-        c.create_oval(cx - 70, cy - 90, cx + 70, cy + 90, outline=theme.CYAN, dash=(5, 4), width=2)
+        c.create_oval(
+            cx - sx(70),
+            cy - sx(90),
+            cx + sx(70),
+            cy + sx(90),
+            outline=theme.CYAN,
+            dash=(5, 4),
+            width=2,
+        )
         c.create_text(
-            cx, cy + 120, text=mensaje, fill=theme.TEXT_MUTED, font=theme.FONT_LABEL_SMALL
+            cx,
+            cy + sx(120),
+            text=mensaje,
+            fill=theme.TEXT_MUTED,
+            font=theme.FONT_LABEL_SMALL,
         )
 
     def _set_estado(self, texto: str, color: str) -> None:
@@ -1064,7 +1102,7 @@ class FacialRecognitionPanel(ttk.Frame):
             self._frames_sin_senal = 0
             self._ultimo_frame = frame
             photo = frame_a_photoimage(
-                frame, *self._tamano_canvas(self._cam_canvas, CAM_ANCHO, CAM_ALTO)
+                frame, *self._tamano_canvas(self._cam_canvas, _cam_ancho(), _cam_alto())
             )
             self._cam_photo_ref = photo  # evita garbage collection
             if self._cam_image_id is None:
@@ -2256,6 +2294,31 @@ class FacialRecognitionPanel(ttk.Frame):
             return m
         return 1
 
+    def _entrada_activa(self, accion: str) -> int:
+        """Puerta marcada en el formulario. Sin fallback a catalogo[0]."""
+        entrada_id = 0
+        if self._form_panel is not None:
+            try:
+                entrada_id = int(
+                    getattr(
+                        self._form_panel,
+                        "_entrada_seleccionada",
+                        0,
+                    )
+                    or 0
+                )
+            except (TypeError, ValueError, tk.TclError):
+                entrada_id = 0
+        if entrada_id < 1:
+            self._set_estado(
+                f"Seleccione una puerta de {accion} antes de registrar.",
+                theme.ERROR,
+            )
+            raise SmartcsetApiError(
+                f"Debe seleccionar una puerta de {accion}."
+            )
+        return entrada_id
+
     def _payload_biometrico_basico(
         self,
         documento: str,
@@ -2304,22 +2367,7 @@ class FacialRecognitionPanel(ttk.Frame):
             self._set_estado(msg, theme.CYAN)
             raise SmartcsetApiError(msg)
 
-        # Puerta: preferir la del formulario; si no, primera del catálogo.
-        entrada_id = 0
-        if self._form_panel is not None:
-            entrada_id = int(
-                getattr(self._form_panel, "_entrada_seleccionada", 0) or 0
-            )
-        if not entrada_id:
-            entradas = self._client.catalogos().get("entradas", [])
-            if not entradas:
-                self._set_estado(
-                    "No hay puertas configuradas en el catálogo.", theme.ERROR
-                )
-                raise SmartcsetApiError(
-                    "No hay puertas configuradas en el catálogo."
-                )
-            entrada_id = entradas[0]["id"]
+        entrada_id = self._entrada_activa("ingreso")
 
         persona = persona_datos or consulta.get("persona") or {}
         metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
@@ -2437,21 +2485,15 @@ class FacialRecognitionPanel(ttk.Frame):
                 f"{nombre}: no tiene un ingreso abierto para registrar salida."
             )
 
+        entrada_id = self._entrada_activa("salida")
         metodo = self._metodo_aut_valido(self._ultimo_metodo_biometrico)
         payload_salida: dict = {
             "tipo_doc": tipo_doc,
             "documento": documento,
             "observaciones": self._obs_formulario(),
             "metodo_aut": metodo,
+            "id_entrada": entrada_id,
         }
-        # Puerta de salida: la del formulario si hay; si no, el servidor
-        # reutiliza id_entrada_ingreso.
-        if self._form_panel is not None:
-            entrada_id = int(
-                getattr(self._form_panel, "_entrada_seleccionada", 0) or 0
-            )
-            if entrada_id >= 1:
-                payload_salida["id_entrada"] = entrada_id
         result = self._client.salida_registrar(payload_salida)
         id_ingreso = int((result or {}).get("id_ingreso") or 0)
         if id_ingreso < 1:
@@ -2491,7 +2533,7 @@ class FacialRecognitionModal(tk.Toplevel):
         super().__init__(master)
         self.title("Identificar rostro — Portería (ingreso / salida)")
         self.configure(bg=theme.BG_CARD)
-        self.geometry(f"{MODAL_ANCHO}x{MODAL_ALTO}")
+        self.geometry(f"{_modal_ancho()}x{_modal_alto()}")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
@@ -2506,7 +2548,7 @@ class FacialRecognitionModal(tk.Toplevel):
             on_close=self._cerrar,
         )
         self._panel.pack(fill="both", expand=True)
-        centrar_ventana_al_mostrar(self, MODAL_ANCHO, MODAL_ALTO)
+        centrar_ventana_al_mostrar(self, _modal_ancho(), _modal_alto())
 
     def _cerrar(self) -> None:
         try:

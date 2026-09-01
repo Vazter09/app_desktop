@@ -1,0 +1,19 @@
+# Dependencias de terceros de la app de escritorio SGI.
+#
+# Única categoría permitida (ver REGLAS_APP_ESCRITORIO_SGI.md, sección 4/5.1):
+# captura de cámara + procesamiento de imágenes para biometría.
+# Versión exacta fijada (==, no >=) — un entorno sin internet constante
+# no puede arriesgarse a que dos PCs resuelvan versiones distintas.
+#
+# - opencv-python-headless: captura de cámara + motor YuNet+SFace
+# - numpy: operaciones numéricas para vectores de embeddings
+# - Pillow: conversión frame OpenCV ↔ base64 (2026-07-09)
+#
+# NO incluye la librería de extracción de embeddings faciales aislada
+# (eso va en el motor biométrico aparte, sección 5.2 — pendiente Fase 2).
+# Python 3.13: numpy 1.26.x y Pillow 10.x no tienen wheel; usar las
+# versiones de abajo. En Python 3.11–3.12 valen numpy==1.26.4 y Pillow==10.0.0.
+opencv-python-headless==4.10.0.84
+numpy==2.5.1
+Pillow==12.3.0
+tzdata>=2024.1

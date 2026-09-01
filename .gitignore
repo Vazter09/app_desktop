@@ -1,0 +1,12 @@
+# Runtime local (no versionar)
+runtime/
+runtime/**
+
+# Artefactos de build
+build/
+dist/
+packaging/smartcset_porteria.ico
+
+# Bytecode
+**/__pycache__/
+*.pyc
