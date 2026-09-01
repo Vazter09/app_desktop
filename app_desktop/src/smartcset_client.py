@@ -213,9 +213,9 @@ class SmartcsetClient:
         documento: str,
         tipo_doc: str = "CC",
         *,
-        incluir_foto: bool = False,
+        incluir_foto: bool = True,
     ) -> dict[str, Any]:
-        """GET /routers/porteria/v1/ingreso/consultar.php."""
+        """GET /routers/porteria/v1/ingreso/consultar.php (foto enrolada por defecto)."""
         params: dict[str, str] = {"documento": documento, "tipo_doc": tipo_doc}
         if incluir_foto:
             params["incluir_foto"] = "1"

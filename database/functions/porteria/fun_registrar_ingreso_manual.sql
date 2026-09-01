@@ -13,6 +13,14 @@ DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
     NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
     NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR, BYTEA
 );
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
+    NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR, BYTEA, VARCHAR
+);
+DROP FUNCTION IF EXISTS fun_registrar_ingreso_manual(
+    NUMERIC, VARCHAR, NUMERIC, VARCHAR, VARCHAR,
+    NUMERIC, TEXT, DECIMAL, BOOLEAN, VECTOR, BYTEA, BOOLEAN, VARCHAR
+);
 
 CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wid_persona         tab_personas.id_persona%TYPE,
@@ -25,13 +33,15 @@ CREATE OR REPLACE FUNCTION fun_registrar_ingreso_manual(
     wid_metodo_ingreso  tab_log_ingresos.id_metodo_ingreso%TYPE DEFAULT 1,
     wcaptura_pdf417     BOOLEAN DEFAULT FALSE,
     wfacial_embedding   tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
-    whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL
+    whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL,
+    wid_equipo          tab_log_ingresos.id_equipo%TYPE DEFAULT NULL
 ) RETURNS BIGINT AS $$
 DECLARE
     wid_ingreso    BIGINT;
     wjson_origen   JSONB;
     worigen_txt    TEXT;
     wmotivo        TEXT;
+    wserial        TEXT;
     w_exc_state    TEXT;
     w_exc_msg      TEXT;
     w_exc_detail   TEXT;
@@ -71,6 +81,14 @@ BEGIN
         wid_persona, wid_tipo_docum, wid_tipo_persona, wnom_persona, wape_persona
     );
 
+    wserial := LEFT(TRIM(COALESCE(wid_equipo, '')), 50);
+    IF wserial <> '' AND wserial <> '111111' THEN
+        -- descripcion 'Pendiente' hasta cablear detalle/tipo.
+        PERFORM fun_upsert_equipo_persona(wserial, wid_persona, 'Pendiente');
+    ELSE
+        wserial := NULL;
+    END IF;
+
     wjson_origen := jsonb_build_object(
         'origen', worigen_txt,
         'documento', wid_persona::TEXT,
@@ -82,13 +100,18 @@ BEGIN
         wjson_origen := wjson_origen || jsonb_build_object('captura_pdf417', TRUE);
     END IF;
 
+    IF wserial IS NOT NULL THEN
+        wjson_origen := wjson_origen || jsonb_build_object('id_equipo', wserial);
+    END IF;
+
     wid_ingreso := fun_insert_log_ingreso(
         wid_persona,
         wid_metodo_ingreso,
         wid_entrada_ingreso,
         wjson_origen,
         wfacial_embedding,
-        whuella_template
+        whuella_template,
+        wserial
     );
 
     wmotivo := LEFT(TRIM(COALESCE(wmotivo_novedad, '')), 100);

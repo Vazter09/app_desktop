@@ -14,13 +14,16 @@ from ui import theme
 from ui.field_validators import (
     DOC_MAX_LEN,
     es_documento_valido,
+    es_equipo_serial_valido,
     es_nombre_valido,
     es_observacion_valida,
     filtrar_chars_nombre,
     filtrar_chars_observacion,
+    filtrar_chars_equipo_serial,
     mensaje_documento_invalido,
     mensaje_nombre_invalido,
     sanear_documento,
+    sanear_equipo_serial,
     sanear_nombre,
     sanear_observacion,
 )
@@ -71,6 +74,7 @@ class IngresoFormPanel(tk.Frame):
         self._nombres_var = tk.StringVar()
         self._apellidos_var = tk.StringVar()
         self._obs_var = tk.StringVar()
+        self._equipo_var = tk.StringVar()
 
         self._build()
         self._activar_coercion_campos()
@@ -201,12 +205,14 @@ class IngresoFormPanel(tk.Frame):
         self._bloqueo_ingreso = False
         self._badge_var.set("")
         self._msg_var.set("")
+        self._equipo_var.set("")
         self._set_campos_editables(True)
         if self._tipo_doc_ids:
             self._tipo_doc_combo.set(self._tipo_doc_ids[0])
         nombres = list(self._tipo_persona_map.keys())
         if nombres:
             self._tipo_persona_combo.set(nombres[0])
+        self._ocultar_equipo_panel()
 
     # ---- UI ----------------------------------------------------------
 
@@ -315,6 +321,37 @@ class IngresoFormPanel(tk.Frame):
         self._puertas_frame = tk.Frame(body, bg=theme.BG_PANEL)
         self._puertas_frame.pack(fill="x")
 
+        # Misma rejilla 50/50 que Puerta Principal | Portón Posterior.
+        self._equipo_panel_visible = False
+        self._equipo_row = tk.Frame(body, bg=theme.BG_PANEL)
+        self._equipo_row.pack(fill="x", pady=(10, 0))
+        self._equipo_row.columnconfigure(0, weight=1, uniform="cols_form")
+        self._equipo_row.columnconfigure(1, weight=1, uniform="cols_form")
+
+        equipo_left = tk.Frame(self._equipo_row, bg=theme.BG_PANEL)
+        equipo_left.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        self._equipo_btn = ttk.Button(
+            equipo_left,
+            text="+ Agregar equipo",
+            style="Primary.TButton",
+            command=self._toggle_equipo_panel,
+        )
+        self._equipo_btn.pack(fill="x", ipady=2)
+
+        self._equipo_right = tk.Frame(self._equipo_row, bg=theme.BG_PANEL)
+        self._equipo_right.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
+
+        # Panel embebido a la derecha (bajo Portón Posterior); no Toplevel.
+        self._equipo_panel = tk.Frame(
+            self._equipo_right,
+            bg="#0f1712",
+            highlightthickness=1,
+            highlightbackground=theme.CYAN,
+            padx=8,
+            pady=4,
+        )
+        self._build_equipo_panel_contenido()
+
         # Observación al final del orden de creación (= orden Tab).
         ttk.Label(
             obs_wrap,
@@ -326,12 +363,52 @@ class IngresoFormPanel(tk.Frame):
         )
         self._obs_entry.pack(fill="x", ipady=8)
 
+    def _build_equipo_panel_contenido(self) -> None:
+        """Campo serial (se persiste al Registrar ingreso)."""
+        inner = tk.Frame(self._equipo_panel, bg="#0f1712")
+        inner.pack(fill="both", expand=True)
+        self._equipo_entry = ttk.Entry(
+            inner,
+            textvariable=self._equipo_var,
+            font=theme.FONT_LOGIN_LABEL,
+        )
+        self._equipo_entry.pack(side="left", fill="x", expand=True, ipady=2)
+        ttk.Button(
+            inner,
+            text="✕",
+            style="Logout.TButton",
+            width=3,
+            command=self._ocultar_equipo_panel,
+        ).pack(side="right", padx=(4, 0))
+
+    def _toggle_equipo_panel(self) -> None:
+        if self._equipo_panel_visible:
+            self._ocultar_equipo_panel()
+        else:
+            self._mostrar_equipo_panel()
+
+    def _mostrar_equipo_panel(self) -> None:
+        if self._equipo_panel_visible:
+            return
+        self._equipo_panel.pack(fill="both", expand=True)
+        self._equipo_panel_visible = True
+        self.after(50, lambda: self._equipo_entry.focus_set())
+
+    def _ocultar_equipo_panel(self) -> None:
+        if hasattr(self, "_equipo_var"):
+            self._equipo_var.set("")
+        if not self._equipo_panel_visible:
+            return
+        self._equipo_panel.pack_forget()
+        self._equipo_panel_visible = False
+
     def _activar_coercion_campos(self) -> None:
         """Filtra en vivo: pistola/teclado no dejan basura (p. ej. O+ en doc)."""
         self._documento_var.trace_add("write", self._coerce_documento)
         self._nombres_var.trace_add("write", self._coerce_nombres)
         self._apellidos_var.trace_add("write", self._coerce_apellidos)
         self._obs_var.trace_add("write", self._coerce_obs)
+        self._equipo_var.trace_add("write", self._coerce_equipo)
 
     def _coerce_var(
         self,
@@ -369,6 +446,9 @@ class IngresoFormPanel(tk.Frame):
         self._coerce_var(
             self._obs_var, filtrar_chars_observacion, max_len=200
         )
+
+    def _coerce_equipo(self, *_args: object) -> None:
+        self._coerce_var(self._equipo_var, filtrar_chars_equipo_serial)
 
     def _rebuild_puertas(self) -> None:
         for child in self._puertas_frame.winfo_children():
@@ -600,10 +680,12 @@ class IngresoFormPanel(tk.Frame):
         nombres = sanear_nombre(self._nombres_var.get())
         apellidos = sanear_nombre(self._apellidos_var.get())
         observaciones = sanear_observacion(self._obs_var.get())
+        equipo_serial = sanear_equipo_serial(self._equipo_var.get())
         self._documento_var.set(documento)
         self._nombres_var.set(nombres)
         self._apellidos_var.set(apellidos)
         self._obs_var.set(observaciones)
+        self._equipo_var.set(equipo_serial)
 
         if not documento:
             self._msg_var.set("Ingrese el número de documento.")
@@ -627,6 +709,15 @@ class IngresoFormPanel(tk.Frame):
                 "Observación: use letras, números y puntuación básica."
             )
             return
+        if self._equipo_panel_visible and not es_equipo_serial_valido(
+            equipo_serial
+        ):
+            self._msg_var.set(
+                "Serial de equipo: 3–50 caracteres (letras, números, - _)."
+            )
+            if hasattr(self, "_equipo_entry"):
+                self._equipo_entry.focus_set()
+            return
         if not self._entrada_seleccionada:
             self._msg_var.set("Seleccione una puerta de ingreso.")
             return
@@ -646,6 +737,8 @@ class IngresoFormPanel(tk.Frame):
             # Default manual; FacialModal puede reclasificar a 4/5 si hay bio.
             "metodo_aut": 1,
         }
+        if equipo_serial:
+            payload["id_equipo"] = equipo_serial
         if self._on_enriquecer_payload is not None:
             self._on_enriquecer_payload(payload)
         try:

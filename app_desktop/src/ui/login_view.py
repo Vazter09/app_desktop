@@ -20,13 +20,14 @@ from app_log import flush_handlers, get_logger
 from app_paths import resource_root
 from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
 from ui import theme
+from ui.responsive import sx
 
 log = get_logger("ui.login_view")
 
-LOGO_MAX_ANCHO = 110
-CARD_PADDING = 28
+_LOGO_MAX_ANCHO_BASE = 110
+_CARD_PADDING_BASE = 28
 ENTRY_WIDTH = 28
-CARD_WIDTH = 380
+_CARD_WIDTH_BASE = 380
 
 
 def _ruta_logo_sena() -> Path | None:
@@ -54,9 +55,10 @@ def _cargar_logo_sena() -> ImageTk.PhotoImage | None:
         return None
     imagen = Image.open(ruta)
     ancho, alto = imagen.size
-    if ancho > LOGO_MAX_ANCHO:
-        nuevo_alto = int(alto * LOGO_MAX_ANCHO / ancho)
-        imagen = imagen.resize((LOGO_MAX_ANCHO, nuevo_alto), Image.Resampling.LANCZOS)
+    logo_max = sx(_LOGO_MAX_ANCHO_BASE)
+    if ancho > logo_max:
+        nuevo_alto = int(alto * logo_max / ancho)
+        imagen = imagen.resize((logo_max, nuevo_alto), Image.Resampling.LANCZOS)
     return ImageTk.PhotoImage(imagen)
 
 
@@ -71,21 +73,27 @@ class LoginView(ttk.Frame):
         self._client = client
         self._on_success = on_success
         self._logo_photo: ImageTk.PhotoImage | None = None
+        self._card_pad = sx(_CARD_PADDING_BASE)
+        self._card_w = sx(_CARD_WIDTH_BASE)
+        card_pad = self._card_pad
+        card_w = self._card_w
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
         # Card centrada (~login web 380px). Sin sticky=ew en la card para
         # que no se estire si la ventana es más ancha.
-        card = ttk.Frame(self, style="Card.TFrame", padding=CARD_PADDING)
+        card = ttk.Frame(self, style="Card.TFrame", padding=card_pad)
         card.grid(row=0, column=0)
-        card.columnconfigure(0, minsize=CARD_WIDTH - (CARD_PADDING * 2))
+        card.columnconfigure(0, minsize=card_w - (card_pad * 2))
 
         fila = 0
         self._logo_photo = _cargar_logo_sena()
         if self._logo_photo is not None:
-            marco_logo = tk.Frame(card, bg=theme.BG_CARD, width=CARD_WIDTH - (CARD_PADDING * 2))
-            marco_logo.grid(row=fila, column=0, sticky="ew", pady=(0, 16))
+            marco_logo = tk.Frame(
+                card, bg=theme.BG_CARD, width=card_w - (card_pad * 2)
+            )
+            marco_logo.grid(row=fila, column=0, sticky="ew", pady=(0, sx(16)))
             tk.Label(
                 marco_logo,
                 image=self._logo_photo,
@@ -133,7 +141,7 @@ class LoginView(ttk.Frame):
             card,
             textvariable=self._error_var,
             style="LoginError.TLabel",
-            wraplength=CARD_WIDTH - (CARD_PADDING * 2),
+            wraplength=self._card_w - (self._card_pad * 2),
         )
         self._error_label.grid(row=fila, column=0, sticky="ew", pady=(0, 8))
         fila += 1

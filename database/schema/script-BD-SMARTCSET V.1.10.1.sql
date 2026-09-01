@@ -2387,15 +2387,14 @@ CREATE TABLE IF NOT EXISTS tab_tipos_equipo (
 
 CREATE TABLE IF NOT EXISTS tab_equipos (
     id_equipo             VARCHAR(50)                 NOT NULL, -- Numero de serie.
-    id_tipo_equipo        DECIMAL(2,0)                NOT NULL, 
+    descripcion           VARCHAR(50)                 NOT NULL,
     id_propietario        DECIMAL(10,0)               NOT NULL, -- El propietario debe estar registrado.
     usr_insert            VARCHAR(50)                 NOT NULL CHECK(LENGTH(TRIM(usr_insert)) >= 3),
     fec_insert            TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     usr_update            VARCHAR(50)                          CHECK(LENGTH(TRIM(usr_update)) >= 3),
     fec_update            TIMESTAMP WITHOUT TIME ZONE          CHECK(fec_update >= fec_insert),
     PRIMARY KEY(id_equipo),
-    FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona),
-    FOREIGN KEY(id_tipo_equipo) REFERENCES tab_tipos_equipo(id_tipo_equipo)
+    FOREIGN KEY(id_propietario) REFERENCES tab_personas(id_persona)
 );
 
 -- TABLA TRANSACCIONAL DE REGISTRO DE INGRESOS

@@ -33,24 +33,65 @@ BORDER = "#3f4a2b"
 ERROR = "#ff3c6e"
 SUCCESS = "#00e5b0"
 
-FONT_BODY = ("Segoe UI", 10)
-FONT_BODY_BOLD = ("Segoe UI", 10, "bold")
-FONT_PRIMARY_BUTTON = ("Segoe UI", 11, "bold")
-FONT_TITLE = ("Segoe UI", 15, "bold")
-FONT_LOGIN_TITLE = ("Segoe UI", 22, "bold")
-FONT_LOGIN_LABEL = ("Segoe UI", 12)
-FONT_LOGIN_INPUT = ("Segoe UI", 14)
-FONT_LOGIN_BUTTON = ("Segoe UI", 12, "bold")
-FONT_TOPBAR_BREADCRUMB = ("Segoe UI", 13, "bold")
-FONT_TOPBAR_USER = ("Segoe UI", 12)
-TOPBAR_HEIGHT = 58
-FONT_KPI = ("Segoe UI", 22, "bold")
-FONT_LABEL_SMALL = ("Segoe UI", 8)
+# Tamaños base (diseño). ``apply_theme`` los escala vía ui.responsive.
+_FONT_BODY_BASE = ("Segoe UI", 10)
+_FONT_BODY_BOLD_BASE = ("Segoe UI", 10, "bold")
+_FONT_PRIMARY_BUTTON_BASE = ("Segoe UI", 11, "bold")
+_FONT_TITLE_BASE = ("Segoe UI", 15, "bold")
+_FONT_LOGIN_TITLE_BASE = ("Segoe UI", 22, "bold")
+_FONT_LOGIN_LABEL_BASE = ("Segoe UI", 12)
+_FONT_LOGIN_INPUT_BASE = ("Segoe UI", 14)
+_FONT_LOGIN_BUTTON_BASE = ("Segoe UI", 12, "bold")
+_FONT_TOPBAR_BREADCRUMB_BASE = ("Segoe UI", 13, "bold")
+_FONT_TOPBAR_USER_BASE = ("Segoe UI", 12)
+_TOPBAR_HEIGHT_BASE = 58
+_FONT_KPI_BASE = ("Segoe UI", 22, "bold")
+_FONT_LABEL_SMALL_BASE = ("Segoe UI", 8)
+
+# Valores activos (tras apply_theme + responsive).
+FONT_BODY = _FONT_BODY_BASE
+FONT_BODY_BOLD = _FONT_BODY_BOLD_BASE
+FONT_PRIMARY_BUTTON = _FONT_PRIMARY_BUTTON_BASE
+FONT_TITLE = _FONT_TITLE_BASE
+FONT_LOGIN_TITLE = _FONT_LOGIN_TITLE_BASE
+FONT_LOGIN_LABEL = _FONT_LOGIN_LABEL_BASE
+FONT_LOGIN_INPUT = _FONT_LOGIN_INPUT_BASE
+FONT_LOGIN_BUTTON = _FONT_LOGIN_BUTTON_BASE
+FONT_TOPBAR_BREADCRUMB = _FONT_TOPBAR_BREADCRUMB_BASE
+FONT_TOPBAR_USER = _FONT_TOPBAR_USER_BASE
+TOPBAR_HEIGHT = _TOPBAR_HEIGHT_BASE
+FONT_KPI = _FONT_KPI_BASE
+FONT_LABEL_SMALL = _FONT_LABEL_SMALL_BASE
+
+
+def _aplicar_escala_fuentes() -> None:
+    """Actualiza fuentes/altura topbar según ui.responsive (cambio «responsive»)."""
+    global FONT_BODY, FONT_BODY_BOLD, FONT_PRIMARY_BUTTON, FONT_TITLE
+    global FONT_LOGIN_TITLE, FONT_LOGIN_LABEL, FONT_LOGIN_INPUT, FONT_LOGIN_BUTTON
+    global FONT_TOPBAR_BREADCRUMB, FONT_TOPBAR_USER, TOPBAR_HEIGHT
+    global FONT_KPI, FONT_LABEL_SMALL
+
+    from ui.responsive import sfont, sx
+
+    FONT_BODY = sfont(_FONT_BODY_BASE)
+    FONT_BODY_BOLD = sfont(_FONT_BODY_BOLD_BASE)
+    FONT_PRIMARY_BUTTON = sfont(_FONT_PRIMARY_BUTTON_BASE)
+    FONT_TITLE = sfont(_FONT_TITLE_BASE)
+    FONT_LOGIN_TITLE = sfont(_FONT_LOGIN_TITLE_BASE)
+    FONT_LOGIN_LABEL = sfont(_FONT_LOGIN_LABEL_BASE)
+    FONT_LOGIN_INPUT = sfont(_FONT_LOGIN_INPUT_BASE)
+    FONT_LOGIN_BUTTON = sfont(_FONT_LOGIN_BUTTON_BASE)
+    FONT_TOPBAR_BREADCRUMB = sfont(_FONT_TOPBAR_BREADCRUMB_BASE)
+    FONT_TOPBAR_USER = sfont(_FONT_TOPBAR_USER_BASE)
+    TOPBAR_HEIGHT = sx(_TOPBAR_HEIGHT_BASE)
+    FONT_KPI = sfont(_FONT_KPI_BASE)
+    FONT_LABEL_SMALL = sfont(_FONT_LABEL_SMALL_BASE)
 
 
 def apply_theme(root: tk.Misc) -> ttk.Style:
     """Configura ttk.Style con los tokens reales — se llama una vez al
     iniciar la app, antes de construir cualquier vista."""
+    _aplicar_escala_fuentes()
     style = ttk.Style(root)
     style.theme_use("clam")
 

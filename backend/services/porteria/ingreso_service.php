@@ -53,6 +53,13 @@ function ingresoRegistrarManual(
     $embedding = $datos['embedding'] ?? null;
     $vectorTexto = null;
     $huellaBytea = null;
+    $idEquipo = strtoupper(trim((string) ($datos['id_equipo'] ?? '')));
+    if ($idEquipo === '111111') {
+        $idEquipo = '';
+    }
+    if (strlen($idEquipo) > 50) {
+        throw new Exception('El número de serie del equipo no puede superar 50 caracteres.');
+    }
 
     if (is_array($embedding) && $embedding !== []) {
         require_once __DIR__ . '/biometria_service.php';
@@ -128,6 +135,7 @@ function ingresoRegistrarManual(
         $capturaPdf417 ? 'true' : 'false',
         $vectorTexto,
         $huellaBytea,
+        $idEquipo !== '' ? $idEquipo : null,
     ]);
 
     $idIngreso = $stmtFunRegistrar->fetchColumn();

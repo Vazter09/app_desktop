@@ -211,7 +211,8 @@ try {
 
     $sql_fun_registrar_ingreso = "SELECT fun_registrar_ingreso_manual(
         ?::NUMERIC, ?::VARCHAR, ?::NUMERIC, ?::VARCHAR, ?::VARCHAR,
-        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR, ?::BYTEA
+        ?::NUMERIC, ?::TEXT, ?::DECIMAL, ?::BOOLEAN, ?::VECTOR, ?::BYTEA,
+        ?::VARCHAR
     )";
     $stmt_fun_registrar_ingreso = $pdo->prepare($sql_fun_registrar_ingreso);
 

@@ -26,18 +26,19 @@ from ui.format_utils import (
     label_estado_instructor,
     label_tipo_contrato_instructor,
 )
+from ui.responsive import sfont, sx
 
 log = get_logger("ui.identification_confirmation_modal")
 
 AUTO_REGISTRO_MS = 2500
 
 # Foto cuadrada centrada (cabe en la misma caja que Nuevo ingreso).
-FOTO_SIZE = 152
+_FOTO_SIZE_BASE = 152
 
 # Tipografía local: un poco mayor que el formulario, solo en este panel.
-_FONT_TITULO = ("Segoe UI", 11, "bold")
-_FONT_LABEL = ("Segoe UI", 9)
-_FONT_VALOR = ("Segoe UI", 11, "bold")
+_FONT_TITULO_BASE = ("Segoe UI", 11, "bold")
+_FONT_LABEL_BASE = ("Segoe UI", 9)
+_FONT_VALOR_BASE = ("Segoe UI", 11, "bold")
 
 
 class IdentificationConfirmationPanel(tk.Frame):
@@ -57,7 +58,7 @@ class IdentificationConfirmationPanel(tk.Frame):
         on_error: Callable[[str], None] | None = None,
     ) -> None:
         # Misma cáscara que IngresoFormPanel (bg + padding).
-        super().__init__(master, bg=theme.BG_PANEL, padx=14, pady=12)
+        super().__init__(master, bg=theme.BG_PANEL, padx=sx(14), pady=sx(12))
         self._client = client
         self._persona_datos = persona_datos
         self._modo = modo
@@ -70,6 +71,10 @@ class IdentificationConfirmationPanel(tk.Frame):
         self._registro_en_curso = False
         self._cerrado = False
         self._foto_image: ImageTk.PhotoImage | None = None
+        self._foto_size = sx(_FOTO_SIZE_BASE)
+        self._font_titulo = sfont(_FONT_TITULO_BASE)
+        self._font_label = sfont(_FONT_LABEL_BASE)
+        self._font_valor = sfont(_FONT_VALOR_BASE)
 
         self._build()
         if self._auto_registro:
@@ -121,21 +126,21 @@ class IdentificationConfirmationPanel(tk.Frame):
             content,
             text=titulo,
             style="Card.TLabel",
-            font=_FONT_TITULO,
+            font=self._font_titulo,
         ).pack(anchor="center")
 
         foto_frame = tk.Frame(content, bg=theme.BG_PANEL)
-        foto_frame.pack(fill="x", pady=(14, 10))
+        foto_frame.pack(fill="x", pady=(sx(14), sx(10)))
         ttk.Label(
             foto_frame,
             text="FOTOGRAFÍA",
             style="Muted.TLabel",
-            font=_FONT_LABEL,
+            font=self._font_label,
         ).pack()
         self._foto_canvas = tk.Canvas(
             foto_frame,
-            width=FOTO_SIZE,
-            height=FOTO_SIZE,
+            width=self._foto_size,
+            height=self._foto_size,
             bg=theme.BG_DEEP,
             highlightthickness=1,
             highlightbackground=theme.BORDER,
@@ -147,6 +152,8 @@ class IdentificationConfirmationPanel(tk.Frame):
         nombres = str(d.get("nombres") or "")
         apellidos = str(d.get("apellidos") or "")
         nombre_completo = f"{nombres} {apellidos}".strip() or "—"
+
+        equipo_txt = str(d.get("id_equipo") or "").strip() or "—"
 
         if es_tipo_instructor(d.get("tipo_persona")):
             campos = [
@@ -160,6 +167,7 @@ class IdentificationConfirmationPanel(tk.Frame):
                     "Tipo contrato",
                     label_tipo_contrato_instructor(d.get("ind_tipo_contrato")),
                 ),
+                ("Equipo (serial)", equipo_txt),
             ]
         else:
             estado_txt = label_estado_formacion(
@@ -174,6 +182,7 @@ class IdentificationConfirmationPanel(tk.Frame):
                 ("Tipo", str(d.get("nom_tipo_persona") or "—")),
                 ("Estado", estado_txt),
                 ("Ficha", ficha_txt),
+                ("Equipo (serial)", equipo_txt),
             ]
 
         grid = tk.Frame(content, bg=theme.BG_PANEL)
@@ -187,16 +196,16 @@ class IdentificationConfirmationPanel(tk.Frame):
             cell.grid(
                 row=row,
                 column=col,
-                sticky="ew",
-                padx=(0 if col == 0 else 10, 0 if col == 1 else 10),
-                pady=(0 if row == 0 else 12, 0),
+                sticky="nw",
+                padx=(0 if col == 0 else sx(18), 0 if col == 1 else sx(18)),
+                pady=(0 if row == 0 else sx(12), 0),
             )
             tk.Label(
                 cell,
                 text=label,
                 bg=theme.BG_PANEL,
                 fg=theme.TEXT_MUTED,
-                font=_FONT_LABEL,
+                font=self._font_label,
                 anchor="w",
             ).pack(anchor="w")
             tk.Label(
@@ -204,10 +213,10 @@ class IdentificationConfirmationPanel(tk.Frame):
                 text=valor,
                 bg=theme.BG_PANEL,
                 fg=theme.TEXT_PRIMARY,
-                font=_FONT_VALOR,
+                font=self._font_valor,
                 anchor="w",
                 justify="left",
-                wraplength=170,
+                wraplength=sx(170),
             ).pack(anchor="w", pady=(2, 0))
 
     def _programar_auto_registro(self) -> None:
@@ -230,7 +239,7 @@ class IdentificationConfirmationPanel(tk.Frame):
         try:
             foto_pil = Image.open(io.BytesIO(b64decode(foto_b64)))
             foto_pil = foto_pil.resize(
-                (FOTO_SIZE, FOTO_SIZE), Image.Resampling.LANCZOS
+                (self._foto_size, self._foto_size), Image.Resampling.LANCZOS
             )
             self._foto_image = ImageTk.PhotoImage(foto_pil)
             self._foto_canvas.create_image(0, 0, image=self._foto_image, anchor="nw")
@@ -239,8 +248,8 @@ class IdentificationConfirmationPanel(tk.Frame):
             flush_handlers()
             self._foto_canvas.configure(bg=theme.BG_DEEP)
             self._foto_canvas.create_text(
-                FOTO_SIZE // 2,
-                FOTO_SIZE // 2,
+                self._foto_size // 2,
+                self._foto_size // 2,
                 text=f"Error foto\n{str(exc)[:18]}",
                 font=("Arial", 8),
                 fill=theme.ERROR,

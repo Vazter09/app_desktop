@@ -16,6 +16,7 @@ from ui import theme
 from ui.pages.inicio import InicioPage
 from ui.pages.ingreso import IngresoPage
 from ui.pages.salida import SalidaPage
+from ui.responsive import sfont, sx
 
 
 class AppShell(ttk.Frame):
@@ -65,14 +66,14 @@ class AppShell(ttk.Frame):
         topbar.grid_propagate(False)
 
         left = tk.Frame(topbar, bg=theme.BG_PANEL)
-        left.place(relx=0, rely=0.5, anchor="w", x=16)
+        left.place(relx=0, rely=0.5, anchor="w", x=sx(16))
 
         tk.Label(
             left,
             text="SMARTCSET",
             bg=theme.BG_PANEL,
             fg=theme.TEXT_PRIMARY,
-            font=("Segoe UI", 12, "bold"),
+            font=sfont(("Segoe UI", 12, "bold")),
         ).pack(side="left")
 
         tk.Label(
@@ -81,10 +82,10 @@ class AppShell(ttk.Frame):
             bg=theme.BG_PANEL,
             fg=theme.V_OLIVA,
             font=theme.FONT_TOPBAR_BREADCRUMB,
-        ).pack(side="left", padx=(16, 0))
+        ).pack(side="left", padx=(sx(16), 0))
 
         right = tk.Frame(topbar, bg=theme.BG_PANEL)
-        right.place(relx=1, rely=0.5, anchor="e", x=-16)
+        right.place(relx=1, rely=0.5, anchor="e", x=-sx(16))
 
         nombre = self._usuario.get("nombre") or self._usuario.get("id", "")
         tk.Label(
@@ -93,7 +94,7 @@ class AppShell(ttk.Frame):
             bg=theme.BG_PANEL,
             fg=theme.TEXT_PRIMARY,
             font=theme.FONT_TOPBAR_USER,
-        ).pack(side="left", padx=(0, 14))
+        ).pack(side="left", padx=(0, sx(14)))
 
         ttk.Button(
             right,

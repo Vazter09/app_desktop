@@ -35,11 +35,14 @@ from app_log import (  # noqa: E402
 from smartcset_client import SmartcsetClient  # noqa: E402
 from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
+from ui.responsive import init as init_responsive  # noqa: E402
+from ui.responsive import sx  # noqa: E402
 from ui.shell import AppShell  # noqa: E402
 
 # Ventana maximizada desde el arranque (login y portería).
-APP_MIN_WIDTH = 1280
-APP_MIN_HEIGHT = 860
+# Tamaños base; ``_aplicar_pantalla_completa`` los escala (responsive).
+_APP_MIN_WIDTH_BASE = 1280
+_APP_MIN_HEIGHT_BASE = 860
 log = get_logger("main")
 
 
@@ -79,6 +82,9 @@ class SmartcsetDesktopApp:
         self.root = tk.Tk()
         self.root.report_callback_exception = self._on_tk_callback_exception
         self.root.title("SmartCSET · App Escritorio SGI")
+        # responsive: factor según resolución antes de tema y vistas.
+        scale = init_responsive(self.root)
+        log.info("responsive scale=%.3f", scale)
         self._aplicar_pantalla_completa()
 
         theme.apply_theme(self.root)
@@ -109,15 +115,19 @@ class SmartcsetDesktopApp:
 
     def _aplicar_pantalla_completa(self) -> None:
         """Abre maximizada (barra de título visible; no fullscreen sin bordes)."""
-        self.root.minsize(APP_MIN_WIDTH, APP_MIN_HEIGHT)
+        self.root.update_idletasks()
+        sw = int(self.root.winfo_screenwidth())
+        sh = int(self.root.winfo_screenheight())
+        min_w = min(sx(_APP_MIN_WIDTH_BASE), sw)
+        min_h = min(sx(_APP_MIN_HEIGHT_BASE), max(480, sh - 40))
+        self.root.minsize(min_w, min_h)
         try:
             # Windows / varios gestores: maximizada.
             self.root.state("zoomed")
         except tk.TclError:
             # Fallback: ocupar casi toda el área usable.
-            self.root.update_idletasks()
-            ancho = max(APP_MIN_WIDTH, self.root.winfo_screenwidth())
-            alto = max(APP_MIN_HEIGHT, self.root.winfo_screenheight() - 40)
+            ancho = max(min_w, sw)
+            alto = max(min_h, sh - 40)
             self.root.geometry(f"{ancho}x{alto}+0+0")
 
     def _install_signal_handlers(self) -> None:

@@ -39,6 +39,7 @@ class PorteriaRouterPayload
             'txt_observaciones' => trim((string) ($json['observaciones'] ?? '')),
             'hid_metodo_aut' => (int) ($json['metodo_aut'] ?? 1),
             'hid_foto_data' => trim((string) ($json['foto_base64'] ?? '')),
+            'id_equipo' => strtoupper(trim((string) ($json['id_equipo'] ?? ''))),
         ];
     }
 

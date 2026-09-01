@@ -23,6 +23,12 @@ DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
 DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
     NUMERIC, NUMERIC, NUMERIC, JSONB, VECTOR, BYTEA
 );
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    NUMERIC, NUMERIC, NUMERIC, JSONB, VECTOR, BYTEA, VARCHAR
+);
+DROP FUNCTION IF EXISTS fun_insert_log_ingreso(
+    NUMERIC, NUMERIC, NUMERIC, JSONB, VECTOR, BYTEA, BOOLEAN, VARCHAR
+);
 
 CREATE OR REPLACE FUNCTION fun_insert_log_ingreso(
     wid_visitante       tab_log_ingresos.id_visitante%TYPE,
@@ -30,7 +36,8 @@ CREATE OR REPLACE FUNCTION fun_insert_log_ingreso(
     wid_entrada_ingreso tab_log_ingresos.id_entrada_ingreso%TYPE,
     wval_datos_origen   tab_log_ingresos.val_datos_origen%TYPE,
     wfacial_embedding   tab_log_ingresos.facial_embedding%TYPE DEFAULT NULL,
-    whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL
+    whuella_template    tab_log_ingresos.huella_template%TYPE DEFAULT NULL,
+    wid_equipo          tab_log_ingresos.id_equipo%TYPE DEFAULT NULL
 ) RETURNS BIGINT AS $$
 DECLARE
     wid_ingreso         BIGINT;
@@ -38,6 +45,8 @@ DECLARE
     wid_existente       BIGINT;
     wts_ultima_salida   TIMESTAMP WITHOUT TIME ZONE;
     wseg_desde_salida   NUMERIC;
+    wserial_equipo      TEXT;
+    wind_equipo         BOOLEAN;
     w_exc_state         TEXT;
     w_exc_msg           TEXT;
     w_exc_detail        TEXT;
@@ -110,17 +119,25 @@ BEGIN
     -- Hora civil Bogotá (no UTC de sesión del servidor).
     wts_ingreso := smartcset_now_local();
 
+    wserial_equipo := LEFT(TRIM(COALESCE(wid_equipo, '')), 50);
+    IF wserial_equipo = '' OR wserial_equipo = '111111' THEN
+        wind_equipo := FALSE;
+        wserial_equipo := '111111';
+    ELSE
+        wind_equipo := TRUE;
+    END IF;
+
     INSERT INTO tab_log_ingresos (
         id_visitante, fec_ingreso, fec_salida,
         id_metodo_ingreso, id_metodo_salida,
         id_entrada_ingreso, id_entrada_salida,
-        id_equipo, id_vehiculo,
+        ind_equipo, id_equipo, id_vehiculo,
         val_datos_origen, facial_embedding, huella_template
     ) VALUES (
         wid_visitante, wts_ingreso, wts_ingreso,
         wid_metodo_ingreso, 1,
         wid_entrada_ingreso, 1,
-        '111111', 'AAA000',
+        wind_equipo, wserial_equipo, 'AAA000',
         wval_datos_origen, wfacial_embedding, whuella_template
     )
     RETURNING id_ingreso INTO wid_ingreso;

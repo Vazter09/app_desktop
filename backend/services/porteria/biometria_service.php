@@ -12,8 +12,8 @@
  * ya puesto en el SQL preparado.
  */
 
-/** Umbral de distancia coseno por defecto — ver REGLAS_APP_ESCRITORIO_SGI.md §10.5. */
-const BIOMETRIA_UMBRAL_DISTANCIA_DEFAULT = 0.35;
+/** Umbral distancia coseno por defecto (webcam portería). */
+const BIOMETRIA_UMBRAL_DISTANCIA_DEFAULT = 0.55;
 
 /**
  * Dimensión esperada del vector facial (tab_personas.val_patron_facial /

@@ -23,6 +23,9 @@ _RE_NOMBRE_CHAR = re.compile(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ '\-]")
 _RE_OBS_CHAR = re.compile(
     r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,;:¡!¿?\-_\'\"#@/()°]"
 )
+# Serial de equipo: alfanumérico + guion/underscore (máx. 50 en BD).
+EQUIPO_SERIAL_MAX_LEN = 50
+_RE_EQUIPO_CHAR = re.compile(r"[^A-Za-z0-9\-_]")
 
 
 def sanear_documento(raw: str) -> str:
@@ -100,3 +103,23 @@ def mensaje_documento_invalido() -> str:
 
 def mensaje_nombre_invalido(campo: str = "Nombres") -> str:
     return f"{campo}: solo letras (sin números ni símbolos)."
+
+
+def filtrar_chars_equipo_serial(raw: str) -> str:
+    """Filtro en vivo: serial alfanumérico, máx. EQUIPO_SERIAL_MAX_LEN."""
+    cleaned = _RE_EQUIPO_CHAR.sub("", raw or "")
+    return cleaned[:EQUIPO_SERIAL_MAX_LEN].upper()
+
+
+def sanear_equipo_serial(raw: str) -> str:
+    return filtrar_chars_equipo_serial(raw).strip()
+
+
+def es_equipo_serial_valido(raw: str) -> bool:
+    """Vacío = sin equipo; si hay texto, 3–50 chars del charset permitido."""
+    s = sanear_equipo_serial(raw)
+    if not s:
+        return True
+    if s == "111111":
+        return False
+    return 3 <= len(s) <= EQUIPO_SERIAL_MAX_LEN

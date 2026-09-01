@@ -115,6 +115,7 @@ FUNCS=(
   "$ROOT/database/functions/acceso/sesiones/fun_validar_sesion_activa.sql"
   "$ROOT/database/functions/acceso/sesiones/fun_archivar_sesiones_antiguas.sql"
   "$ROOT/database/functions/porteria/fun_upsert_persona_visitante.sql"
+  "$ROOT/database/functions/porteria/fun_upsert_equipo_persona.sql"
   "$ROOT/database/functions/porteria/fun_buscar_ingreso_abierto.sql"
   "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql"
   "$ROOT/database/functions/porteria/fun_insert_novedad_diaria.sql"
@@ -212,7 +213,11 @@ for f in \
   "$ROOT/database/migrations/fix_auditoria_app_usuario.sql" \
   "$ROOT/database/migrations/fix_auditoria_eliminar_wusr.sql" \
   "$ROOT/database/migrations/fix_fun_audit_trigger_app_usuario_porteria.sql" \
-  "$ROOT/database/migrations/fix_fun_audit_trigger_safe_jsonb.sql"
+  "$ROOT/database/migrations/fix_fun_audit_trigger_safe_jsonb.sql" \
+  "$ROOT/database/migrations/add_equipo_ingreso_porteria.sql" \
+  "$ROOT/database/functions/porteria/fun_upsert_equipo_persona.sql" \
+  "$ROOT/database/functions/porteria/fun_insert_log_ingreso.sql" \
+  "$ROOT/database/functions/porteria/fun_registrar_ingreso_manual.sql"
 do
   [[ -f "$f" ]] && run_sql "$f"
 done
