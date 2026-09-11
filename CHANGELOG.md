@@ -5,13 +5,21 @@ Versiones lógicas del módulo `app_desktop` (no necesariamente tags de git).
 
 ---
 
+## [1.1.0] — 2026-09-03
+
+### Documentación
+
+- Reorganización de `docs/` según checklist (arc42, C4, Diátaxis, runbooks, ADR, API, BD).
+- Eliminado el paquete plano `00`–`11`; contenido migrado a carpetas temáticas.
+- Espejo Word (`.docx`) en `docs/word/` vía `_tools/export_to_docx.py` (python-docx).
+- Checklist maestro: `docs/CHECKLIST_DOCUMENTACION.md`.
+
 ## [1.0.0] — 2026-09-01
 
 ### Documentación
 
-- Paquete documental profesional en `docs/` (12 documentos + índice).
-- README actualizado al estado as-built.
-- Avisos en HANDOFF y REGLAS indicando que la entrega oficial vive en `docs/`.
+- Primer paquete documental profesional en `docs/` (plano 00–11; supersedido en 1.1.0).
+- README as-built; avisos en HANDOFF y REGLAS.
 
 ---
 

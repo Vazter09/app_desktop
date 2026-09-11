@@ -10,7 +10,7 @@ Doble clic en el icono. El codigo fuente no viaja con el ejecutable.
 
 Al **primer arranque** pueden aparecer junto al `.exe` (no son codigo):
 
-- `app_config.json` — URL del servidor (`https://10.5.213.111/smartcset`)
+- `app_config.json` — URL del servidor (`https://10.5.213.103/smartcset`)
 - `logs/` — registro de la app
 
 ## Regenerar y dejarlo en el Escritorio

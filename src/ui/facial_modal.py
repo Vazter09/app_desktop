@@ -47,6 +47,7 @@ from ui.camera import (
     frame_a_photoimage,
     listar_camaras_disponibles,
 )
+from ui.field_validators import serial_equipo_desde_payload
 from ui.huella_scan import HuellaScanCanvas
 from ui.identification_confirmation_modal import IdentificationConfirmationPanel
 
@@ -696,25 +697,11 @@ class FacialRecognitionPanel(ttk.Frame):
         return True
 
     def _asegurar_foto_persona(self, persona_datos: dict[str, Any]) -> None:
-        """Adjunta foto de enrolamiento y completa ficha/estado si faltan.
+        """Siempre rellena el modal desde consultar (nombre, tipo, ficha, etc.).
 
-        La foto/vector de referencia NO se reescribe aquí: ingreso/salida/
-        identificar deben comparar siempre contra el mismo enrolamiento.
-        Alta o cambio de rostro: botón «Capturar Rostro» (o primer enrol
-        post-registro si aún no hay foto).
-
-        Pistola/QR usa ``ingreso/consultar`` (formatPersona): si el backend
-        aún no traía aprendiz, un segundo consultar con foto rellena
-        ``id_ficha`` / ``estado_formacion`` además de ``foto_base64``.
+        Foto y serial de enrolamiento: se toman de consultar si existen;
+        si el servidor no los trae, se conservan los que ya tenía el panel.
         """
-        falta_foto = not persona_datos.get("foto_base64")
-        falta_ficha = persona_datos.get("id_ficha") in (None, "", 0)
-        falta_estado = (
-            persona_datos.get("estado_formacion") in (None, "")
-            and persona_datos.get("ind_etdo_formacion") in (None, "")
-        )
-        if not falta_foto and not falta_ficha and not falta_estado:
-            return
         documento = str(
             persona_datos.get("documento")
             or persona_datos.get("num_docum")
@@ -728,32 +715,39 @@ class FacialRecognitionPanel(ttk.Frame):
             resp = self._client.ingreso_consultar(
                 documento, tipo_doc, incluir_foto=True
             )
-            if falta_foto:
-                foto = resp.get("foto_base64")
-                if foto:
-                    persona_datos["foto_base64"] = foto
             persona = resp.get("persona")
-            if isinstance(persona, dict):
-                for key in (
-                    "id_ficha",
-                    "estado_formacion",
-                    "ind_etdo_formacion",
-                    "ind_estado_instructor",
-                    "ind_tipo_contrato",
-                    "nom_tipo_persona",
-                    "tipo_persona",
-                    "nombres",
-                    "apellidos",
-                ):
-                    val = persona.get(key)
-                    if val in (None, ""):
-                        continue
-                    if key == "id_ficha" and val in (0, "0"):
-                        continue
-                    if persona_datos.get(key) in (None, "", 0):
-                        persona_datos[key] = val
+            if not isinstance(persona, dict):
+                persona = {}
+            for key in (
+                "nombres",
+                "apellidos",
+                "tipo_persona",
+                "nom_tipo_persona",
+                "id_ficha",
+                "estado_formacion",
+                "ind_etdo_formacion",
+                "ind_estado_instructor",
+                "ind_tipo_contrato",
+                "documento",
+                "tipo_doc",
+            ):
+                val = persona.get(key)
+                if val in (None, ""):
+                    continue
+                if key == "id_ficha" and val in (0, "0"):
+                    continue
+                persona_datos[key] = val
+            foto = resp.get("foto_base64") or persona.get("foto_base64")
+            if foto:
+                persona_datos["foto_base64"] = foto
+            serial = serial_equipo_desde_payload(resp)
+            if serial:
+                persona_datos["id_equipo"] = serial
+            equipos = resp.get("equipos")
+            if isinstance(equipos, list) and equipos:
+                persona_datos["equipos"] = equipos
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            log.warning("Foto/ficha enrolada no disponible: %s", exc)
+            log.warning("Datos de persona para el modal no disponibles: %s", exc)
             flush_handlers()
 
     def _persona_tiene_foto_enrolada(
@@ -764,9 +758,11 @@ class FacialRecognitionPanel(ttk.Frame):
             resp = self._client.ingreso_consultar(
                 documento, tipo_doc, incluir_foto=True
             )
-            return bool(
-                resp.get("tiene_patron_facial") or resp.get("foto_base64")
+            persona = resp.get("persona") or {}
+            foto = resp.get("foto_base64") or (
+                persona.get("foto_base64") if isinstance(persona, dict) else None
             )
+            return bool(resp.get("tiene_patron_facial") or foto)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Consulta foto enrolada omitida: %s", exc)
             flush_handlers()
@@ -1779,8 +1775,7 @@ class FacialRecognitionPanel(ttk.Frame):
             self._marcar_post_ingreso_doc(documento, VENTANA_5_MIN_MS)
         # Enrolar rostro + foto si la cámara capturó cara (rellena modal).
         self._enrolar_tras_registro_manual(persona_datos)
-        if not persona_datos.get("foto_base64"):
-            self._asegurar_foto_persona(persona_datos)
+        self._asegurar_foto_persona(persona_datos)
         self._fijar_tamano_columna_central()
         if self._confirmacion_modal is not None:
             try:
@@ -2385,6 +2380,13 @@ class FacialRecognitionPanel(ttk.Frame):
             payload["embedding"] = self._ultimo_embedding
         if metodo == 5 and self._ultimo_huella_b64:
             payload["huella_template_b64"] = self._ultimo_huella_b64
+        serial = serial_equipo_desde_payload(persona) or serial_equipo_desde_payload(
+            consulta
+        )
+        if serial:
+            payload["id_equipo"] = serial
+            payload["ind_equipo"] = True
+            payload["descripcion_equipo"] = "Pendiente"
 
         resultado = self._client.ingreso_registrar(payload)
         self._limpiar_espera_reingreso_doc(documento)
