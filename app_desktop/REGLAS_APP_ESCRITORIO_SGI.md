@@ -1,6 +1,13 @@
 
 # Reglas y Arquitectura — App de Escritorio SGI (Portería)
 
+> **Nota (2026-09-03):** Documento de **diseño interno** (puede divergir del as-built).
+> Entrega oficial: [`docs/CHECKLIST_DOCUMENTACION.md`](docs/CHECKLIST_DOCUMENTACION.md)
+> y [`docs/arquitectura/`](docs/arquitectura/).
+> Divergencias: motor in-process (no 2 procesos HTTPS); vector 128-d;
+> UI sin sidebar; enrolamiento AS-BUILT en `tab_personas.val_patron_facial`
+> (no solo `tab_enrolamiento_facial`). Ver `docs/arquitectura/03-contexto-y-alcance.md`.
+
 ## Documento de diseño validado post-implementación (2026-07-09)
 
 **Última actualización:** 2026-07-09 | **Estado de validación:** ✅ Implementado y probado end-to-end

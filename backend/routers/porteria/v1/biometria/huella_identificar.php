@@ -44,6 +44,9 @@ try {
 
     $stmt_biometria_persona_completa->execute([(string) $idPersona]);
     $persona = $stmt_biometria_persona_completa->fetch();
+    if ($persona !== false) {
+        $persona = porteriaAdjuntarEquipoAsignado($pdo, $persona);
+    }
 
     $fotoBase64 = null;
     if ($persona !== false) {

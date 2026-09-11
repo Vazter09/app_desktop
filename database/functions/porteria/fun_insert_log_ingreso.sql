@@ -121,6 +121,19 @@ BEGIN
 
     wserial_equipo := LEFT(TRIM(COALESCE(wid_equipo, '')), 50);
     IF wserial_equipo = '' OR wserial_equipo = '111111' THEN
+        -- Sin serial en este ingreso: heredar el catálogo (id_propietario =
+        -- visitante). Varios equipos → el más reciente.
+        SELECT LEFT(TRIM(e.id_equipo), 50)
+          INTO wserial_equipo
+          FROM tab_equipos e
+         WHERE e.id_propietario = wid_visitante
+           AND TRIM(e.id_equipo) <> ''
+           AND e.id_equipo <> '111111'
+         ORDER BY e.fec_insert DESC NULLS LAST, e.id_equipo ASC
+         LIMIT 1;
+        wserial_equipo := LEFT(TRIM(COALESCE(wserial_equipo, '')), 50);
+    END IF;
+    IF wserial_equipo = '' OR wserial_equipo = '111111' THEN
         wind_equipo := FALSE;
         wserial_equipo := '111111';
     ELSE

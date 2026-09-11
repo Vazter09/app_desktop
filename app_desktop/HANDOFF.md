@@ -1,5 +1,10 @@
 # HANDOFF.md — App de Escritorio SGI (Portería)
 
+> **Nota (2026-09-03):** Documento **interno de ingeniería** (bitácora).
+> Entrega oficial: [`docs/CHECKLIST_DOCUMENTACION.md`](docs/CHECKLIST_DOCUMENTACION.md)
+> y [`docs/README.md`](docs/README.md) (estructura arc42 / Diátaxis / Word).
+> Ante divergencia, prevalecen el código en `src/` y `docs/`.
+
 **Última actualización:** 2026-07-09 (tarde — Foto de enrolamiento Opción A + Modal confirmación + fix de aridad PL/pgSQL + tests)  
 **Estado actual:** ✅ OPERATIVA — biometría con foto real, probada 13/13 tests contra servidor de laboratorio (`.env` → `192.168.1.71`)  
 **Próximo hito:** Feature #1 (Caché offline) | Feature #3 (Validaciones mejoradas)

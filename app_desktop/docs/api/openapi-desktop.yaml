@@ -1,0 +1,511 @@
+openapi: 3.0.3
+info:
+  title: SmartCSET App Desktop — paths consumidos
+  description: |
+    Especificación OpenAPI **manual** del cliente de escritorio (`app_desktop`).
+    No es auto-generada desde PHP ni desde Python.
+
+    Documenta únicamente los paths HTTP que consume `SmartcsetClient`
+    (`src/smartcset_client.py`). El servidor canónico del monorepo puede
+    exponer más endpoints; no están aquí.
+
+    AS-BUILT: embedding facial = **128** dimensiones (SFace), no 512.
+    Autenticación: cookie de sesión PHP (`PHPSESSID`) tras login.
+  version: 1.0.0
+  contact:
+    name: Equipo de Desarrollo SmartCSET
+
+servers:
+  - url: https://localhost/smartcset
+    description: Desarrollo local (Apache HTTPS)
+  - url: https://10.5.213.103/smartcset
+    description: Servidor institucional (ejemplo)
+
+tags:
+  - name: auth
+  - name: porteria-consulta
+  - name: porteria-registro
+  - name: biometria-facial
+  - name: biometria-huella
+  - name: entradas
+
+paths:
+  /routers/auth/v1/login.php:
+    post:
+      tags: [auth]
+      summary: Login sesión web (desktop)
+      operationId: desktopLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario, clave, origen]
+              properties:
+                usuario:
+                  type: string
+                clave:
+                  type: string
+                  format: password
+                origen:
+                  type: string
+                  enum: [desktop]
+      responses:
+        "200":
+          description: Sesión creada; Set-Cookie PHPSESSID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkUsuario"
+
+  /routers/auth/v1/logout.php:
+    get:
+      tags: [auth]
+      summary: Cerrar sesión
+      operationId: desktopLogout
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Logout (cuerpo según servidor)
+
+  /routers/porteria/v1/ingreso/hoy.php:
+    get:
+      tags: [porteria-consulta]
+      summary: Ingresos de hoy
+      operationId: ingresosHoy
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Lista en data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/salida/hoy.php:
+    get:
+      tags: [porteria-consulta]
+      summary: Salidas de hoy
+      operationId: salidasHoy
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Lista en data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/catalogos.php:
+    get:
+      tags: [porteria-consulta]
+      summary: Tipos doc/persona y entradas
+      operationId: catalogos
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Catalogos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/ingreso/consultar.php:
+    get:
+      tags: [porteria-consulta]
+      summary: Consultar persona para ingreso
+      operationId: ingresoConsultar
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: documento
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: tipo_doc
+          in: query
+          schema:
+            type: string
+            default: CC
+        - name: incluir_foto
+          in: query
+          schema:
+            type: string
+            enum: ["0", "1"]
+            default: "1"
+      responses:
+        "200":
+          description: Datos de persona / flags biométricos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/salida/consultar.php:
+    get:
+      tags: [porteria-consulta]
+      summary: Consultar ingreso abierto para salida
+      operationId: salidaConsultar
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: documento
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: tipo_doc
+          in: query
+          schema:
+            type: string
+            default: CC
+      responses:
+        "200":
+          description: Ingreso abierto o mensaje de negocio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/ingreso/registrar.php:
+    post:
+      tags: [porteria-registro]
+      summary: Registrar ingreso
+      operationId: ingresoRegistrar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngresoPayload"
+      responses:
+        "200":
+          description: Ingreso creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+        "400":
+          description: Validación / negocio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailError"
+
+  /routers/porteria/v1/ingreso/actualizar_captura.php:
+    post:
+      tags: [porteria-registro]
+      summary: Actualizar captura asociada a ingreso
+      operationId: ingresoActualizarCaptura
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/salida/registrar.php:
+    post:
+      tags: [porteria-registro]
+      summary: Registrar salida
+      operationId: salidaRegistrar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documento]
+              properties:
+                documento:
+                  type: string
+                tipo_doc:
+                  type: string
+                metodo_aut:
+                  type: integer
+      responses:
+        "200":
+          description: Salida registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/biometria/enrolar.php:
+    post:
+      tags: [biometria-facial]
+      summary: Enrolar vector facial 128-d + foto opcional
+      operationId: biometriaEnrolar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrolarFacial"
+      responses:
+        "200":
+          description: Enrolamiento guardado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/biometria/identificar.php:
+    post:
+      tags: [biometria-facial]
+      summary: Identificar por embedding 128-d
+      operationId: biometriaIdentificar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentificarFacial"
+      responses:
+        "200":
+          description: match true/false + persona + foto enrolamiento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/biometria/huella_enrolar.php:
+    post:
+      tags: [biometria-huella]
+      summary: Enrolar huella (placeholder desktop)
+      operationId: biometriaHuellaEnrolar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documento, huella_template_b64]
+              properties:
+                documento:
+                  type: string
+                huella_template_b64:
+                  type: string
+                calidad_huella:
+                  type: number
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/porteria/v1/biometria/huella_identificar.php:
+    post:
+      tags: [biometria-huella]
+      summary: Identificar por huella (placeholder)
+      operationId: biometriaHuellaIdentificar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [huella_template_b64]
+              properties:
+                huella_template_b64:
+                  type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+  /routers/entradas/v1/guardar.php:
+    post:
+      tags: [entradas]
+      summary: Crear/actualizar entrada (admin)
+      operationId: entradaGuardar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+        "403":
+          description: Sin privilegio admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailError"
+
+  /routers/entradas/v1/eliminar.php:
+    post:
+      tags: [entradas]
+      summary: Eliminar entrada (admin)
+      operationId: entradaEliminar
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_entrada]
+              properties:
+                id_entrada:
+                  type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkData"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: PHPSESSID
+      description: Cookie de sesión PHP tras login exitoso
+
+  schemas:
+    OkData:
+      type: object
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          additionalProperties: true
+
+    OkUsuario:
+      type: object
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            usuario:
+              type: object
+              properties:
+                id:
+                  type: string
+                nombre:
+                  type: string
+                admin:
+                  type: boolean
+
+    FailError:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+
+    Embedding128:
+      type: array
+      minItems: 128
+      maxItems: 128
+      items:
+        type: number
+      description: Vector SFace — exactamente 128 floats (AS-BUILT)
+
+    EnrolarFacial:
+      type: object
+      required: [documento, embedding]
+      properties:
+        documento:
+          type: string
+        tipo_doc:
+          type: string
+          default: CC
+        embedding:
+          $ref: "#/components/schemas/Embedding128"
+        calidad_facial:
+          type: number
+        foto_base64:
+          type: string
+          description: JPEG en base64
+        forzar:
+          type: boolean
+          default: false
+
+    IdentificarFacial:
+      type: object
+      required: [embedding]
+      properties:
+        embedding:
+          $ref: "#/components/schemas/Embedding128"
+        umbral_distancia:
+          type: number
+          description: Distancia coseno máxima para match
+
+    IngresoPayload:
+      type: object
+      required: [documento]
+      properties:
+        documento:
+          type: string
+        tipo_doc:
+          type: string
+        id_tipo_persona:
+          type: integer
+        id_entrada_centro:
+          type: integer
+        metodo_aut:
+          type: integer
+          description: "1 manual, 2 QR, 3 barras, 4 facial, 5 huella"
+        primer_nombre:
+          type: string
+        primer_apellido:
+          type: string
+        embedding:
+          $ref: "#/components/schemas/Embedding128"

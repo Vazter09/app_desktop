@@ -103,6 +103,19 @@ class PorteriaRouterPayload
     }
 
     /**
+     * Serial de catálogo ya adjuntado a la persona. Placeholder 111111 = vacío.
+     */
+    private static function serialEquipoPersona(array $persona): string
+    {
+        $id = strtoupper(trim((string) ($persona['id_equipo'] ?? '')));
+        if ($id === '' || $id === '111111') {
+            return '';
+        }
+
+        return $id;
+    }
+
+    /**
      * @param array<string, mixed>|null $persona
      * @return array<string, mixed>|null
      */
@@ -120,6 +133,7 @@ class PorteriaRouterPayload
             'apellidos' => (string) ($persona['ape_persona'] ?? $persona['apellidos'] ?? ''),
             'tipo_persona' => (int) ($persona['id_tipo_persona'] ?? 0),
             'nom_tipo_persona' => (string) ($persona['nom_tipo_persona'] ?? ''),
+            'id_equipo' => self::serialEquipoPersona($persona),
             // Aprendiz (NULL si no aplica): modal pistola/QR y biometría.
             'id_ficha' => isset($persona['id_ficha']) ? (int) $persona['id_ficha'] : null,
             'estado_formacion' => isset($persona['ind_etdo_formacion'])
@@ -145,6 +159,7 @@ class PorteriaRouterPayload
         return array_merge([
             'id_persona' => (int) ($persona['id_persona'] ?? 0),
             'tipo_doc' => (string) ($persona['id_tipo_docum'] ?? ''),
+            'id_equipo' => self::serialEquipoPersona($persona),
             'nom_tipo_docum' => (string) ($persona['nom_tipo_docum'] ?? ''),
             'documento' => (string) ($persona['id_persona'] ?? ''),
             'nombres' => (string) ($persona['nom_persona'] ?? ''),

@@ -26,6 +26,7 @@ from ui.format_utils import (
     label_estado_instructor,
     label_tipo_contrato_instructor,
 )
+from ui.field_validators import serial_equipo_desde_payload
 from ui.responsive import sfont, sx
 
 log = get_logger("ui.identification_confirmation_modal")
@@ -153,7 +154,7 @@ class IdentificationConfirmationPanel(tk.Frame):
         apellidos = str(d.get("apellidos") or "")
         nombre_completo = f"{nombres} {apellidos}".strip() or "—"
 
-        equipo_txt = str(d.get("id_equipo") or "").strip() or "—"
+        equipo_txt = serial_equipo_desde_payload(d) or "—"
 
         if es_tipo_instructor(d.get("tipo_persona")):
             campos = [

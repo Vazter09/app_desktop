@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 from app_paths import is_frozen, writable_root
 
 # Servidor institucional SENA (PC de portería / .exe empaquetado).
-PRODUCTION_BASE_URL = "https://10.5.213.111/smartcset"
+PRODUCTION_BASE_URL = "https://10.5.213.103/smartcset"
 # Desarrollo local vía Apache.
 DEV_BASE_URL = "https://localhost/smartcset"
 
@@ -38,7 +38,7 @@ def config_path() -> str:
 class AppConfig:
     base_url: str = DEV_BASE_URL
     # None = automático (False solo en localhost). False explícito = lab
-    # con certificado autofirmado (ej. 10.5.213.111).
+    # o institucional con certificado autofirmado (ej. 10.5.213.103).
     verify_tls_override: bool | None = None
 
     @classmethod

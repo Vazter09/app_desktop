@@ -53,5 +53,5 @@ if (-not (Test-Path $ExePath)) {
 Write-Host ""
 Write-Host "LISTO (archivo unico):"
 Write-Host "  $ExePath"
-Write-Host "  base_url embebida = https://10.5.213.111/smartcset"
+Write-Host "  base_url embebida = https://10.5.213.103/smartcset"
 Write-Host "Copia solo ese .exe al PC de porteria."

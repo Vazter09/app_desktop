@@ -26,9 +26,35 @@ from ui.field_validators import (
     sanear_equipo_serial,
     sanear_nombre,
     sanear_observacion,
+    serial_equipo_desde_payload,
 )
 
 log = get_logger("ui.ingreso_form_panel")
+
+
+def _foto_desde_consulta(resultado: dict[str, Any]) -> str | None:
+    """Foto de enrolamiento: raíz de consultar o persona."""
+    foto = resultado.get("foto_base64")
+    if foto:
+        return str(foto)
+    persona = resultado.get("persona") or {}
+    foto = persona.get("foto_base64") if isinstance(persona, dict) else None
+    return str(foto) if foto else None
+
+
+def _enriquecer_persona_consulta(
+    resultado: dict[str, Any], persona: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    if not isinstance(persona, dict):
+        return persona
+    extra: dict[str, Any] = {}
+    foto = _foto_desde_consulta(resultado)
+    if foto:
+        extra["foto_base64"] = foto
+    serial = serial_equipo_desde_payload(resultado)
+    if serial:
+        extra["id_equipo"] = serial
+    return {**persona, **extra} if extra else persona
 
 
 class IngresoFormPanel(tk.Frame):
@@ -614,7 +640,10 @@ class IngresoFormPanel(tk.Frame):
 
         if resultado.get("ingreso_abierto") is not None:
             self._bloqueo_ingreso = True
-            self._persona_existente = resultado.get("persona")
+            persona_abierta = _enriquecer_persona_consulta(
+                resultado, resultado.get("persona")
+            )
+            self._persona_existente = persona_abierta
             self._badge_var.set("Ya tiene ingreso abierto")
             self._badge_lbl.configure(fg=theme.ERROR)
             self._estado_barra(
@@ -630,7 +659,9 @@ class IngresoFormPanel(tk.Frame):
 
         if resultado.get("en_espera_reingreso"):
             self._bloqueo_ingreso = True
-            persona = resultado.get("persona") or {}
+            persona = _enriquecer_persona_consulta(
+                resultado, resultado.get("persona") or {}
+            ) or {}
             self._persona_existente = persona or None
             rest = int(resultado.get("segundos_restantes_reingreso") or 0)
             min_rest = max(1, (rest + 59) // 60)
@@ -656,6 +687,7 @@ class IngresoFormPanel(tk.Frame):
             self._msg_var.set("")
             return
 
+        persona = _enriquecer_persona_consulta(resultado, persona) or persona
         self.aplicar_persona_identificada(
             {
                 **persona,
@@ -737,8 +769,12 @@ class IngresoFormPanel(tk.Frame):
             # Default manual; FacialModal puede reclasificar a 4/5 si hay bio.
             "metodo_aut": 1,
         }
+        if not equipo_serial:
+            equipo_serial = serial_equipo_desde_payload(self._persona_existente)
         if equipo_serial:
             payload["id_equipo"] = equipo_serial
+            payload["ind_equipo"] = True
+            payload["descripcion_equipo"] = "Pendiente"
         if self._on_enriquecer_payload is not None:
             self._on_enriquecer_payload(payload)
         try:
@@ -779,6 +815,8 @@ class IngresoFormPanel(tk.Frame):
             ),
             # Sin enrolamiento facial: el panel deja la caja oscura vacía.
             "foto_base64": (self._persona_existente or {}).get("foto_base64"),
+            "id_equipo": equipo_serial
+            or serial_equipo_desde_payload(self._persona_existente),
         }
         # Tras registrar, reconsultar para traer campos de tab_instructores
         # (si ya existe fila) y tipo/nombre canónicos de BD.
@@ -800,6 +838,12 @@ class IngresoFormPanel(tk.Frame):
                 ):
                     if persona_api.get(key) is not None:
                         persona_datos[key] = persona_api.get(key)
+            foto = _foto_desde_consulta(consulta)
+            if foto:
+                persona_datos["foto_base64"] = foto
+            serial = serial_equipo_desde_payload(consulta)
+            if serial:
+                persona_datos["id_equipo"] = serial
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Enrichment post-registro omitido: %s", exc)
             flush_handlers()

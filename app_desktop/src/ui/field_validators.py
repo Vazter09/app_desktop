@@ -115,6 +115,41 @@ def sanear_equipo_serial(raw: str) -> str:
     return filtrar_chars_equipo_serial(raw).strip()
 
 
+EQUIPO_PLACEHOLDER = "111111"
+
+
+def serial_equipo_efectivo(raw: object) -> str:
+    """Serial usable: vacío si falta o es el placeholder 111111."""
+    s = sanear_equipo_serial(str(raw or ""))
+    if not s or s == EQUIPO_PLACEHOLDER:
+        return ""
+    if "," in s:
+        return serial_equipo_efectivo(s.split(",", 1)[0])
+    return s
+
+
+def serial_equipo_desde_payload(data: dict | None) -> str:
+    """Serial desde persona, lista equipos o consultar."""
+    if not isinstance(data, dict):
+        return ""
+    serial = serial_equipo_efectivo(data.get("id_equipo"))
+    if serial:
+        return serial
+    equipos = data.get("equipos")
+    if isinstance(equipos, list):
+        for row in equipos:
+            if isinstance(row, dict):
+                serial = serial_equipo_efectivo(row.get("id_equipo"))
+            else:
+                serial = serial_equipo_efectivo(row)
+            if serial:
+                return serial
+    persona = data.get("persona")
+    if isinstance(persona, dict):
+        return serial_equipo_desde_payload(persona)
+    return ""
+
+
 def es_equipo_serial_valido(raw: str) -> bool:
     """Vacío = sin equipo; si hay texto, 3–50 chars del charset permitido."""
     s = sanear_equipo_serial(raw)

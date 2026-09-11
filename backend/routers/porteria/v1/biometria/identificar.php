@@ -57,6 +57,9 @@ try {
 
     $stmt_biometria_persona_completa->execute([(string) $idPersona]);
     $persona = $stmt_biometria_persona_completa->fetch();
+    if ($persona !== false) {
+        $persona = porteriaAdjuntarEquipoAsignado($pdo, $persona);
+    }
 
     // Foto de enrolamiento: tab_personas.ruta_foto_facial (+ fallback carpeta).
     $fotoBase64 = null;

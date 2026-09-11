@@ -56,6 +56,50 @@ function porteriaBuscarPersona(PDOStatement $stmtBuscar, string $documento, stri
 }
 
 /**
+ * Serial catalogado para la persona (tab_equipos.id_propietario).
+ * Varios equipos: el más reciente. Ignora placeholder 111111.
+ */
+function porteriaSerialEquipoAsignado(PDO $pdo, string $idPersona): string
+{
+    $id = trim($idPersona);
+    if ($id === '' || $id === '0') {
+        return '';
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT id_equipo
+           FROM tab_equipos
+          WHERE id_propietario = ?::NUMERIC
+            AND TRIM(id_equipo) <> ''
+            AND id_equipo <> '111111'
+          ORDER BY fec_insert DESC NULLS LAST, id_equipo ASC
+          LIMIT 1"
+    );
+    $stmt->execute([$id]);
+    $serial = strtoupper(trim((string) $stmt->fetchColumn()));
+    if ($serial === '' || $serial === '111111') {
+        return '';
+    }
+
+    return $serial;
+}
+
+/**
+ * @param array<string, mixed>|null $persona
+ * @return array<string, mixed>|null
+ */
+function porteriaAdjuntarEquipoAsignado(PDO $pdo, ?array $persona): ?array
+{
+    if ($persona === null) {
+        return null;
+    }
+    $id = (string) ($persona['id_persona'] ?? '');
+    $persona['id_equipo'] = porteriaSerialEquipoAsignado($pdo, $id);
+
+    return $persona;
+}
+
+/**
  * Segundos desde un timestamp de BD (hora civil Colombia / DB_TIMEZONE).
  *
  * Si el valor naive queda "en el futuro" al interpretarlo como Bogotá,
