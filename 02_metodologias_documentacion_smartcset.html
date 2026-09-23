@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metodologías de Documentación — SmartCSET</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#f5f3ea; --surface:#ffffff; --surface-2:#efece0;
+    --ink:#16231d; --ink-soft:#4a564d;
+    --line:#d9d4bf; --line-soft:#e6e2d2;
+    --accent:#004d40; --accent-ink:#ffffff; --accent-soft:#e2ece7; --accent-soft-line:#b9d2c8;
+    --oliva:#6f6f22; --oliva-soft:#eeeed6;
+    --finding:#9a4e0c; --finding-soft:#f7e9d9; --finding-line:#e6c497;
+    --pend:#7a6a00; --pend-soft:#f5efd6; --pend-line:#dccf8f;
+    --code-bg:#12201c; --code-ink:#eef3ee;
+    --shadow: 0 1px 2px rgba(22,35,29,.06), 0 6px 20px -8px rgba(22,35,29,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#101b16; --surface:#16241e; --surface-2:#1c2c24;
+      --ink:#e9f0ea; --ink-soft:#a9baae;
+      --line:#2d3f34; --line-soft:#233329;
+      --accent:#5fbfa2; --accent-ink:#0b1712; --accent-soft:#1b3129; --accent-soft-line:#2c4a3d;
+      --oliva:#d3d36f; --oliva-soft:#28301a;
+      --finding:#e3a15c; --finding-soft:#3a2a15; --finding-line:#6b4a20;
+      --pend:#e3d15c; --pend-soft:#332e12; --pend-line:#5c522a;
+      --code-bg:#0c1512; --code-ink:#dcece2;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#101b16; --surface:#16241e; --surface-2:#1c2c24;
+    --ink:#e9f0ea; --ink-soft:#a9baae;
+    --line:#2d3f34; --line-soft:#233329;
+    --accent:#5fbfa2; --accent-ink:#0b1712; --accent-soft:#1b3129; --accent-soft-line:#2c4a3d;
+    --oliva:#d3d36f; --oliva-soft:#28301a;
+    --finding:#e3a15c; --finding-soft:#3a2a15; --finding-line:#6b4a20;
+    --pend:#e3d15c; --pend-soft:#332e12; --pend-line:#5c522a;
+    --code-bg:#0c1512; --code-ink:#dcece2;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; line-height:1.62; }
+  h1,h2,h3,h4{ font-family:"IBM Plex Sans",system-ui,sans-serif; font-weight:600; text-wrap:balance; color:var(--ink); }
+  code, .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; }
+  a{ color:var(--accent); }
+  p{ margin:0 0 12px; font-family:"IBM Plex Serif", Georgia, serif; font-size:15px; color:var(--ink); max-width:76ch; }
+  li{ font-family:"IBM Plex Serif", Georgia, serif; font-size:15px; }
+
+  .wrap{ max-width:900px; margin:0 auto; padding:40px 28px 100px; }
+
+  .eyebrow{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--oliva); font-weight:600; }
+  header.hero{ padding-bottom:22px; margin-bottom:26px; border-bottom:1px solid var(--line); }
+  header.hero h1{ font-size:27px; margin:8px 0 10px; }
+  header.hero .desc{ font-family:"IBM Plex Serif",Georgia,serif; font-size:15px; color:var(--ink-soft); max-width:72ch; }
+
+  .metabox{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:16px 20px; margin:20px 0 8px; box-shadow:var(--shadow);
+    display:grid; grid-template-columns:1fr 1fr; gap:10px 28px;
+  }
+  .metabox .row{ display:flex; flex-direction:column; gap:2px; }
+  .metabox .k{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); }
+  .metabox .v{ font-size:13.5px; color:var(--ink); }
+  .metabox .v.full{ grid-column:1 / -1; }
+
+  nav.toc{
+    background:var(--surface-2); border:1px solid var(--line-soft); border-radius:10px;
+    padding:14px 18px; margin:30px 0 40px; font-size:13px;
+  }
+  nav.toc .k{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:8px; display:block; }
+  nav.toc ol{ margin:0; padding-left:18px; columns:2; column-gap:24px; }
+  nav.toc li{ font-family:"IBM Plex Sans",sans-serif; font-size:13px; margin-bottom:4px; break-inside:avoid; }
+  nav.toc a{ text-decoration:none; }
+  nav.toc a:hover{ text-decoration:underline; }
+
+  section.std{ padding-top:44px; margin-top:-16px; border-top:1px dashed var(--line); scroll-margin-top:16px; }
+  section.std:first-of-type{ border-top:none; }
+  section.std > .tag{
+    display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600;
+    color:var(--accent); background:var(--accent-soft); border:1px solid var(--accent-soft-line);
+    border-radius:5px; padding:2px 8px; margin-bottom:10px;
+  }
+  section.std h2{ font-size:20px; margin:0 0 4px; border-bottom:2px solid var(--accent); padding-bottom:10px; scroll-margin-top:16px; }
+  section.std .subtitle{ font-size:13px; color:var(--ink-soft); margin:6px 0 18px; font-family:"IBM Plex Sans",sans-serif; }
+  section.std h3{ font-size:15px; margin:22px 0 8px; }
+  section.std strong{ color:var(--ink); font-weight:600; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px 22px; margin:14px 0 8px; }
+  @media (max-width:640px){ .grid2{ grid-template-columns:1fr; } nav.toc ol{ columns:1; } .metabox{ grid-template-columns:1fr; } }
+
+  .callout{
+    border-radius:10px; padding:12px 16px; margin:14px 0; border:1px solid var(--line);
+    font-family:"IBM Plex Serif",Georgia,serif; font-size:14px;
+  }
+  .callout p{ margin:0; font-size:14px; }
+  .callout.finding{ background:var(--finding-soft); border-color:var(--finding-line); }
+  .callout.finding strong{ color:var(--finding); }
+  .callout.pend{ background:var(--pend-soft); border-color:var(--pend-line); }
+  .callout.pend strong{ color:var(--pend); }
+
+  table{ width:100%; border-collapse:collapse; margin:14px 0 18px; font-size:13px; }
+  th,td{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  th{ font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; }
+  tr:last-child td{ border-bottom:none; }
+
+  .ref{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
+  .ref a{ word-break:break-all; }
+
+  .badge{
+    display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600;
+    border-radius:5px; padding:2px 8px; margin:0 4px 4px 0;
+  }
+  .badge.done{ color:var(--accent); background:var(--accent-soft); border:1px solid var(--accent-soft-line); }
+  .badge.wait{ color:var(--pend); background:var(--pend-soft); border:1px solid var(--pend-line); }
+
+  footer{ margin-top:60px; padding-top:20px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">Documentación SmartCSET · Anexo normativo</span>
+    <h1>Metodologías y Estándares de Documentación</h1>
+    <p class="desc">Compendio exclusivo de los marcos, estándares y reglas propias usados para
+    <strong>construir</strong> <code>documentacion/</code> — la documentación técnica de arquitectura de
+    SmartCSET (arc42/C4/Diátaxis/ADR/requisitos). No cubre el marco legal ni el programa MSPI: eso vive
+    en <code>01_estandares_normativos_referencia.html</code>, el anexo hermano de esta misma carpeta.</p>
+  </header>
+
+  <div class="metabox">
+    <div class="row"><span class="k">Estándares de referencia</span><span class="v">arc42 · C4 Model · ADR · ISO/IEC/IEEE 29148 · ISO/IEC 25010:2023 · ISO/IEC 27001:2022 Anexo A · Diátaxis · ISO/IEC/IEEE 26515:2018</span></div>
+    <div class="row"><span class="k">Alcance</span><span class="v">Metodología de documentación técnica — no sustituye la lectura del texto oficial de cada estándar externo citado</span></div>
+    <div class="row"><span class="k">Responsable</span><span class="v">Equipo de Desarrollo</span></div>
+    <div class="row"><span class="k">Última revisión</span><span class="v">2026-09-11</span></div>
+    <div class="row"><span class="k">Estado</span><span class="v">Publicado</span></div>
+    <div class="row"><span class="k">Documento hermano</span><span class="v"><code>01_estandares_normativos_referencia.html</code> — marco legal/MSPI, en la misma carpeta</span></div>
+  </div>
+
+  <nav class="toc">
+    <span class="k">Contenido</span>
+    <ol>
+      <li><a href="#s1">1. arc42 — arquitectura del software</a></li>
+      <li><a href="#s2">2. C4 Model — diagramas de arquitectura</a></li>
+      <li><a href="#s3">3. ADR — decisiones de arquitectura</a></li>
+      <li><a href="#s4">4. ISO/IEC/IEEE 29148 — ingeniería de requisitos</a></li>
+      <li><a href="#s5">5. ISO/IEC 25010:2023 — calidad de software</a></li>
+      <li><a href="#s6">6. ISO/IEC 27001:2022 Anexo A — clasificación de riesgos</a></li>
+      <li><a href="#s7">7. Diátaxis — documentación de usuario (en espera)</a></li>
+      <li><a href="#s8">8. ISO/IEC/IEEE 26515:2018 — gobernanza de documentación de usuario</a></li>
+      <li><a href="#s9">9. Metodología propia: las 7 reglas de redacción</a></li>
+      <li><a href="#s10">10. Estado de aplicación por categoría de <code>documentacion/</code></a></li>
+    </ol>
+  </nav>
+
+  <section class="std" id="s1">
+    <span class="tag">§1</span>
+    <h2>arc42 — arquitectura del software</h2>
+    <p class="subtitle">Plantilla de 12 secciones para documentar arquitectura de software — arc42.org</p>
+    <p>Es el esqueleto completo de <code>documentacion/arquitectura/</code>: cada uno de los 12
+    documentos (<code>01</code> a <code>12</code>) corresponde exactamente a una sección de arc42, sin
+    saltarse ni fusionar ninguna. Se eligió por ser un estándar de facto (no ISO formal, pero ampliamente
+    adoptado en la industria), gratuito, y neutral respecto a metodología de desarrollo — no impone
+    proceso ágil ni en cascada, solo estructura de documentación.</p>
+    <h3>Las 12 secciones, mapeadas a SmartCSET</h3>
+    <table>
+      <tr><th>#</th><th>Sección arc42</th><th>Documento real</th></tr>
+      <tr><td>1</td><td>Introducción y objetivos</td><td><code>01_introduccion_y_objetivos.md</code></td></tr>
+      <tr><td>2</td><td>Restricciones</td><td><code>02_restricciones.md</code></td></tr>
+      <tr><td>3</td><td>Contexto y alcance</td><td><code>03_contexto_y_alcance.md</code></td></tr>
+      <tr><td>4</td><td>Estrategia de solución</td><td><code>04_estrategia_de_solucion.md</code></td></tr>
+      <tr><td>5</td><td>Vista de bloques</td><td><code>05_vista_de_bloques.md</code></td></tr>
+      <tr><td>6</td><td>Vista de runtime</td><td><code>06_vista_de_runtime.md</code></td></tr>
+      <tr><td>7</td><td>Vista de despliegue</td><td><code>07_vista_de_despliegue.md</code></td></tr>
+      <tr><td>8</td><td>Conceptos transversales</td><td><code>08_conceptos_transversales.md</code></td></tr>
+      <tr><td>9</td><td>Decisiones de arquitectura</td><td><code>09_decisiones.md</code> (índice hacia <code>adr/</code>)</td></tr>
+      <tr><td>10</td><td>Requisitos de calidad</td><td><code>10_requisitos_de_calidad.md</code></td></tr>
+      <tr><td>11</td><td>Riesgos y deuda técnica</td><td><code>11_riesgos_y_deuda_tecnica.md</code></td></tr>
+      <tr><td>12</td><td>Glosario</td><td><code>12_glosario.md</code></td></tr>
+    </table>
+    <p>Las 12 secciones están completas y publicadas — arc42 es el único estándar de esta lista con
+    cobertura 12/12 confirmada dentro de <code>documentacion/</code>.</p>
+    <div class="ref">Referencia: <a href="https://arc42.org/" target="_blank" rel="noopener">arc42.org</a></div>
+  </section>
+
+  <section class="std" id="s2">
+    <span class="tag">§2</span>
+    <h2>C4 Model — diagramas de arquitectura</h2>
+    <p class="subtitle">Contexto → Contenedores → Componentes → Código — c4model.com (Simon Brown)</p>
+    <p>Complementa a arc42 con un lenguaje visual de 4 niveles de zoom, en vez de dejar los diagramas
+    de arquitectura a criterio libre de cada autor. SmartCSET usa los niveles 1 a 3 (Contexto,
+    Contenedores, Componentes) — el nivel 4 (Código) no se usa porque duplicaría lo que ya cubre el
+    grafo de código indexado (<code>codebase-memory-mcp</code>), no aporta valor adicional escribirlo a mano.</p>
+    <h3>Dónde vive cada nivel</h3>
+    <ul>
+      <li><strong>Nivel 1 (Contexto):</strong> <code>03_contexto_y_alcance.md</code> — diagrama Mermaid <code>C4Context</code>, actores humanos y sistemas externos (aplicación de escritorio, móvil, reportes SENA, PostgreSQL)</li>
+      <li><strong>Niveles 2-3 (Contenedores/Componentes):</strong> <code>05_vista_de_bloques.md</code> — diagrama de contenedores + descomposición por componentes, verificada contra la estructura real de carpetas (no dibujada de memoria)</li>
+    </ul>
+    <p>Todos los diagramas se escriben como código Mermaid (regla de redacción #5, §9 de este documento)
+    — renderizan de forma nativa en el visor de Artifacts, sin depender de una herramienta de dibujo
+    externa ni de imágenes estáticas que se desactualizan silenciosamente.</p>
+    <div class="ref">Referencia: <a href="https://c4model.com/introduction" target="_blank" rel="noopener">c4model.com/introduction</a></div>
+  </section>
+
+  <section class="std" id="s3">
+    <span class="tag">§3</span>
+    <h2>ADR — Architecture Decision Records</h2>
+    <p class="subtitle">Formato contexto → decisión → consecuencias, para decisiones técnicas individuales</p>
+    <p>arc42 §9 (<code>09_decisiones.md</code>) exige documentar decisiones de arquitectura, pero no
+    prescribe un formato — el proyecto adoptó ADR como el formato concreto: cada decisión relevante y ya
+    tomada (no hipótesis, no propuestas) se documenta en <code>adr/</code> como un archivo individual
+    con contexto, la decisión en sí, y sus consecuencias (incluidas las negativas, no solo las
+    ventajas).</p>
+    <h3>Las 6 ADR existentes</h3>
+    <table>
+      <tr><th>ADR</th><th>Decisión</th></tr>
+      <tr><td>0001</td><td>PHP sin framework, sin Composer, sin autoloading PSR-4</td></tr>
+      <tr><td>0002</td><td>PostgreSQL como único motor, con lógica de negocio crítica en PL/pgSQL</td></tr>
+      <tr><td>0003</td><td>Sesión con cookie para humanos vs. token de dispositivo para clientes no humanos</td></tr>
+      <tr><td>0004</td><td>Control de acceso por asignación de menú, no RBAC granular — incluida la excepción del kiosko de parqueadero</td></tr>
+      <tr><td>0005</td><td>2FA, cifrado en reposo y CSRF efectivo — diferidos, agrupados en una sola decisión</td></tr>
+      <tr><td>0006</td><td>Respaldo diario de base de datos sin cifrado en reposo (vinculada a 0005)</td></tr>
+    </table>
+    <p><code>09_decisiones.md</code> §9.3 señala además decisiones tecnológicas reales (gestor de
+    dependencias frontend, stack Bootstrap+JS vanilla, separación por capas) que todavía no tienen ADR
+    individual — reconocido explícitamente como brecha, no completado por inventar una decisión donde
+    solo hay una convención de facto.</p>
+  </section>
+
+  <section class="std" id="s4">
+    <span class="tag">§4</span>
+    <h2>ISO/IEC/IEEE 29148 — ingeniería de requisitos</h2>
+    <p class="subtitle">Cadena StRS → SyRS → SRS, en <code>documentacion/requisitos/</code></p>
+    <p>arc42 no cubre ingeniería de requisitos formal — es una capa que el proyecto decidió agregar
+    aparte (categoría 9 del checklist, 2026-09-09) para dar trazabilidad normativa completa desde la
+    necesidad del interesado hasta el requisito de software específico.</p>
+    <table>
+      <tr><th>Documento</th><th>Nivel</th><th>Contenido real en SmartCSET</th></tr>
+      <tr><td><code>01_especificacion_interesados.md</code> (StRS)</td><td>Interesados</td><td>9 necesidades, STR-01 a STR-09</td></tr>
+      <tr><td><code>02_especificacion_sistema.md</code> (SyRS)</td><td>Sistema</td><td>8 requisitos funcionales + 9 no funcionales, con trazabilidad inversa hacia el StRS</td></tr>
+      <tr><td><code>03_especificacion_software.md</code> (SRS)</td><td>Software</td><td>8 requisitos funcionales + 5 no funcionales, citando el archivo/función real que implementa cada uno</td></tr>
+    </table>
+    <p>Ningún requisito de esta cadena se inventó — todo se extrajo de documentos ya verificados
+    contra el código (<code>01</code>, <code>02</code>, <code>03</code>, <code>09</code>, <code>10</code>,
+    <code>11</code> de <code>arquitectura/</code>), con trazabilidad StRS↔SyRS↔SRS verificada en ambos
+    sentidos antes de cerrar cada documento.</p>
+  </section>
+
+  <section class="std" id="s5">
+    <span class="tag">§5</span>
+    <h2>ISO/IEC 25010:2023 — calidad de software</h2>
+    <p class="subtitle">Addendum de trazabilidad en <code>10_requisitos_de_calidad.md</code> §10.8</p>
+    <p>El proyecto ya tenía su propio eje de calidad — los <strong>5 Pilares</strong> (Coherencia,
+    Congruencia, Funcionalidad, Estabilidad, Seguridad Total), definidos desde antes de que existiera
+    este proceso de documentación y usados como criterio real de aceptación en cada auditoría técnica.
+    ISO/IEC 25010:2023 no los reemplaza — se agregó como capa de trazabilidad adicional, mapeando cada
+    una de las 9 características de la norma (adecuación funcional, eficiencia, compatibilidad,
+    usabilidad, fiabilidad, seguridad, mantenibilidad, flexibilidad, seguridad física) contra el Pilar y
+    la evidencia real que ya existía.</p>
+    <div class="callout finding">
+      <p><strong>Hallazgo real documentado en el addendum, no forzado a "cubierto":</strong> Usabilidad
+      y Compatibilidad quedan con brecha explícita (sin accesibilidad WCAG ni compatibilidad de
+      navegador investigadas); Flexibilidad se marca como decisión de diseño deliberada, no omisión
+      (ADR-0002 fija PostgreSQL como motor único e irremplazable).</p>
+    </div>
+  </section>
+
+  <section class="std" id="s6">
+    <span class="tag">§6</span>
+    <h2>ISO/IEC 27001:2022 Anexo A — clasificación de riesgos</h2>
+    <p class="subtitle"><code>11_riesgos_y_deuda_tecnica.md</code> §11.7 — 25 riesgos clasificados</p>
+    <p>Distinto rol al que cumple este mismo estándar dentro de <code>docs/MSPI/</code> (ver
+    <code>01_estandares_normativos_referencia.html</code> §13): aquí no es el marco de un SGSI completo,
+    es una capa de trazabilidad normativa sobre un registro de riesgos que ya existía, verificado contra
+    código real — no una auditoría de cumplimiento nueva. Cada uno de los 25 riesgos (R-01 a R-25) se
+    clasifica contra los 4 temas de control del Anexo A (organizacional, personas, físico, tecnológico),
+    sin alterar la severidad/probabilidad/estado ya asignados en §11.3.</p>
+    <p><strong>Lectura agregada real:</strong> 16 de 25 riesgos caen en Tecnológico, 2 en Organizacional,
+    7 sin tema Anexo A directo (deuda de mantenimiento/rendimiento/proceso). Ninguno cae en Personas o
+    Físico — ese control vive en los documentos legales de MSPI, fuera del alcance de este registro
+    técnico.</p>
+  </section>
+
+  <section class="std" id="s7">
+    <span class="tag">§7</span>
+    <h2>Diátaxis — documentación de usuario</h2>
+    <p class="subtitle">Tutoriales, guías prácticas, referencia, explicación — diataxis.fr</p>
+    <p>Previsto para <code>documentacion/usuario/</code> (categoría 5 del checklist) — un framework de 4
+    tipos de contenido de documentación de usuario final, cada uno con un propósito distinto (aprender
+    haciendo, resolver una tarea puntual, consultar un dato exacto, entender el porqué).</p>
+    <div class="callout pend">
+      <p><strong>En espera, no iniciado:</strong> requiere capturas de pantalla reales del sistema en
+      uso y un video — ninguno de los dos disponible todavía. No es una decisión de alcance (como
+      <code>base_de_datos/</code>), es una dependencia externa sin resolver. Se retoma cuando el Equipo
+      de Desarrollo lo indique.</p>
+    </div>
+  </section>
+
+  <section class="std" id="s8">
+    <span class="tag">§8</span>
+    <h2>ISO/IEC/IEEE 26515:2018 — gobernanza de documentación de usuario</h2>
+    <p class="subtitle">Systems and software engineering — Developing user documentation in an agile environment</p>
+    <p>No estructura ningún documento todavía (porque <code>usuario/</code> sigue en espera, §7), pero
+    ya se adoptó como checklist de gobernanza para cuando se retome — específicamente pensado para
+    documentación de usuario producida en ciclos ágiles/iterativos, coherente con cómo se construyó el
+    resto de <code>documentacion/</code> (por sesiones de trabajo, con verificación de cierre en cada
+    una, no como un documento monolítico escrito una sola vez).</p>
+  </section>
+
+  <section class="std" id="s9">
+    <span class="tag">§9</span>
+    <h2>Metodología propia: las 7 reglas de redacción</h2>
+    <p class="subtitle">No son un estándar externo — son la metodología que el propio proyecto adoptó y refinó, documentada en <code>HANDOFF.md</code></p>
+    <p>Los estándares de §1-§8 dan estructura y trazabilidad normativa, pero no garantizan por sí solos
+    que el contenido sea verdad. Esa garantía la da un conjunto de reglas propias, exigidas en
+    <strong>todo</strong> documento nuevo o editado de <code>documentacion/</code>:</p>
+    <ol>
+      <li>No usar lenguaje de "repositorio"/GitHub/commits — referirse siempre a "la carpeta smartcset", "el proyecto" o "el código"</li>
+      <li>No nombrar individuos en ningún rol — usar siempre "Equipo de Desarrollo"</li>
+      <li>Tono de redactor técnico normativo, nunca narrador en tercera persona hablando del documento en sí</li>
+      <li>Toda afirmación técnica se verifica contra el código real antes de escribirse — nunca se asume ni se extrapola</li>
+      <li>Formato Markdown plano, fechas absolutas, diagramas como código Mermaid, encabezado de metadata obligatorio en cada documento</li>
+      <li>Cada documento completado o modificado actualiza <code>CHECKLIST_DOCUMENTACION.md</code> con su log de avance</li>
+      <li><strong>Auditoría de cierre obligatoria</strong> (desde 2026-09-02): antes de dar un documento por terminado, verificarlo contra (a) el código real y (b) los demás documentos ya existentes, buscando referencias rotas, afirmaciones contradictorias y fechas desactualizadas</li>
+    </ol>
+    <div class="callout finding">
+      <p><strong>Principio de fondo de la regla 7:</strong> el objetivo no es que un documento nuevo
+      evite contradecir lo ya escrito, sino que la totalidad de <code>documentacion/</code> sea verdad
+      — coherente contra el código real y congruente entre todos los documentos, en todo momento. Por
+      eso hay auditorías periódicas sobre el conjunto completo, no solo sobre el documento que se está
+      tocando en cada sesión.</p>
+    </div>
+  </section>
+
+  <section class="std" id="s10">
+    <span class="tag">§10</span>
+    <h2>Estado de aplicación por categoría de <code>documentacion/</code></h2>
+    <p class="subtitle">Verificado contra <code>CHECKLIST_DOCUMENTACION.md</code>, actualizado 2026-09-11</p>
+    <table>
+      <tr><th>Categoría</th><th>Estándar/metodología aplicada</th><th>Estado</th></tr>
+      <tr><td><code>arquitectura/</code></td><td>arc42 (12 secciones) + C4 Model + ISO 25010 + ISO 27001 Anexo A</td><td><span class="badge done">12/12 publicado</span></td></tr>
+      <tr><td><code>adr/</code></td><td>ADR</td><td><span class="badge done">6/6 publicado</span></td></tr>
+      <tr><td><code>requisitos/</code></td><td>ISO/IEC/IEEE 29148 (StRS/SyRS/SRS)</td><td><span class="badge done">3/3 publicado</span></td></tr>
+      <tr><td><code>estandares/</code></td><td>Compendio propio (sin estándar externo que lo estructure)</td><td><span class="badge done">2/2 publicado</span></td></tr>
+      <tr><td><code>api/</code></td><td>OpenAPI/Swagger</td><td><span class="badge done">1/1 publicado</span></td></tr>
+      <tr><td><code>operacion/</code></td><td>Runbooks (sin estándar formal — convención propia de instalación/backup/incidentes/despliegue)</td><td><span class="badge done">4/4 publicado</span></td></tr>
+      <tr><td><code>historial/</code></td><td>Changelog indexado (convención propia)</td><td><span class="badge done">1/1 publicado</span></td></tr>
+      <tr><td><code>base_de_datos/</code></td><td>Diagrama ER + catálogo de funciones + diccionario de datos (convención propia)</td><td><span class="badge wait">3/3 construido, EN ESPERA — lo publicará el DBA del equipo</span></td></tr>
+      <tr><td><code>usuario/</code></td><td>Diátaxis + ISO/IEC/IEEE 26515:2018</td><td><span class="badge wait">0/4, EN ESPERA — sin capturas/video</span></td></tr>
+    </table>
+    <p>De 9 categorías totales, 7 están publicadas y completas, 1 construida pero retenida por decisión
+    explícita (no por incumplimiento), y 1 sin iniciar por dependencia externa no resuelta. Ninguna
+    categoría "publicada" tiene contenido sin verificar contra código real — es la misma regla 4/7 de §9
+    aplicada sin excepción.</p>
+  </section>
+
+  <footer>
+    Anexo metodológico — <code>documentacion/estandares/</code>. Ver
+    <code>01_estandares_normativos_referencia.html</code> (misma carpeta) para el marco legal/MSPI y el
+    cruce de cumplimiento real contra los 11 ejes MSPI. Los textos oficiales completos de los estándares
+    externos citados residen en sus publicaciones originales; este documento resume su aplicación
+    concreta a SmartCSET y no los reemplaza como fuente normativa.
+  </footer>
+
+</div>
+</body>
+</html>

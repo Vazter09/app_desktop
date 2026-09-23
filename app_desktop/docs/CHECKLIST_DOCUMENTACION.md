@@ -3,9 +3,11 @@
 Índice maestro y checklist vivo del módulo `app_desktop`. Un ítem se marca `[x]`
 cuando el documento correspondiente existe bajo `docs/` y está revisado as-built.
 
-**Última actualización:** 2026-09-03  
+**Última actualización:** 2026-09-14  
 **Responsable:** Equipo de Desarrollo  
 **Alcance:** solo módulo app_desktop (cliente de portería + endpoints/tablas que consume)
+
+**Entrega técnica única (monolítico):** [`../DOCUMENTACION_TECNICA.md`](../DOCUMENTACION_TECNICA.md) — consolida arquitectura, requisitos ISO 29148, ADR, API, BD, operación, usuario (Diátaxis), historial y anexos MSPI según `02_metodologias_documentacion_smartcset.html`. Esta carpeta `docs/` permanece como espejo modular / Word.
 
 ---
 
@@ -15,6 +17,9 @@ cuando el documento correspondiente existe bajo `docs/` y está revisado as-buil
 - **C4 Model** — Contexto → Contenedores → Componentes
 - **Diátaxis** — Tutoriales, Guías, Referencia, Explicación
 - **ADR** — Architecture Decision Records
+- **ISO/IEC/IEEE 29148** — StRS / SyRS / SRS (en el monolítico, PARTE B)
+- **ISO/IEC 25010:2023** — addendum en §10.8 del monolítico
+- **ISO/IEC 27001:2022 Anexo A** — clasificación de riesgos en §11.7 del monolítico
 - **MSPI** — cada documento indica ejes aplicables en cabecera
 
 ---
@@ -86,4 +91,5 @@ cuando el documento correspondiente existe bajo `docs/` y está revisado as-buil
 
 | Fecha | Qué se hizo |
 |-------|-------------|
+| 2026-09-14 | Publicado `DOCUMENTACION_TECNICA.md` monolítico (arc42+C4+ADR+ISO 29148/25010/27001+Diátaxis); tests as-built corregidos a 35; generador `docs/_tools/build_documentacion_tecnica.py` |
 | 2026-09-03 | Reorganización docs/ según checklist arc42/C4/Diátaxis; migración as-built desde paquete 00–11; generación `.docx` con python-docx |

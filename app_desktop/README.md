@@ -1,6 +1,6 @@
 # App de Escritorio SGI — SmartCSET
 
-**Versión documental:** 1.1.0 | **Estado:** Operativo (as-built)
+**Versión documental:** 1.2.0 | **Estado:** Operativo (as-built) · entrega técnica monolítica 2026-09-14
 
 Cliente de escritorio (Python + Tkinter) para el módulo **SGI (portería)** de SmartCSET. Habla por **HTTPS** con el backend PHP existente (mismo login de usuario/contraseña que la web).
 
@@ -8,16 +8,17 @@ Cliente de escritorio (Python + Tkinter) para el módulo **SGI (portería)** de 
 
 ## Documentación de entrega
 
-Índice maestro (checklist arc42 / C4 / Diátaxis):
+**Entrega técnica completa (un solo archivo):** [`DOCUMENTACION_TECNICA.md`](DOCUMENTACION_TECNICA.md) — arc42, C4, ADR, ISO 29148/25010/27001, Diátaxis, API, BD, operación y anexos MSPI.
 
-**[`docs/CHECKLIST_DOCUMENTACION.md`](docs/CHECKLIST_DOCUMENTACION.md)** · **[`docs/README.md`](docs/README.md)**
+Índice modular (espejo por carpeta + Word): [`docs/CHECKLIST_DOCUMENTACION.md`](docs/CHECKLIST_DOCUMENTACION.md) · [`docs/README.md`](docs/README.md)
 
 | Audiencia | Documento |
 |-----------|-----------|
-| Operario | [Tutorial primer uso](docs/usuario/tutorial-primer-uso.md) |
-| TI / instalador | [Instalación](docs/operacion/instalacion.md) |
-| Desarrollador | [Arquitectura](docs/arquitectura/01-introduccion-y-objetivos.md) · [API](docs/api/contrato-http.md) |
-| Auditor MSPI | [Conceptos transversales](docs/arquitectura/08-conceptos-transversales.md) · [Incidentes](docs/operacion/incidentes-seguridad.md) |
+| Todo rol / auditor | [DOCUMENTACION_TECNICA.md](DOCUMENTACION_TECNICA.md) |
+| Operario | [Tutorial primer uso](docs/usuario/tutorial-primer-uso.md) (también §G en el monolítico) |
+| TI / instalador | [Instalación](docs/operacion/instalacion.md) (también §F en el monolítico) |
+| Desarrollador | Monolítico PARTES A–E · o [arquitectura/](docs/arquitectura/) + [API](docs/api/contrato-http.md) |
+| Auditor MSPI | Monolítico §8 / §11 / PARTE I · o [incidentes](docs/operacion/incidentes-seguridad.md) |
 
 Entrega Word: [`docs/word/`](docs/word/) (regenerar con `python docs/_tools/export_to_docx.py`).
 
