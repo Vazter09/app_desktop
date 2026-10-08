@@ -11,6 +11,8 @@ Documento válido: 8–10 dígitos (no fecha DDMMYYYY).
 QR: prioriza corrida NUIP; si no hay, fallback legacy (todos los dígitos
 del payload → primeros 10), que es lo que la pistola ya entregaba bien.
 PDF417 (@): extractor estricto (no concatena basura / fechas).
+PDF417 sin separadores (ancla ``PubDSK_``): solo el NUIP. Nombres
+y apellidos quedan vacíos para que el operario los complete.
 """
 from __future__ import annotations
 
@@ -49,6 +51,7 @@ def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
 
     - PDF417 (@ / Tab) → barras (3)
     - QR solo si URL o separadores | ; → QR (2)
+    - PDF417 ``PubDSK_`` sin separadores → barras (3), solo NUIP
     - Payload largo sin URL (cédula/PDF417 concatenado) → barras (3)
     - Solo dígitos → barras (3)
     """
@@ -74,6 +77,20 @@ def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
             metodo_aut=METODO_QR,
             captura_raw=trimmed,
             origen="qr",
+        )
+
+    # Cédula CO (lector 2D): PubDSK_ + serie + NUIP + nombres pegados.
+    # El lector no inserta separadores entre campos.
+    pubdsk = _documento_desde_pubdsk(trimmed)
+    if pubdsk is not None:
+        return CapturaEscaneo(
+            documento=pubdsk,
+            nombres="",
+            apellidos="",
+            tipo_doc="CC",
+            metodo_aut=METODO_BARRAS,
+            captura_raw=trimmed,
+            origen="pdf417",
         )
 
     if _parece_pdf417_concatenado(trimmed):
@@ -113,6 +130,49 @@ def _parece_pdf417_concatenado(raw: str) -> bool:
     if not re.search(r"[A-Za-zÁÉÍÓÚÑáéíóúñ]{3,}", raw):
         return False
     return bool(_RE_DIGIT_RUN.search(raw))
+
+
+# Dígitos de PubDSK_ hasta la primera letra (serie + NUIP pegados).
+_RE_PUBDSK_DIGITOS = re.compile(
+    r"PubDSK_(\d+)(?=[A-Za-zÁÉÍÓÚÑáéíóúñ])"
+)
+
+
+def _parece_fecha_yyyymmdd(digits: str) -> bool:
+    """Evita tomar AAAAMMDD (fecha de la cédula) como documento."""
+    if len(digits) != 8 or not digits.isdigit():
+        return False
+    anio = int(digits[0:4])
+    mes = int(digits[4:6])
+    dia = int(digits[6:8])
+    return 1900 <= anio <= 2100 and 1 <= mes <= 12 and 1 <= dia <= 31
+
+
+def _documento_desde_pubdsk(raw: str) -> str | None:
+    """NUIP de trama ``PubDSK_`` sin separadores.
+
+    None si no hay ancla. Si la hay, los últimos 8–10 dígitos
+    inmediatamente anteriores al bloque de letras. Ignora el
+    prefijo anterior a ``PubDSK_`` y la fecha AAAAMMDD.
+    """
+    if "PubDSK_" not in raw:
+        return None
+    match = _RE_PUBDSK_DIGITOS.search(raw)
+    if not match:
+        return ""
+    digits = match.group(1)
+    if len(digits) > DOC_MAX_LEN:
+        candidato = digits[-DOC_MAX_LEN:]
+    elif len(digits) >= DOC_MIN_LEN:
+        candidato = digits
+    else:
+        return ""
+    if (
+        _parece_fecha_ddmmyyyy(candidato)
+        or _parece_fecha_yyyymmdd(candidato)
+    ):
+        return ""
+    return candidato
 
 
 def _parece_fecha_ddmmyyyy(digits: str) -> bool:

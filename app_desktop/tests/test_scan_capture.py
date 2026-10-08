@@ -67,6 +67,19 @@ class TestScanCapturePdf417(unittest.TestCase):
         self.assertNotIn("14082014", cap.nombres)
         self.assertNotIn("14082014", cap.apellidos)
 
+    def test_pdf417_pubdsk_solo_cedula_sin_nombres(self) -> None:
+        """PubDSK_ sin separadores: solo la cédula, sin nombres."""
+        raw = (
+            "0349601241PubDSK_14518891010107829"
+            "ORDUZPEREZBRAYHANJAHIR0M19980406270010B+2c"
+        )
+        cap = parse_captura_escaneo(raw)
+        self.assertEqual(cap.origen, "pdf417")
+        self.assertEqual(cap.metodo_aut, 3)
+        self.assertEqual(cap.documento, "1010107829")
+        self.assertEqual(cap.nombres, "")
+        self.assertEqual(cap.apellidos, "")
+
     def test_pdf417_tab_como_separador(self) -> None:
         raw = "1098765432\tLOPEZ\tDIAZ\tANA\tMARIA\tF\tA-"
         cap = parse_captura_escaneo(raw)
