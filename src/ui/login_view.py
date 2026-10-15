@@ -10,15 +10,18 @@ iniciar sesión aquí.
 from __future__ import annotations
 
 import tkinter as tk
-from pathlib import Path
 from tkinter import ttk
 from typing import Callable
 
 from PIL import Image, ImageTk
 
 from app_log import flush_handlers, get_logger
-from app_paths import resource_root
-from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
+from app_paths import ruta_asset_img
+from smartcset_client import (
+    SmartcsetApiError,
+    SmartcsetClient,
+    SmartcsetConnectionError,
+)
 from ui import theme
 from ui.responsive import sx
 
@@ -30,27 +33,8 @@ ENTRY_WIDTH = 28
 _CARD_WIDTH_BASE = 380
 
 
-def _ruta_logo_sena() -> Path | None:
-    app_dir = resource_root()
-    candidatos = (
-        app_dir / "assets" / "img" / "logo-sena.png",
-        Path(__file__).resolve().parents[1] / "assets" / "img" / "logo-sena.png",
-        app_dir.parent.parent
-        / "frontend"
-        / "web"
-        / "public"
-        / "assets"
-        / "img"
-        / "logo-sena.png",
-    )
-    for ruta in candidatos:
-        if ruta.is_file():
-            return ruta
-    return None
-
-
 def _cargar_logo_sena() -> ImageTk.PhotoImage | None:
-    ruta = _ruta_logo_sena()
+    ruta = ruta_asset_img("logo-sena.png")
     if ruta is None:
         return None
     imagen = Image.open(ruta)

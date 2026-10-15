@@ -20,23 +20,16 @@ SCALE_MIN = 0.80
 SCALE_MAX = 1.60
 
 _scale: float = 1.0
-_initialized: bool = False
 
 
 def init(root: tk.Misc) -> float:
     """Calcula el factor de escala a partir de la pantalla real."""
-    global _scale, _initialized
+    global _scale
     root.update_idletasks()
     sw = max(1, int(root.winfo_screenwidth()))
     sh = max(1, int(root.winfo_screenheight()))
     raw = min(sw / BASE_WIDTH, sh / BASE_HEIGHT)
     _scale = max(SCALE_MIN, min(SCALE_MAX, raw))
-    _initialized = True
-    return _scale
-
-
-def scale() -> float:
-    """Factor actual (1.0 si aún no se llamó ``init``)."""
     return _scale
 
 
@@ -57,7 +50,3 @@ def sfont(font: tuple) -> tuple:
     rest = font[2:]
     new_size = max(8, int(round(size * _scale)))
     return (family, new_size, *rest)
-
-
-def is_initialized() -> bool:
-    return _initialized

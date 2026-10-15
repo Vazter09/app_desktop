@@ -31,6 +31,25 @@ def resource_root() -> Path:
     return Path(__file__).resolve().parent  # src/
 
 
+def ruta_asset_img(nombre: str) -> Path | None:
+    """Imagen de `assets/img/`: bundle/src primero, luego el frontend web (dev)."""
+    candidatos = (
+        resource_root() / "assets" / "img" / nombre,
+        Path(__file__).resolve().parent / "assets" / "img" / nombre,
+        resource_root().parent.parent
+        / "frontend"
+        / "web"
+        / "public"
+        / "assets"
+        / "img"
+        / nombre,
+    )
+    for ruta in candidatos:
+        if ruta.is_file():
+            return ruta
+    return None
+
+
 def writable_root() -> Path:
     """Datos escribibles: config, logs, cache de fotos, .venv."""
     if is_frozen():

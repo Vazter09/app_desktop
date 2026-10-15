@@ -1,22 +1,26 @@
 """
 Shell autenticado — topbar + área de contenido a ancho completo.
 
-Tras el login, la app entra a IngresoPage (cámara + huella embebidas,
-sin tablero ni sidebar). Otras páginas quedan registradas para
-navegación interna.
+Tras el login, la app muestra solo IngresoPage (cámara + formulario +
+huella, sin tablero ni sidebar). Ingresos y salidas se registran ahí; la
+topbar solo tiene el usuario y «Salir» (botones «Portería» / «Salida
+manual» eliminados el 2026-10-15).
 """
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import Callable
 
+from app_log import get_logger
 from smartcset_client import SmartcsetClient
 from ui import theme
-from ui.pages.inicio import InicioPage
 from ui.pages.ingreso import IngresoPage
-from ui.pages.salida import SalidaPage
 from ui.responsive import sfont, sx
+
+log = get_logger("ui.shell")
+
+_BREADCRUMB = "⌂ Portería  ›  Sistema de Reconocimiento Multibiométrico"
 
 
 class AppShell(ttk.Frame):
@@ -32,12 +36,6 @@ class AppShell(ttk.Frame):
         self._usuario = usuario
         self._on_logout = on_logout
 
-        self._pages = {
-            "inicio": ("Inicio", InicioPage),
-            "ingreso": ("Sistema de Reconocimiento Multibiométrico", IngresoPage),
-            "salida": ("Registro salida", SalidaPage),
-        }
-
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -46,7 +44,7 @@ class AppShell(ttk.Frame):
         self._main.columnconfigure(0, weight=1)
         self._main.rowconfigure(1, weight=1)
 
-        self._breadcrumb_var = tk.StringVar()
+        self._breadcrumb_var = tk.StringVar(value=_BREADCRUMB)
         self._build_topbar()
 
         self._content = ttk.Frame(self._main, style="App.TFrame")
@@ -54,9 +52,10 @@ class AppShell(ttk.Frame):
         self._content.columnconfigure(0, weight=1)
         self._content.rowconfigure(0, weight=1)
 
-        self._current_page: tk.Widget | None = None
         # Portería: al autenticarse, cámara facial de inmediato.
-        self.navigate("ingreso")
+        IngresoPage(self._content, self._client).grid(
+            row=0, column=0, sticky="nsew"
+        )
 
     # ---- Topbar ---------------------------------------------------------
 
@@ -96,35 +95,26 @@ class AppShell(ttk.Frame):
             font=theme.FONT_TOPBAR_USER,
         ).pack(side="left", padx=(0, sx(14)))
 
+        # takefocus=False: el lector teclea Tab/espacio (trama PDF417) y
+        # no debe poder enfocar ni pulsar este botón (incidente
+        # 2026-10-15: una cédula activó «Salir»). Solo mouse.
         ttk.Button(
             right,
             text="Salir",
             style="TopbarLogout.TButton",
             command=self._do_logout,
+            takefocus=False,
         ).pack(side="left")
 
-    # ---- Navegación -------------------------------------------------------
-
-    def navigate(self, key: str) -> None:
-        title, page_cls = self._pages[key]
-        if key == "inicio":
-            self._breadcrumb_var.set("⌂ Inicio")
-        elif key == "ingreso":
-            self._breadcrumb_var.set(
-                "⌂ Portería  ›  Sistema de Reconocimiento Multibiométrico"
-            )
-        else:
-            self._breadcrumb_var.set(f"⌂ Inicio  ›  {title}")
-
-        if self._current_page is not None:
-            self._current_page.destroy()
-
-        page = page_cls(
-            self._content, self._client, usuario=self._usuario, on_navigate=self.navigate
-        )
-        page.grid(row=0, column=0, sticky="nsew")
-        self._current_page = page
-
     def _do_logout(self) -> None:
+        # default=no: un Enter/espacio del lector nunca confirma.
+        if not messagebox.askyesno(
+            "Cerrar sesión",
+            "¿Desea cerrar la sesión de portería?",
+            default="no",
+            parent=self,
+        ):
+            return
+        log.info("Logout solicitado por el operario")
         self._client.logout()
         self._on_logout()

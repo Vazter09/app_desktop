@@ -23,7 +23,7 @@ PRODUCTION_BASE_URL = "https://10.5.213.103/smartcset"
 # Desarrollo local vía Apache.
 DEV_BASE_URL = "https://localhost/smartcset"
 
-_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 def default_base_url() -> str:
@@ -37,8 +37,8 @@ def config_path() -> str:
 @dataclass
 class AppConfig:
     base_url: str = DEV_BASE_URL
-    # None = automático (False solo en localhost). False explícito = lab
-    # o institucional con certificado autofirmado (ej. 10.5.213.103).
+    # None = automático (False solo en localhost). False explícito = servidor
+    # de laboratorio con certificado autofirmado (`"verify_tls": false`).
     verify_tls_override: bool | None = None
 
     @classmethod
@@ -80,4 +80,4 @@ class AppConfig:
         if self.verify_tls_override is not None:
             return self.verify_tls_override
         host = urlparse(self.base_url).hostname or ""
-        return host not in _LOCAL_HOSTS
+        return host not in LOCAL_HOSTS

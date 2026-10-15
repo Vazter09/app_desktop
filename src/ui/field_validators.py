@@ -155,6 +155,15 @@ def es_equipo_serial_valido(raw: str) -> bool:
     s = sanear_equipo_serial(raw)
     if not s:
         return True
-    if s == "111111":
+    if s == EQUIPO_PLACEHOLDER:
         return False
     return 3 <= len(s) <= EQUIPO_SERIAL_MAX_LEN
+
+
+def agregar_equipo_al_payload(payload: dict, serial: str) -> None:
+    """Adjunta el equipo al payload de ingreso/salida (no hace nada si vacío)."""
+    if not serial:
+        return
+    payload["id_equipo"] = serial
+    payload["ind_equipo"] = True
+    payload["descripcion_equipo"] = "Pendiente"

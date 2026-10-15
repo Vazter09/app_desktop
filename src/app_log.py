@@ -69,11 +69,14 @@ def log_exception(
     flush_handlers()
 
 
-def setup_logging(level: int = logging.WARNING) -> Path:
+def setup_logging(level: int = logging.INFO) -> Path:
     """Inicializa logging a archivo + consola (stderr). Idempotente.
 
-    Nivel por defecto WARNING: errores y avisos operativos. El arranque
-    emite un único INFO con la ruta del archivo (pasa el filtro del root).
+    Nivel por defecto INFO: errores, avisos y la traza operativa de
+    portería (escaneos, cola, ingresos/salidas, logout) — sin datos
+    personales, solo metadatos e id_ingreso, para poder auditar
+    incidentes (2026-10-15: con WARNING no quedaba rastro de los
+    escaneos descartados).
     """
     global _configured
     path = log_path()

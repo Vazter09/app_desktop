@@ -98,6 +98,11 @@ def es_tipo_instructor(tipo_persona: int | str | None) -> bool:
         return False
 
 
+def minutos_redondeados_arriba(segundos: int | float) -> int:
+    """Minutos a mostrar al operario: redondeo hacia arriba, mínimo 1."""
+    return max(1, (int(segundos) + 59) // 60)
+
+
 def format_db_timestamp(value: str | None, fmt: str = DEFAULT_FORMAT) -> str:
     """Formatea un timestamp crudo de BD (hora civil Colombia, sin zona)."""
     raw = (value or "").strip()

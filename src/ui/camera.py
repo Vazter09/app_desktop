@@ -3,8 +3,7 @@ Captura de cámara — única excepción de dependencias de terceros
 compartida entre la app principal y el motor biométrico (`opencv-python`,
 ver REGLAS_APP_ESCRITORIO_SGI.md sección 5.1/5.2). Aquí solo se toma el
 frame de la webcam y se muestra en vivo — el cómputo del vector facial
-(embedding) NO ocurre en este módulo, va en el motor biométrico local
-aparte (todavía no construido).
+(embedding) NO ocurre en este módulo, va en `motor/embeddings.py`.
 
 La conversión de frame a imagen mostrable en Tkinter se hace a mano en
 formato PPM (P6) — sin agregar Pillow — porque `numpy`+`opencv` ya
@@ -48,15 +47,16 @@ def _leer_frame_con_warmup(cap: cv2.VideoCapture, intentos: int = 8) -> bool:
     return False
 
 
+def _captura_entrega_frame(cap: cv2.VideoCapture) -> bool:
+    """No basta con que `isOpened()` sea True: algunos nodos /dev/video*
+    son metadata, no cámara real, y abren pero no leen frames."""
+    return cap.isOpened() and _leer_frame_con_warmup(cap)
+
+
 def _indice_entrega_frame_real(indice: int) -> bool:
-    """Abre el índice y confirma que entrega un frame real — no basta
-    con que `isOpened()` sea True (algunos nodos /dev/video* son
-    metadata, no cámara real, y abren pero no leen)."""
     cap = _abrir_captura(indice)
     try:
-        if not cap.isOpened():
-            return False
-        return _leer_frame_con_warmup(cap)
+        return _captura_entrega_frame(cap)
     finally:
         cap.release()
 
@@ -72,20 +72,16 @@ def listar_camaras_disponibles(max_indices: int = MAX_INDICES_A_PROBAR) -> list[
 def detectar_camara_disponible(
     max_indices: int = MAX_INDICES_A_PROBAR,
     *,
-    preferido: int | None = None,
+    excluir: int | None = None,
 ) -> int | None:
     """Devuelve el primer índice de video disponible.
 
-    Por defecto prueba primero el índice 0 (cámara conectada en la mayoría
-    de equipos Windows) y solo escanea el resto si falla — evita bloquear
-    la UI varios segundos al abrir el modal facial."""
-    if preferido is not None:
-        return preferido if _indice_entrega_frame_real(preferido) else None
-
-    if _indice_entrega_frame_real(0):
-        return 0
-
-    for indice in range(1, max_indices):
+    Prueba primero el índice 0 (cámara conectada en la mayoría de equipos
+    Windows) y solo escanea el resto si falla. `excluir` omite un índice que
+    el llamador ya sabe que falló, para no volver a abrirlo."""
+    for indice in range(max_indices):
+        if indice == excluir:
+            continue
         if _indice_entrega_frame_real(indice):
             return indice
     return None
@@ -100,9 +96,10 @@ class CameraSource:
 
     def abrir(self) -> bool:
         self._cap = _abrir_captura(self._indice)
-        if not self._cap.isOpened():
-            return False
-        return _leer_frame_con_warmup(self._cap)
+        if _captura_entrega_frame(self._cap):
+            return True
+        self.liberar()
+        return False
 
     def leer_frame(self) -> np.ndarray | None:
         if self._cap is None:

@@ -24,7 +24,6 @@ BG_DEEP = "#131e15"
 BG_CARD = "#1b2a1d"
 BG_PANEL = "#1b2a1d"
 SIDEBAR_BG = "#131e15"
-SIDEBAR_BG_DEEP = "#0d140e"
 
 CYAN = "#00e5b0"
 TEXT_PRIMARY = "#e8f4ff"
@@ -45,7 +44,6 @@ _FONT_LOGIN_BUTTON_BASE = ("Segoe UI", 12, "bold")
 _FONT_TOPBAR_BREADCRUMB_BASE = ("Segoe UI", 13, "bold")
 _FONT_TOPBAR_USER_BASE = ("Segoe UI", 12)
 _TOPBAR_HEIGHT_BASE = 58
-_FONT_KPI_BASE = ("Segoe UI", 22, "bold")
 _FONT_LABEL_SMALL_BASE = ("Segoe UI", 8)
 
 # Valores activos (tras apply_theme + responsive).
@@ -60,7 +58,6 @@ FONT_LOGIN_BUTTON = _FONT_LOGIN_BUTTON_BASE
 FONT_TOPBAR_BREADCRUMB = _FONT_TOPBAR_BREADCRUMB_BASE
 FONT_TOPBAR_USER = _FONT_TOPBAR_USER_BASE
 TOPBAR_HEIGHT = _TOPBAR_HEIGHT_BASE
-FONT_KPI = _FONT_KPI_BASE
 FONT_LABEL_SMALL = _FONT_LABEL_SMALL_BASE
 
 
@@ -69,7 +66,7 @@ def _aplicar_escala_fuentes() -> None:
     global FONT_BODY, FONT_BODY_BOLD, FONT_PRIMARY_BUTTON, FONT_TITLE
     global FONT_LOGIN_TITLE, FONT_LOGIN_LABEL, FONT_LOGIN_INPUT, FONT_LOGIN_BUTTON
     global FONT_TOPBAR_BREADCRUMB, FONT_TOPBAR_USER, TOPBAR_HEIGHT
-    global FONT_KPI, FONT_LABEL_SMALL
+    global FONT_LABEL_SMALL
 
     from ui.responsive import sfont, sx
 
@@ -84,7 +81,6 @@ def _aplicar_escala_fuentes() -> None:
     FONT_TOPBAR_BREADCRUMB = sfont(_FONT_TOPBAR_BREADCRUMB_BASE)
     FONT_TOPBAR_USER = sfont(_FONT_TOPBAR_USER_BASE)
     TOPBAR_HEIGHT = sx(_TOPBAR_HEIGHT_BASE)
-    FONT_KPI = sfont(_FONT_KPI_BASE)
     FONT_LABEL_SMALL = sfont(_FONT_LABEL_SMALL_BASE)
 
 
@@ -99,8 +95,6 @@ def apply_theme(root: tk.Misc) -> ttk.Style:
 
     style.configure("App.TFrame", background=BG_DEEP)
     style.configure("Card.TFrame", background=BG_CARD)
-    style.configure("Sidebar.TFrame", background=SIDEBAR_BG)
-    style.configure("Topbar.TFrame", background=BG_PANEL)
 
     style.configure(
         "App.TLabel", background=BG_DEEP, foreground=TEXT_PRIMARY, font=FONT_BODY
@@ -155,22 +149,6 @@ def apply_theme(root: tk.Misc) -> ttk.Style:
         background=[("active", V_OSCURO), ("disabled", BORDER)],
     )
     style.configure(
-        "Kpi.TLabel", background=BG_CARD, foreground=CYAN, font=FONT_KPI
-    )
-    style.configure(
-        "Sidebar.TLabel",
-        background=SIDEBAR_BG,
-        foreground=TEXT_PRIMARY,
-        font=FONT_BODY,
-    )
-    style.configure(
-        "SidebarMuted.TLabel",
-        background=SIDEBAR_BG,
-        foreground=TEXT_MUTED,
-        font=FONT_LABEL_SMALL,
-    )
-
-    style.configure(
         "Primary.TButton",
         background=V_OLIVA,
         foreground="#ffffff",
@@ -220,15 +198,6 @@ def apply_theme(root: tk.Misc) -> ttk.Style:
     style.map(
         "Nav.TButton",
         background=[("active", "#22331f")],
-    )
-    style.configure(
-        "NavActive.TButton",
-        background=V_OLIVA,
-        foreground="#ffffff",
-        font=FONT_BODY_BOLD,
-        borderwidth=0,
-        anchor="w",
-        padding=(14, 9),
     )
 
     style.configure("TEntry", fieldbackground="#0f1712", foreground=TEXT_PRIMARY)

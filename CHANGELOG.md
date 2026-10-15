@@ -5,6 +5,55 @@ Versiones lógicas del módulo `app_desktop` (no necesariamente tags de git).
 
 ---
 
+## [Sin publicar] — 2026-10-15
+
+### Corregido
+
+- **Lector de cédulas cerraba la sesión** (incidente 2026-10-15): la cola
+  de la trama PDF417 (espacios de relleno, Tab, binario) pulsaba «Salir» /
+  «Portería» y el resto se escribía en el login. Nueva guardia de teclado
+  `ui/scan_guard.py` (bindtag antepuesto al widget con foco: ve cada tecla
+  antes que botones, Entries y la navegación por Tab) y detector de ráfagas
+  `ui/scan_burst.py` (descarte deslizante de la cola completa).
+- Escaneos hechos con una confirmación abierta (o durante identificación
+  facial) se descartaban sin aviso: ahora esperan en cola (máx. 5).
+- Tecleo manual en el formulario perdía el primer carácter y los tecleados
+  despacio (>400 ms): ahora se retienen y se devuelven al Entry.
+- **Cédula leída con número equivocado**: con cédulas cuya trama no trae
+  `PubDSK_`, el binario de la huella (`|`, `;`) la hacía pasar por QR y se
+  tomaba el número de tarjeta del inicio como documento. Ahora la cédula se
+  reconoce por su estructura (campo NUIP de 10 dígitos pegado al primer
+  apellido), antes que las reglas de QR; si parece cédula pero no hay NUIP
+  legible, se pide reintentar en vez de inventar un número.
+- **Cédulas de 8–9 dígitos no se encontraban**: el NUIP llega relleno con
+  ceros (`00…`) y se buscaba así en la BD. Ahora se quitan los ceros (con y
+  sin `PubDSK_`). Ya no se descarta un NUIP en esa posición por "parecer
+  fecha".
+- Foco en «Documento» al abrir Portería y al cerrar la confirmación (antes
+  quedaba en la ventana raíz).
+- Apertura de cámara: el hilo ya no llama a Tk; si la página se cierra
+  mientras abre, la cámara se libera (error `invalid command name`).
+
+### Cambiado
+
+- «Salir» sin foco por teclado y con confirmación (por defecto «No»).
+- Log en nivel INFO: escaneos, cola, ingresos/salidas (`id_ingreso`) y
+  logout — sin datos personales.
+- Eliminados `bind_intercept_escaneo`, `es_entry_escaneo`,
+  `set_antes_documento_enter` (formulario) y `_revertir_insercion_entry`
+  (panel), reemplazados por la guardia.
+
+### Eliminado
+
+- Botones «Portería» y «Salida manual» de la topbar (no estaban en
+  `cdb8021`). «Portería» solo recargaba la página actual (reiniciaba
+  cámara y descartaba la confirmación pendiente).
+- Página `ui/pages/salida.py` (tabla «Salidas de hoy», «+ Nueva salida»
+  por documento escrito a mano, `metodo_aut=1`), `FacialRecognitionModal`,
+  `ui/window_utils.py` y el estilo `NavActive.TButton`, que solo usaba esa
+  página. Las salidas se siguen registrando en Portería con lector, rostro
+  o huella; la salida tecleando el documento queda solo en la web.
+
 ## [1.1.0] — 2026-09-03
 
 ### Documentación

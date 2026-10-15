@@ -27,6 +27,8 @@ APP_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from config import LOCAL_HOSTS  # noqa: E402 — requiere APP_DIR en sys.path
+
 
 def _find_project_root(start: Path) -> Path:
     for candidate in (start, *start.parents):
@@ -36,8 +38,6 @@ def _find_project_root(start: Path) -> Path:
 
 
 PROJECT_ROOT = _find_project_root(APP_DIR)
-
-_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 def _base_url_from_app_config() -> str | None:
@@ -76,15 +76,15 @@ def resolve_verify_tls(base_url: str | None = None) -> bool:
         return raw.strip().lower() in {"1", "true", "yes", "on"}
 
     host = (urlparse(base_url or BASE_URL).hostname or "").lower()
-    if host in _LOCAL_HOSTS:
+    if host in LOCAL_HOSTS:
         return True
     return False
 
 
-# Credenciales de desarrollo documentadas en CLAUDE.md — mismas que usa
-# el resto de la suite de tests del proyecto (scripts/test_seguridad/).
-NONADMIN_USER = "porteria"
-NONADMIN_PASS = "Porteria2026!"
+# Usuario de portería de desarrollo (CLAUDE.md). La clave se puede
+# sobreescribir con variables de entorno para no dejarla en el repo.
+NONADMIN_USER = os.environ.get("SMARTCSET_TEST_USER", "porteria")
+NONADMIN_PASS = os.environ.get("SMARTCSET_TEST_PASS", "Porteria2026!")
 
 HTTP_TIMEOUT = 15
 

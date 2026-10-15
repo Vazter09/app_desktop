@@ -17,8 +17,6 @@ import io
 import unittest
 import uuid
 
-from PIL import Image
-
 from common import (
     BASE_URL,
     NONADMIN_PASS,
@@ -28,8 +26,13 @@ from common import (
     resolve_verify_tls,
     run_psql,
 )
+from PIL import Image
 
-from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
+from smartcset_client import (
+    SmartcsetApiError,
+    SmartcsetClient,
+    SmartcsetConnectionError,
+)
 
 
 def _make_client() -> SmartcsetClient:
@@ -56,7 +59,7 @@ class TestLogin(unittest.TestCase):
     def test_endpoint_protegido_sin_sesion(self) -> None:
         client_sin_login = _make_client()
         with self.assertRaises((SmartcsetApiError, SmartcsetConnectionError)):
-            client_sin_login.ingresos_hoy()
+            client_sin_login.salidas_hoy()
 
     def test_relogin_desktop_sin_logout_previo(self) -> None:
         """Simula cierre accidental: login → logout omitido → segundo login."""
@@ -112,10 +115,6 @@ class TestPorteriaFlujoReal(unittest.TestCase):
         )
         self.assertIn("id_ingreso", resultado)
 
-        hoy = self.client.ingresos_hoy()
-        documentos_hoy = [item["documento"] for item in hoy]
-        self.assertIn(self.documento, documentos_hoy)
-
         consulta_salida = self.client.salida_consultar(self.documento, "CC")
         self.assertTrue(consulta_salida["puede_salir"])
 
@@ -125,6 +124,7 @@ class TestPorteriaFlujoReal(unittest.TestCase):
                 "documento": self.documento,
                 "observaciones": "Cierre test automatizado",
                 "metodo_aut": 1,
+                "id_entrada": entrada_id,
             }
         )
 
@@ -138,16 +138,6 @@ class TestPorteriaFlujoReal(unittest.TestCase):
             "ORDER BY fec_ingreso DESC LIMIT 1;"
         )
         self.assertEqual(metodos, "1,1")
-
-    def test_entradas_crud_requiere_admin(self) -> None:
-        """Congruencia: `porteria` (no-admin) debe recibir el mismo
-        rechazo real que en la web — no una restricción inventada en el
-        cliente (ver sección 3.1 'Congruencia' de REGLAS_APP_ESCRITORIO_SGI.md)."""
-        with self.assertRaises(SmartcsetApiError) as ctx:
-            self.client.entrada_guardar(
-                {"nombre": "Entrada de test — no debería crearse", "sel_sede": "9309|1"}
-            )
-        self.assertIn("administrador", str(ctx.exception).lower())
 
 
 class TestBiometriaFacial(unittest.TestCase):

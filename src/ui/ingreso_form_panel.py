@@ -9,17 +9,22 @@ from tkinter import ttk
 from typing import Any, Callable
 
 from app_log import flush_handlers, get_logger
-from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
+from smartcset_client import (
+    SmartcsetApiError,
+    SmartcsetClient,
+    SmartcsetConnectionError,
+)
 from ui import theme
 from ui.field_validators import (
     DOC_MAX_LEN,
+    agregar_equipo_al_payload,
     es_documento_valido,
     es_equipo_serial_valido,
     es_nombre_valido,
     es_observacion_valida,
+    filtrar_chars_equipo_serial,
     filtrar_chars_nombre,
     filtrar_chars_observacion,
-    filtrar_chars_equipo_serial,
     mensaje_documento_invalido,
     mensaje_nombre_invalido,
     sanear_documento,
@@ -28,6 +33,8 @@ from ui.field_validators import (
     sanear_observacion,
     serial_equipo_desde_payload,
 )
+from ui.format_utils import minutos_redondeados_arriba
+from ui.scan_capture import documento_desde_entrada_campo
 
 log = get_logger("ui.ingreso_form_panel")
 
@@ -42,11 +49,8 @@ def _foto_desde_consulta(resultado: dict[str, Any]) -> str | None:
     return str(foto) if foto else None
 
 
-def _enriquecer_persona_consulta(
-    resultado: dict[str, Any], persona: dict[str, Any] | None
-) -> dict[str, Any] | None:
-    if not isinstance(persona, dict):
-        return persona
+def _extras_consulta(resultado: dict[str, Any]) -> dict[str, Any]:
+    """Foto y serial de equipo que trae `ingreso/consultar`."""
     extra: dict[str, Any] = {}
     foto = _foto_desde_consulta(resultado)
     if foto:
@@ -54,6 +58,15 @@ def _enriquecer_persona_consulta(
     serial = serial_equipo_desde_payload(resultado)
     if serial:
         extra["id_equipo"] = serial
+    return extra
+
+
+def _enriquecer_persona_consulta(
+    resultado: dict[str, Any], persona: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    if not isinstance(persona, dict):
+        return persona
+    extra = _extras_consulta(resultado)
     return {**persona, **extra} if extra else persona
 
 
@@ -109,9 +122,6 @@ class IngresoFormPanel(tk.Frame):
 
     def documento(self) -> str:
         return self._documento_var.get().strip()
-
-    def set_documento(self, valor: str) -> None:
-        self._documento_var.set(sanear_documento(valor))
 
     def aplicar_visitante_escaneado(
         self,
@@ -458,8 +468,11 @@ class IngresoFormPanel(tk.Frame):
             self._coerciendo_campos = False
 
     def _coerce_documento(self, *_args: object) -> None:
+        # PubDSK_/trama larga: NUIP real, no los primeros 10 del prefijo.
         self._coerce_var(
-            self._documento_var, sanear_documento, max_len=DOC_MAX_LEN
+            self._documento_var,
+            documento_desde_entrada_campo,
+            max_len=DOC_MAX_LEN,
         )
 
     def _coerce_nombres(self, *_args: object) -> None:
@@ -585,7 +598,11 @@ class IngresoFormPanel(tk.Frame):
     # ---- Eventos -----------------------------------------------------
 
     def _on_documento_enter(self, _event: tk.Event | None = None) -> str | None:
-        """Enter: consulta id_persona y carga datos en el formulario."""
+        """Enter humano: consulta id_persona y carga datos en el formulario.
+
+        Las ráfagas del lector nunca llegan aquí: las consume
+        ``ui.scan_guard`` antes que el Entry.
+        """
         self._omitir_consulta_focus_out = True
         self._consultar_documento()
         return "break"
@@ -610,9 +627,6 @@ class IngresoFormPanel(tk.Frame):
         if tipo and tipo in self._tipo_doc_ids:
             self._tipo_doc_combo.set(tipo)
 
-    def _tipo_doc_actual(self) -> str:
-        return self.tipo_doc_actual()
-
     def _estado_barra(self, mensaje: str, color: str = theme.ERROR) -> None:
         """Avisos operativos: solo barra inferior del panel facial, no el form."""
         self._msg_var.set("")
@@ -629,7 +643,7 @@ class IngresoFormPanel(tk.Frame):
             self._msg_var.set(mensaje_documento_invalido())
             self.focus_documento()
             return
-        tipo_doc = self._tipo_doc_actual()
+        tipo_doc = self.tipo_doc_actual()
         try:
             resultado = self._client.ingreso_consultar(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
@@ -664,7 +678,7 @@ class IngresoFormPanel(tk.Frame):
             ) or {}
             self._persona_existente = persona or None
             rest = int(resultado.get("segundos_restantes_reingreso") or 0)
-            min_rest = max(1, (rest + 59) // 60)
+            min_rest = minutos_redondeados_arriba(rest)
             self._badge_var.set("Espere para reingresar")
             self._badge_lbl.configure(fg=theme.ERROR)
             self._estado_barra(
@@ -759,7 +773,7 @@ class IngresoFormPanel(tk.Frame):
             tipo_persona = int(self._persona_existente.get("tipo_persona") or 0)
 
         payload = {
-            "tipo_doc": self._tipo_doc_actual(),
+            "tipo_doc": self.tipo_doc_actual(),
             "documento": documento,
             "nombres": nombres,
             "apellidos": apellidos,
@@ -771,10 +785,7 @@ class IngresoFormPanel(tk.Frame):
         }
         if not equipo_serial:
             equipo_serial = serial_equipo_desde_payload(self._persona_existente)
-        if equipo_serial:
-            payload["id_equipo"] = equipo_serial
-            payload["ind_equipo"] = True
-            payload["descripcion_equipo"] = "Pendiente"
+        agregar_equipo_al_payload(payload, equipo_serial)
         if self._on_enriquecer_payload is not None:
             self._on_enriquecer_payload(payload)
         try:
@@ -797,7 +808,7 @@ class IngresoFormPanel(tk.Frame):
 
         persona_datos: dict[str, Any] = {
             "documento": documento,
-            "tipo_doc": self._tipo_doc_actual(),
+            "tipo_doc": self.tipo_doc_actual(),
             "nombres": nombres,
             "apellidos": apellidos,
             "tipo_persona": tipo_persona,
@@ -821,9 +832,7 @@ class IngresoFormPanel(tk.Frame):
         # Tras registrar, reconsultar para traer campos de tab_instructores
         # (si ya existe fila) y tipo/nombre canónicos de BD.
         try:
-            consulta = self._client.ingreso_consultar(
-                documento, self._tipo_doc_actual()
-            )
+            consulta = self._client.ingreso_consultar(documento, self.tipo_doc_actual())
             persona_api = consulta.get("persona") or {}
             if persona_api:
                 for key in (
@@ -838,12 +847,7 @@ class IngresoFormPanel(tk.Frame):
                 ):
                     if persona_api.get(key) is not None:
                         persona_datos[key] = persona_api.get(key)
-            foto = _foto_desde_consulta(consulta)
-            if foto:
-                persona_datos["foto_base64"] = foto
-            serial = serial_equipo_desde_payload(consulta)
-            if serial:
-                persona_datos["id_equipo"] = serial
+            persona_datos.update(_extras_consulta(consulta))
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Enrichment post-registro omitido: %s", exc)
             flush_handlers()

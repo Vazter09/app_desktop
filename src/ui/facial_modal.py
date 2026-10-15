@@ -1,9 +1,10 @@
 """
-Panel / modal "Reconocimiento biométrico" — flujo único de portería.
+Panel "Reconocimiento biométrico" — flujo único de portería.
 
-`FacialRecognitionPanel` es el layout fijo (cámara izquierda + huella
-derecha). `FacialRecognitionModal` es un Toplevel opcional que reutiliza
-el mismo panel (p. ej. desde la página de salida).
+`FacialRecognitionPanel` es el layout fijo (cámara izquierda + formulario
++ huella), embebido en `IngresoPage`. Las salidas se registran aquí mismo
+(lector, rostro o huella con ingreso abierto > 5 min); la página de
+«Salida manual» se eliminó el 2026-10-15.
 
 Tras identificar un rostro, consulta `ingreso/consultar.php`:
   - si puede ingresar → registra ingreso
@@ -27,10 +28,11 @@ ESTADO: flujo completo real (facial). Huella: UI + identificar.
 from __future__ import annotations
 
 import base64
+import collections
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import Any, Callable, Literal
 
 import cv2
@@ -38,36 +40,37 @@ import numpy as np
 from PIL import Image, ImageTk
 
 from app_log import flush_handlers, get_logger, log_exception
-from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
-from tkinter import messagebox
-from ui import theme
+from app_paths import ruta_asset_img
+from smartcset_client import (
+    SmartcsetApiError,
+    SmartcsetClient,
+    SmartcsetConnectionError,
+)
+from ui import scan_burst, scan_guard, theme
 from ui.camera import (
     CameraSource,
     detectar_camara_disponible,
     frame_a_photoimage,
     listar_camaras_disponibles,
 )
-from ui.field_validators import serial_equipo_desde_payload
+from ui.field_validators import agregar_equipo_al_payload, serial_equipo_desde_payload
+from ui.format_utils import minutos_redondeados_arriba
 from ui.huella_scan import HuellaScanCanvas
 from ui.identification_confirmation_modal import IdentificationConfirmationPanel
+from ui.ingreso_form_panel import IngresoFormPanel
+from ui.responsive import sx
+from ui.scan_capture import CapturaEscaneo, parse_captura_escaneo
 
 log = get_logger("ui.facial_modal")
-from ui.ingreso_form_panel import IngresoFormPanel
-from ui.scan_capture import CapturaEscaneo, parse_captura_escaneo
-from ui.window_utils import centrar_ventana_al_mostrar
-from ui.responsive import sx
 
 Modo = Literal["ingreso", "salida", "actualizar_captura", "espera_reingreso"]
 
 # Tres secciones: cámara | formulario | huella.
-# Pistola (wedge): teclas rápidas + Enter → buffer de escaneo.
-SCAN_INTER_CHAR_MS = 50
-SCAN_RESET_MS = 140
-SCAN_MIN_LEN = 4
-SCAN_SWALLOW_AFTER = 3
+# Pistola (wedge): ráfagas detectadas en ``ui.scan_burst`` y capturadas
+# antes que cualquier widget por ``ui.scan_guard``.
+# Escaneos que llegan con una confirmación abierta: esperan en cola.
+SCAN_COLA_MAX = 5
 # Tamaños base de diseño; runtime vía sx() (cambio «responsive»).
-_MODAL_ANCHO_BASE = 1280
-_MODAL_ALTO_BASE = 820
 _CAM_ANCHO_BASE = 360
 # Alto contenido: deja espacio fijo abajo para barra de estado + acciones
 # (ventana app ~820 px con topbar; 560 empujaba esos mensajes fuera de vista).
@@ -92,13 +95,6 @@ def _huella_ancho() -> int:
 def _huella_alto() -> int:
     return sx(_HUELLA_ALTO_BASE)
 
-
-def _modal_ancho() -> int:
-    return sx(_MODAL_ANCHO_BASE)
-
-
-def _modal_alto() -> int:
-    return sx(_MODAL_ALTO_BASE)
 
 # Auto-identificación: revisar rostro cada N ticks (~165 ms) en el hilo
 # principal (Tkinter no es thread-safe con OpenCV). Dos detecciones
@@ -125,32 +121,57 @@ def _get_embedder():
     return _embedder_singleton
 
 
+def _ahora_ms() -> float:
+    return time.monotonic() * 1000
+
+
+class _CooldownPorDocumento:
+    """Documento → instante (ms monotónicos) hasta el que queda bloqueado."""
+
+    def __init__(self) -> None:
+        self._hasta_ms: dict[str, float] = {}
+
+    @staticmethod
+    def _clave(documento: str) -> str:
+        return (documento or "").strip()
+
+    def activo(self, documento: str) -> bool:
+        doc = self._clave(documento)
+        if not doc:
+            return False
+        if self._hasta_ms.get(doc, 0.0) <= _ahora_ms():
+            self._hasta_ms.pop(doc, None)
+            return False
+        return True
+
+    def marcar(self, documento: str, pausa_ms: int) -> None:
+        doc = self._clave(documento)
+        if doc:
+            self._hasta_ms[doc] = _ahora_ms() + max(0, pausa_ms)
+
+    def limpiar(self, documento: str) -> None:
+        self._hasta_ms.pop(self._clave(documento), None)
+
+    def ms_restantes(self, documento: str) -> int:
+        doc = self._clave(documento)
+        if not doc:
+            return 0
+        return max(0, int(self._hasta_ms.get(doc, 0.0) - _ahora_ms()))
+
+
 class FacialRecognitionPanel(ttk.Frame):
-    """Cámara (izq.) + huella (der.) — usable embebido en página o en modal."""
+    """Cámara (izq.) + formulario (centro) + huella (der.) — embebido en página o modal."""
 
     def __init__(
         self,
         master: tk.Misc,
         client: SmartcsetClient,
-        modo: Modo,
         on_registrado: Callable[[], None] | None = None,
-        *,
-        show_close_button: bool = False,
-        on_close: Callable[[], None] | None = None,
     ) -> None:
-        """
-        `modo`: "ingreso" o "salida" — decide el endpoint de
-        consultar/registrar al identificar.
-
-        `on_registrado`: callback opcional tras un registro exitoso.
-        `show_close_button` / `on_close`: solo para uso en Toplevel.
-        """
+        """`on_registrado`: callback opcional tras un registro exitoso."""
         super().__init__(master, style="App.TFrame")
         self._client = client
-        self._modo = modo
         self._on_registrado = on_registrado
-        self._show_close_button = show_close_button
-        self._on_close = on_close
         self._capturando = False
         self._camara: CameraSource | None = None
         self._after_id: str | None = None
@@ -169,9 +190,14 @@ class FacialRecognitionPanel(ttk.Frame):
         # Cooldown corto global (fallos / anti-spam de frames).
         self._cooldown_hasta_ms = 0.0
         # Espera post-salida por documento: no bloquea a otras personas.
-        self._cooldown_espera_docs: dict[str, float] = {}
+        self._espera_reingreso = _CooldownPorDocumento()
         # Ventana post-ingreso (<5 min): no reabrir modal de salida/ingreso.
-        self._cooldown_post_ingreso_docs: dict[str, float] = {}
+        self._post_ingreso = _CooldownPorDocumento()
+        # ingreso/consultar por (documento, tipo) dentro de UN flujo de
+        # identificación: se vacía al empezar cada flujo y antes de cada
+        # escritura (ver `_consultar_persona`).
+        self._consultas_flujo: dict[tuple[str, str], dict[str, Any]] = {}
+        self._catalogos_after_id: str | None = None
         # Último documento con registro exitoso (para restaurar barra).
         self._ultimo_doc_flujo: str = ""
         self._confirmacion_modal: IdentificationConfirmationPanel | None = None
@@ -187,11 +213,20 @@ class FacialRecognitionPanel(ttk.Frame):
         self._syncing_centro = False
         # 1=manual, 2=QR, 3=barras, 4=facial, 5=huella (tab_metodos_aut)
         self._ultimo_metodo_biometrico: int = 1
-        self._scan_buf: list[str] = []
-        self._scan_last_ms: float = 0.0
-        self._scan_fast: bool = True
-        self._scan_swallow: bool = False
-        self._scan_bindings_activos = True
+        self._detector_rafaga = scan_burst.DetectorRafaga()
+        self._scan_widget: object = None
+        self._scan_tick_after_id: str | None = None
+        self._scan_pendiente_after_id: str | None = None
+        self._scans_pendientes: collections.deque[CapturaEscaneo] = (
+            collections.deque(maxlen=SCAN_COLA_MAX)
+        )
+        # Apertura de cámara en hilo: el resultado lo recoge el hilo
+        # principal por sondeo (Tk no es thread-safe).
+        self._camara_lock = threading.Lock()
+        self._apertura_camara: tuple[int, CameraSource, bool] | None = None
+        self._camara_poll_after_id: str | None = None
+        self._aperturas_en_curso = 0
+        self._destruido = False
 
         self.columnconfigure(0, weight=1)
         # Solo la fila biométrica crece; estado y acciones quedan fijas abajo.
@@ -200,23 +235,39 @@ class FacialRecognitionPanel(ttk.Frame):
         self.rowconfigure(2, weight=0)
         self._build()
         self.bind("<Destroy>", self._on_destroy, add="+")
-        # Intercepta pistola/QR en toda la ventana del panel (no solo el Entry).
-        self.bind_all("<KeyPress>", self._on_scan_keypress, add="+")
+        # Pistola/QR/PDF417: ve cada tecla antes que cualquier widget.
+        scan_guard.instalar(self)
+        scan_guard.registrar(self._on_scan_keypress)
+        self.after_idle(self._enfocar_documento)
         self.after(150, self._iniciar_captura)
 
     def _on_destroy(self, event: tk.Event) -> None:
         if event.widget is not self:
             return
         # Solo liberar hardware: los widgets ya se están destruyendo.
+        scan_guard.liberar(self._on_scan_keypress)
         self._abriendo_camara = False
         self._capturando = False
-        self._scan_bindings_activos = False
-        if self._after_id is not None:
-            try:
-                self.after_cancel(self._after_id)
-            except tk.TclError:
-                pass
-            self._after_id = None
+        with self._camara_lock:
+            self._destruido = True
+            pendiente = self._apertura_camara
+            self._apertura_camara = None
+        if pendiente is not None:
+            pendiente[1].liberar()
+        for attr in (
+            "_after_id",
+            "_catalogos_after_id",
+            "_scan_tick_after_id",
+            "_scan_pendiente_after_id",
+            "_camara_poll_after_id",
+        ):
+            after_id = getattr(self, attr)
+            if after_id is not None:
+                try:
+                    self.after_cancel(after_id)
+                except tk.TclError:
+                    pass
+                setattr(self, attr, None)
         if self._camara is not None:
             self._camara.liberar()
             self._camara = None
@@ -259,8 +310,6 @@ class FacialRecognitionPanel(ttk.Frame):
         actions = ttk.Frame(self, style="App.TFrame", padding=(16, 8, 16, 12))
         actions.grid(row=2, column=0, sticky="ew")
         actions.columnconfigure(0, weight=1)
-        if self._show_close_button:
-            actions.columnconfigure(1, weight=1)
 
         self._toggle_btn = ttk.Button(
             actions,
@@ -268,17 +317,7 @@ class FacialRecognitionPanel(ttk.Frame):
             style="Primary.TButton",
             command=self._toggle_captura,
         )
-        self._toggle_btn.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=(0, 4) if self._show_close_button else 0,
-        )
-
-        if self._show_close_button:
-            ttk.Button(
-                actions, text="Cerrar", style="Nav.TButton", command=self._cerrar
-            ).grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        self._toggle_btn.grid(row=0, column=0, sticky="ew")
 
         self.after(30, self._cargar_catalogos_formulario)
 
@@ -421,40 +460,37 @@ class FacialRecognitionPanel(ttk.Frame):
         self._huella_scan = HuellaScanCanvas(
             huella_wrap, width=_huella_ancho(), height=_huella_alto()
         )
-        self._huella_canvas = self._huella_scan  # compat. helpers de tamaño
         self._huella_scan.pack(fill="both", expand=True)
         self._huella_scan.start()
         self._sync_huella_mensaje()
 
-    def _cargar_catalogos_formulario(self) -> None:
+    def _cargar_catalogos_formulario(self, intento: int = 1) -> None:
         if self._form_panel is None:
             return
-        ultimo_exc: Exception | None = None
-        catalogos = None
-        # Reintentos: fallo transitorio / carrera justo tras login.
-        for intento in range(1, 4):
-            try:
-                catalogos = self._client.catalogos()
-                ultimo_exc = None
-                break
-            except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-                ultimo_exc = exc
-                log.error("Catálogos (facial) intento %s: %s", intento, exc)
-                flush_handlers()
-                if "sesión no válida" in str(exc).lower():
-                    break
-                time.sleep(0.25 * intento)
-
-        if catalogos is None:
-            msg = f"No se pudieron cargar catálogos: {ultimo_exc}"
-            self._set_estado(msg, theme.ERROR)
-            self._form_panel.mostrar_error_catalogos(msg)
-            if ultimo_exc and "sesión no válida" in str(ultimo_exc).lower():
-                self._sesion_invalida = True
-                self._cooldown_hasta_ms = time.monotonic() * 1000 + 60_000
+        try:
+            catalogos = self._client.catalogos()
+        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
+            log.error("Catálogos (facial) intento %s: %s", intento, exc)
+            flush_handlers()
+            # Reintento transitorio (carrera justo tras login) sin congelar la UI.
+            if intento < 3 and "sesión no válida" not in str(exc).lower():
+                self._catalogos_after_id = self.after(
+                    250 * intento,
+                    lambda: self._cargar_catalogos_formulario(intento + 1),
+                )
+                return
+            self._fallo_catalogos(exc)
             return
         self._sesion_invalida = False
         self._form_panel.cargar_catalogos(catalogos)
+
+    def _fallo_catalogos(self, exc: Exception) -> None:
+        msg = f"No se pudieron cargar catálogos: {exc}"
+        self._set_estado(msg, theme.ERROR)
+        self._form_panel.mostrar_error_catalogos(msg)
+        if "sesión no válida" in str(exc).lower():
+            self._sesion_invalida = True
+            self._cooldown_hasta_ms = _ahora_ms() + 60_000
 
     def _documento_formulario(self) -> str:
         if self._form_panel is not None:
@@ -501,80 +537,121 @@ class FacialRecognitionPanel(ttk.Frame):
         if tipo:
             self._form_panel.set_tipo_doc(tipo)
 
-    def _reset_scan_buf(self) -> None:
-        self._scan_buf = []
-        self._scan_fast = True
-        self._scan_swallow = False
-        self._scan_last_ms = 0.0
+    # ---- Lector (pistola / 2D) ------------------------------------------
 
     def _on_scan_keypress(self, event: tk.Event) -> str | None:
-        """Buffer de pistola/QR: teclas rápidas + Enter → identificación.
+        """Consumidor de ``ui.scan_guard``: ve cada tecla ANTES que el
+        widget con foco y su clase.
 
-        Tab de PDF417 se trata como '@' (separador) y no mueve el foco
-        entre Entries del formulario (evita ape1 en Nombres, fecha en Obs).
+        Ráfaga del lector → se consume completa (nunca llega a botones,
+        Entries ni a la navegación por Tab). Mecanografía humana → se
+        retiene un instante y se libera en el Entry con foco.
         """
-        if not self._scan_bindings_activos:
-            return None
         try:
             if not self.winfo_exists():
                 return None
         except tk.TclError:
             return None
-        if self._confirmacion_abierta:
-            return None
+        decision = self._detector_rafaga.tecla(
+            getattr(event, "keysym", "") or "",
+            getattr(event, "char", "") or "",
+            _ahora_ms(),
+        )
+        self._scan_widget = getattr(event, "widget", None)
+        if decision.liberar:
+            self._insertar_texto_humano(self._scan_widget, decision.liberar)
+        if decision.trama is not None:
+            self._recibir_trama(decision.trama)
+        elif self._detector_rafaga.retiene:
+            self._programar_tick_escaneo()
+        return "break" if decision.consumir else None
 
-        keysym = getattr(event, "keysym", "") or ""
-        if keysym in ("Return", "KP_Enter"):
-            return self._flush_scan_buffer()
+    def _programar_tick_escaneo(self) -> None:
+        if self._scan_tick_after_id is None:
+            self._scan_tick_after_id = self.after(
+                scan_burst.INTER_CHAR_MS + 20, self._tick_escaneo
+            )
 
-        now = time.monotonic() * 1000
-        if self._scan_last_ms and (now - self._scan_last_ms) > SCAN_RESET_MS:
-            self._reset_scan_buf()
-        elif self._scan_last_ms and (now - self._scan_last_ms) > SCAN_INTER_CHAR_MS:
-            # Mecanografía humana: no es pistola.
-            self._scan_fast = False
-            self._scan_swallow = False
+    def _tick_escaneo(self) -> None:
+        """Sin más teclas rápidas: lo retenido era humano → liberarlo."""
+        self._scan_tick_after_id = None
+        texto = self._detector_rafaga.tick(_ahora_ms())
+        if texto:
+            self._insertar_texto_humano(self._scan_widget, texto)
+        elif self._detector_rafaga.retiene:
+            self._programar_tick_escaneo()
 
-        # Tab solo en ráfaga de pistola (buffer activo + ritmo rápido).
-        if keysym == "Tab":
-            if not self._scan_buf or not self._scan_fast:
-                return None
-            self._scan_buf.append("@")
-            self._scan_last_ms = now
-            if len(self._scan_buf) >= SCAN_SWALLOW_AFTER:
-                self._scan_swallow = True
-            return "break"
+    @staticmethod
+    def _insertar_texto_humano(widget: object, texto: str) -> None:
+        """Devuelve al Entry con foco las teclas humanas retenidas."""
+        # Combobox hereda de ttk.Entry; el readonly se filtra por state.
+        if not isinstance(widget, (tk.Entry, ttk.Entry)):
+            return
+        try:
+            if str(widget.cget("state")) in ("disabled", "readonly"):
+                return
+            if widget.selection_present():
+                widget.delete("sel.first", "sel.last")
+            widget.insert("insert", texto)
+        except tk.TclError:
+            return
 
-        char = getattr(event, "char", "") or ""
-        if not char or not char.isprintable():
-            return None
+    def _flujo_ocupado(self) -> bool:
+        return self._confirmacion_abierta or self._identificando
 
-        self._scan_buf.append(char)
-        self._scan_last_ms = now
-
-        if self._scan_fast and len(self._scan_buf) >= SCAN_SWALLOW_AFTER:
-            self._scan_swallow = True
-
-        if self._scan_swallow:
-            return "break"
-        return None
-
-    def _flush_scan_buffer(self) -> str | None:
-        raw = "".join(self._scan_buf)
-        was_fast = self._scan_fast and len(raw) >= SCAN_MIN_LEN
-        swallow = self._scan_swallow
-        self._reset_scan_buf()
-        if not was_fast or not raw.strip():
-            return None
-
+    def _recibir_trama(self, raw: str) -> None:
+        """Ráfaga completa del lector: procesar ya o dejar en cola."""
         cap = parse_captura_escaneo(raw)
+        # Sin datos personales en el log (MSPI): solo metadatos.
+        log.info(
+            "Escaneo | origen=%s metodo=%s largo=%d documento=%s",
+            cap.origen,
+            cap.metodo_aut,
+            len(raw),
+            "si" if cap.documento else "no",
+        )
         if not cap.documento:
             self._set_estado(
                 "Escaneo sin documento válido (8–10 dígitos) — reintente.",
                 theme.ERROR,
             )
-            return "break"
+        elif self._flujo_ocupado():
+            # Antes se descartaba en silencio: ahora espera su turno.
+            if len(self._scans_pendientes) == self._scans_pendientes.maxlen:
+                log.warning("Cola de escaneos llena: se descarta el más viejo")
+            self._scans_pendientes.append(cap)
+            log.info("Escaneo en cola | pendientes=%d", len(self._scans_pendientes))
+            self._set_estado(
+                "Escaneo en cola — se procesa al terminar la confirmación "
+                "actual.",
+                theme.CYAN,
+            )
+            self._programar_scan_pendiente()
+        else:
+            self._procesar_captura(cap)
+        # Cola de la misma trama (relleno, RH, binario): descartar desde
+        # que terminó el procesamiento, que pudo bloquear por red.
+        self._detector_rafaga.iniciar_descarte(_ahora_ms())
 
+    def _programar_scan_pendiente(self) -> None:
+        if self._scan_pendiente_after_id is None:
+            self._scan_pendiente_after_id = self.after(
+                300, self._procesar_scan_pendiente
+            )
+
+    def _procesar_scan_pendiente(self) -> None:
+        self._scan_pendiente_after_id = None
+        if not self._scans_pendientes:
+            return
+        if self._flujo_ocupado():
+            self._programar_scan_pendiente()
+            return
+        cap = self._scans_pendientes.popleft()
+        self._procesar_captura(cap)
+        if self._scans_pendientes:
+            self._programar_scan_pendiente()
+
+    def _procesar_captura(self, cap: CapturaEscaneo) -> None:
         registrada = self._procesar_persona_por_documento(cap)
         # Guardar método del escaneo (2=QR / 3=barras) también para visitante.
         self._ultimo_metodo_biometrico = self._metodo_aut_valido(
@@ -588,7 +665,16 @@ class FacialRecognitionPanel(ttk.Frame):
                 nombres=cap.nombres,
                 apellidos=cap.apellidos,
             )
-        return "break" if (swallow or was_fast) else None
+
+    def _enfocar_documento(self) -> None:
+        """Foco en Documento: la app nunca queda con foco en la raíz."""
+        try:
+            if not self.winfo_exists() or self._confirmacion_abierta:
+                return
+        except tk.TclError:
+            return
+        if self._form_panel is not None and self._form_panel.winfo_exists():
+            self._form_panel.focus_documento()
 
     def _procesar_persona_por_documento(self, cap: CapturaEscaneo) -> bool:
         """Persona registrada → modal (como facial). Visitante → False.
@@ -603,9 +689,10 @@ class FacialRecognitionPanel(ttk.Frame):
         if not documento:
             return False
         tipo_doc = (cap.tipo_doc or "CC").strip() or "CC"
+        self._consultas_flujo.clear()
 
         try:
-            consulta = self._client.ingreso_consultar(documento, tipo_doc)
+            consulta = self._consultar_persona(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.error("Consultar documento (escaneo): %s", exc)
             flush_handlers()
@@ -637,16 +724,9 @@ class FacialRecognitionPanel(ttk.Frame):
             self._refrescar_aviso_espera_reingreso(documento)
             return True
         if self._doc_en_ventana_post_ingreso(documento):
-            if int(cap.metodo_aut) in (2, 3):
-                self._avisar_ventana_recaptura_barras(
-                    documento, persona_datos=persona_datos
-                )
-            else:
-                self._avisar_identificado_sin_modal(
-                    documento,
-                    persona_datos=persona_datos,
-                    desde_huella=int(cap.metodo_aut) == 5,
-                )
+            self._avisar_identificado_por_metodo(
+                documento, int(cap.metodo_aut), persona_datos
+            )
             return True
 
         try:
@@ -669,16 +749,9 @@ class FacialRecognitionPanel(ttk.Frame):
 
         if modo_efectivo == "actualizar_captura":
             # Ya ingresó: solo aviso en barra de estado (sin modal).
-            if int(cap.metodo_aut) in (2, 3):
-                self._avisar_ventana_recaptura_barras(
-                    documento, persona_datos=persona_datos
-                )
-            else:
-                self._avisar_identificado_sin_modal(
-                    documento,
-                    persona_datos=persona_datos,
-                    desde_huella=int(cap.metodo_aut) == 5,
-                )
+            self._avisar_identificado_por_metodo(
+                documento, int(cap.metodo_aut), persona_datos
+            )
             return True
 
         self._limpiar_espera_reingreso_doc(documento)
@@ -696,6 +769,19 @@ class FacialRecognitionPanel(ttk.Frame):
         self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
         return True
 
+    def _consultar_persona(self, documento: str, tipo_doc: str) -> dict[str, Any]:
+        """`ingreso/consultar` reutilizado dentro del mismo flujo.
+
+        La caché se vacía al empezar cada flujo y antes de cada escritura,
+        así que nunca se usa un estado anterior a un registro.
+        """
+        clave = (documento, tipo_doc)
+        if clave not in self._consultas_flujo:
+            self._consultas_flujo[clave] = self._client.ingreso_consultar(
+                documento, tipo_doc
+            )
+        return self._consultas_flujo[clave]
+
     def _asegurar_foto_persona(self, persona_datos: dict[str, Any]) -> None:
         """Siempre rellena el modal desde consultar (nombre, tipo, ficha, etc.).
 
@@ -712,9 +798,7 @@ class FacialRecognitionPanel(ttk.Frame):
             return
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         try:
-            resp = self._client.ingreso_consultar(
-                documento, tipo_doc, incluir_foto=True
-            )
+            resp = self._consultar_persona(documento, tipo_doc)
             persona = resp.get("persona")
             if not isinstance(persona, dict):
                 persona = {}
@@ -755,9 +839,7 @@ class FacialRecognitionPanel(ttk.Frame):
     ) -> bool:
         """True si ya hay patrón o foto de referencia (no re-enrolar)."""
         try:
-            resp = self._client.ingreso_consultar(
-                documento, tipo_doc, incluir_foto=True
-            )
+            resp = self._client.ingreso_consultar(documento, tipo_doc)
             persona = resp.get("persona") or {}
             foto = resp.get("foto_base64") or (
                 persona.get("foto_base64") if isinstance(persona, dict) else None
@@ -777,14 +859,14 @@ class FacialRecognitionPanel(ttk.Frame):
         """Dentro de 5 min: QR/barras no actualizan captura; aviso sin modal."""
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         try:
-            consulta = self._client.ingreso_consultar(documento, tipo_doc)
+            consulta = self._consultar_persona(documento, tipo_doc)
             rest = int(consulta.get("segundos_restantes_salida") or 0)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Ventana recaptura (consulta): %s", exc)
             flush_handlers()
             rest = 0
         if rest > 0:
-            min_rest = max(1, (rest + 59) // 60)
+            min_rest = minutos_redondeados_arriba(rest)
             msg = (
                 f"Ingreso reciente: salida disponible en ~{min_rest} min "
                 "(QR/barras no actualizan captura). Aún dentro"
@@ -799,19 +881,20 @@ class FacialRecognitionPanel(ttk.Frame):
         if self._form_panel is not None and self._form_panel.winfo_exists():
             self._form_panel.grid()
 
-    @staticmethod
-    def _obs_metodo(metodo: int, *, recaptura: bool = False) -> str:
-        if metodo == 5:
-            base = "huella dactilar"
-        elif metodo == 3:
-            base = "código de barras"
-        elif metodo == 2:
-            base = "código QR"
+    def _avisar_identificado_por_metodo(
+        self, documento: str, metodo: int, persona_datos: dict[str, Any]
+    ) -> None:
+        """Ya ingresó (<5 min): QR/barras avisan la ventana; facial/huella, barra."""
+        if metodo in (2, 3):
+            self._avisar_ventana_recaptura_barras(
+                documento, persona_datos=persona_datos
+            )
         else:
-            base = "reconocimiento facial"
-        if recaptura:
-            return f"Re-captura por {base}."
-        return f"Identificado por {base}."
+            self._avisar_identificado_sin_modal(
+                documento,
+                persona_datos=persona_datos,
+                desde_huella=metodo == 5,
+            )
 
     def _obs_formulario(self) -> str:
         """Solo el campo Observación/Novedad del form (≥5 crea novedad en BD)."""
@@ -843,9 +926,7 @@ class FacialRecognitionPanel(ttk.Frame):
 
     def _photo_huella_icono(self, size_px: int = 18) -> ImageTk.PhotoImage | None:
         """Miniatura blanca de huella.png (mismo orden de tamaño que 📷)."""
-        from ui.huella_scan import _ruta_huella_png
-
-        ruta = _ruta_huella_png()
+        ruta = ruta_asset_img("huella.png")
         if ruta is None:
             return None
         try:
@@ -879,10 +960,6 @@ class FacialRecognitionPanel(ttk.Frame):
                 "Coloque el dedo índice derecho\nen el huellero.",
                 theme.TEXT_MUTED,
             )
-
-    def _draw_huella_placeholder(self) -> None:
-        """Actualiza texto/estado del panel animado de huella."""
-        self._sync_huella_mensaje()
 
     def _draw_placeholder(self, mensaje: str = "Sin señal de cámara") -> None:
         c = self._cam_canvas
@@ -930,11 +1007,14 @@ class FacialRecognitionPanel(ttk.Frame):
         self._abriendo_camara = True
         self._set_estado("Conectando cámara...", theme.CYAN)
         self._camara_activa_var.set(f"Cámara: {indice}")
+        with self._camara_lock:
+            self._aperturas_en_curso += 1
         threading.Thread(
             target=self._abrir_camara_en_hilo,
             args=(indice,),
             daemon=True,
         ).start()
+        self._programar_poll_camara()
 
     def _abrir_camara_en_hilo(self, indice: int) -> None:
         camara = CameraSource(indice)
@@ -942,14 +1022,44 @@ class FacialRecognitionPanel(ttk.Frame):
         indice_final = indice
 
         if not ok and self._camara_indice_seleccionado is None:
-            alterno = detectar_camara_disponible(preferido=None)
+            alterno = detectar_camara_disponible(excluir=indice)
             if alterno is not None and alterno != indice:
                 camara.liberar()
                 indice_final = alterno
                 camara = CameraSource(indice_final)
                 ok = camara.abrir()
 
-        self.after(0, lambda: self._finalizar_apertura_camara(indice_final, camara, ok))
+        # Nada de Tk desde este hilo: el hilo principal sondea el resultado.
+        anterior = None
+        with self._camara_lock:
+            self._aperturas_en_curso -= 1
+            if not self._destruido:
+                anterior = self._apertura_camara
+                self._apertura_camara = (indice_final, camara, ok)
+                camara = None
+        if anterior is not None:
+            # Apertura previa nunca recogida (detener + reiniciar rápido).
+            anterior[1].liberar()
+        if camara is not None:
+            # La página se cerró mientras abría (p. ej. logout).
+            camara.liberar()
+
+    def _programar_poll_camara(self) -> None:
+        if self._camara_poll_after_id is None:
+            self._camara_poll_after_id = self.after(
+                100, self._poll_apertura_camara
+            )
+
+    def _poll_apertura_camara(self) -> None:
+        self._camara_poll_after_id = None
+        with self._camara_lock:
+            resultado = self._apertura_camara
+            self._apertura_camara = None
+            en_curso = self._aperturas_en_curso
+        if en_curso > 0:
+            self._programar_poll_camara()
+        if resultado is not None:
+            self._finalizar_apertura_camara(*resultado)
 
     def _finalizar_apertura_camara(
         self, indice: int, camara: CameraSource, ok: bool
@@ -1197,32 +1307,10 @@ class FacialRecognitionPanel(ttk.Frame):
 
     # ---- Extracción del vector (motor) --------------------------------
 
-    def _extraer_embedding(self) -> tuple[list[float], float] | None:
-        if self._ultimo_frame is None:
-            self._set_estado("Inicie la captura de cámara primero.", theme.ERROR)
-            return None
-
-        try:
-            embedder = _get_embedder()
-        except FileNotFoundError as exc:
-            log_exception(log, "Modelos al extraer embedding", exc)
-            self._set_estado(str(exc), theme.ERROR)
-            return None
-
-        resultado = embedder.extraer(self._ultimo_frame)
-        if resultado is None:
-            self._set_estado(
-                "No se detectó ningún rostro en la imagen — acérquese a la cámara.",
-                theme.ERROR,
-            )
-            return None
-
-        return resultado
-
     def _extraer_embedding_y_recorte(
         self,
     ) -> tuple[list[float], float, np.ndarray] | None:
-        """Embedding + recorte facial alineado (para foto de enrolamiento)."""
+        """Embedding + calidad + recorte facial alineado (para identificar y enrolar)."""
         if self._ultimo_frame is None:
             self._set_estado("Inicie la captura de cámara primero.", theme.ERROR)
             return None
@@ -1324,18 +1412,13 @@ class FacialRecognitionPanel(ttk.Frame):
             return
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
 
-        # Ya enrolado: no pisar vector/foto; solo leer para el modal.
+        # Ya enrolado: no pisar vector/foto. El modal de confirmación
+        # rellena los datos después de esta función.
         if self._persona_tiene_foto_enrolada(documento, tipo_doc):
-            self._asegurar_foto_persona(persona_datos)
             if self._preparar_captura_para_enrol() and self._ultimo_embedding:
                 try:
-                    self._client.ingreso_actualizar_captura(
-                        {
-                            "tipo_doc": tipo_doc,
-                            "documento": documento,
-                            "metodo_aut": 4,
-                            "embedding": self._ultimo_embedding,
-                        }
+                    self._actualizar_captura_facial(
+                        documento, tipo_doc, self._ultimo_embedding
                     )
                 except (SmartcsetApiError, SmartcsetConnectionError) as exc:
                     log.warning("Actualizar captura (ya enrolado): %s", exc)
@@ -1368,14 +1451,7 @@ class FacialRecognitionPanel(ttk.Frame):
             persona_datos["foto_base64"] = foto
 
         try:
-            self._client.ingreso_actualizar_captura(
-                {
-                    "tipo_doc": tipo_doc,
-                    "documento": documento,
-                    "metodo_aut": 4,
-                    "embedding": embedding,
-                }
-            )
+            self._actualizar_captura_facial(documento, tipo_doc, embedding)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Actualizar captura tras enrol: %s", exc)
             flush_handlers()
@@ -1383,6 +1459,19 @@ class FacialRecognitionPanel(ttk.Frame):
         self._set_estado(
             f"✅ Rostro enrolado para {documento}.",
             theme.SUCCESS,
+        )
+
+    def _actualizar_captura_facial(
+        self, documento: str, tipo_doc: str, embedding: list[float]
+    ) -> None:
+        """Re-captura facial (método 4) sin abrir un ingreso nuevo."""
+        self._client.ingreso_actualizar_captura(
+            {
+                "tipo_doc": tipo_doc,
+                "documento": documento,
+                "metodo_aut": 4,
+                "embedding": embedding,
+            }
         )
 
     # ---- Enrolar (con foto — 2026-07-09) --------------------------------
@@ -1422,6 +1511,7 @@ class FacialRecognitionPanel(ttk.Frame):
             return ""
 
     def _enrolar(self) -> None:
+        self._consultas_flujo.clear()
         documento = self._documento_formulario()
         if not documento:
             self._set_estado(
@@ -1453,7 +1543,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._enrolar_btn.state(["disabled"])
         tipo_doc = "CC"
         if self._form_panel is not None:
-            tipo_doc = self._form_panel._tipo_doc_actual()
+            tipo_doc = self._form_panel.tipo_doc_actual()
         try:
             resultado = self._client.biometria_enrolar(
                 documento,
@@ -1492,6 +1582,7 @@ class FacialRecognitionPanel(ttk.Frame):
         foto_capturada_b64: str,
     ) -> None:
         """Tras Capturar Rostro: modal con la foto enrolada (no re-registra)."""
+        self._consultas_flujo.clear()  # el enrol acaba de cambiar la foto
         persona_datos: dict[str, Any] = {
             "documento": documento,
             "id_persona": resultado.get("id_persona") or documento,
@@ -1500,9 +1591,7 @@ class FacialRecognitionPanel(ttk.Frame):
         }
         # Datos de persona desde consultar (nombres, ficha, etc.).
         try:
-            consulta = self._client.ingreso_consultar(
-                documento, tipo_doc, incluir_foto=True
-            )
+            consulta = self._consultar_persona(documento, tipo_doc)
             persona = consulta.get("persona")
             if isinstance(persona, dict):
                 persona_datos.update(persona)
@@ -1525,51 +1614,13 @@ class FacialRecognitionPanel(ttk.Frame):
             persona_datos["foto_base64"] = foto_capturada_b64
 
         self._asegurar_foto_persona(persona_datos)
-        self._mostrar_confirmacion_enrolado(persona_datos)
-
-    def _mostrar_confirmacion_enrolado(
-        self, persona_datos: dict[str, Any]
-    ) -> None:
-        """Panel «Rostro enrolado» con foto; cierra solo (sin ingreso/salida)."""
-        if self._centro_wrap is None:
-            return
-        self._fijar_tamano_columna_central()
-        if self._confirmacion_modal is not None:
-            try:
-                self._confirmacion_modal.destroy()
-            except tk.TclError:
-                pass
-            self._confirmacion_modal = None
-
-        if self._form_panel is not None:
-            self._form_panel.grid_remove()
-
-        self._confirmacion_abierta = True
-        self._identificando = False
-        try:
-            panel = IdentificationConfirmationPanel(
-                self._centro_wrap,
-                self._client,
-                persona_datos,
-                modo="enrolado",
-                on_confirmar=None,
-                auto_registro=True,
-                persona_existente=True,
-                on_cerrado=self._restaurar_formulario_central,
-            )
-            panel.grid(row=0, column=0, sticky="nsew")
-            self._confirmacion_modal = panel
-            self._centro_wrap.update_idletasks()
-            self._centro_wrap.lift()
-        except Exception as exc:
-            log_exception(log, "Panel confirmación tras enrol", exc)
-            self._confirmacion_abierta = False
-            if self._form_panel is not None and self._form_panel.winfo_exists():
-                self._form_panel.grid()
-            self._set_estado(
-                f"Enrolado OK; no se pudo mostrar confirmación: {exc}",
-                theme.ERROR,
-            )
+        # Panel «Rostro enrolado»: cierra solo (sin ingreso/salida).
+        self._montar_confirmacion(
+            persona_datos,
+            modo="enrolado",
+            contexto_log="Panel confirmación tras enrol",
+            prefijo_error="Enrolado OK; ",
+        )
 
     # ---- Huella (plantilla → tab_personas.val_huella_digital) ------------
 
@@ -1587,31 +1638,11 @@ class FacialRecognitionPanel(ttk.Frame):
             if self._form_panel is not None:
                 self._form_panel.focus_documento()
             return
-        self._draw_huella_placeholder()
+        self._sync_huella_mensaje()
         self._set_estado(
             f"Huella simulada para documento {documento} (listo).",
             theme.SUCCESS,
         )
-
-    def _enrolar_huella(self) -> None:
-        documento = self._documento_formulario()
-        if not documento:
-            self._set_estado("Ingrese el documento antes de enrolar la huella.", theme.ERROR)
-            if self._form_panel is not None:
-                self._form_panel.focus_documento()
-            return
-        if not self._ultimo_huella_b64:
-            self._simular_captura_huella()
-            if not self._ultimo_huella_b64:
-                return
-        try:
-            self._client.biometria_huella_enrolar(documento, self._ultimo_huella_b64)
-        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            log.error("Enrolar huella: %s", exc)
-            flush_handlers()
-            self._set_estado(f"Error al enrolar huella: {exc}", theme.ERROR)
-            return
-        self._set_estado(f"✅ Huella enrolada para {documento}.", theme.SUCCESS)
 
     def _identificar_huella(self) -> None:
         if self._identificando or self._confirmacion_abierta:
@@ -1621,6 +1652,7 @@ class FacialRecognitionPanel(ttk.Frame):
             if not self._ultimo_huella_b64:
                 return
 
+        self._consultas_flujo.clear()
         self._identificando = True
         self._ultimo_metodo_biometrico = 5
         if self._huella_scan is not None:
@@ -1667,59 +1699,98 @@ class FacialRecognitionPanel(ttk.Frame):
                 desde_huella=True,
             )
             return
+        self._continuar_con_acceso(
+            documento,
+            persona_datos,
+            desde_huella=True,
+            foto_servidor=resultado.get("foto_base64"),
+        )
+
+    def _continuar_con_acceso(
+        self,
+        documento: str,
+        persona_datos: dict[str, Any],
+        *,
+        desde_huella: bool,
+        foto_servidor: str | None,
+    ) -> None:
+        """Tras identificar (rostro o huella): decide ingreso, salida o aviso."""
         self._sincronizar_tipo_doc_formulario(persona_datos)
         try:
             modo_efectivo = self._resolver_modo_acceso(
                 documento, persona_datos=persona_datos
             )
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            log.error("Resolver modo acceso (huella): %s", exc)
+            log.error(
+                "Resolver modo acceso (%s): %s",
+                "huella" if desde_huella else "facial",
+                exc,
+            )
             flush_handlers()
-            if self._huella_scan is not None:
-                self._huella_scan.set_exito(False)
             self._set_estado(f"Error al consultar acceso: {exc}", theme.ERROR)
             self._identificando = False
+            if desde_huella:
+                if self._huella_scan is not None:
+                    self._huella_scan.set_exito(False)
+            else:
+                self._cooldown_hasta_ms = _ahora_ms() + COOLDOWN_TRAS_FALLO_MS
             return
 
-        if resultado.get("foto_base64"):
-            persona_datos["foto_base64"] = resultado.get("foto_base64")
+        # Foto de enrolamiento del servidor; si falta el archivo, reparar.
+        if foto_servidor:
+            persona_datos["foto_base64"] = foto_servidor
         persona_datos["_modo_acceso"] = modo_efectivo
         self._asegurar_foto_persona(persona_datos)
 
         if modo_efectivo == "espera_reingreso":
             self._avisar_espera_reingreso(
-                documento, desde_huella=True, persona_datos=persona_datos
+                documento, desde_huella=desde_huella, persona_datos=persona_datos
             )
             return
 
-        accion = self._etiqueta_accion(modo_efectivo)
         if modo_efectivo == "actualizar_captura":
             self._avisar_identificado_sin_modal(
                 documento,
                 persona_datos=persona_datos,
-                desde_huella=True,
+                desde_huella=desde_huella,
             )
             return
 
+        accion = self._etiqueta_accion(modo_efectivo)
         self._limpiar_espera_reingreso_doc(documento)
-        if self._huella_scan is not None:
-            self._huella_scan.set_exito(True)
-            self._huella_scan.set_mensaje(
-                f"Identificado — {accion}", theme.SUCCESS
+        if desde_huella:
+            if self._huella_scan is not None:
+                self._huella_scan.set_exito(True)
+                self._huella_scan.set_mensaje(
+                    f"Identificado — {accion}", theme.SUCCESS
+                )
+            self._set_estado(
+                f"✅ Identificado por huella — {accion}...",
+                theme.SUCCESS,
             )
-        self._set_estado(
-            f"✅ Identificado por huella — {accion}...",
-            theme.SUCCESS,
-        )
+        else:
+            self._set_estado(f"✅ Identificado — {accion}...", theme.SUCCESS)
         self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
 
-    def _mostrar_confirmacion_centro(
-        self, persona_datos: dict, modo_efectivo: Modo
+    def _montar_confirmacion(
+        self,
+        persona_datos: dict[str, Any],
+        *,
+        modo: str,
+        contexto_log: str,
+        on_confirmar: Callable[[dict[str, Any]], None] | None = None,
+        on_error: Callable[[str], None] | None = None,
+        persona_existente: bool = True,
+        limpiar_formulario: bool = False,
+        prefijo_error: str = "",
     ) -> None:
-        """Sustituye temporalmente el formulario por «Persona encontrada» (~2.5 s)."""
+        """Sustituye temporalmente el formulario por el panel de confirmación.
+
+        Congela el tamaño de la columna con el formulario aún visible (evita
+        un panel 0×0) y, si algo falla al montar, devuelve el formulario.
+        """
         if self._centro_wrap is None:
             return
-        # Congelar tamaño con el formulario aún visible (evita panel 0×0).
         self._fijar_tamano_columna_central()
         if self._confirmacion_modal is not None:
             try:
@@ -1729,7 +1800,8 @@ class FacialRecognitionPanel(ttk.Frame):
             self._confirmacion_modal = None
 
         if self._form_panel is not None:
-            self._form_panel.limpiar()
+            if limpiar_formulario:
+                self._form_panel.limpiar()
             self._form_panel.grid_remove()
 
         self._confirmacion_abierta = True
@@ -1739,25 +1811,38 @@ class FacialRecognitionPanel(ttk.Frame):
                 self._centro_wrap,
                 self._client,
                 persona_datos,
-                modo=modo_efectivo,
-                on_confirmar=self._on_confirmacion_modal,
-                auto_registro=True,
-                persona_existente=True,
+                modo=modo,
+                on_confirmar=on_confirmar,
+                persona_existente=persona_existente,
                 on_cerrado=self._restaurar_formulario_central,
-                on_error=self._on_error_confirmacion,
+                on_error=on_error,
             )
             panel.grid(row=0, column=0, sticky="nsew")
             self._confirmacion_modal = panel
             self._centro_wrap.update_idletasks()
             self._centro_wrap.lift()
         except Exception as exc:
-            log_exception(log, "Panel confirmación (huella/facial)", exc)
+            log_exception(log, contexto_log, exc)
             self._confirmacion_abierta = False
             if self._form_panel is not None and self._form_panel.winfo_exists():
                 self._form_panel.grid()
             self._set_estado(
-                f"No se pudo mostrar confirmación: {exc}", theme.ERROR
+                f"{prefijo_error}No se pudo mostrar confirmación: {exc}",
+                theme.ERROR,
             )
+
+    def _mostrar_confirmacion_centro(
+        self, persona_datos: dict, modo_efectivo: Modo
+    ) -> None:
+        """Sustituye temporalmente el formulario por «Persona encontrada» (~2.5 s)."""
+        self._montar_confirmacion(
+            persona_datos,
+            modo=modo_efectivo,
+            contexto_log="Panel confirmación (huella/facial)",
+            on_confirmar=self._on_confirmacion_modal,
+            on_error=self._on_error_confirmacion,
+            limpiar_formulario=True,
+        )
 
     def _mostrar_confirmacion_post_registro(
         self, persona_datos: dict[str, Any]
@@ -1775,47 +1860,19 @@ class FacialRecognitionPanel(ttk.Frame):
             self._marcar_post_ingreso_doc(documento, VENTANA_5_MIN_MS)
         # Enrolar rostro + foto si la cámara capturó cara (rellena modal).
         self._enrolar_tras_registro_manual(persona_datos)
+        self._consultas_flujo.clear()  # el enrol pudo cambiar la foto
         self._asegurar_foto_persona(persona_datos)
-        self._fijar_tamano_columna_central()
-        if self._confirmacion_modal is not None:
-            try:
-                self._confirmacion_modal.destroy()
-            except tk.TclError:
-                pass
-            self._confirmacion_modal = None
-
-        if self._form_panel is not None:
-            self._form_panel.grid_remove()
-
-        self._confirmacion_abierta = True
-        self._identificando = False
         era_existente = bool(persona_datos.pop("_persona_existente", False))
-        try:
-            panel = IdentificationConfirmationPanel(
-                self._centro_wrap,
-                self._client,
-                persona_datos,
-                modo="registrado",
-                on_confirmar=None,
-                auto_registro=True,
-                persona_existente=era_existente,
-                on_cerrado=self._restaurar_formulario_central,
-            )
-            panel.grid(row=0, column=0, sticky="nsew")
-            self._confirmacion_modal = panel
-            self._centro_wrap.update_idletasks()
-            self._centro_wrap.lift()
-        except Exception as exc:
-            log_exception(log, "Panel confirmación post-registro", exc)
-            self._confirmacion_abierta = False
-            if self._form_panel is not None and self._form_panel.winfo_exists():
-                self._form_panel.grid()
-            self._set_estado(
-                f"No se pudo mostrar confirmación: {exc}", theme.ERROR
-            )
+        self._montar_confirmacion(
+            persona_datos,
+            modo="registrado",
+            contexto_log="Panel confirmación post-registro",
+            persona_existente=era_existente,
+        )
 
     def _restaurar_formulario_central(self) -> None:
         """Vuelve al formulario vacío tras el panel de confirmación."""
+        self._consultas_flujo.clear()
         self._confirmacion_modal = None
         self._confirmacion_abierta = False
         self._rostro_consecutivos = 0
@@ -1828,6 +1885,8 @@ class FacialRecognitionPanel(ttk.Frame):
         if self._form_panel is not None and self._form_panel.winfo_exists():
             self._form_panel.limpiar()
             self._form_panel.grid()
+        # El botón del panel destruido dejaba el foco en la raíz.
+        self._enfocar_documento()
         if self._on_registrado is not None:
             self._on_registrado()
         # Mantener aviso 5 min si acabamos de registrar; no pisarlo con
@@ -1866,68 +1925,35 @@ class FacialRecognitionPanel(ttk.Frame):
 
     def _doc_en_espera_reingreso(self, documento: str) -> bool:
         """True si ese documento aún está en ventana de 5 min post-salida."""
-        doc = (documento or "").strip()
-        if not doc:
-            return False
-        ahora = time.monotonic() * 1000
-        hasta = self._cooldown_espera_docs.get(doc, 0.0)
-        if hasta <= ahora:
-            self._cooldown_espera_docs.pop(doc, None)
-            return False
-        return True
+        return self._espera_reingreso.activo(documento)
 
     def _marcar_espera_reingreso_doc(self, documento: str, pausa_ms: int) -> None:
         doc = (documento or "").strip()
         if not doc:
             return
-        self._cooldown_espera_docs[doc] = time.monotonic() * 1000 + max(0, pausa_ms)
+        self._espera_reingreso.marcar(doc, pausa_ms)
         self._ultimo_doc_flujo = doc
 
     def _limpiar_espera_reingreso_doc(self, documento: str) -> None:
-        doc = (documento or "").strip()
-        if doc:
-            self._cooldown_espera_docs.pop(doc, None)
+        self._espera_reingreso.limpiar(documento)
 
     def _doc_en_ventana_post_ingreso(self, documento: str) -> bool:
         """True si ese documento acaba de ingresar (<5 min locales)."""
-        doc = (documento or "").strip()
-        if not doc:
-            return False
-        ahora = time.monotonic() * 1000
-        hasta = self._cooldown_post_ingreso_docs.get(doc, 0.0)
-        if hasta <= ahora:
-            self._cooldown_post_ingreso_docs.pop(doc, None)
-            return False
-        return True
+        return self._post_ingreso.activo(documento)
 
     def _marcar_post_ingreso_doc(self, documento: str, pausa_ms: int) -> None:
         doc = (documento or "").strip()
         if not doc:
             return
-        self._cooldown_post_ingreso_docs[doc] = (
-            time.monotonic() * 1000 + max(0, pausa_ms)
-        )
+        self._post_ingreso.marcar(doc, pausa_ms)
         self._ultimo_doc_flujo = doc
         self._limpiar_espera_reingreso_doc(doc)
 
     def _limpiar_post_ingreso_doc(self, documento: str) -> None:
-        doc = (documento or "").strip()
-        if doc:
-            self._cooldown_post_ingreso_docs.pop(doc, None)
-
-    def _ms_restantes_cooldown(
-        self, mapa: dict[str, float], documento: str
-    ) -> int:
-        doc = (documento or "").strip()
-        if not doc:
-            return 0
-        rest = int(mapa.get(doc, 0.0) - time.monotonic() * 1000)
-        return max(0, rest)
+        self._post_ingreso.limpiar(documento)
 
     def _refrescar_aviso_post_ingreso(self, documento: str) -> None:
-        rest_ms = self._ms_restantes_cooldown(
-            self._cooldown_post_ingreso_docs, documento
-        )
+        rest_ms = self._post_ingreso.ms_restantes(documento)
         if rest_ms <= 0:
             self._limpiar_post_ingreso_doc(documento)
             return
@@ -1939,9 +1965,7 @@ class FacialRecognitionPanel(ttk.Frame):
         )
 
     def _refrescar_aviso_espera_reingreso(self, documento: str) -> None:
-        rest_ms = self._ms_restantes_cooldown(
-            self._cooldown_espera_docs, documento
-        )
+        rest_ms = self._espera_reingreso.ms_restantes(documento)
         min_rest = max(1, (rest_ms + 59_999) // 60_000) if rest_ms > 0 else 1
         self._set_estado(
             f"⏳ Salida reciente: espere ~{min_rest} min para un nuevo ingreso "
@@ -1955,15 +1979,14 @@ class FacialRecognitionPanel(ttk.Frame):
         if self._identificando or self._confirmacion_abierta:
             return
 
-        extraido = self._extraer_embedding()
+        self._consultas_flujo.clear()
+        extraido = self._extraer_embedding_y_recorte()
         if extraido is None:
             if auto:
-                self._cooldown_hasta_ms = (
-                    time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
-                )
+                self._cooldown_hasta_ms = _ahora_ms() + COOLDOWN_TRAS_FALLO_MS
             return
 
-        embedding, _calidad = extraido
+        embedding, _calidad, _recorte = extraido
         self._identificando = True
         self._rostro_consecutivos = 0
         self._ultimo_embedding = list(embedding)
@@ -2026,47 +2049,12 @@ class FacialRecognitionPanel(ttk.Frame):
             )
             return
 
-        self._sincronizar_tipo_doc_formulario(persona_datos)
-
-        try:
-            modo_efectivo = self._resolver_modo_acceso(
-                documento, persona_datos=persona_datos
-            )
-        except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            log.error("Resolver modo acceso (facial): %s", exc)
-            flush_handlers()
-            self._set_estado(f"Error al consultar acceso: {exc}", theme.ERROR)
-            self._identificando = False
-            self._cooldown_hasta_ms = time.monotonic() * 1000 + COOLDOWN_TRAS_FALLO_MS
-            return
-
-        # Foto de enrolamiento del servidor; si falta el archivo, reparar.
-        foto_guardada = resultado.get("foto_base64")
-        if foto_guardada:
-            persona_datos["foto_base64"] = foto_guardada
-        persona_datos["_modo_acceso"] = modo_efectivo
-        self._asegurar_foto_persona(persona_datos)
-
-        if modo_efectivo == "espera_reingreso":
-            self._avisar_espera_reingreso(
-                documento, desde_huella=False, persona_datos=persona_datos
-            )
-            return
-
-        accion = self._etiqueta_accion(modo_efectivo)
-        if modo_efectivo == "actualizar_captura":
-            self._avisar_identificado_sin_modal(
-                documento,
-                persona_datos=persona_datos,
-            )
-            return
-
-        self._limpiar_espera_reingreso_doc(documento)
-        self._set_estado(
-            f"✅ Identificado — {accion}...",
-            theme.SUCCESS,
+        self._continuar_con_acceso(
+            documento,
+            persona_datos,
+            desde_huella=False,
+            foto_servidor=resultado.get("foto_base64"),
         )
-        self._mostrar_confirmacion_centro(persona_datos, modo_efectivo)
 
     def _avisar_identificado_sin_modal(
         self,
@@ -2082,18 +2070,15 @@ class FacialRecognitionPanel(ttk.Frame):
             rest = 0
             try:
                 tipo_doc = self._tipo_doc_efectivo(persona_datos)
-                consulta = self._client.ingreso_consultar(documento, tipo_doc)
+                consulta = self._consultar_persona(documento, tipo_doc)
                 rest = int(consulta.get("segundos_restantes_salida") or 0)
             except (SmartcsetApiError, SmartcsetConnectionError) as exc:
                 log.warning("Aviso post-ingreso (consulta): %s", exc)
                 flush_handlers()
             if rest <= 0:
-                rest_ms = self._ms_restantes_cooldown(
-                    self._cooldown_post_ingreso_docs, documento
-                )
-                rest = max(0, rest_ms // 1000)
+                rest = self._post_ingreso.ms_restantes(documento) // 1000
             if rest > 0:
-                min_rest = max(1, (rest + 59) // 60)
+                min_rest = minutos_redondeados_arriba(rest)
                 mensaje = (
                     f"⏳ Ingreso reciente: salida disponible en ~{min_rest} min "
                     "(mínimo 5 min). Aún dentro"
@@ -2130,9 +2115,9 @@ class FacialRecognitionPanel(ttk.Frame):
         """
         self._limpiar_post_ingreso_doc(documento)
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
-        consulta = self._client.ingreso_consultar(documento, tipo_doc)
+        consulta = self._consultar_persona(documento, tipo_doc)
         rest = int(consulta.get("segundos_restantes_reingreso") or 0)
-        min_rest = max(1, (rest + 59) // 60)
+        min_rest = minutos_redondeados_arriba(rest)
         msg = (
             f"Salida reciente: espere ~{min_rest} min para un nuevo ingreso "
             "(mínimo 5 min)."
@@ -2178,7 +2163,7 @@ class FacialRecognitionPanel(ttk.Frame):
         if self._doc_en_ventana_post_ingreso(documento):
             return "actualizar_captura"
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
-        consulta = self._client.ingreso_consultar(documento, tipo_doc)
+        consulta = self._consultar_persona(documento, tipo_doc)
         rest_salida = int(consulta.get("segundos_restantes_salida") or 0)
         # Solo resto>0 = aún en ventana 5 min. No usar segundos_desde_ingreso:
         # la API no lo envía y quedaba en 0 → bloqueaba salidas de días previos.
@@ -2219,6 +2204,8 @@ class FacialRecognitionPanel(ttk.Frame):
         nombre = (
             f"{persona_datos.get('nombres', '')} {persona_datos.get('apellidos', '')}"
         ).strip()
+        # Estado en BD puede haber cambiado durante los ~2.5 s del panel.
+        self._consultas_flujo.clear()
 
         modo_panel = persona_datos.get("_modo_acceso")
         modo = self._resolver_modo_acceso(
@@ -2314,6 +2301,13 @@ class FacialRecognitionPanel(ttk.Frame):
             )
         return entrada_id
 
+    def _agregar_biometria(self, payload: dict, metodo: int) -> None:
+        """Embedding (método 4) o plantilla de huella (método 5) al payload."""
+        if metodo == 4 and self._ultimo_embedding is not None:
+            payload["embedding"] = self._ultimo_embedding
+        if metodo == 5 and self._ultimo_huella_b64:
+            payload["huella_template_b64"] = self._ultimo_huella_b64
+
     def _payload_biometrico_basico(
         self,
         documento: str,
@@ -2327,17 +2321,14 @@ class FacialRecognitionPanel(ttk.Frame):
             "documento": documento,
             "metodo_aut": metodo,
         }
-        if metodo == 4 and self._ultimo_embedding is not None:
-            payload["embedding"] = self._ultimo_embedding
-        if metodo == 5 and self._ultimo_huella_b64:
-            payload["huella_template_b64"] = self._ultimo_huella_b64
+        self._agregar_biometria(payload, metodo)
         return payload
 
     def _registrar_ingreso_identificado(
         self, documento: str, nombre: str, persona_datos: dict | None = None
     ) -> None:
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
-        consulta = self._client.ingreso_consultar(documento, tipo_doc)
+        consulta = self._consultar_persona(documento, tipo_doc)
         if consulta.get("puede_actualizar_captura"):
             raise SmartcsetApiError(
                 "Ya tiene ingreso abierto: aún no puede registrar otro ni "
@@ -2351,7 +2342,7 @@ class FacialRecognitionPanel(ttk.Frame):
                 )
             if consulta.get("en_espera_reingreso"):
                 rest = int(consulta.get("segundos_restantes_reingreso") or 0)
-                min_rest = max(1, (rest + 59) // 60)
+                min_rest = minutos_redondeados_arriba(rest)
                 msg = (
                     f"Debe esperar ~{min_rest} min tras la salida "
                     "para un nuevo ingreso."
@@ -2376,17 +2367,11 @@ class FacialRecognitionPanel(ttk.Frame):
             "observaciones": self._obs_formulario(),
             "metodo_aut": metodo,
         }
-        if metodo == 4 and self._ultimo_embedding is not None:
-            payload["embedding"] = self._ultimo_embedding
-        if metodo == 5 and self._ultimo_huella_b64:
-            payload["huella_template_b64"] = self._ultimo_huella_b64
+        self._agregar_biometria(payload, metodo)
         serial = serial_equipo_desde_payload(persona) or serial_equipo_desde_payload(
             consulta
         )
-        if serial:
-            payload["id_equipo"] = serial
-            payload["ind_equipo"] = True
-            payload["descripcion_equipo"] = "Pendiente"
+        agregar_equipo_al_payload(payload, serial)
 
         resultado = self._client.ingreso_registrar(payload)
         self._limpiar_espera_reingreso_doc(documento)
@@ -2394,6 +2379,7 @@ class FacialRecognitionPanel(ttk.Frame):
         id_ingreso = (
             resultado.get("id_ingreso") if isinstance(resultado, dict) else None
         )
+        log.info("Ingreso registrado | id_ingreso=%s metodo=%s", id_ingreso, metodo)
         if metodo == 5 and self._huella_scan is not None:
             self._huella_scan.set_exito(True)
             self._huella_scan.set_mensaje(
@@ -2450,7 +2436,7 @@ class FacialRecognitionPanel(ttk.Frame):
             q = self._client.ingreso_consultar(documento, tipo_doc)
             rest = int(q.get("segundos_restantes_salida") or 0)
             if rest > 0:
-                min_rest = max(1, (rest + 59) // 60)
+                min_rest = minutos_redondeados_arriba(rest)
                 rest_txt = f" — salida disponible en ~{min_rest} min"
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Consulta resto ventana 5 min: %s", exc)
@@ -2475,7 +2461,7 @@ class FacialRecognitionPanel(ttk.Frame):
         if not consulta.get("puede_salir"):
             rest = int(consulta.get("segundos_restantes_salida") or 0)
             if consulta.get("ingreso_abierto") and rest > 0:
-                min_rest = max(1, (rest + 59) // 60)
+                min_rest = minutos_redondeados_arriba(rest)
                 msg = (
                     f"Aún no puede registrar salida. Espere ~{min_rest} min "
                     f"desde el ingreso (mínimo 5 min)."
@@ -2503,6 +2489,7 @@ class FacialRecognitionPanel(ttk.Frame):
                 f"{nombre}: el servidor no confirmó la salida "
                 "(id_ingreso inválido)."
             )
+        log.info("Salida registrada | id_ingreso=%s metodo=%s", id_ingreso, metodo)
         self._limpiar_post_ingreso_doc(documento)
         self._marcar_espera_reingreso_doc(documento, VENTANA_5_MIN_MS)
         if metodo == 5 and self._huella_scan is not None:
@@ -2516,45 +2503,3 @@ class FacialRecognitionPanel(ttk.Frame):
             theme.SUCCESS,
         )
 
-    def _cerrar(self) -> None:
-        self._detener_captura()
-        if self._on_close is not None:
-            self._on_close()
-
-
-class FacialRecognitionModal(tk.Toplevel):
-    """Toplevel opcional que reutiliza FacialRecognitionPanel."""
-
-    def __init__(
-        self,
-        master: tk.Misc,
-        client: SmartcsetClient,
-        modo: Modo,
-        on_registrado: Callable[[], None] | None = None,
-    ) -> None:
-        super().__init__(master)
-        self.title("Identificar rostro — Portería (ingreso / salida)")
-        self.configure(bg=theme.BG_CARD)
-        self.geometry(f"{_modal_ancho()}x{_modal_alto()}")
-        self.resizable(False, False)
-        self.transient(master)
-        self.grab_set()
-        self.protocol("WM_DELETE_WINDOW", self._cerrar)
-
-        self._panel = FacialRecognitionPanel(
-            self,
-            client,
-            modo=modo,
-            on_registrado=on_registrado,
-            show_close_button=True,
-            on_close=self._cerrar,
-        )
-        self._panel.pack(fill="both", expand=True)
-        centrar_ventana_al_mostrar(self, _modal_ancho(), _modal_alto())
-
-    def _cerrar(self) -> None:
-        try:
-            self.grab_release()
-        except tk.TclError:
-            pass
-        self.destroy()

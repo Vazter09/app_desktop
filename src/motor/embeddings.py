@@ -38,8 +38,6 @@ _RECOGNIZER_NAME = "face_recognition_sface_2021dec.onnx"
 _DETECTOR_PATH = os.path.join(_MODELS_DIR, _DETECTOR_NAME)
 _RECOGNIZER_PATH = os.path.join(_MODELS_DIR, _RECOGNIZER_NAME)
 
-EMBEDDING_DIMENSION = 128
-
 # YuNet trae score_threshold=0.9 por defecto — demasiado estricto para
 # webcams de portería. En pruebas reales (2026-07-16, cámara índice 0)
 # los rostros válidos llegaban ~0.20–0.28; con 0.45 no se detectaba nada.
@@ -140,29 +138,21 @@ class FaceEmbedder:
         return ok, caras
 
     def detectar_confianza(self, frame_bgr: np.ndarray) -> float | None:
-        """Solo detección YuNet — más liviano que `extraer()` para el loop
-        de cámara en vivo (no calcula embedding)."""
+        """Solo detección YuNet — más liviano que `extraer_con_recorte()`
+        para el loop de cámara en vivo (no calcula embedding)."""
         ok, caras = self._detectar_caras(frame_bgr)
         if not ok or caras is None or len(caras) == 0:
             return None
         return float(caras[0][14])
 
-    def extraer(self, frame_bgr: np.ndarray) -> tuple[list[float], float] | None:
-        """Detecta el rostro más confiable del frame y devuelve
-        `(embedding_128d, calidad_0_a_100)`, o `None` si no hay rostro."""
-        resultado = self.extraer_con_recorte(frame_bgr)
-        if resultado is None:
-            return None
-        embedding, calidad, _recorte = resultado
-        return embedding, calidad
-
     def extraer_con_recorte(
         self, frame_bgr: np.ndarray
     ) -> tuple[list[float], float, np.ndarray] | None:
-        """Igual que `extraer`, más el recorte alineado (BGR) del rostro.
+        """Detecta el rostro más confiable del frame y devuelve
+        `(embedding_128d, calidad_0_a_100, recorte)`, o `None` si no hay rostro.
 
-        El recorte es la imagen que debe enrolarse en
-        ``tab_personas.ruta_foto_facial`` — la misma que usó SFace.
+        El recorte es el rostro alineado (BGR) — la imagen que se enrola en
+        ``tab_personas.ruta_foto_facial``, la misma que usó SFace.
         """
         ok, caras = self._detectar_caras(frame_bgr)
         if not ok or caras is None or len(caras) == 0:

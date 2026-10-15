@@ -194,11 +194,6 @@ class SmartcsetClient:
                 pass
             self._cookie_jar.clear()
 
-    def ingresos_hoy(self) -> list[dict[str, Any]]:
-        """GET /routers/porteria/v1/ingreso/hoy.php (sesión real)."""
-        data = self._request("GET", "/routers/porteria/v1/ingreso/hoy.php")
-        return list(data.get("items", []))
-
     def salidas_hoy(self) -> list[dict[str, Any]]:
         """GET /routers/porteria/v1/salida/hoy.php (sesión real)."""
         data = self._request("GET", "/routers/porteria/v1/salida/hoy.php")
@@ -208,18 +203,11 @@ class SmartcsetClient:
         """GET /routers/porteria/v1/catalogos.php — tipos_doc, tipos_persona, entradas."""
         return self._request("GET", "/routers/porteria/v1/catalogos.php")
 
-    def ingreso_consultar(
-        self,
-        documento: str,
-        tipo_doc: str = "CC",
-        *,
-        incluir_foto: bool = True,
-    ) -> dict[str, Any]:
-        """GET /routers/porteria/v1/ingreso/consultar.php (foto enrolada por defecto)."""
-        params: dict[str, str] = {"documento": documento, "tipo_doc": tipo_doc}
-        if incluir_foto:
-            params["incluir_foto"] = "1"
-        qs = urllib.parse.urlencode(params)
+    def ingreso_consultar(self, documento: str, tipo_doc: str = "CC") -> dict[str, Any]:
+        """GET /routers/porteria/v1/ingreso/consultar.php (incluye foto enrolada)."""
+        qs = urllib.parse.urlencode(
+            {"documento": documento, "tipo_doc": tipo_doc, "incluir_foto": "1"}
+        )
         return self._request("GET", f"/routers/porteria/v1/ingreso/consultar.php?{qs}")
 
     def ingreso_registrar(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -240,16 +228,6 @@ class SmartcsetClient:
     def salida_registrar(self, payload: dict[str, Any]) -> dict[str, Any]:
         """POST /routers/porteria/v1/salida/registrar.php."""
         return self._request("POST", "/routers/porteria/v1/salida/registrar.php", payload)
-
-    def entrada_guardar(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """POST /routers/entradas/v1/guardar.php (requiere admin en el servidor)."""
-        return self._request("POST", "/routers/entradas/v1/guardar.php", payload)
-
-    def entrada_eliminar(self, id_entrada: int) -> dict[str, Any]:
-        """POST /routers/entradas/v1/eliminar.php (requiere admin en el servidor)."""
-        return self._request(
-            "POST", "/routers/entradas/v1/eliminar.php", {"id_entrada": id_entrada}
-        )
 
     def biometria_enrolar(
         self,

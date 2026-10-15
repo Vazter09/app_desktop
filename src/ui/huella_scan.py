@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import time
 import tkinter as tk
-from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageTk
 
-from app_paths import resource_root
+from app_paths import ruta_asset_img
 from ui import theme
 
 # Idle = cyan corporativo; éxito = verde neón (referencia UI).
@@ -28,20 +27,6 @@ _LASER_MS = 2400
 _TINT_MS = 700
 _N_PUNTOS = 42
 _MSG_FONT = ("Segoe UI", 10)
-
-
-def _ruta_huella_png() -> Path | None:
-    app_dir = resource_root()
-    repo_root = Path(__file__).resolve().parents[3]
-    candidatos = (
-        app_dir / "assets" / "img" / "huella.png",
-        Path(__file__).resolve().parents[1] / "assets" / "img" / "huella.png",
-        repo_root / "frontend" / "web" / "public" / "assets" / "img" / "huella.png",
-    )
-    for ruta in candidatos:
-        if ruta.is_file():
-            return ruta
-    return None
 
 
 def _lerp_color(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
@@ -163,7 +148,7 @@ class HuellaScanCanvas(tk.Canvas):
     # ---- Recursos ----------------------------------------------------
 
     def _cargar_base(self) -> None:
-        ruta = _ruta_huella_png()
+        ruta = ruta_asset_img("huella.png")
         if ruta is None:
             self._ridge_rgba = None
             self._puntos_norm = []

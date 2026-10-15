@@ -18,15 +18,19 @@ from typing import Any, Callable
 from PIL import Image, ImageTk
 
 from app_log import flush_handlers, get_logger
-from smartcset_client import SmartcsetApiError, SmartcsetClient, SmartcsetConnectionError
+from smartcset_client import (
+    SmartcsetApiError,
+    SmartcsetClient,
+    SmartcsetConnectionError,
+)
 from ui import theme
+from ui.field_validators import serial_equipo_desde_payload
 from ui.format_utils import (
     es_tipo_instructor,
     label_estado_formacion,
     label_estado_instructor,
     label_tipo_contrato_instructor,
 )
-from ui.field_validators import serial_equipo_desde_payload
 from ui.responsive import sfont, sx
 
 log = get_logger("ui.identification_confirmation_modal")
@@ -52,7 +56,6 @@ class IdentificationConfirmationPanel(tk.Frame):
         persona_datos: dict[str, Any],
         modo: str = "ingreso",
         on_confirmar: Callable[[dict[str, Any]], None] | None = None,
-        auto_registro: bool = True,
         *,
         persona_existente: bool = True,
         on_cerrado: Callable[[], None] | None = None,
@@ -64,7 +67,6 @@ class IdentificationConfirmationPanel(tk.Frame):
         self._persona_datos = persona_datos
         self._modo = modo
         self._on_confirmar = on_confirmar
-        self._auto_registro = auto_registro
         self._persona_existente = persona_existente
         self._on_cerrado = on_cerrado
         self._on_error = on_error
@@ -78,8 +80,8 @@ class IdentificationConfirmationPanel(tk.Frame):
         self._font_valor = sfont(_FONT_VALOR_BASE)
 
         self._build()
-        if self._auto_registro:
-            self._programar_auto_registro()
+        # Registro automático (~2.5 s) salvo que el operario pulse el botón.
+        self._programar_auto_registro()
 
     def _build(self) -> None:
         # Pie: solo botón. Errores y avisos van a la barra de estado
@@ -277,10 +279,6 @@ class IdentificationConfirmationPanel(tk.Frame):
         else:
             self._cerrar()
 
-    def _cancelar(self) -> None:
-        self._cancelar_auto_registro()
-        self._cerrar()
-
     def _cerrar(self) -> None:
         if self._cerrado:
             return
@@ -296,6 +294,3 @@ class IdentificationConfirmationPanel(tk.Frame):
             pass
         if callback is not None:
             callback()
-
-
-IdentificationConfirmationModal = IdentificationConfirmationPanel
