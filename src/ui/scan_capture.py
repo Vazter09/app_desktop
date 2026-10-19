@@ -6,7 +6,8 @@ PDF417 (@ + largo) → barras (3); QR largo/URL/separadores → 2;
 solo dígitos → barras (3).
 
 Solo expone documento + nombres + apellidos. Omite sexo, RH, fecha, etc.
-Documento válido: 8–10 dígitos (no fecha DDMMYYYY).
+Documento válido: 8–10 dígitos (no fecha DDMMYYYY), salvo que la
+trama completa sea solo el documento (carnet SENA, barras limpias).
 
 QR: prioriza corrida NUIP; si no hay, fallback legacy (todos los dígitos
 del payload → primeros 10), que es lo que la pistola ya entregaba bien.
@@ -40,6 +41,8 @@ METODO_BARRAS = 3
 
 # Corridas de dígitos (NUIP / fecha) en payloads concatenados.
 _RE_DIGIT_RUN = re.compile(rf"\d{{{DOC_MIN_LEN},{DOC_MAX_LEN}}}")
+# Trama que es solo el documento (carnet SENA, barras 1D limpias).
+_RE_DOC_LIMPIO = re.compile(rf"\d{{{DOC_MIN_LEN},{DOC_MAX_LEN}}}")
 
 # Cédula CO: campo NUIP (≥10 dígitos, relleno con ceros) pegado al primer
 # apellido. El número de tarjeta del inicio va seguido de una sola letra
@@ -136,6 +139,19 @@ def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
 
     if _parece_pdf417_concatenado(trimmed):
         return _parse_pdf417_concatenado(trimmed)
+
+    # Carnet SENA / barras limpias: la trama ES el documento. Sin filtro
+    # de fecha (es para la basura del PDF417): 10121990 es cédula válida.
+    if _RE_DOC_LIMPIO.fullmatch(trimmed):
+        return CapturaEscaneo(
+            documento=trimmed,
+            nombres="",
+            apellidos="",
+            tipo_doc="CC",
+            metodo_aut=METODO_BARRAS,
+            captura_raw=trimmed,
+            origen="barras",
+        )
 
     # Barras 1D / payload de pistola sin firma QR.
     doc = _mejor_documento_digitos(trimmed, permitir_fallback_pegado=True)

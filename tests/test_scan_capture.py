@@ -195,6 +195,23 @@ class TestScanCaptureQrYBarras(unittest.TestCase):
         self.assertEqual(cap.metodo_aut, 3)
         self.assertEqual(cap.documento, "1007692289")
 
+    def test_carnet_sena_8_digitos(self) -> None:
+        cap = parse_captura_escaneo("91282873")
+        self.assertEqual(cap.documento, "91282873")
+        self.assertEqual(cap.origen, "barras")
+        self.assertEqual(cap.metodo_aut, 3)
+        self.assertEqual(cap.tipo_doc, "CC")
+
+    def test_carnet_con_forma_de_fecha_se_acepta(self) -> None:
+        """Trama = solo el documento: el filtro de fecha no aplica."""
+        cap = parse_captura_escaneo("10121990")
+        self.assertEqual(cap.documento, "10121990")
+        self.assertEqual(cap.origen, "barras")
+
+    def test_fecha_dentro_de_pdf417_sigue_rechazada(self) -> None:
+        cap = parse_captura_escaneo("10121990@PEREZ@GOMEZ@JUAN@CARLOS")
+        self.assertEqual(cap.documento, "")
+
     def test_qr_no_acepta_solo_fecha(self) -> None:
         raw = "https://ejemplo.gov.co/doc?f=06041998&pad=abcdefghij"
         cap = parse_captura_escaneo(raw)

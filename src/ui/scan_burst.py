@@ -16,12 +16,20 @@ relleno de espacios, RH y bloque binario de huella, que el lector
 convierte en Tab / espacio / Enter). Cada tecla dentro de la ventana la
 extiende, así que la cola se descarta completa sin importar su largo.
 
+Carnet SENA (2026-10-19): su código de barras 1D entrega solo el
+documento (8–10 dígitos) y NO manda Enter. Una ráfaga confirmada que
+queda quieta ``RESET_MS`` siendo solo dígitos y sin bytes binarios se
+entrega como trama (``tomar_trama``) en vez de descartarse. La cédula
+nunca cumple esa forma: trae letras, ``@``/Tab o binario.
+
 Sin dependencias de Tk: los tiempos llegan en ms monotónicos.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
+from ui.field_validators import DOC_MAX_LEN, DOC_MIN_LEN
 from ui.scan_capture import trama_pubdsk_incompleta, trama_pubdsk_lista
 
 # Hueco máximo entre teclas de una ráfaga antes de confirmarla.
@@ -38,6 +46,8 @@ COLA_MS = 400
 
 _TECLAS_ENTER = ("Return", "KP_Enter")
 _TECLAS_TAB = ("Tab", "ISO_Left_Tab")
+# Carnet SENA: la trama completa es solo el documento.
+_RE_CARNET = re.compile(rf"\d{{{DOC_MIN_LEN},{DOC_MAX_LEN}}}")
 
 
 @dataclass(frozen=True)
@@ -63,6 +73,8 @@ class DetectorRafaga:
         self._ultimo_ms = 0.0
         self._confirmada = False
         self._descartar_hasta_ms = 0.0
+        self._hubo_binario = False
+        self._trama_carnet: str | None = None
 
     # ---- API ----------------------------------------------------------
 
@@ -70,6 +82,17 @@ class DetectorRafaga:
     def retiene(self) -> bool:
         """True si hay teclas humanas en espera de liberarse."""
         return bool(self._retenido) and not self._confirmada
+
+    @property
+    def pendiente(self) -> bool:
+        """True si una ráfaga confirmada aún no terminó (carnet sin Enter)."""
+        return self._confirmada and bool(self._buf)
+
+    def tomar_trama(self) -> str | None:
+        """Trama de carnet cerrada por silencio; None si no hay."""
+        trama = self._trama_carnet
+        self._trama_carnet = None
+        return trama
 
     def iniciar_descarte(self, ahora_ms: float) -> None:
         """Descarta la cola del escaneo recién procesado (deslizante)."""
@@ -88,8 +111,9 @@ class DetectorRafaga:
             and quieto > RESET_MS
             and not trama_pubdsk_incompleta(self._texto())
         ):
-            # Ráfaga sin Enter final: se descarta (no adivinar).
-            self._reset()
+            # Ráfaga sin Enter final: carnet → trama; si no, se descarta
+            # (no adivinar).
+            self._cerrar_por_silencio()
         return ""
 
     def tecla(self, keysym: str, char: str, ahora_ms: float) -> Decision:
@@ -114,6 +138,9 @@ class DetectorRafaga:
             if self._buf:
                 # Bytes binarios / modificadores: mantener viva la ráfaga.
                 self._ultimo_ms = ahora_ms
+                if char:
+                    # Byte binario (huella de cédula): nunca es carnet.
+                    self._hubo_binario = True
                 return Decision(consumir=self._confirmada, liberar=liberar)
             return Decision(consumir=False, liberar=liberar)
 
@@ -142,6 +169,14 @@ class DetectorRafaga:
         self._retenido = []
         self._ultimo_ms = 0.0
         self._confirmada = False
+        self._hubo_binario = False
+
+    def _cerrar_por_silencio(self) -> None:
+        """Ráfaga confirmada sin Enter: carnet → trama; resto se descarta."""
+        texto = self._texto()
+        if not self._hubo_binario and _RE_CARNET.fullmatch(texto):
+            self._trama_carnet = texto
+        self._reset()
 
     def _soltar_retenido(self) -> str:
         texto = "".join(self._retenido)
@@ -160,7 +195,7 @@ class DetectorRafaga:
             and hueco > RESET_MS
             and not trama_pubdsk_incompleta(self._texto())
         ):
-            self._reset()
+            self._cerrar_por_silencio()
         return ""
 
     def _enter(self, liberar: str) -> Decision:

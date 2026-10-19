@@ -91,6 +91,82 @@ class TestDetectorRafaga(unittest.TestCase):
         self.assertFalse(det.tecla("Tab", "\t", 1000).consumir)
 
 
+class TestCarnetSinEnter(unittest.TestCase):
+    """Carnet SENA: barras 1D con solo el documento y sin Enter."""
+
+    def _carnet(self, texto: str) -> tuple[DetectorRafaga, float]:
+        det = DetectorRafaga()
+        decisiones, t = _teclear(det, texto, 1000, 10)
+        self.assertTrue(all(d.consumir for d in decisiones[3:]))
+        self.assertTrue(all(d.trama is None for d in decisiones))
+        return det, t
+
+    def test_8_digitos_sin_enter_es_trama_tras_silencio(self) -> None:
+        det, t = self._carnet("91282873")
+        self.assertTrue(det.pendiente)
+        # Aún dentro del silencio: no se adelanta.
+        self.assertEqual(det.tick(t + scan_burst.RESET_MS - 50), "")
+        self.assertIsNone(det.tomar_trama())
+        self.assertEqual(det.tick(t + scan_burst.RESET_MS + 10), "")
+        self.assertEqual(det.tomar_trama(), "91282873")
+        self.assertIsNone(det.tomar_trama())
+        self.assertFalse(det.pendiente)
+
+    def test_10_digitos_sin_enter_es_trama(self) -> None:
+        det, t = self._carnet("1007692289")
+        det.tick(t + scan_burst.RESET_MS + 10)
+        self.assertEqual(det.tomar_trama(), "1007692289")
+
+    def test_carnet_cerrado_por_la_tecla_siguiente(self) -> None:
+        """Tick atrasado: el hueco antes de la tecla siguiente lo cierra."""
+        det, t = self._carnet("91282873")
+        det.tecla("5", "5", t + scan_burst.RESET_MS + 10)
+        self.assertEqual(det.tomar_trama(), "91282873")
+
+    def test_carnet_con_enter_sigue_igual(self) -> None:
+        det = DetectorRafaga()
+        decisiones, _t = _teclear(det, "91282873\r", 1000, 10)
+        self.assertEqual(decisiones[-1].trama, "91282873")
+        self.assertIsNone(det.tomar_trama())
+
+    def test_rafaga_con_letras_sin_enter_se_descarta(self) -> None:
+        det, t = self._carnet("0349601241ORDUZ")
+        det.tick(t + scan_burst.RESET_MS + 10)
+        self.assertIsNone(det.tomar_trama())
+
+    def test_rafaga_con_tab_sin_enter_se_descarta(self) -> None:
+        det, t = self._carnet("91282873\t")
+        det.tick(t + scan_burst.RESET_MS + 10)
+        self.assertIsNone(det.tomar_trama())
+
+    def test_digitos_con_byte_binario_no_son_carnet(self) -> None:
+        det, t = self._carnet("9128")
+        det.tecla("", "\x03", t)
+        _d, t = _teclear(det, "2873", t + 10, 10)
+        det.tick(t + scan_burst.RESET_MS + 10)
+        self.assertIsNone(det.tomar_trama())
+
+    def test_prefijo_pubdsk_incompleto_no_es_carnet(self) -> None:
+        det, t = self._carnet("0349601241PubDSK_145")
+        det.tick(t + scan_burst.RESET_MS + 10)
+        self.assertIsNone(det.tomar_trama())
+
+    def test_pocos_o_muchos_digitos_no_son_carnet(self) -> None:
+        for texto in ("1234567", "12345678901"):
+            det, t = self._carnet(texto)
+            det.tick(t + scan_burst.RESET_MS + 10)
+            self.assertIsNone(det.tomar_trama(), texto)
+
+    def test_tecleo_humano_de_documento_no_es_carnet(self) -> None:
+        det = DetectorRafaga()
+        decisiones, t = _teclear(det, "91282873", 1000, 250)
+        liberado = "".join(d.liberar for d in decisiones)
+        liberado += det.tick(t + 250)
+        self.assertEqual(liberado, "91282873")
+        self.assertIsNone(det.tomar_trama())
+        self.assertFalse(det.pendiente)
+
+
 class _TkTestCase(unittest.TestCase):
     def setUp(self) -> None:
         try:

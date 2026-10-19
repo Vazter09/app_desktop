@@ -560,26 +560,46 @@ class FacialRecognitionPanel(ttk.Frame):
         self._scan_widget = getattr(event, "widget", None)
         if decision.liberar:
             self._insertar_texto_humano(self._scan_widget, decision.liberar)
+        # Carnet cerrado por el hueco antes de esta tecla (tick atrasado).
+        self._recibir_trama_carnet()
         if decision.trama is not None:
             self._recibir_trama(decision.trama)
-        elif self._detector_rafaga.retiene:
+        elif self._detector_rafaga.retiene or self._detector_rafaga.pendiente:
             self._programar_tick_escaneo()
         return "break" if decision.consumir else None
 
     def _programar_tick_escaneo(self) -> None:
         if self._scan_tick_after_id is None:
+            # Ráfaga confirmada: esperar el silencio que la cierra.
+            espera = (
+                scan_burst.RESET_MS
+                if self._detector_rafaga.pendiente
+                else scan_burst.INTER_CHAR_MS
+            )
             self._scan_tick_after_id = self.after(
-                scan_burst.INTER_CHAR_MS + 20, self._tick_escaneo
+                espera + 20, self._tick_escaneo
             )
 
     def _tick_escaneo(self) -> None:
-        """Sin más teclas rápidas: lo retenido era humano → liberarlo."""
+        """Sin más teclas rápidas: lo retenido era humano → liberarlo.
+
+        Una ráfaga confirmada que terminó sin Enter (carnet SENA) sale
+        como trama y sigue el mismo flujo que la cédula.
+        """
         self._scan_tick_after_id = None
         texto = self._detector_rafaga.tick(_ahora_ms())
         if texto:
             self._insertar_texto_humano(self._scan_widget, texto)
-        elif self._detector_rafaga.retiene:
+        self._recibir_trama_carnet()
+        if self._detector_rafaga.retiene or self._detector_rafaga.pendiente:
             self._programar_tick_escaneo()
+
+    def _recibir_trama_carnet(self) -> None:
+        trama = self._detector_rafaga.tomar_trama()
+        if trama is not None:
+            # El carnet no trae cola: no abrir ventana de descarte, que
+            # se comería el escaneo siguiente.
+            self._recibir_trama(trama, descartar_cola=False)
 
     @staticmethod
     def _insertar_texto_humano(widget: object, texto: str) -> None:
@@ -599,7 +619,7 @@ class FacialRecognitionPanel(ttk.Frame):
     def _flujo_ocupado(self) -> bool:
         return self._confirmacion_abierta or self._identificando
 
-    def _recibir_trama(self, raw: str) -> None:
+    def _recibir_trama(self, raw: str, *, descartar_cola: bool = True) -> None:
         """Ráfaga completa del lector: procesar ya o dejar en cola."""
         cap = parse_captura_escaneo(raw)
         # Sin datos personales en el log (MSPI): solo metadatos.
@@ -631,7 +651,8 @@ class FacialRecognitionPanel(ttk.Frame):
             self._procesar_captura(cap)
         # Cola de la misma trama (relleno, RH, binario): descartar desde
         # que terminó el procesamiento, que pudo bloquear por red.
-        self._detector_rafaga.iniciar_descarte(_ahora_ms())
+        if descartar_cola:
+            self._detector_rafaga.iniciar_descarte(_ahora_ms())
 
     def _programar_scan_pendiente(self) -> None:
         if self._scan_pendiente_after_id is None:
