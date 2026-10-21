@@ -3,13 +3,13 @@ Panel "Reconocimiento biométrico" — flujo único de portería.
 
 `FacialRecognitionPanel` es el layout fijo (cámara izquierda + formulario
 + huella), embebido en `IngresoPage`. Las salidas se registran aquí mismo
-(lector, rostro o huella con ingreso abierto > 5 min); la página de
+(lector, rostro o huella con ingreso abierto > 1 min); la página de
 «Salida manual» se eliminó el 2026-10-15.
 
 Tras identificar un rostro, consulta `ingreso/consultar.php`:
   - si puede ingresar → registra ingreso
-  - si hay ingreso abierto y aún no pasan 5 min → aviso (sin modal)
-  - si hay ingreso abierto y ya pasaron 5 min → registra salida
+  - si hay ingreso abierto y aún no pasa 1 min → aviso (sin modal)
+  - si hay ingreso abierto y ya pasó 1 min → registra salida
 
 Foto en confirmación: siempre la de enrolamiento (`identificar.php` →
 `ruta_foto_facial`). Nunca el frame en vivo.
@@ -103,8 +103,8 @@ AUTO_DETECT_CADA_TICKS = 5
 MIN_ROSTRO_CONSECUTIVOS = 2
 MIN_CONFIANZA_ROSTRO = 0.22
 COOLDOWN_TRAS_FALLO_MS = 2000
-# Ventana local 5 min post-ingreso / post-salida (anti-reabrir modal).
-VENTANA_5_MIN_MS = 5 * 60 * 1000
+# Ventana local 1 min post-ingreso / post-salida (anti-reabrir modal).
+VENTANA_1_MIN_MS = 1 * 60 * 1000
 
 # El motor carga 2 modelos ONNX (~39MB) — se instancia una sola vez por
 # proceso, no una vez por modal abierto (abrir/cerrar el modal repetidas
@@ -191,7 +191,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._cooldown_hasta_ms = 0.0
         # Espera post-salida por documento: no bloquea a otras personas.
         self._espera_reingreso = _CooldownPorDocumento()
-        # Ventana post-ingreso (<5 min): no reabrir modal de salida/ingreso.
+        # Ventana post-ingreso (<1 min): no reabrir modal de salida/ingreso.
         self._post_ingreso = _CooldownPorDocumento()
         # ingreso/consultar por (documento, tipo) dentro de UN flujo de
         # identificación: se vacía al empezar cada flujo y antes de cada
@@ -877,7 +877,7 @@ class FacialRecognitionPanel(ttk.Frame):
         *,
         persona_datos: dict[str, Any] | None = None,
     ) -> None:
-        """Dentro de 5 min: QR/barras no actualizan captura; aviso sin modal."""
+        """Dentro de 1 min: QR/barras no actualizan captura; aviso sin modal."""
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         try:
             consulta = self._consultar_persona(documento, tipo_doc)
@@ -905,7 +905,7 @@ class FacialRecognitionPanel(ttk.Frame):
     def _avisar_identificado_por_metodo(
         self, documento: str, metodo: int, persona_datos: dict[str, Any]
     ) -> None:
-        """Ya ingresó (<5 min): QR/barras avisan la ventana; facial/huella, barra."""
+        """Ya ingresó (<1 min): QR/barras avisan la ventana; facial/huella, barra."""
         if metodo in (2, 3):
             self._avisar_ventana_recaptura_barras(
                 documento, persona_datos=persona_datos
@@ -1878,7 +1878,7 @@ class FacialRecognitionPanel(ttk.Frame):
             or ""
         )
         if documento:
-            self._marcar_post_ingreso_doc(documento, VENTANA_5_MIN_MS)
+            self._marcar_post_ingreso_doc(documento, VENTANA_1_MIN_MS)
         # Enrolar rostro + foto si la cámara capturó cara (rellena modal).
         self._enrolar_tras_registro_manual(persona_datos)
         self._consultas_flujo.clear()  # el enrol pudo cambiar la foto
@@ -1910,7 +1910,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._enfocar_documento()
         if self._on_registrado is not None:
             self._on_registrado()
-        # Mantener aviso 5 min si acabamos de registrar; no pisarlo con
+        # Mantener aviso 1 min si acabamos de registrar; no pisarlo con
         # «Cámara activa».
         doc = (self._ultimo_doc_flujo or "").strip()
         if doc and self._doc_en_espera_reingreso(doc):
@@ -1931,10 +1931,10 @@ class FacialRecognitionPanel(ttk.Frame):
     def _on_error_confirmacion(self, mensaje: str) -> None:
         """Error de registro: solo barra de estado (nunca en el panel)."""
         msg = (mensaje or "").strip() or "No se pudo completar el registro."
-        # Ventana 5 min / aún dentro → cyan; resto → error.
+        # Ventana 1 min / aún dentro → cyan; resto → error.
         bajo = msg.lower()
         if (
-            "5 min" in bajo
+            "1 min" in bajo
             or "esperar" in bajo
             or "aún no puede" in bajo
             or "aun no puede" in bajo
@@ -1945,7 +1945,7 @@ class FacialRecognitionPanel(ttk.Frame):
             self._set_estado(f"❌ {msg}", theme.ERROR)
 
     def _doc_en_espera_reingreso(self, documento: str) -> bool:
-        """True si ese documento aún está en ventana de 5 min post-salida."""
+        """True si ese documento aún está en ventana de 1 min post-salida."""
         return self._espera_reingreso.activo(documento)
 
     def _marcar_espera_reingreso_doc(self, documento: str, pausa_ms: int) -> None:
@@ -1959,7 +1959,7 @@ class FacialRecognitionPanel(ttk.Frame):
         self._espera_reingreso.limpiar(documento)
 
     def _doc_en_ventana_post_ingreso(self, documento: str) -> bool:
-        """True si ese documento acaba de ingresar (<5 min locales)."""
+        """True si ese documento acaba de ingresar (<1 min locales)."""
         return self._post_ingreso.activo(documento)
 
     def _marcar_post_ingreso_doc(self, documento: str, pausa_ms: int) -> None:
@@ -1981,7 +1981,7 @@ class FacialRecognitionPanel(ttk.Frame):
         min_rest = max(1, (rest_ms + 59_999) // 60_000)
         self._set_estado(
             f"⏳ Ingreso reciente: salida disponible en ~{min_rest} min "
-            "(mínimo 5 min). Aún dentro",
+            "(mínimo 1 min). Aún dentro",
             theme.CYAN,
         )
 
@@ -1990,7 +1990,7 @@ class FacialRecognitionPanel(ttk.Frame):
         min_rest = max(1, (rest_ms + 59_999) // 60_000) if rest_ms > 0 else 1
         self._set_estado(
             f"⏳ Salida reciente: espere ~{min_rest} min para un nuevo ingreso "
-            "(mínimo 5 min).",
+            "(mínimo 1 min).",
             theme.CYAN,
         )
 
@@ -2052,7 +2052,7 @@ class FacialRecognitionPanel(ttk.Frame):
             or persona_datos.get("id_persona")
             or ""
         )
-        # Misma persona en espera 5 min: refrescar aviso, sin modal.
+        # Misma persona en espera 1 min: refrescar aviso, sin modal.
         if self._doc_en_espera_reingreso(documento):
             self._refrescar_aviso_espera_reingreso(documento)
             self._identificando = False
@@ -2085,7 +2085,7 @@ class FacialRecognitionPanel(ttk.Frame):
         desde_huella: bool = False,
         persona_datos: dict[str, Any] | None = None,
     ) -> None:
-        """Ya hay ingreso abierto (<5 min): solo barra de estado, sin modal."""
+        """Ya hay ingreso abierto (<1 min): solo barra de estado, sin modal."""
         self._limpiar_espera_reingreso_doc(documento)
         if mensaje is None:
             rest = 0
@@ -2102,11 +2102,11 @@ class FacialRecognitionPanel(ttk.Frame):
                 min_rest = minutos_redondeados_arriba(rest)
                 mensaje = (
                     f"⏳ Ingreso reciente: salida disponible en ~{min_rest} min "
-                    "(mínimo 5 min). Aún dentro"
+                    "(mínimo 1 min). Aún dentro"
                 )
                 self._marcar_post_ingreso_doc(documento, rest * 1000)
             else:
-                # Ya pasó la ventana real: no inventar 5 min ni bloquear salida.
+                # Ya pasó la ventana real: no inventar 1 min ni bloquear salida.
                 self._limpiar_post_ingreso_doc(documento)
                 mensaje = "⏳ Ingreso abierto: ya puede registrar la salida."
         if desde_huella and self._huella_scan is not None:
@@ -2141,18 +2141,18 @@ class FacialRecognitionPanel(ttk.Frame):
         min_rest = minutos_redondeados_arriba(rest)
         msg = (
             f"Salida reciente: espere ~{min_rest} min para un nuevo ingreso "
-            "(mínimo 5 min)."
+            "(mínimo 1 min)."
         )
         if desde_huella and self._huella_scan is not None:
             self._huella_scan.set_exito(True)
-            self._huella_scan.set_mensaje("Espere 5 min", theme.CYAN)
+            self._huella_scan.set_mensaje("Espere 1 min", theme.CYAN)
         self._set_estado(f"⏳ {msg}", theme.CYAN)
         self._identificando = False
         self._confirmacion_abierta = False
         self._rostro_consecutivos = 0
         self._ultimo_embedding = None
         pausa_ms = (
-            max(10_000, min(rest, 300) * 1000) if rest > 0 else VENTANA_5_MIN_MS
+            max(10_000, min(rest, 60) * 1000) if rest > 0 else VENTANA_1_MIN_MS
         )
         self._marcar_espera_reingreso_doc(documento, pausa_ms)
         # Anti-spam corto: la cámara sigue identificando a OTRAS personas.
@@ -2167,8 +2167,8 @@ class FacialRecognitionPanel(ttk.Frame):
         if modo == "salida":
             return "se registrará salida"
         if modo == "espera_reingreso":
-            return "espere 5 min para un nuevo ingreso"
-        return "aún dentro de 5 min: se actualizará la captura"
+            return "espere 1 min para un nuevo ingreso"
+        return "aún dentro de 1 min: se actualizará la captura"
 
     def _resolver_modo_acceso(
         self,
@@ -2186,7 +2186,7 @@ class FacialRecognitionPanel(ttk.Frame):
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         consulta = self._consultar_persona(documento, tipo_doc)
         rest_salida = int(consulta.get("segundos_restantes_salida") or 0)
-        # Solo resto>0 = aún en ventana 5 min. No usar segundos_desde_ingreso:
+        # Solo resto>0 = aún en ventana 1 min. No usar segundos_desde_ingreso:
         # la API no lo envía y quedaba en 0 → bloqueaba salidas de días previos.
         if consulta.get("ingreso_abierto") and rest_salida > 0:
             return "actualizar_captura"
@@ -2216,7 +2216,7 @@ class FacialRecognitionPanel(ttk.Frame):
         """Acción al confirmar el panel (auto ~2.5 s o botón).
 
         Usa el modo con el que se abrió el panel (`_modo_acceso`). Si el
-        estado en BD cambió a ventana 5 min, cierra sin registrar y avisa
+        estado en BD cambió a ventana 1 min, cierra sin registrar y avisa
         en barra — nunca fuerza una salida inválida.
         """
         documento = str(
@@ -2273,7 +2273,7 @@ class FacialRecognitionPanel(ttk.Frame):
                 documento, persona_datos=persona_datos
             )
             raise SmartcsetApiError(
-                "Debe esperar 5 minutos tras la salida para un nuevo ingreso."
+                "Debe esperar 1 minuto tras la salida para un nuevo ingreso."
             )
 
         if modo == "ingreso":
@@ -2353,7 +2353,7 @@ class FacialRecognitionPanel(ttk.Frame):
         if consulta.get("puede_actualizar_captura"):
             raise SmartcsetApiError(
                 "Ya tiene ingreso abierto: aún no puede registrar otro ni "
-                "cerrar salida (ventana de 5 min). No se registró ingreso."
+                "cerrar salida (ventana de 1 min). No se registró ingreso."
             )
         if not consulta.get("puede_ingresar"):
             if consulta.get("puede_salir"):
@@ -2396,7 +2396,7 @@ class FacialRecognitionPanel(ttk.Frame):
 
         resultado = self._client.ingreso_registrar(payload)
         self._limpiar_espera_reingreso_doc(documento)
-        self._marcar_post_ingreso_doc(documento, VENTANA_5_MIN_MS)
+        self._marcar_post_ingreso_doc(documento, VENTANA_1_MIN_MS)
         id_ingreso = (
             resultado.get("id_ingreso") if isinstance(resultado, dict) else None
         )
@@ -2409,13 +2409,13 @@ class FacialRecognitionPanel(ttk.Frame):
         if id_ingreso:
             self._set_estado(
                 f"Ingreso #{id_ingreso} registrado: {nombre}. "
-                "Salida disponible en ~5 min.",
+                "Salida disponible en ~1 min.",
                 theme.SUCCESS,
             )
         else:
             self._set_estado(
                 f"Ingreso registrado: {nombre}. "
-                "Salida disponible en ~5 min.",
+                "Salida disponible en ~1 min.",
                 theme.SUCCESS,
             )
 
@@ -2433,7 +2433,7 @@ class FacialRecognitionPanel(ttk.Frame):
                 documento, persona_datos=persona_datos
             )
             raise SmartcsetApiError(
-                "QR/barras no actualizan captura en la ventana de 5 min."
+                "QR/barras no actualizan captura en la ventana de 1 min."
             )
 
         payload = self._payload_biometrico_basico(
@@ -2460,9 +2460,9 @@ class FacialRecognitionPanel(ttk.Frame):
                 min_rest = minutos_redondeados_arriba(rest)
                 rest_txt = f" — salida disponible en ~{min_rest} min"
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
-            log.warning("Consulta resto ventana 5 min: %s", exc)
+            log.warning("Consulta resto ventana 1 min: %s", exc)
             flush_handlers()
-            rest_txt = " — aún dentro de la ventana de 5 min (no es salida)"
+            rest_txt = " — aún dentro de la ventana de 1 min (no es salida)"
 
         self._set_estado(
             f"Captura actualizada: {nombre}{rest_txt}.",
@@ -2485,7 +2485,7 @@ class FacialRecognitionPanel(ttk.Frame):
                 min_rest = minutos_redondeados_arriba(rest)
                 msg = (
                     f"Aún no puede registrar salida. Espere ~{min_rest} min "
-                    f"desde el ingreso (mínimo 5 min)."
+                    f"desde el ingreso (mínimo 1 min)."
                 )
                 self._marcar_post_ingreso_doc(documento, rest * 1000)
                 self._set_estado(f"⏳ {msg}", theme.CYAN)
@@ -2512,7 +2512,7 @@ class FacialRecognitionPanel(ttk.Frame):
             )
         log.info("Salida registrada | id_ingreso=%s metodo=%s", id_ingreso, metodo)
         self._limpiar_post_ingreso_doc(documento)
-        self._marcar_espera_reingreso_doc(documento, VENTANA_5_MIN_MS)
+        self._marcar_espera_reingreso_doc(documento, VENTANA_1_MIN_MS)
         if metodo == 5 and self._huella_scan is not None:
             self._huella_scan.set_exito(True)
             self._huella_scan.set_mensaje(
@@ -2520,7 +2520,7 @@ class FacialRecognitionPanel(ttk.Frame):
             )
         self._set_estado(
             f"Salida registrada: {nombre} (ingreso #{id_ingreso}). "
-            "Espere ~5 min para un nuevo ingreso.",
+            "Espere ~1 min para un nuevo ingreso.",
             theme.SUCCESS,
         )
 
