@@ -21,6 +21,11 @@ ceros (p. ej. ``0012345678``) pegado al primer apellido en mayúsculas;
 se reconoce por esa forma y se le quitan los ceros. Va ANTES de las
 reglas de QR: el binario de la huella trae '|' / ';' y antes la
 clasificaba como QR, tomando el número de tarjeta del inicio.
+
+Cédula digital CO (2026-10-27): el lector, con OCR ID/pasaporte activo,
+entrega el MRZ TD1 (``ICCOL…``, 3 líneas de 30 pegadas). Se toma solo el
+NUIP de la línea 2 y se validan los dígitos de verificación. Va antes que
+todo lo demás y solo reconoce esa firma: no cambia PDF417/carnet/barras.
 """
 from __future__ import annotations
 
@@ -55,6 +60,11 @@ _RE_CAMPOS_RELLENOS = re.compile(r"[A-ZÁÉÍÓÚÑ]{2,} {2,}[A-ZÁÉÍÓÚÑ]{2
 # Trama larga con esa firma: si no hay NUIP, no inventar con otras reglas.
 CEDULA_FIRMA_MIN_LEN = 100
 
+# Cédula digital CO: MRZ TD1 (OCR del lector). Líneas 1 y 2 = 60 chars;
+# la línea 3 (nombres) puede venir cortada o no venir.
+MRZ_TD1_MIN_LEN = 60
+_RE_MRZ_CEDULA_CO = re.compile(r"I[A-Z<]COL[0-9A-Z<]{55}")
+
 
 @dataclass(frozen=True)
 class CapturaEscaneo:
@@ -86,6 +96,7 @@ def documento_desde_entrada_campo(raw: str) -> str:
 def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
     """Extrae documento (+ nombres si PDF417) y clasifica metodo_aut 2|3.
 
+    - Cédula digital MRZ (``ICCOL…``) → barras (3), solo NUIP
     - PDF417 (@ / Tab) → barras (3)
     - PDF417 ``PubDSK_`` sin separadores → barras (3), solo NUIP
       (antes del QR: basura binaria con ';' no debe robar el NUIP)
@@ -97,6 +108,13 @@ def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
     trimmed = (raw or "").replace("\t", "@").strip()
     if not trimmed:
         return CapturaEscaneo("", "", "", "CC", METODO_BARRAS, "", "vacio")
+
+    # Cédula digital (MRZ por OCR del lector): firma propia, va primero y
+    # devuelve None para cualquier otra trama, así no altera las reglas de
+    # abajo (PDF417, carnet SENA, barras, QR).
+    mrz = _captura_cedula_mrz(trimmed)
+    if mrz is not None:
+        return mrz
 
     # Cédula CO por estructura (con o sin PubDSK_): antes que '@' y QR.
     cedula = _captura_cedula_co(trimmed)
@@ -163,6 +181,65 @@ def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
         metodo_aut=METODO_BARRAS,
         captura_raw=trimmed,
         origen="barras",
+    )
+
+
+def _mrz_digito_control(campo: str) -> int:
+    """Dígito de verificación ICAO 9303 (pesos 7-3-1; '<'=0, A=10…Z=35)."""
+    pesos = (7, 3, 1)
+    total = 0
+    for i, ch in enumerate(campo):
+        if ch.isdigit():
+            valor = int(ch)
+        elif "A" <= ch <= "Z":
+            valor = ord(ch) - 55
+        else:
+            valor = 0
+        total += valor * pesos[i % 3]
+    return total % 10
+
+
+def _mrz_campo_ok(campo: str, digito: str) -> bool:
+    return digito.isdigit() and _mrz_digito_control(campo) == int(digito)
+
+
+def _captura_cedula_mrz(raw: str) -> CapturaEscaneo | None:
+    """Cédula digital CO: MRZ TD1 leído por OCR → solo el NUIP.
+
+    El lector entrega las 3 líneas de 30 caracteres pegadas
+    (``ICCOL…``). El NUIP no es el "número de documento" de la línea 1
+    (serie de la tarjeta) sino el campo opcional de la línea 2,
+    posiciones 19–29: ``…COL1234567890<6…`` → ``1234567890``.
+
+    ``None`` si la trama no es MRZ (no afecta las demás reglas). Si es
+    MRZ pero falla un dígito de verificación (OCR mal leído) devuelve
+    documento vacío: mejor pedir otro escaneo que registrar un número
+    equivocado. La línea 3 (nombres) se ignora.
+    """
+    if len(raw) < MRZ_TD1_MIN_LEN or not _RE_MRZ_CEDULA_CO.match(raw):
+        return None
+
+    linea1 = raw[:30]
+    linea2 = raw[30:60]
+    nuip = linea2[18:29].replace("<", "")
+    valido = (
+        _mrz_campo_ok(linea2[0:6], linea2[6])
+        and _mrz_campo_ok(linea2[8:14], linea2[14])
+        and _mrz_campo_ok(
+            linea1[5:30] + linea2[0:7] + linea2[8:15] + linea2[18:29],
+            linea2[29],
+        )
+        and nuip.isdigit()
+        and DOC_MIN_LEN <= len(nuip) <= DOC_MAX_LEN
+    )
+    return CapturaEscaneo(
+        documento=nuip if valido else "",
+        nombres="",
+        apellidos="",
+        tipo_doc="CC",
+        metodo_aut=METODO_BARRAS,
+        captura_raw=raw,
+        origen="mrz",
     )
 
 

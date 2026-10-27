@@ -275,5 +275,69 @@ class TestCedulaSinPubdsk(unittest.TestCase):
         self.assertEqual(documento_desde_entrada_campo(raw), "87654321")
 
 
+def _cd(campo: str) -> str:
+    """Dígito ICAO 9303, implementado aparte del código bajo prueba."""
+    valores = {"<": 0, **{str(d): d for d in range(10)}}
+    valores.update({chr(65 + i): 10 + i for i in range(26)})
+    pesos = (7, 3, 1)
+    total = sum(valores[c] * pesos[i % 3] for i, c in enumerate(campo))
+    return str(total % 10)
+
+
+def _mrz(nuip: str, nombres: str = "PRUEBA<APELLIDO<<NOMBRE<UNO") -> str:
+    """MRZ TD1 sintético de cédula digital CO (sin datos reales)."""
+    serie = "000123456"
+    linea1 = ("ICCOL" + serie + _cd(serie) + "00000").ljust(30, "<")
+    nac, ven = "900101", "300101"
+    base2 = (
+        nac + _cd(nac) + "M" + ven + _cd(ven) + "COL" + nuip.ljust(11, "<")
+    )
+    compuesto = linea1[5:30] + base2[0:7] + base2[8:15] + base2[18:29]
+    linea2 = base2 + _cd(compuesto)
+    return linea1 + linea2 + nombres.ljust(30, "<")[:30]
+
+
+class TestCedulaDigitalMrz(unittest.TestCase):
+    def test_mrz_toma_nuip_de_la_linea_2(self) -> None:
+        cap = parse_captura_escaneo(_mrz("1234567890"))
+        self.assertEqual(cap.documento, "1234567890")
+        self.assertEqual(cap.metodo_aut, 3)
+        self.assertEqual(cap.origen, "mrz")
+        self.assertEqual((cap.nombres, cap.apellidos), ("", ""))
+
+    def test_mrz_no_toma_la_serie_de_la_tarjeta(self) -> None:
+        cap = parse_captura_escaneo(_mrz("1234567890"))
+        self.assertNotIn("000123456", cap.documento)
+
+    def test_mrz_sin_linea_de_nombres(self) -> None:
+        cap = parse_captura_escaneo(_mrz("1234567890")[:60])
+        self.assertEqual(cap.documento, "1234567890")
+
+    def test_mrz_nombres_cortados(self) -> None:
+        cap = parse_captura_escaneo(_mrz("1234567890")[:75])
+        self.assertEqual(cap.documento, "1234567890")
+
+    def test_mrz_nuip_8_digitos(self) -> None:
+        cap = parse_captura_escaneo(_mrz("12345678"))
+        self.assertEqual(cap.documento, "12345678")
+
+    def test_mrz_digito_de_control_malo_no_inventa_documento(self) -> None:
+        raw = _mrz("1234567890")
+        # Un dígito del NUIP mal leído por el OCR: falla el compuesto.
+        malo = "1" if raw[48] != "1" else "2"
+        cap = parse_captura_escaneo(raw[:48] + malo + raw[49:])
+        self.assertEqual(cap.documento, "")
+        self.assertEqual(cap.origen, "mrz")
+
+    def test_mrz_desde_campo_del_formulario(self) -> None:
+        self.assertEqual(
+            documento_desde_entrada_campo(_mrz("1234567890")), "1234567890"
+        )
+
+    def test_carnet_y_barras_no_son_mrz(self) -> None:
+        self.assertEqual(parse_captura_escaneo("1234567890").origen, "barras")
+        self.assertNotEqual(parse_captura_escaneo("ICCOL123").origen, "mrz")
+
+
 if __name__ == "__main__":
     unittest.main()
