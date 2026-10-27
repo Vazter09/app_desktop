@@ -32,7 +32,10 @@ from app_log import (  # noqa: E402
     log_exception,
     setup_logging,
 )
-from smartcset_client import SmartcsetClient  # noqa: E402
+from smartcset_client import (  # noqa: E402
+    MSG_SESION_EXPIRADA,
+    SmartcsetClient,
+)
 from ui import theme  # noqa: E402
 from ui.login_view import LoginView  # noqa: E402
 from ui.responsive import init as init_responsive  # noqa: E402
@@ -77,6 +80,10 @@ class SmartcsetDesktopApp:
         )
         self.client = SmartcsetClient(
             self.config.base_url, verify_tls=self.config.verify_tls
+        )
+        # Puede llegar desde un hilo de trabajo: pasar al hilo de Tk.
+        self.client.on_session_expired = lambda: self.root.after(
+            0, self._on_session_expired
         )
 
         self.root = tk.Tk()
@@ -164,12 +171,22 @@ class SmartcsetDesktopApp:
             self._current_view.destroy()
             self._current_view = None
 
-    def _show_login(self) -> None:
+    def _on_session_expired(self) -> None:
+        """Sesión invalidada en el servidor: volver al login sin ruido."""
+        if not self._logged_in:
+            return
+        log.warning("Sesión expirada en el servidor; se vuelve al login")
+        flush_handlers()
+        self._show_login(aviso=MSG_SESION_EXPIRADA)
+
+    def _show_login(self, aviso: str = "") -> None:
         self._logged_in = False
         self._logout_done = False
         self._aplicar_pantalla_completa()
         self._clear()
-        view = LoginView(self.root, self.client, on_success=self._show_dashboard)
+        view = LoginView(
+            self.root, self.client, on_success=self._show_dashboard, aviso=aviso
+        )
         view.pack(fill="both", expand=True)
         self._current_view = view
 

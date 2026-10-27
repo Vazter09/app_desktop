@@ -52,6 +52,7 @@ class LoginView(ttk.Frame):
         master: tk.Misc,
         client: SmartcsetClient,
         on_success: Callable[[dict], None],
+        aviso: str = "",
     ) -> None:
         super().__init__(master, style="App.TFrame")
         self._client = client
@@ -120,7 +121,8 @@ class LoginView(ttk.Frame):
         clave_entry.bind("<Return>", lambda _e: self._do_login())
         fila += 1
 
-        self._error_var = tk.StringVar(value="")
+        # Motivo de la vuelta al login (p. ej. sesión cerrada por el servidor).
+        self._error_var = tk.StringVar(value=aviso)
         self._error_label = ttk.Label(
             card,
             textvariable=self._error_var,

@@ -22,6 +22,7 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -34,8 +35,24 @@ class SmartcsetApiError(Exception):
     """Error de negocio devuelto por el backend (RouterResponse::fail)."""
 
 
+class SmartcsetSessionExpired(SmartcsetApiError):
+    """La sesión PHP ya no es válida (401 o redirect al login).
+
+    Pasa cuando el mismo usuario inicia sesión en otro equipo o el
+    servidor cierra la sesión. El detalle técnico va solo al log; el
+    operario ve un mensaje simple y la app vuelve al login.
+    """
+
+
 class SmartcsetConnectionError(Exception):
     """No se pudo alcanzar el servidor (red caída, TLS inválido, etc.)."""
+
+
+MSG_SESION_EXPIRADA = "Su sesión se cerró. Ingrese de nuevo."
+MSG_SERVIDOR_NO_RESPONDE = (
+    "El servidor no respondió como se esperaba. Intente de nuevo."
+)
+MSG_SIN_CONEXION = "No hay conexión con el servidor. Intente de nuevo."
 
 
 def _path_for_log(path: str) -> str:
@@ -63,6 +80,8 @@ class SmartcsetClient:
         self.base_url = base_url.rstrip("/")
         self._cookie_jar = http.cookiejar.CookieJar()
         self._lock = threading.RLock()
+        # La UI lo asigna para volver al login cuando la sesión caduca.
+        self.on_session_expired: Callable[[], None] | None = None
 
         # Laboratorio con cert autofirmado: usar contexto no verificado
         # (create_default_context + CERT_NONE a veces no basta en Windows).
@@ -85,6 +104,18 @@ class SmartcsetClient:
     def has_session_cookie(self) -> bool:
         with self._lock:
             return any(c.name == "PHPSESSID" and c.value for c in self._cookie_jar)
+
+    def _notify_session_expired(self) -> None:
+        """Cookie muerta: limpiarla y avisar a la UI (si se registró)."""
+        self._cookie_jar.clear()
+        callback = self.on_session_expired
+        if callback is None:
+            return
+        try:
+            callback()
+        except Exception as exc:  # noqa: BLE001 — nunca romper la request
+            log.warning("on_session_expired falló: %s", exc)
+            flush_handlers()
 
     # ---- Núcleo HTTP -----------------------------------------------
 
@@ -114,34 +145,49 @@ class SmartcsetClient:
                     parsed = json.loads(body)
                 except json.JSONDecodeError:
                     parsed = {}
+                location = exc.headers.get("Location") or ""
                 if exc.code in (301, 302, 303, 307, 308):
-                    location = exc.headers.get("Location") or ""
-                    message = (
+                    detalle = (
                         f"El servidor redirigió ({exc.code}) en lugar de JSON. "
-                        f"Revise URL/sesión. Location={location[:120]}"
+                        f"Location={location[:120]}"
                     )
                 elif exc.code == 408:
-                    message = "¡Falla de conexión!"
+                    detalle = "¡Falla de conexión!"
                 else:
-                    message = parsed.get("error") or f"Error HTTP {exc.code}"
+                    detalle = parsed.get("error") or f"Error HTTP {exc.code}"
                     if not parsed and body.strip():
-                        message = (
-                            f"{message} (respuesta no JSON: {_body_preview(body)})"
+                        detalle = (
+                            f"{detalle} (respuesta no JSON: {_body_preview(body)})"
                         )
                 log.error(
                     "API HTTP %s %s → %s: %s",
                     method,
                     safe_path,
                     exc.code,
-                    message,
+                    detalle,
                 )
                 flush_handlers()
-                raise SmartcsetApiError(message) from exc
+                if exc.code == 401 or (
+                    exc.code in (301, 302, 303, 307, 308)
+                    and "login" in location.lower()
+                ):
+                    self._notify_session_expired()
+                    raise SmartcsetSessionExpired(MSG_SESION_EXPIRADA) from exc
+                if exc.code in (301, 302, 303, 307, 308) or (
+                    not parsed and body.strip()
+                ):
+                    raise SmartcsetApiError(MSG_SERVIDOR_NO_RESPONDE) from exc
+                raise SmartcsetApiError(detalle) from exc
             except (urllib.error.URLError, TimeoutError) as exc:
-                message = f"No se pudo conectar con {self.base_url}: {exc}"
-                log.error("Conexión %s %s: %s", method, safe_path, exc)
+                log.error(
+                    "Conexión %s %s (%s): %s",
+                    method,
+                    safe_path,
+                    self.base_url,
+                    exc,
+                )
                 flush_handlers()
-                raise SmartcsetConnectionError(message) from exc
+                raise SmartcsetConnectionError(MSG_SIN_CONEXION) from exc
 
             try:
                 parsed = json.loads(body)
@@ -153,10 +199,7 @@ class SmartcsetClient:
                     _body_preview(body),
                 )
                 flush_handlers()
-                raise SmartcsetConnectionError(
-                    "Respuesta inválida del servidor (¿URL correcta?). "
-                    f"Preview: {_body_preview(body)}"
-                ) from exc
+                raise SmartcsetConnectionError(MSG_SERVIDOR_NO_RESPONDE) from exc
 
             if not parsed.get("ok"):
                 message = parsed.get("error") or "Error desconocido."
