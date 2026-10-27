@@ -105,6 +105,39 @@ MIN_CONFIANZA_ROSTRO = 0.22
 COOLDOWN_TRAS_FALLO_MS = 2000
 # Ventana local 1 min post-ingreso / post-salida (anti-reabrir modal).
 VENTANA_1_MIN_MS = 1 * 60 * 1000
+VENTANA_1_MIN_S = VENTANA_1_MIN_MS // 1000
+
+
+def segundos_restantes_salida(consulta: dict[str, Any] | None) -> int:
+    """Segundos que faltan para poder registrar la salida (ventana 1 min).
+
+    Se calcula con ``ingreso_abierto.segundos_desde_ingreso`` (reloj de la
+    BD) y la regla de 1 min que aplica ``fun_update_log_salida``, no con el
+    resto que calcula el PHP: el 2026-10-21 un deploy devolvió su
+    constante a 300 s y la app anunció «4 min» con la BD ya en 60 s. Si la
+    API no envía ese campo, se usa el resto del servidor, acotado a 1 min.
+    """
+    if not isinstance(consulta, dict):
+        return 0
+    abierto = consulta.get("ingreso_abierto")
+    if not abierto:
+        return 0
+    desde = (
+        abierto.get("segundos_desde_ingreso")
+        if isinstance(abierto, dict)
+        else None
+    )
+    if desde is not None:
+        try:
+            return max(0, VENTANA_1_MIN_S - int(desde))
+        except (TypeError, ValueError):
+            pass
+    try:
+        rest = int(consulta.get("segundos_restantes_salida") or 0)
+    except (TypeError, ValueError):
+        rest = 0
+    return max(0, min(rest, VENTANA_1_MIN_S))
+
 
 # El motor carga 2 modelos ONNX (~39MB) — se instancia una sola vez por
 # proceso, no una vez por modal abierto (abrir/cerrar el modal repetidas
@@ -845,6 +878,14 @@ class FacialRecognitionPanel(ttk.Frame):
             foto = resp.get("foto_base64") or persona.get("foto_base64")
             if foto:
                 persona_datos["foto_base64"] = foto
+            elif persona and "foto_disponible" not in resp:
+                # El endpoint perdió la foto (deploy 2026-10-21): avisar en
+                # el log para detectarlo, sin el número de documento.
+                log.error(
+                    "ingreso/consultar sin campo foto_disponible: el "
+                    "servidor no tiene la versión con foto de enrolamiento"
+                )
+                flush_handlers()
             serial = serial_equipo_desde_payload(resp)
             if serial:
                 persona_datos["id_equipo"] = serial
@@ -881,7 +922,7 @@ class FacialRecognitionPanel(ttk.Frame):
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         try:
             consulta = self._consultar_persona(documento, tipo_doc)
-            rest = int(consulta.get("segundos_restantes_salida") or 0)
+            rest = segundos_restantes_salida(consulta)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
             log.warning("Ventana recaptura (consulta): %s", exc)
             flush_handlers()
@@ -2092,7 +2133,7 @@ class FacialRecognitionPanel(ttk.Frame):
             try:
                 tipo_doc = self._tipo_doc_efectivo(persona_datos)
                 consulta = self._consultar_persona(documento, tipo_doc)
-                rest = int(consulta.get("segundos_restantes_salida") or 0)
+                rest = segundos_restantes_salida(consulta)
             except (SmartcsetApiError, SmartcsetConnectionError) as exc:
                 log.warning("Aviso post-ingreso (consulta): %s", exc)
                 flush_handlers()
@@ -2185,31 +2226,22 @@ class FacialRecognitionPanel(ttk.Frame):
             return "actualizar_captura"
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         consulta = self._consultar_persona(documento, tipo_doc)
-        rest_salida = int(consulta.get("segundos_restantes_salida") or 0)
-        # Solo resto>0 = aún en ventana 1 min. No usar segundos_desde_ingreso:
-        # la API no lo envía y quedaba en 0 → bloqueaba salidas de días previos.
+        rest_salida = segundos_restantes_salida(consulta)
+        # Resto>0 = aún en ventana 1 min (ver segundos_restantes_salida).
         if consulta.get("ingreso_abierto") and rest_salida > 0:
             return "actualizar_captura"
         if consulta.get("en_ventana_recaptura") or consulta.get(
             "puede_actualizar_captura"
         ):
             return "actualizar_captura"
-        if consulta.get("puede_salir") and rest_salida <= 0:
+        # Ingreso abierto y ventana cumplida → salida, aunque el PHP diga
+        # puede_salir=false por una constante distinta (la BD manda).
+        if consulta.get("ingreso_abierto") or consulta.get("puede_salir"):
             return "salida"
         if consulta.get("en_espera_reingreso"):
             return "espera_reingreso"
         if consulta.get("puede_ingresar"):
             return "ingreso"
-        # Compat: ingreso abierto sin flags → salida/consultar es la fuente.
-        if consulta.get("ingreso_abierto"):
-            salida = self._client.salida_consultar(documento, tipo_doc)
-            rest = int(salida.get("segundos_restantes_salida") or 0)
-            if rest > 0:
-                return "actualizar_captura"
-            if salida.get("puede_salir"):
-                return "salida"
-            # Ingreso abierto pero sin puede_salir ni resto: no inventar salida.
-            return "actualizar_captura"
         return "espera_reingreso"
 
     def _on_confirmacion_modal(self, persona_datos: dict) -> None:
@@ -2455,7 +2487,7 @@ class FacialRecognitionPanel(ttk.Frame):
         try:
             tipo_doc = self._tipo_doc_efectivo(persona_datos)
             q = self._client.ingreso_consultar(documento, tipo_doc)
-            rest = int(q.get("segundos_restantes_salida") or 0)
+            rest = segundos_restantes_salida(q)
             if rest > 0:
                 min_rest = minutos_redondeados_arriba(rest)
                 rest_txt = f" — salida disponible en ~{min_rest} min"
@@ -2479,17 +2511,19 @@ class FacialRecognitionPanel(ttk.Frame):
         """Persiste salida real vía API. Nunca finge éxito con 'actualizar captura'."""
         tipo_doc = self._tipo_doc_efectivo(persona_datos)
         consulta = self._client.salida_consultar(documento, tipo_doc)
-        if not consulta.get("puede_salir"):
-            rest = int(consulta.get("segundos_restantes_salida") or 0)
-            if consulta.get("ingreso_abierto") and rest > 0:
-                min_rest = minutos_redondeados_arriba(rest)
-                msg = (
-                    f"Aún no puede registrar salida. Espere ~{min_rest} min "
-                    f"desde el ingreso (mínimo 1 min)."
-                )
-                self._marcar_post_ingreso_doc(documento, rest * 1000)
-                self._set_estado(f"⏳ {msg}", theme.CYAN)
-                raise SmartcsetApiError(msg)
+        rest = segundos_restantes_salida(consulta)
+        if consulta.get("ingreso_abierto") and rest > 0:
+            min_rest = minutos_redondeados_arriba(rest)
+            msg = (
+                f"Aún no puede registrar salida. Espere ~{min_rest} min "
+                f"desde el ingreso (mínimo 1 min)."
+            )
+            self._marcar_post_ingreso_doc(documento, rest * 1000)
+            self._set_estado(f"⏳ {msg}", theme.CYAN)
+            raise SmartcsetApiError(msg)
+        if not consulta.get("ingreso_abierto") and not consulta.get(
+            "puede_salir"
+        ):
             raise SmartcsetApiError(
                 f"{nombre}: no tiene un ingreso abierto para registrar salida."
             )
