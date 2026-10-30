@@ -324,6 +324,17 @@ def trama_pubdsk_incompleta(raw: str) -> bool:
     return "PubDSK_" in (raw or "") and not trama_pubdsk_lista(raw)
 
 
+def trama_mrz_cedula(raw: str) -> bool:
+    """True si la trama tiene la firma del MRZ de la cédula digital.
+
+    El lector no manda Enter tras el MRZ: el detector de ráfagas usa esto
+    para entregarla al cerrar por silencio (misma firma que el parser).
+    """
+    return len(raw or "") >= MRZ_TD1_MIN_LEN and bool(
+        _RE_MRZ_CEDULA_CO.match(raw)
+    )
+
+
 def _documento_desde_pubdsk(raw: str) -> str | None:
     """NUIP de trama ``PubDSK_`` sin separadores.
 

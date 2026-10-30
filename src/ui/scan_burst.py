@@ -22,6 +22,9 @@ queda quieta ``RESET_MS`` siendo solo dígitos y sin bytes binarios se
 entrega como trama (``tomar_trama``) en vez de descartarse. La cédula
 nunca cumple esa forma: trae letras, ``@``/Tab o binario.
 
+Cédula digital (2026-10-30): el MRZ (``ICCOL…``) tampoco trae Enter;
+con su firma se entrega igual al cerrar por silencio.
+
 Sin dependencias de Tk: los tiempos llegan en ms monotónicos.
 """
 from __future__ import annotations
@@ -30,7 +33,11 @@ import re
 from dataclasses import dataclass
 
 from ui.field_validators import DOC_MAX_LEN, DOC_MIN_LEN
-from ui.scan_capture import trama_pubdsk_incompleta, trama_pubdsk_lista
+from ui.scan_capture import (
+    trama_mrz_cedula,
+    trama_pubdsk_incompleta,
+    trama_pubdsk_lista,
+)
 
 # Hueco máximo entre teclas de una ráfaga antes de confirmarla.
 INTER_CHAR_MS = 120
@@ -172,9 +179,11 @@ class DetectorRafaga:
         self._hubo_binario = False
 
     def _cerrar_por_silencio(self) -> None:
-        """Ráfaga confirmada sin Enter: carnet → trama; resto se descarta."""
+        """Ráfaga sin Enter: carnet o MRZ → trama; resto se descarta."""
         texto = self._texto()
-        if not self._hubo_binario and _RE_CARNET.fullmatch(texto):
+        if not self._hubo_binario and (
+            _RE_CARNET.fullmatch(texto) or trama_mrz_cedula(texto)
+        ):
             self._trama_carnet = texto
         self._reset()
 
