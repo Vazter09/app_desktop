@@ -7,6 +7,23 @@ Versiones lógicas del módulo `app_desktop` (no necesariamente tags de git).
 
 ## [Sin publicar] — 2026-10-15
 
+### Agregado
+
+- **Lectura del PPT (Permiso por Protección Temporal, extranjeros)**
+  (2026-11-05): el lector entrega el MRZ TD1 del reverso (`IPCOL…`). Se
+  toma solo el número del permiso (línea 1, exactamente 7 dígitos, con
+  dígitos de control ICAO) y se envía `tipo_doc=PPT`; la serie de la
+  tarjeta (`E…`) y los nombres se ignoran. Solo el tipo PPT acepta 7
+  dígitos (también al digitar a mano); CC y demás siguen en 8–10. Cédula
+  digital, PDF417, carnet SENA y barras sin cambios.
+- **PPT por QR** (2026-11-05, trama real del lector): el lector no entrega
+  el MRZ del PPT sino su QR, con claves pegadas y sin Enter
+  (`NOMBRES:…APELLIDOS:…FECHA:…NACIONALIDAD:…NUMERO IDENTIFICACION:…`).
+  El detector de ráfagas la descartaba en silencio (solo aceptaba carnet y
+  MRZ sin Enter). Ahora se reconoce por su firma, se toma solo el número
+  (7 dígitos) con `tipo_doc=PPT` y método QR (2). Las ráfagas que se
+  descartan por silencio quedan en el log (solo el largo) para diagnosticar.
+
 ### Corregido
 
 - **Lector de cédulas cerraba la sesión** (incidente 2026-10-15): la cola

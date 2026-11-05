@@ -17,6 +17,7 @@ from smartcset_client import (
 from ui import theme
 from ui.field_validators import (
     DOC_MAX_LEN,
+    TIPO_DOC_PPT,
     agregar_equipo_al_payload,
     es_documento_valido,
     es_equipo_serial_valido,
@@ -34,7 +35,11 @@ from ui.field_validators import (
     serial_equipo_desde_payload,
 )
 from ui.format_utils import minutos_redondeados_arriba
-from ui.scan_capture import documento_desde_entrada_campo
+from ui.scan_capture import (
+    documento_desde_entrada_campo,
+    trama_mrz_ppt,
+    trama_ppt_qr,
+)
 
 log = get_logger("ui.ingreso_form_panel")
 
@@ -135,10 +140,10 @@ class IngresoFormPanel(tk.Frame):
         doc = sanear_documento(documento)
         nom = sanear_nombre(nombres)
         ape = sanear_nombre(apellidos)
-        if not es_documento_valido(doc):
-            self._msg_var.set(mensaje_documento_invalido())
+        if not es_documento_valido(doc, tipo_doc):
+            self._msg_var.set(mensaje_documento_invalido(tipo_doc))
             self._estado_barra(
-                "Escaneo sin documento válido (8–10 dígitos) — reintente.",
+                "Escaneo sin documento válido — reintente.",
                 theme.ERROR,
             )
             return
@@ -468,6 +473,12 @@ class IngresoFormPanel(tk.Frame):
             self._coerciendo_campos = False
 
     def _coerce_documento(self, *_args: object) -> None:
+        # MRZ o QR del PPT pegado en el campo: el número va con tipo PPT.
+        valor = self._documento_var.get().strip()
+        if not self._coerciendo_campos and (
+            trama_mrz_ppt(valor) or trama_ppt_qr(valor)
+        ):
+            self.set_tipo_doc(TIPO_DOC_PPT)
         # PubDSK_/trama larga: NUIP real, no los primeros 10 del prefijo.
         self._coerce_var(
             self._documento_var,
@@ -639,11 +650,11 @@ class IngresoFormPanel(tk.Frame):
             self._documento_var.set(documento)
         if not documento:
             return
-        if not es_documento_valido(documento):
-            self._msg_var.set(mensaje_documento_invalido())
+        tipo_doc = self.tipo_doc_actual()
+        if not es_documento_valido(documento, tipo_doc):
+            self._msg_var.set(mensaje_documento_invalido(tipo_doc))
             self.focus_documento()
             return
-        tipo_doc = self.tipo_doc_actual()
         try:
             resultado = self._client.ingreso_consultar(documento, tipo_doc)
         except (SmartcsetApiError, SmartcsetConnectionError) as exc:
@@ -737,8 +748,9 @@ class IngresoFormPanel(tk.Frame):
             self._msg_var.set("Ingrese el número de documento.")
             self.focus_documento()
             return
-        if not es_documento_valido(documento):
-            self._msg_var.set(mensaje_documento_invalido())
+        tipo_doc = self.tipo_doc_actual()
+        if not es_documento_valido(documento, tipo_doc):
+            self._msg_var.set(mensaje_documento_invalido(tipo_doc))
             self.focus_documento()
             return
         if not nombres or not apellidos:

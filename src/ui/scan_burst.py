@@ -25,6 +25,11 @@ nunca cumple esa forma: trae letras, ``@``/Tab o binario.
 Cédula digital (2026-10-30): el MRZ (``ICCOL…``) tampoco trae Enter;
 con su firma se entrega igual al cerrar por silencio.
 
+PPT (2026-11-05): el QR del PPT (``NOMBRES:…NUMERO IDENTIFICACION:…``)
+tampoco trae Enter; con su firma se entrega igual al cerrar por silencio.
+Las ráfagas descartadas por silencio quedan en el log (solo el largo, sin
+datos personales) para diagnosticar formatos nuevos del lector.
+
 Sin dependencias de Tk: los tiempos llegan en ms monotónicos.
 """
 from __future__ import annotations
@@ -32,12 +37,16 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from app_log import get_logger
 from ui.field_validators import DOC_MAX_LEN, DOC_MIN_LEN
 from ui.scan_capture import (
     trama_mrz_cedula,
+    trama_ppt_qr,
     trama_pubdsk_incompleta,
     trama_pubdsk_lista,
 )
+
+log = get_logger("ui.scan_burst")
 
 # Hueco máximo entre teclas de una ráfaga antes de confirmarla.
 INTER_CHAR_MS = 120
@@ -179,12 +188,18 @@ class DetectorRafaga:
         self._hubo_binario = False
 
     def _cerrar_por_silencio(self) -> None:
-        """Ráfaga sin Enter: carnet o MRZ → trama; resto se descarta."""
+        """Ráfaga sin Enter: carnet, MRZ o QR del PPT → trama; resto se
+        descarta."""
         texto = self._texto()
         if not self._hubo_binario and (
-            _RE_CARNET.fullmatch(texto) or trama_mrz_cedula(texto)
+            _RE_CARNET.fullmatch(texto)
+            or trama_mrz_cedula(texto)
+            or trama_ppt_qr(texto)
         ):
             self._trama_carnet = texto
+        else:
+            # Sin datos personales (MSPI): solo el largo.
+            log.info("Ráfaga descartada por silencio | largo=%d", len(texto))
         self._reset()
 
     def _soltar_retenido(self) -> str:

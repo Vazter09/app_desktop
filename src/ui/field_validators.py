@@ -1,7 +1,7 @@
 """
 Validación de campos del formulario de ingreso (manual + pistola).
 
-Documento: solo dígitos, 8–10.
+Documento: solo dígitos, 8–10; PPT (extranjeros) exactamente 7.
 Nombres/apellidos: solo letras (tildes, ñ, espacios, guion, apóstrofe).
 Observación: alfanumérico + puntuación básica (fichas, placas, etc.).
 """
@@ -11,6 +11,11 @@ import re
 
 DOC_MIN_LEN = 8
 DOC_MAX_LEN = 10
+
+# PPT (Permiso por Protección Temporal): número de 7 dígitos. Solo aplica
+# con tipo PPT; el resto de tipos (y carnet/barras) siguen en 8–10.
+TIPO_DOC_PPT = "PPT"
+PPT_DOC_LEN = 7
 
 # Sexo / RH del PDF417 — no deben pegarse en nombres ni confundirse con doc.
 _RE_RH = re.compile(r"^(?:RH\s*)?[ABO]\s*[+-]?$", re.IGNORECASE)
@@ -34,8 +39,10 @@ def sanear_documento(raw: str) -> str:
     return digits[:DOC_MAX_LEN]
 
 
-def es_documento_valido(raw: str) -> bool:
+def es_documento_valido(raw: str, tipo_doc: str = "CC") -> bool:
     digits = sanear_documento(raw)
+    if (tipo_doc or "").strip() == TIPO_DOC_PPT:
+        return len(digits) == PPT_DOC_LEN
     return DOC_MIN_LEN <= len(digits) <= DOC_MAX_LEN
 
 
@@ -94,7 +101,12 @@ def es_observacion_valida(raw: str) -> bool:
     return _RE_OBS_CHAR.search(s) is None
 
 
-def mensaje_documento_invalido() -> str:
+def mensaje_documento_invalido(tipo_doc: str = "CC") -> str:
+    if (tipo_doc or "").strip() == TIPO_DOC_PPT:
+        return (
+            f"Documento PPT inválido: solo dígitos, "
+            f"exactamente {PPT_DOC_LEN}."
+        )
     return (
         f"Documento inválido: solo dígitos, "
         f"entre {DOC_MIN_LEN} y {DOC_MAX_LEN}."

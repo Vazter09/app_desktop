@@ -26,6 +26,17 @@ Cédula digital CO (2026-10-27): el lector, con OCR ID/pasaporte activo,
 entrega el MRZ TD1 (``ICCOL…``, 3 líneas de 30 pegadas). Se toma solo el
 NUIP de la línea 2 y se validan los dígitos de verificación. Va antes que
 todo lo demás y solo reconoce esa firma: no cambia PDF417/carnet/barras.
+
+PPT extranjeros (2026-11-05): mismo MRZ TD1 con firma ``IPCOL…``. El
+número del permiso (7 dígitos) es el número de documento de la línea 1;
+la línea 2 trae la serie de la tarjeta (``E…``), que nunca se toma.
+Devuelve ``tipo_doc="PPT"``. Mismo criterio: solo el número, sin nombres.
+
+PPT por QR (2026-11-05, trama real del lector): el lector entrega el QR
+del PPT como claves pegadas y sin Enter:
+``NOMBRES:…APELLIDOS:…FECHA:…NACIONALIDAD:…NUMERO IDENTIFICACION:1234567``.
+Se toma solo el número final (exactamente 7 dígitos) → ``tipo_doc="PPT"``,
+QR (2). Firma exclusiva y va primero: no cambia las demás reglas.
 """
 from __future__ import annotations
 
@@ -35,6 +46,8 @@ from dataclasses import dataclass
 from ui.field_validators import (
     DOC_MAX_LEN,
     DOC_MIN_LEN,
+    PPT_DOC_LEN,
+    TIPO_DOC_PPT,
     es_token_basura_pdf417,
     sanear_documento,
     sanear_nombre,
@@ -64,6 +77,14 @@ CEDULA_FIRMA_MIN_LEN = 100
 # la línea 3 (nombres) puede venir cortada o no venir.
 MRZ_TD1_MIN_LEN = 60
 _RE_MRZ_CEDULA_CO = re.compile(r"I[A-Z<]COL[0-9A-Z<]{55}")
+# PPT (Migración Colombia): código de documento "IP" del mismo MRZ TD1.
+MRZ_CODIGO_PPT = "IP"
+# PPT por QR: claves fijas pegadas; el número del permiso va al final.
+_RE_PPT_QR = re.compile(
+    r"NOMBRES\s*:.*APELLIDOS\s*:.*NACIONALIDAD\s*:.*"
+    r"N[UÚ]MERO\s*IDENTIFICACI[OÓ]N\s*:\s*(\d+)\s*",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -96,6 +117,7 @@ def documento_desde_entrada_campo(raw: str) -> str:
 def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
     """Extrae documento (+ nombres si PDF417) y clasifica metodo_aut 2|3.
 
+    - PPT por QR (``NOMBRES:…NUMERO IDENTIFICACION:…``) → QR (2), PPT
     - Cédula digital MRZ (``ICCOL…``) → barras (3), solo NUIP
     - PDF417 (@ / Tab) → barras (3)
     - PDF417 ``PubDSK_`` sin separadores → barras (3), solo NUIP
@@ -108,6 +130,11 @@ def parse_captura_escaneo(raw: str) -> CapturaEscaneo:
     trimmed = (raw or "").replace("\t", "@").strip()
     if not trimmed:
         return CapturaEscaneo("", "", "", "CC", METODO_BARRAS, "", "vacio")
+
+    # PPT por QR: firma propia (claves NOMBRES/APELLIDOS/…); None si no.
+    ppt = _captura_ppt_qr(trimmed)
+    if ppt is not None:
+        return ppt
 
     # Cédula digital (MRZ por OCR del lector): firma propia, va primero y
     # devuelve None para cualquier otra trama, así no altera las reglas de
@@ -218,6 +245,8 @@ def _captura_cedula_mrz(raw: str) -> CapturaEscaneo | None:
     """
     if len(raw) < MRZ_TD1_MIN_LEN or not _RE_MRZ_CEDULA_CO.match(raw):
         return None
+    if raw.startswith(MRZ_CODIGO_PPT):
+        return _captura_ppt_mrz(raw)
 
     linea1 = raw[:30]
     linea2 = raw[30:60]
@@ -240,6 +269,63 @@ def _captura_cedula_mrz(raw: str) -> CapturaEscaneo | None:
         metodo_aut=METODO_BARRAS,
         captura_raw=raw,
         origen="mrz",
+    )
+
+
+def _captura_ppt_mrz(raw: str) -> CapturaEscaneo:
+    """PPT (extranjeros): MRZ TD1 ``IPCOL…`` → solo el número del permiso.
+
+    El número es el campo "número de documento" de la línea 1
+    (posiciones 5–13, dígito de control en la 14):
+    ``IPCOL1234567<<8…`` → ``1234567``. La línea 2 trae en el campo
+    opcional la serie de la tarjeta (``E…``), que no se toma. Si falla
+    un dígito de verificación o el número no tiene 7 dígitos devuelve
+    documento vacío (pedir otro escaneo). La línea 3 se ignora.
+    """
+    linea1 = raw[:30]
+    linea2 = raw[30:60]
+    numero = linea1[5:14].replace("<", "")
+    valido = (
+        _mrz_campo_ok(linea1[5:14], linea1[14])
+        and _mrz_campo_ok(linea2[0:6], linea2[6])
+        and _mrz_campo_ok(linea2[8:14], linea2[14])
+        and _mrz_campo_ok(
+            linea1[5:30] + linea2[0:7] + linea2[8:15] + linea2[18:29],
+            linea2[29],
+        )
+        and numero.isdigit()
+        and len(numero) == PPT_DOC_LEN
+    )
+    return CapturaEscaneo(
+        documento=numero if valido else "",
+        nombres="",
+        apellidos="",
+        tipo_doc=TIPO_DOC_PPT,
+        metodo_aut=METODO_BARRAS,
+        captura_raw=raw,
+        origen="mrz",
+    )
+
+
+def _captura_ppt_qr(raw: str) -> CapturaEscaneo | None:
+    """PPT (extranjeros) leído por QR → solo el número del permiso.
+
+    ``None`` si la trama no tiene la firma del QR del PPT. Si la tiene
+    pero el número no son exactamente 7 dígitos, documento vacío (pedir
+    otro escaneo, nunca inventar). Nombres y fecha se ignoran.
+    """
+    match = _RE_PPT_QR.fullmatch(raw)
+    if match is None:
+        return None
+    numero = match.group(1)
+    return CapturaEscaneo(
+        documento=numero if len(numero) == PPT_DOC_LEN else "",
+        nombres="",
+        apellidos="",
+        tipo_doc=TIPO_DOC_PPT,
+        metodo_aut=METODO_QR,
+        captura_raw=raw,
+        origen="ppt_qr",
     )
 
 
@@ -325,7 +411,7 @@ def trama_pubdsk_incompleta(raw: str) -> bool:
 
 
 def trama_mrz_cedula(raw: str) -> bool:
-    """True si la trama tiene la firma del MRZ de la cédula digital.
+    """True si la trama tiene la firma del MRZ (cédula digital o PPT).
 
     El lector no manda Enter tras el MRZ: el detector de ráfagas usa esto
     para entregarla al cerrar por silencio (misma firma que el parser).
@@ -333,6 +419,16 @@ def trama_mrz_cedula(raw: str) -> bool:
     return len(raw or "") >= MRZ_TD1_MIN_LEN and bool(
         _RE_MRZ_CEDULA_CO.match(raw)
     )
+
+
+def trama_mrz_ppt(raw: str) -> bool:
+    """True si la trama es el MRZ del PPT (``IPCOL…``)."""
+    return trama_mrz_cedula(raw) and raw.startswith(MRZ_CODIGO_PPT)
+
+
+def trama_ppt_qr(raw: str) -> bool:
+    """True si la trama es el QR del PPT (llega sin Enter)."""
+    return _RE_PPT_QR.fullmatch((raw or "").strip()) is not None
 
 
 def _documento_desde_pubdsk(raw: str) -> str | None:

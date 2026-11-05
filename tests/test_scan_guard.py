@@ -11,7 +11,7 @@ import unittest
 from tkinter import ttk
 
 from tests.common import APP_DIR  # noqa: F401 — inserta src/ en sys.path
-from tests.test_scan_capture import _mrz
+from tests.test_scan_capture import _mrz, _mrz_ppt, _ppt_qr
 from ui import scan_burst, scan_guard
 from ui.facial_modal import FacialRecognitionPanel
 from ui.scan_burst import DetectorRafaga
@@ -181,6 +181,28 @@ class TestMrzSinEnter(unittest.TestCase):
         trama = det.tomar_trama()
         self.assertEqual(trama, mrz)
         self.assertEqual(parse_captura_escaneo(trama).documento, "1234567890")
+
+    def test_ppt_sin_enter_es_trama_tras_silencio(self) -> None:
+        mrz = _mrz_ppt("1234567")
+        det = DetectorRafaga()
+        decisiones, t = _teclear(det, mrz, 1000, 10)
+        self.assertTrue(all(d.trama is None for d in decisiones))
+        det.tick(t + scan_burst.RESET_MS + 10)
+        trama = det.tomar_trama()
+        self.assertEqual(trama, mrz)
+        cap = parse_captura_escaneo(trama)
+        self.assertEqual((cap.documento, cap.tipo_doc), ("1234567", "PPT"))
+
+    def test_ppt_qr_sin_enter_es_trama_tras_silencio(self) -> None:
+        trama_qr = _ppt_qr("1234567")
+        det = DetectorRafaga()
+        decisiones, t = _teclear(det, trama_qr, 1000, 10)
+        self.assertTrue(all(d.trama is None for d in decisiones))
+        det.tick(t + scan_burst.RESET_MS + 10)
+        trama = det.tomar_trama()
+        self.assertEqual(trama, trama_qr)
+        cap = parse_captura_escaneo(trama)
+        self.assertEqual((cap.documento, cap.tipo_doc), ("1234567", "PPT"))
 
     def test_mrz_con_enter_sigue_igual(self) -> None:
         mrz = _mrz("1234567890")

@@ -9,12 +9,16 @@ from ui.field_validators import (
     es_nombre_valido,
     es_token_basura_pdf417,
     filtrar_chars_nombre,
+    mensaje_documento_invalido,
     sanear_documento,
     sanear_nombre,
 )
 from ui.scan_capture import (
     documento_desde_entrada_campo,
     parse_captura_escaneo,
+    trama_mrz_cedula,
+    trama_mrz_ppt,
+    trama_ppt_qr,
     trama_pubdsk_incompleta,
     trama_pubdsk_lista,
 )
@@ -337,6 +341,147 @@ class TestCedulaDigitalMrz(unittest.TestCase):
     def test_carnet_y_barras_no_son_mrz(self) -> None:
         self.assertEqual(parse_captura_escaneo("1234567890").origen, "barras")
         self.assertNotEqual(parse_captura_escaneo("ICCOL123").origen, "mrz")
+
+    def test_mrz_cedula_sigue_siendo_cc(self) -> None:
+        cap = parse_captura_escaneo(_mrz("1234567890"))
+        self.assertEqual(cap.tipo_doc, "CC")
+        self.assertFalse(trama_mrz_ppt(_mrz("1234567890")))
+
+
+def _mrz_ppt(
+    numero: str,
+    serie: str = "E0001234",
+    nombres: str = "PRUEBA<APELLIDO<<NOMBRE<UNO",
+) -> str:
+    """MRZ TD1 sintético del PPT (Migración Colombia, sin datos reales)."""
+    campo = numero.ljust(9, "<")
+    linea1 = ("IPCOL" + campo + _cd(campo)).ljust(30, "<")
+    nac, ven = "900101", "300101"
+    base2 = (
+        nac + _cd(nac) + "M" + ven + _cd(ven) + "VEN" + serie.ljust(11, "<")
+    )
+    compuesto = linea1[5:30] + base2[0:7] + base2[8:15] + base2[18:29]
+    linea2 = base2 + _cd(compuesto)
+    return linea1 + linea2 + nombres.ljust(30, "<")[:30]
+
+
+class TestPptMrz(unittest.TestCase):
+    """PPT extranjeros: MRZ ``IPCOL…`` → número de 7 dígitos, tipo PPT."""
+
+    def test_ppt_toma_numero_de_la_linea_1(self) -> None:
+        cap = parse_captura_escaneo(_mrz_ppt("1234567"))
+        self.assertEqual(cap.documento, "1234567")
+        self.assertEqual(cap.tipo_doc, "PPT")
+        self.assertEqual(cap.metodo_aut, 3)
+        self.assertEqual(cap.origen, "mrz")
+        self.assertEqual((cap.nombres, cap.apellidos), ("", ""))
+
+    def test_ppt_no_toma_la_serie_de_la_tarjeta(self) -> None:
+        cap = parse_captura_escaneo(_mrz_ppt("1234567", serie="E0854418"))
+        self.assertNotIn("0854418", cap.documento)
+        self.assertEqual(cap.documento, "1234567")
+
+    def test_ppt_sin_linea_de_nombres(self) -> None:
+        cap = parse_captura_escaneo(_mrz_ppt("1234567")[:60])
+        self.assertEqual(cap.documento, "1234567")
+
+    def test_ppt_nombres_cortados(self) -> None:
+        cap = parse_captura_escaneo(_mrz_ppt("1234567")[:75])
+        self.assertEqual(cap.documento, "1234567")
+
+    def test_ppt_digito_de_control_malo_no_inventa_documento(self) -> None:
+        raw = _mrz_ppt("1234567")
+        # Un dígito del número mal leído por el OCR (posición 6).
+        malo = "9" if raw[6] != "9" else "8"
+        cap = parse_captura_escaneo(raw[:6] + malo + raw[7:])
+        self.assertEqual(cap.documento, "")
+        self.assertEqual(cap.tipo_doc, "PPT")
+        self.assertEqual(cap.origen, "mrz")
+
+    def test_ppt_solo_acepta_7_digitos(self) -> None:
+        for numero in ("123456", "12345678"):
+            cap = parse_captura_escaneo(_mrz_ppt(numero))
+            self.assertEqual(cap.documento, "", numero)
+
+    def test_ppt_desde_campo_del_formulario(self) -> None:
+        self.assertEqual(
+            documento_desde_entrada_campo(_mrz_ppt("1234567")), "1234567"
+        )
+
+    def test_firma_ppt(self) -> None:
+        raw = _mrz_ppt("1234567")
+        self.assertTrue(trama_mrz_ppt(raw))
+        # Mismo detector de ráfagas que la cédula (sin Enter).
+        self.assertTrue(trama_mrz_cedula(raw))
+        self.assertFalse(trama_mrz_ppt("IPCOL123"))
+
+
+class TestDocumentoPorTipo(unittest.TestCase):
+    def test_ppt_exactamente_7(self) -> None:
+        self.assertTrue(es_documento_valido("1234567", "PPT"))
+        self.assertFalse(es_documento_valido("123456", "PPT"))
+        self.assertFalse(es_documento_valido("12345678", "PPT"))
+
+    def test_otros_tipos_sin_cambio(self) -> None:
+        self.assertFalse(es_documento_valido("1234567"))
+        self.assertFalse(es_documento_valido("1234567", "CC"))
+        self.assertTrue(es_documento_valido("12345678", "CC"))
+        self.assertTrue(es_documento_valido("1234567890", "TI"))
+
+    def test_mensaje_por_tipo(self) -> None:
+        self.assertIn("7", mensaje_documento_invalido("PPT"))
+        self.assertIn("8", mensaje_documento_invalido())
+
+
+def _ppt_qr(numero: str, clave: str = "NUMERO IDENTIFICACION:") -> str:
+    """QR del PPT tal como lo entrega el lector (sin datos reales)."""
+    return (
+        "NOMBRES:PRUEBA UNOAPELLIDOS:APELLIDO DOS"
+        "FECHA:01-ENE-1990NACIONALIDAD:VEN" + clave + numero
+    )
+
+
+class TestPptQr(unittest.TestCase):
+    """PPT leído por QR: claves pegadas sin Enter → número de 7 dígitos."""
+
+    def test_ppt_qr_toma_numero_final(self) -> None:
+        cap = parse_captura_escaneo(_ppt_qr("1234567"))
+        self.assertEqual(cap.documento, "1234567")
+        self.assertEqual(cap.tipo_doc, "PPT")
+        self.assertEqual(cap.metodo_aut, 2)
+        self.assertEqual(cap.origen, "ppt_qr")
+        self.assertEqual((cap.nombres, cap.apellidos), ("", ""))
+
+    def test_ppt_qr_solo_acepta_7_digitos(self) -> None:
+        for numero in ("123456", "12345678"):
+            cap = parse_captura_escaneo(_ppt_qr(numero))
+            self.assertEqual(cap.documento, "", numero)
+            self.assertEqual(cap.origen, "ppt_qr")
+
+    def test_ppt_qr_no_toma_la_fecha(self) -> None:
+        cap = parse_captura_escaneo(_ppt_qr("1234567"))
+        self.assertNotIn("1990", cap.documento)
+
+    def test_ppt_qr_con_tildes_y_espacios(self) -> None:
+        raw = _ppt_qr("1234567", clave="NÚMERO IDENTIFICACIÓN : ")
+        self.assertEqual(parse_captura_escaneo(raw).documento, "1234567")
+
+    def test_ppt_qr_desde_campo_del_formulario(self) -> None:
+        self.assertEqual(
+            documento_desde_entrada_campo(_ppt_qr("1234567")), "1234567"
+        )
+
+    def test_firma_ppt_qr(self) -> None:
+        self.assertTrue(trama_ppt_qr(_ppt_qr("1234567")))
+        self.assertFalse(trama_ppt_qr(_mrz("1234567890")))
+        self.assertFalse(trama_ppt_qr("NOMBRES:PRUEBA"))
+
+    def test_otras_lecturas_sin_cambio(self) -> None:
+        self.assertEqual(parse_captura_escaneo(_mrz("1234567890")).tipo_doc, "CC")
+        self.assertEqual(parse_captura_escaneo("1234567890").origen, "barras")
+        qr = parse_captura_escaneo("https://example.com/v?doc=1234567890")
+        self.assertEqual(qr.metodo_aut, 2)
+        self.assertEqual(qr.tipo_doc, "CC")
 
 
 if __name__ == "__main__":
